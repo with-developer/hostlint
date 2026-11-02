@@ -1,0 +1,36 @@
+id: demo.uid-zero
+version: 1
+title: Only root has UID 0
+severity: high
+violations:
+  over: svc.users
+  as: u
+  where: u.uid == 0 && u.name != "root"
+  key: u.name
+  text: '"UID 0 assigned to " + u.name'
+tests:
+  - name: only root
+    facts:
+      svc: {users: [{name: root, uid: 0}, {name: alice, uid: 1000}]}
+    want: PASS
+  - name: second uid 0
+    facts:
+      svc: {users: [{name: root, uid: 0}, {name: toor, uid: 0}]}
+    want: FAIL
+  - name: partial list with a match still fails
+    input: incomplete
+    incomplete: [svc]
+    facts:
+      svc: {users: [{name: toor, uid: 0}]}
+    want: FAIL
+  - name: partial list without a match cannot pass
+    input: incomplete
+    incomplete: [svc]
+    facts:
+      svc: {users: [{name: root, uid: 0}]}
+    want: ERROR
+  - name: empty population
+    input: absent
+    facts:
+      svc: {users: []}
+    want: ERROR

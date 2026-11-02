@@ -1,0 +1,177 @@
+package engine
+
+// Status of a check or control. The set is closed for result schema v1.
+type Status string
+
+// Statuses.
+const (
+	StatusPass          Status = "PASS"
+	StatusFail          Status = "FAIL"
+	StatusManual        Status = "MANUAL"
+	StatusNotApplicable Status = "NOT_APPLICABLE"
+	StatusError         Status = "ERROR"
+	StatusWaived        Status = "WAIVED"
+)
+
+// AllStatuses lists every status, in aggregation precedence (highest first).
+var AllStatuses = []Status{StatusFail, StatusError, StatusManual, StatusWaived, StatusPass, StatusNotApplicable}
+
+func (s Status) valid() bool { return s.precedence() > 0 }
+
+// precedence ranks statuses for control aggregation (ADR 0006 §7): FAIL >
+// ERROR > MANUAL > WAIVED > PASS > NOT_APPLICABLE; 0 for anything else.
+func (s Status) precedence() int {
+	for i, st := range AllStatuses {
+		if s == st {
+			return len(AllStatuses) - i
+		}
+	}
+	return 0
+}
+
+// SchemaVersion is the version of the result document.
+const SchemaVersion = 1
+
+// Result is the result document (schema/result-v1.schema.json).
+type Result struct {
+	SchemaVersion int                       `json:"schemaVersion"`
+	Scan          ScanInfo                  `json:"scan"`
+	Host          HostInfo                  `json:"host"`
+	Profiles      []ProfileInfo             `json:"profiles"`
+	Summary       map[string]ProfileSummary `json:"summary"`
+	Controls      []ControlResult           `json:"controls"`
+	Checks        []CheckResult             `json:"checks"`
+	Collectors    []CollectorRun            `json:"collectors"`
+}
+
+// ScanInfo describes the scan itself.
+type ScanInfo struct {
+	ID         string     `json:"id"`
+	StartedAt  string     `json:"startedAt"`
+	FinishedAt string     `json:"finishedAt"`
+	Tool       ToolInfo   `json:"tool"`
+	Target     TargetInfo `json:"target"`
+	Privileges Privileges `json:"privileges"`
+}
+
+// ToolInfo identifies the hostlint build.
+type ToolInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Commit  string `json:"commit,omitempty"`
+}
+
+// TargetInfo says what was scanned.
+type TargetInfo struct {
+	Kind string `json:"kind"` // host or root
+	Root string `json:"root"`
+}
+
+// Privileges the scan ran with.
+type Privileges struct {
+	EUID         int64    `json:"euid"`
+	Capabilities []string `json:"capabilities,omitempty"`
+}
+
+// HostInfo identifies the scanned host.
+type HostInfo struct {
+	Hostname string            `json:"hostname"`
+	HostID   string            `json:"hostId,omitempty"`
+	OS       OSInfo            `json:"os"`
+	Kernel   string            `json:"kernel,omitempty"`
+	Arch     string            `json:"arch,omitempty"`
+	Labels   map[string]string `json:"labels,omitempty"`
+}
+
+// OSInfo describes the scanned OS.
+type OSInfo struct {
+	ID        string `json:"id"`
+	VersionID string `json:"versionId,omitempty"`
+	Family    string `json:"family"`
+	Name      string `json:"name,omitempty"`
+	Supported bool   `json:"supported"`
+}
+
+// ProfileInfo identifies a profile used by the scan.
+type ProfileInfo struct {
+	ID       string `json:"id"`
+	Revision int    `json:"revision"`
+	Digest   string `json:"digest"`
+	Title    string `json:"title,omitempty"`
+}
+
+// ProfileSummary counts results for one profile.
+type ProfileSummary struct {
+	Controls   map[Status]int `json:"controls"`
+	Checks     map[Status]int `json:"checks,omitempty"`
+	Customized int            `json:"customized"`
+}
+
+// ControlResult is one control's aggregated result.
+type ControlResult struct {
+	Profile    string    `json:"profile"`
+	ID         string    `json:"id"`
+	Title      string    `json:"title"`
+	TitleKo    string    `json:"titleKo,omitempty"`
+	Severity   Severity  `json:"severity"`
+	Status     Status    `json:"status"`
+	Reason     string    `json:"reason,omitempty"`
+	Customized bool      `json:"customized,omitempty"`
+	Checks     []string  `json:"checks"`
+	Waiver     *WaiverOf `json:"waiver,omitempty"`
+}
+
+// CheckResult is one check's result.
+type CheckResult struct {
+	Ref             string         `json:"ref"`
+	ID              string         `json:"id"`
+	Version         int            `json:"version"`
+	Digest          string         `json:"digest"`
+	Title           string         `json:"title"`
+	TitleKo         string         `json:"titleKo,omitempty"`
+	Severity        Severity       `json:"severity"`
+	Status          Status         `json:"status"`
+	OriginalStatus  Status         `json:"originalStatus,omitempty"`
+	StatusSource    string         `json:"statusSource"` // observed or attested
+	Reason          string         `json:"reason,omitempty"`
+	Params          map[string]any `json:"params,omitempty"`
+	Customized      bool           `json:"customized,omitempty"`
+	Evidence        []Evidence     `json:"evidence"`
+	EvidenceOmitted int            `json:"evidenceOmitted,omitempty"`
+	Coverage        *Coverage      `json:"coverage,omitempty"`
+	Waiver          *WaiverOf      `json:"waiver,omitempty"`
+	DurationMs      int64          `json:"durationMs"`
+}
+
+// Evidence is one observation supporting a result.
+type Evidence struct {
+	Key    string `json:"key"`
+	Text   string `json:"text"`
+	Source string `json:"source,omitempty"`
+}
+
+// Coverage is the population a violations check looked at.
+type Coverage struct {
+	Population string `json:"population"`
+	Count      int    `json:"count"`
+}
+
+// WaiverOf records the waiver applied to a result.
+type WaiverOf struct {
+	Reason  string `json:"reason"`
+	Expires string `json:"expires"`
+	Scope   string `json:"scope"` // check or control
+	Errors  bool   `json:"errors,omitempty"`
+}
+
+// CollectorRun records how one collector ran.
+type CollectorRun struct {
+	Name       string   `json:"name"`
+	Version    int      `json:"version"`
+	Access     Access   `json:"access"`
+	Status     string   `json:"status"` // ok, error or unavailable
+	Complete   bool     `json:"complete"`
+	Skipped    []string `json:"skipped,omitempty"`
+	Error      string   `json:"error,omitempty"`
+	DurationMs int64    `json:"durationMs"`
+}

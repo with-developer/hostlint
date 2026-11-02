@@ -1,0 +1,37 @@
+id: demo.max-days
+version: 1
+title: Demo passwords expire
+severity: medium
+params:
+  max_days: {type: int, default: 90, stricter: lower, description: Maximum password age in days}
+setting:
+  fact: svc.config["PASS_MAX_DAYS"]
+  range: {min: 1, max: params.max_days}
+  absent: fail
+tests:
+  - name: within limit
+    facts:
+      svc: {config: {PASS_MAX_DAYS: {value: "60", explicit: true}}}
+    want: PASS
+  - name: unlimited sentinel
+    facts:
+      svc: {config: {PASS_MAX_DAYS: {value: "-1", explicit: true}}}
+    want: FAIL
+  - name: too long
+    facts:
+      svc: {config: {PASS_MAX_DAYS: {value: "99999", explicit: true}}}
+    want: FAIL
+  - name: stricter parameter
+    params: {max_days: 30}
+    facts:
+      svc: {config: {PASS_MAX_DAYS: {value: "60", explicit: true}}}
+    want: FAIL
+  - name: not set
+    input: absent
+    facts:
+      svc: {config: {}}
+    want: FAIL
+  - name: not a number
+    facts:
+      svc: {config: {PASS_MAX_DAYS: {value: "ninety", explicit: true}}}
+    want: ERROR

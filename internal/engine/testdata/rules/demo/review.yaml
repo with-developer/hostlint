@@ -1,0 +1,8 @@
+id: demo.review
+version: 1
+title: Review the demo accounts
+severity: low
+manual:
+  guidance: Check that every account listed is still needed.
+  show: >-
+    svc.users.map(u, u.name)

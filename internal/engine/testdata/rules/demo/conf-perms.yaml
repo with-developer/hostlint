@@ -1,0 +1,35 @@
+id: demo.conf-perms
+version: 1
+title: /etc/demo.conf is owned by root and mode 0644 or stricter
+severity: medium
+file:
+  paths: [/etc/demo.conf]
+  owner: [root]
+  group: [root, sys]
+  mode: "0644"
+  missing: error
+tests:
+  - name: strict
+    files:
+      /etc/demo.conf: {mode: "0600"}
+    want: PASS
+  - name: group writable
+    files:
+      /etc/demo.conf: {mode: "0664"}
+    want: FAIL
+  - name: wrong owner
+    files:
+      /etc/demo.conf: {mode: "0644", owner: user}
+    want: FAIL
+  - name: allowed group
+    files:
+      /etc/demo.conf: {mode: "0640", group: sys}
+    want: PASS
+  - name: missing
+    input: absent
+    want: ERROR
+  - name: unreadable directory
+    input: unavailable
+    files:
+      /etc/demo.conf: {mode: "0644", error: permission}
+    want: ERROR

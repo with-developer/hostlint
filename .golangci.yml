@@ -69,6 +69,8 @@ linters:
         # Commands write to the io.Writer they were given.
         - pattern: ^(fmt\.Print(f|ln)?|print|println)$
           msg: write to the command's io.Writer
+    exhaustive:
+      default-signifies-exhaustive: true
     nolintlint:
       require-explanation: true
       require-specific: true

@@ -1,0 +1,31 @@
+id: demo-1
+revision: 1
+title: Demo profile
+controls:
+  - id: D-01
+    title: Root login
+    title_ko: 루트 로그인
+    severity: high
+    checks: [demo.root-login, demo.both]
+  - id: D-02
+    title: Password age
+    severity: medium
+    checks: [demo.max-days]
+    params:
+      demo.max-days: {max_days: 60}
+  - id: D-03
+    title: UID 0
+    severity: high
+    checks: [demo.uid-zero]
+  - id: D-04
+    title: File permissions
+    severity: medium
+    checks: [demo.conf-perms, demo.cron-perms]
+  - id: D-05
+    title: Account review
+    severity: low
+    checks: [demo.review]
+  - id: D-06
+    title: Patch policy
+    severity: high
+    manual: Review the patch policy.

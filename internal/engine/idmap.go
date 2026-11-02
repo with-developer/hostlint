@@ -1,0 +1,118 @@
+package engine
+
+import (
+	"bufio"
+	"bytes"
+	"errors"
+	"fmt"
+	"io/fs"
+	"strconv"
+	"strings"
+
+	"github.com/with-developer/hostlint/internal/hostfs"
+)
+
+// idMap resolves user and group names from the target's /etc/passwd and
+// /etc/group (only names and IDs are read). It is loaded on first use.
+type idMap struct {
+	fsys   hostfs.FS
+	loaded bool
+	err    error
+	users  map[string]int64
+	groups map[string]int64
+	uids   map[int64]string
+	gids   map[int64]string
+}
+
+func newIDMap(fsys hostfs.FS) *idMap { return &idMap{fsys: fsys} }
+
+func (m *idMap) load() error {
+	if m.loaded {
+		return m.err
+	}
+	m.loaded = true
+	m.users, m.uids, m.err = parseIDs(m.fsys, "/etc/passwd")
+	if m.err == nil {
+		m.groups, m.gids, m.err = parseIDs(m.fsys, "/etc/group")
+	}
+	return m.err
+}
+
+// parseIDs reads name:x:id lines; only the first and third fields are kept.
+func parseIDs(fsys hostfs.FS, path string) (map[string]int64, map[int64]string, error) {
+	byName, byID := map[string]int64{}, map[int64]string{}
+	data, err := fsys.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return byName, byID, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	for sc.Scan() {
+		f := strings.SplitN(sc.Text(), ":", 4)
+		if len(f) < 3 || f[0] == "" || strings.HasPrefix(f[0], "#") {
+			continue
+		}
+		id, err := strconv.ParseInt(f[2], 10, 64)
+		if err != nil {
+			continue
+		}
+		if _, dup := byName[f[0]]; !dup {
+			byName[f[0]] = id
+		}
+		if _, dup := byID[id]; !dup {
+			byID[id] = f[0]
+		}
+	}
+	return byName, byID, sc.Err()
+}
+
+// matches reports whether id is one of the names or numeric IDs in want.
+// "root" (and 0) always resolve, even without /etc/passwd.
+func (m *idMap) matches(want []string, id int64, group bool) (bool, error) {
+	for _, w := range want {
+		if n, err := strconv.ParseInt(w, 10, 64); err == nil {
+			if n == id {
+				return true, nil
+			}
+			continue
+		}
+		if w == "root" {
+			if id == 0 {
+				return true, nil
+			}
+			continue
+		}
+		if err := m.load(); err != nil {
+			return false, fmt.Errorf("cannot resolve %q: %w", w, err)
+		}
+		table := m.users
+		if group {
+			table = m.groups
+		}
+		if want, ok := table[w]; ok && want == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (m *idMap) userName(id int64) string  { return m.name(id, false) }
+func (m *idMap) groupName(id int64) string { return m.name(id, true) }
+
+func (m *idMap) name(id int64, group bool) string {
+	if m.load() == nil {
+		table := m.uids
+		if group {
+			table = m.gids
+		}
+		if n, ok := table[id]; ok {
+			return n
+		}
+	}
+	if id == 0 {
+		return "root"
+	}
+	return strconv.FormatInt(id, 10)
+}

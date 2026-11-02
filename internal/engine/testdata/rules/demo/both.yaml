@@ -1,0 +1,26 @@
+id: demo.both
+version: 1
+title: Demo expect check
+severity: low
+platforms: [debian]
+expect: >-
+  svc.present && svc.config.permitrootlogin.value == "no"
+tests:
+  - name: ok
+    facts:
+      svc: {present: true, config: {permitrootlogin: {value: "no", explicit: true}}}
+    want: PASS
+  - name: wrong value
+    facts:
+      svc: {present: true, config: {permitrootlogin: {value: "yes", explicit: true}}}
+    want: FAIL
+  - name: other platform
+    os: rhel
+    facts:
+      svc: {present: true}
+    want: NOT_APPLICABLE
+  - name: missing key is an error
+    input: absent
+    facts:
+      svc: {present: true, config: {}}
+    want: ERROR

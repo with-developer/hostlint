@@ -1,0 +1,30 @@
+id: demo.cron-perms
+version: 1
+title: Demo cron files are not writable by others
+severity: medium
+file:
+  paths: [/etc/cron.d/*]
+  owner: [root]
+  mode: "0644"
+  missing: error
+  no_match: pass
+tests:
+  - name: all fine
+    files:
+      /etc/cron.d/a: {mode: "0644"}
+      /etc/cron.d/b: {mode: "0600"}
+    want: PASS
+  - name: one bad file
+    files:
+      /etc/cron.d/a: {mode: "0644"}
+      /etc/cron.d/b: {mode: "0666"}
+    want: FAIL
+  - name: no files
+    files:
+      /etc/cron.d: {type: dir, mode: "0755"}
+    want: PASS
+  - name: unreadable directory cannot pass
+    input: incomplete
+    files:
+      /etc/cron.d: {type: dir, mode: "0755", error: permission}
+    want: ERROR
