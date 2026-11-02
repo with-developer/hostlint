@@ -104,6 +104,25 @@ func TestPAMTally2AndOther(t *testing.T) {
 	}
 }
 
+func TestPAMModulesAndHistory(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/pam.d/su", "auth sufficient pam_rootok.so\nauth required pam_wheel.so use_uid\n", 0o644, 0, 0).
+		AddFile("/etc/pam.d/passwd", "password requisite pam_pwhistory.so use_authtok\npassword sufficient pam_unix.so sha512\n", 0o644, 0, 0).
+		AddFile("/etc/security/pwhistory.conf", "remember = 5\nenforce_for_root\n", 0o644, 0, 0)
+	p := pamFacts(t, m)
+	if got := strings.Join(p.Modules["su"], ","); got != "auth pam_rootok.so,auth pam_wheel.so" {
+		t.Errorf("su modules = %q", got)
+	}
+	h := p.PasswordHistory
+	if h.Module != "pam_pwhistory.so" || h.Settings["remember"].Value != "5" || h.Settings["enforce_for_root"].Value != "1" {
+		t.Errorf("history = %+v", h)
+	}
+	legacy := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", "password sufficient pam_unix.so sha512 remember=4\n", 0o644, 0, 0)
+	if h := pamFacts(t, legacy).PasswordHistory; h.Module != "pam_unix.so" || h.Settings["remember"].Value != "4" {
+		t.Errorf("pam_unix remember = %+v", h)
+	}
+}
+
 func TestPAMUnreadableInclude(t *testing.T) {
 	m := hostfs.NewMemFS().
 		AddFile("/etc/pam.d/login", "@include common-auth\n", 0o644, 0, 0).

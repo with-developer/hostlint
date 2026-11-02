@@ -23,8 +23,14 @@ type PAM struct {
 	// @include, include and substack expanded in place. A service without
 	// its own file gets the "other" stack, as PAM does.
 	Stacks map[string][]PAMRule `json:"stacks"`
+	// Modules maps a service to "type module" entries of its stack, e.g.
+	// "auth pam_wheel.so", so rules can test membership with `in`.
+	Modules map[string][]string `json:"modules"`
 	// PasswordQuality is the policy of the passwd service's password stack.
 	PasswordQuality PasswordPolicy `json:"password_quality"`
+	// PasswordHistory is the password reuse policy of the passwd service:
+	// pam_pwhistory (with pwhistory.conf), or pam_unix's remember option.
+	PasswordHistory PasswordPolicy `json:"password_history"`
 	// Lockout maps a service to the lockout policy of its auth stack.
 	Lockout map[string]PasswordPolicy `json:"lockout"`
 }
@@ -65,16 +71,21 @@ func (pamCollector) Type() reflect.Type    { return reflect.TypeFor[PAM]() }
 
 func (pamCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	r := &pamReader{fsys: h.FS}
-	p := &PAM{Stacks: map[string][]PAMRule{}, Lockout: map[string]PasswordPolicy{}}
+	p := &PAM{Stacks: map[string][]PAMRule{}, Modules: map[string][]string{}, Lockout: map[string]PasswordPolicy{}}
 	for _, svc := range pamServices {
 		rules, err := r.stack(svc)
 		if err != nil {
 			return engine.Facts{}, err
 		}
 		p.Stacks[svc] = rules
+		p.Modules[svc] = []string{}
+		for _, rule := range rules {
+			p.Modules[svc] = append(p.Modules[svc], rule.Type+" "+rule.Module)
+		}
 		p.Lockout[svc] = r.lockout(rules)
 	}
 	p.PasswordQuality = r.quality(p.Stacks["passwd"])
+	p.PasswordHistory = r.history(p.Stacks["passwd"])
 	return engine.Facts{Value: p, Complete: len(r.skipped) == 0, Skipped: r.skipped}, nil
 }
 
@@ -210,6 +221,35 @@ func (r *pamReader) quality(rules []PAMRule) PasswordPolicy {
 		}
 	}
 	return PasswordPolicy{Settings: map[string]facts.Setting{}}
+}
+
+// history returns the password reuse policy of a stack's password rules.
+func (r *pamReader) history(rules []PAMRule) PasswordPolicy {
+	for _, rule := range rules {
+		if rule.Type != "password" {
+			continue
+		}
+		switch {
+		case rule.Module == "pam_pwhistory.so":
+			s := r.confFile("/etc/security/pwhistory.conf", "")
+			addArgs(s, rule)
+			return PasswordPolicy{Module: rule.Module, Settings: s}
+		case rule.Module == "pam_unix.so" && hasArg(rule, "remember"):
+			s := map[string]facts.Setting{}
+			addArgs(s, rule)
+			return PasswordPolicy{Module: rule.Module, Settings: s}
+		}
+	}
+	return PasswordPolicy{Settings: map[string]facts.Setting{}}
+}
+
+func hasArg(rule PAMRule, key string) bool {
+	for _, a := range rule.Args {
+		if k, _, _ := strings.Cut(a, "="); k == key {
+			return true
+		}
+	}
+	return false
 }
 
 // lockout returns the lockout policy of a stack's auth rules.
