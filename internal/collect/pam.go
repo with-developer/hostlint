@@ -55,11 +55,14 @@ type PasswordPolicy struct {
 // pamServices are the stacks collected.
 var pamServices = []string{"login", "sshd", "su", "passwd"}
 
-// Documented defaults (pwquality.conf(5), faillock.conf(5)); pam_cracklib and
-// pam_tally2 defaults vary too much between versions to assume.
+// Documented defaults (pwquality.conf(5), faillock.conf(5), pam_pwhistory(8),
+// pam_tally2(8): without deny it never locks). pam_cracklib's defaults vary
+// too much between versions to assume.
 var (
 	pwqualityDefaults = map[string]string{"minlen": "8", "dcredit": "0", "ucredit": "0", "lcredit": "0", "ocredit": "0", "minclass": "0"}
 	faillockDefaults  = map[string]string{"deny": "3", "unlock_time": "600", "fail_interval": "900"}
+	pwhistoryDefaults = map[string]string{"remember": "10"}
+	tally2Defaults    = map[string]string{"deny": "0"}
 )
 
 type pamCollector struct{}
@@ -232,6 +235,7 @@ func (r *pamReader) history(rules []PAMRule) PasswordPolicy {
 		switch {
 		case rule.Module == "pam_pwhistory.so":
 			s := r.confFile("/etc/security/pwhistory.conf", "")
+			addDefaults(s, pwhistoryDefaults, "default (pam_pwhistory(8))")
 			addArgs(s, rule)
 			return PasswordPolicy{Module: rule.Module, Settings: s}
 		case rule.Module == "pam_unix.so" && hasArg(rule, "remember"):
@@ -271,6 +275,8 @@ func (r *pamReader) lockout(rules []PAMRule) PasswordPolicy {
 	case "pam_faillock.so":
 		s = r.confFile("/etc/security/faillock.conf", "")
 		addDefaults(s, faillockDefaults, "default (faillock.conf(5))")
+	case "pam_tally2.so":
+		addDefaults(s, tally2Defaults, "default (pam_tally2(8): no lockout)")
 	case "":
 		return PasswordPolicy{Settings: s}
 	}
