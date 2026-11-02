@@ -6,10 +6,11 @@ only when direction changes (record why in an ADR).
 ## v0.1 — Standalone CLI
 
 **Goal:** download one binary, run `hostlint scan`, get a trustworthy per-control report.
-**Scope:** Ubuntu 22.04/24.04, Debian 12, Rocky/Alma 9, and CentOS/RHEL 7 (best-effort: past
-end-of-life, but still common among Korean compliance targets); KISA CII Unix profile, 2026
-edition (U-01–U-67, see ADR 0007). CentOS 6 is out of reach — Go binaries need Linux 3.2 or
-later.
+**Scope:** Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10 (Rocky Linux,
+AlmaLinux), and CentOS/RHEL 7 (best-effort: past end-of-life, but still common among Korean
+compliance targets); KISA CII Unix profile, 2026 edition (U-01–U-67, see ADR 0007). Other
+versions of these families are scanned best-effort and marked as such in results. CentOS 6 is
+out of reach — Go binaries need Linux 3.2 or later.
 
 Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 
@@ -38,8 +39,8 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
     (hosts × controls matrix, drill-down, works offline).
 12. **Config file** — `hostlint.yaml`: profile selection, disabled checks, waivers with reason
     and expiry.
-13. **Container e2e matrix** — Docker-based end-to-end tests per distro (including `centos:7`)
-    with hardened and default fixtures and golden results, in CI.
+13. **Container e2e matrix** — Docker-based end-to-end tests per supported distro (including
+    `centos:7`) with hardened and default fixtures and golden results, in CI.
 14. **Release pipeline** — GoReleaser (linux amd64/arm64), checksums, cosign keyless signing,
     SBOM, .deb/.rpm, install script. Tagging `v0.1.0` requires the owner's approval.
 15. **Docs** — README (EN) with a demo GIF, Korean translations of user-facing docs
