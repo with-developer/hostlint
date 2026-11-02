@@ -1,0 +1,16 @@
+[1mhostlint[0m v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.1 LTS)
+
+[31m✗[0m [31mFAIL[0m U-01   Restrict direct remote root login [2m[high][0m
+    [31m✗[0m ssh.permit-root-login [2m— SSH does not allow direct root login[0m
+        "yes" (explicit); expected one of [no] [2m/etc/ssh/sshd_config:32[0m
+[35m![0m [35mERROR[0m U-04   Protect password hashes [2m[high][0m
+    [35m![0m accounts.shadow-file [2m— Password hashes are kept in /etc/shadow[0m
+        shadow: permission denied (run hostlint as root)
+[33m?[0m [33mMANUAL[0m U-07   Remove unneeded accounts [2m[low][0m
+    [33m?[0m accounts.review-login-accounts [2m— Review accounts that can log in[0m
+        Review the listed accounts.
+        root (uid 0, /bin/bash)
+        alice (uid 1000, /bin/bash)
+
+kisa-2026: 5 controls — [31m1 FAIL[0m, [35m1 ERROR[0m, [33m1 MANUAL[0m, [32m1 PASS[0m, [2m1 NOT_APPLICABLE[0m
+[2mPassing and not-applicable controls are hidden; use --verbose to list them.[0m
