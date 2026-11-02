@@ -22,10 +22,16 @@ func (osCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
 	if err != nil {
 		return Facts{}, err
 	}
-	return Facts{Value: &facts.OS{
+	f := Facts{Value: &facts.OS{
 		ID: o.ID, IDLike: o.IDLike, VersionID: o.VersionID, VersionMajor: int64(o.VersionMajor),
 		Name: o.Name, Family: o.Family, Supported: o.Supported,
-	}, Complete: true}, nil
+	}, Complete: true}
+	if !o.VersionKnown {
+		// version_major is 0 here; a check that depends on it must not decide.
+		f.Complete = false
+		f.Skipped = []string{"the OS version is missing or not numeric (VERSION_ID)"}
+	}
+	return f, nil
 }
 
 func osFromFacts(v any) hostfs.OS {

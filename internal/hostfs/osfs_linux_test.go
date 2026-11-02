@@ -56,6 +56,16 @@ func (f osFixture) fifo(name string) {
 	}
 }
 
+func (f osFixture) chownLink(name string, uid int64) bool {
+	if os.Geteuid() != 0 {
+		return false
+	}
+	if err := os.Lchown(f.p(name), int(uid), int(uid)); err != nil {
+		f.t.Fatal(err)
+	}
+	return true
+}
+
 func (f osFixture) fs() FS {
 	o, err := newOSFS(f.root)
 	if err != nil {
@@ -67,11 +77,6 @@ func (f osFixture) fs() FS {
 
 func newOSFixture(t *testing.T) osFixture {
 	t.Helper()
-	o, err := newOSFS(t.TempDir())
-	if err != nil {
-		t.Skipf("mounted-root scanning unavailable here: %v", err)
-	}
-	_ = o.close()
 	return osFixture{t: t, root: t.TempDir()}
 }
 
@@ -90,6 +95,33 @@ func TestOSFSDeniesHardLinkToShadow(t *testing.T) {
 	}
 	_, err := f.fs().ReadFile("/home/u/notes")
 	checkErr(t, err, ErrDenied)
+}
+
+// With fs.protected_hardlinks off, a user can hard-link a file they cannot
+// read into their own directory; hostlint refuses such links.
+func TestOSFSDeniesForeignHardLink(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("needs root to create files owned by another user")
+	}
+	f := newOSFixture(t)
+	f.file("/etc/wireguard-like.conf", "PrivateKey = secret", 0o600)
+	f.dir("/home/u", 0o755)
+	if err := os.Chown(f.p("/home/u"), 1000, 1000); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(f.p("/etc/wireguard-like.conf"), f.p("/home/u/.rhosts")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(f.p("/etc/wireguard-like.conf"), f.p("/etc/second-name")); err != nil {
+		t.Fatal(err)
+	}
+	fsys := f.fs()
+	_, err := fsys.ReadFile("/home/u/.rhosts")
+	checkErr(t, err, ErrDenied)
+	// A hard link between files of the same owner is ordinary.
+	if _, err := fsys.ReadFile("/etc/second-name"); err != nil {
+		t.Errorf("same-owner hard link: %v", err)
+	}
 }
 
 func TestOSFSUnreadableDirectory(t *testing.T) {
@@ -125,6 +157,45 @@ func TestOSFSLive(t *testing.T) {
 	checkErr(t, err, ErrDenied)
 	if _, err := o.ReadFile("/proc/self/status"); err != nil {
 		t.Errorf("ReadFile(/proc/self/status): %v", err)
+	}
+}
+
+func TestOSFSClose(t *testing.T) {
+	f := newOSFixture(t)
+	f.file("/etc/marker", "a", 0o644)
+	o, err := newOSFS(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := o.close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.close(); err != nil {
+		t.Errorf("second close: %v", err)
+	}
+	// A closed host never reads through a reused descriptor number.
+	other := newOSFixture(t)
+	other.file("/etc/marker", "b", 0o644)
+	_ = other.fs()
+	if _, err := o.ReadFile("/etc/marker"); err == nil {
+		t.Error("ReadFile after close succeeded")
+	}
+}
+
+// /proc/<pid>/root is how one scans a running container: it is a mounted
+// root, never the live system, even though it resolves to "/" in some
+// namespaces.
+func TestOpenProcRootIsNotLive(t *testing.T) {
+	h, err := Open("/proc/self/root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if h.Live {
+		t.Error("/proc/self/root was treated as the live system")
+	}
+	if _, err := Open(""); err == nil {
+		t.Error("Open(\"\") succeeded")
 	}
 }
 

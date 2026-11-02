@@ -28,8 +28,9 @@ tests:
   - name: missing
     input: absent
     want: ERROR
-  - name: unreadable directory
+  - name: unsearchable directory
     input: unavailable
     files:
-      /etc/demo.conf: {mode: "0644", error: permission}
+      /etc: {type: dir, mode: "0755", error: permission}
+      /etc/demo.conf: {mode: "0644"}
     want: ERROR

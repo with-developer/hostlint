@@ -25,6 +25,10 @@ controls:
     title: Account review
     severity: low
     checks: [demo.review]
+  - id: D-07
+    title: Newer releases
+    severity: low
+    checks: [demo.modern]
   - id: D-06
     title: Patch policy
     severity: high

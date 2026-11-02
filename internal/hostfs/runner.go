@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"reflect"
 	"time"
 )
 
@@ -19,6 +21,31 @@ type Command struct {
 
 // String returns the command's identifier.
 func (c Command) String() string { return c.name }
+
+// registry holds every command hostlint may run. It is filled once, by the
+// package-level newCommand calls, and only read afterwards.
+var registry = map[string]Command{}
+
+// newCommand defines a command. Every program path must be absolute.
+func newCommand(name string, paths []string, args ...string) Command {
+	for _, p := range paths {
+		if !path.IsAbs(p) {
+			panic(fmt.Sprintf("hostfs: command %q: program path %q is not absolute", name, p))
+		}
+	}
+	if _, dup := registry[name]; dup {
+		panic(fmt.Sprintf("hostfs: command %q defined twice", name))
+	}
+	c := Command{name: name, paths: paths, args: args}
+	registry[name] = c
+	return c
+}
+
+// registered reports whether c is exactly a command defined with newCommand.
+func registered(c Command) bool {
+	r, ok := registry[c.name]
+	return ok && reflect.DeepEqual(r, c)
+}
 
 // Output is what a command produced. A non-zero exit status is not an error.
 type Output struct {
@@ -41,6 +68,9 @@ var (
 	// ErrUntrusted is returned when the program could be replaced by an
 	// unprivileged user, so hostlint refuses to run it.
 	ErrUntrusted = errors.New("program is not safe to run")
+	// ErrUnregistered is returned for a command that was not defined in this
+	// package.
+	ErrUnregistered = errors.New("not a registered command")
 )
 
 const (
@@ -81,11 +111,13 @@ func (r RecordedRunner) Run(_ context.Context, c Command) (Output, error) {
 	return out, nil
 }
 
-// cappedBuffer keeps at most max bytes and remembers whether more arrived.
+// cappedBuffer keeps at most max bytes and remembers whether more arrived;
+// onOverflow (if set) is called once when it does.
 type cappedBuffer struct {
-	buf      []byte
-	max      int
-	overflow bool
+	buf        []byte
+	max        int
+	overflow   bool
+	onOverflow func()
 }
 
 // Write keeps what fits and discards the rest; it reports the whole of p as
@@ -93,6 +125,9 @@ type cappedBuffer struct {
 func (b *cappedBuffer) Write(p []byte) (int, error) {
 	n := len(p)
 	if room := b.max - len(b.buf); n > room {
+		if !b.overflow && b.onOverflow != nil {
+			b.onOverflow()
+		}
 		b.overflow = true
 		p = p[:max(room, 0)]
 	}
