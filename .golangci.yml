@@ -1,0 +1,71 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - depguard
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - gocritic
+    - gosec
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+  settings:
+    depguard:
+      # ADR 0004: only the host access layer may run commands or make raw
+      # system calls. Everything else reaches the host through internal/hostfs.
+      rules:
+        exec:
+          files:
+            - "$all"
+            - "!**/internal/hostfs/**"
+          deny:
+            - pkg: os/exec
+              desc: only internal/hostfs may run commands (ADR 0004)
+        syscalls:
+          files:
+            - "$all"
+            - "!**/internal/hostfs/**"
+            - "!**/cmd/hostlint/**"
+          deny:
+            - pkg: syscall
+              desc: raw system calls belong in internal/hostfs (ADR 0004)
+            - pkg: golang.org/x/sys/unix
+              desc: raw system calls belong in internal/hostfs (ADR 0004)
+    forbidigo:
+      analyze-types: true
+      forbid:
+        # ADR 0004: hostlint never changes the host it scans. Only the code
+        # that writes reports the user asked for may create files.
+        - pattern: ^os\.(Create|CreateTemp|WriteFile|OpenFile|Mkdir|MkdirAll|MkdirTemp|Remove|RemoveAll|Rename|Chmod|Chown|Lchown|Chtimes|Symlink|Link|Truncate|StartProcess)$
+          pkg: ^os$
+          msg: hostlint must not modify the host (ADR 0004); write output via internal/output
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - forbidigo
+          - gosec
+      - path: internal/(output|hostfs)/
+        linters:
+          - forbidigo
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/with-developer/hostlint
