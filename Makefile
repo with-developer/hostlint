@@ -32,12 +32,15 @@ build: ## Build ./hostlint (static on Linux; cross-compile with GOOS=linux GOARC
 test: ## Run unit tests with the race detector
 	go test -race ./...
 
-lint: $(GOLANGCI_LINT) lint-guards ## Lint for linux (incl. ADR 0004 guards) and check go.mod is tidy
-	GOOS=linux $(GOLANGCI_LINT) run
+# Lint as linux/amd64 everywhere, so a laptop and CI see the same code.
+LINT_ENV := GOOS=linux GOARCH=amd64
+
+lint: $(GOLANGCI_LINT) lint-guards ## Lint for linux/amd64 (incl. ADR 0004 guards) and check go.mod is tidy
+	$(LINT_ENV) $(GOLANGCI_LINT) run
 	go mod tidy -diff
 
 lint-guards: $(GOLANGCI_LINT) ## Prove the ADR 0004 lint guards fire
-	GOOS=linux ./scripts/lint-guards.sh $(GOLANGCI_LINT)
+	$(LINT_ENV) ./scripts/lint-guards.sh $(GOLANGCI_LINT)
 
 fmt: $(GOLANGCI_LINT) ## Format code
 	$(GOLANGCI_LINT) fmt

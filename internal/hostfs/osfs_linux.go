@@ -463,7 +463,7 @@ func fileInfo(name string, st *unix.Stat_t) FileInfo {
 		GID:     int64(st.Gid),
 		Size:    st.Size,
 		ModTime: time.Unix(st.Mtim.Sec, st.Mtim.Nsec).UTC(),
-		Nlink:   int64(st.Nlink),
+		Nlink:   int64(st.Nlink), //nolint:gosec // G115: link counts never exceed MaxInt64
 		Dev:     st.Dev,
 		Ino:     st.Ino,
 	}
