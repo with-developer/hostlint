@@ -12,7 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # PR runs replace each other; every commit on main keeps its own run.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -41,10 +42,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: v2.15.0
-      - run: go mod tidy -diff
+      # Same command as locally: builds the pinned golangci-lint with this Go,
+      # lints, proves the ADR 0004 guards fire, and checks go.mod is tidy.
+      - run: make lint
 
   build:
     name: build (linux/${{ matrix.goarch }})

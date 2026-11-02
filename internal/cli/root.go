@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,19 +15,32 @@ import (
 
 // Process exit codes.
 const (
-	ExitOK    = 0 // success; nothing failed at or above the --fail-on threshold
-	ExitFail  = 1 // the scan found failures (used by `hostlint scan`)
-	ExitError = 2 // usage error or the command could not run
+	ExitOK          = 0   // success; nothing failed at or above the --fail-on threshold
+	ExitFail        = 1   // the scan found failures (used by `hostlint scan`)
+	ExitError       = 2   // usage error, or the command could not run
+	ExitInterrupted = 130 // interrupted by SIGINT or SIGTERM
 )
 
 // Execute runs the CLI with args (without the program name) and returns the
-// process exit code.
+// process exit code. The command is interrupted when ctx is canceled.
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	// Cobra's hidden __complete command appends debug output to the file named
+	// by this variable; hostlint never writes to the host it runs on (ADR 0004).
+	_ = os.Unsetenv("BASH_COMP_DEBUG_FILE")
+	if args == nil {
+		args = []string{} // cobra falls back to os.Args when given nil
+	}
+
 	cmd := newRootCommand()
 	cmd.SetArgs(args)
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
-	if err := cmd.ExecuteContext(ctx); err != nil {
+	err := cmd.ExecuteContext(ctx)
+	switch {
+	case ctx.Err() != nil:
+		_, _ = fmt.Fprintln(stderr, "hostlint: interrupted")
+		return ExitInterrupted
+	case err != nil:
 		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
 		return ExitError
 	}
@@ -44,6 +59,23 @@ changes the host it scans.`,
 		SilenceErrors: true,
 	}
 	root.SetVersionTemplate("{{.Version}}\n")
+	root.SetHelpCommand(newHelpCommand())
 	root.AddCommand(newVersionCommand())
 	return root
+}
+
+// newHelpCommand replaces cobra's default help command, which exits 0 for an
+// unknown topic.
+func newHelpCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "help [command]",
+		Short: "Help about any command",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			target, rest, err := cmd.Root().Find(args)
+			if err != nil || len(rest) > 0 {
+				return fmt.Errorf("unknown help topic %q", strings.Join(args, " "))
+			}
+			return target.Help()
+		},
+	}
 }
