@@ -15,3 +15,4 @@ CLAUDE.local.md
 .idea/
 .vscode/
 .DS_Store
+/.tools/
