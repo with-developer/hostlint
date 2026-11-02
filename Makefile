@@ -1,0 +1,56 @@
+# Development tasks for hostlint. Run `make help` to list them.
+
+BINARY := hostlint
+MODULE := $(shell go list -m)
+
+# Version stamp. Release builds get it from the tag; anything else is a dev build.
+GIT_DIRTY := $(shell test -n "$$(git status --porcelain 2>/dev/null)" && echo -dirty)
+VERSION := $(shell git describe --tags --always 2>/dev/null || echo dev)$(GIT_DIRTY)
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
+DATE := $(shell TZ=UTC git log -1 --no-show-signature --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd 2>/dev/null)
+LDFLAGS := -s -w \
+	-X $(MODULE)/internal/version.version=$(VERSION) \
+	-X $(MODULE)/internal/version.commit=$(COMMIT) \
+	-X $(MODULE)/internal/version.date=$(DATE)
+
+# Tools are built from source with the current Go toolchain, so they always
+# understand the Go version in use. One version pin each, used locally and in CI.
+TOOLS := $(CURDIR)/.tools
+GOLANGCI_LINT_VERSION := v2.15.0
+GOLANGCI_LINT := $(TOOLS)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+GOVULNCHECK_VERSION := v1.9.0
+
+.DEFAULT_GOAL := help
+.PHONY: help build test lint lint-guards fmt tidy vuln clean
+
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+build: ## Build ./hostlint (static on Linux; cross-compile with GOOS=linux GOARCH=arm64)
+	CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/hostlint
+
+test: ## Run unit tests with the race detector
+	go test -race ./...
+
+lint: $(GOLANGCI_LINT) lint-guards ## Lint for linux (incl. ADR 0004 guards) and check go.mod is tidy
+	GOOS=linux $(GOLANGCI_LINT) run
+	go mod tidy -diff
+
+lint-guards: $(GOLANGCI_LINT) ## Prove the ADR 0004 lint guards fire
+	GOOS=linux ./scripts/lint-guards.sh $(GOLANGCI_LINT)
+
+fmt: $(GOLANGCI_LINT) ## Format code
+	$(GOLANGCI_LINT) fmt
+
+tidy: ## Tidy go.mod and go.sum
+	go mod tidy
+
+vuln: ## Scan dependencies for known vulnerabilities
+	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+
+clean: ## Remove build output and downloaded tools
+	rm -rf $(BINARY) dist/ $(TOOLS)
+
+$(GOLANGCI_LINT):
+	GOBIN=$(TOOLS)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	mv $(TOOLS)/bin/golangci-lint $@

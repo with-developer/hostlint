@@ -14,14 +14,26 @@ Pre-v0.1. The layout below is the target; keep this file in sync as code lands.
 
 ## Commands
 
-To be filled in by the scaffold work. Expected: `make build`, `make test`, `make lint`,
-`make e2e` (Docker).
+- `make build` — `./hostlint` for the current platform (a static binary on Linux);
+  cross-compile with `GOOS=linux GOARCH=arm64 make build`
+- `make test` — unit tests with the race detector
+- `make lint` — golangci-lint for linux (formatting, plus rules that enforce ADR 0004: no exec,
+  raw syscalls, host writes or direct host reads outside `internal/hostfs`), `make lint-guards`
+  (proves those rules fire, using `internal/lintguard`), and a `go.mod` tidiness check. Builds the
+  pinned linter into `.tools/` on first run
+- `make fmt` — format the code
+- `make vuln` — govulncheck
+- `make e2e` — container end-to-end tests (Docker; arrives with #13)
+
+CI runs test, lint, build (linux amd64/arm64) and vuln. `ci-ok` is the required check on `main`.
 
 ## Layout (target)
 
 | Path | Purpose |
 |---|---|
-| `cmd/hostlint/` | CLI entrypoint |
+| `cmd/hostlint/` | Binary entrypoint (signals, exit code) |
+| `internal/cli/` | Command definitions (Cobra) |
+| `internal/version/` | Build information |
 | `internal/engine/` | Rule loading, evaluation, result model |
 | `internal/collect/` | Fact collectors — the only code that touches the host |
 | `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
