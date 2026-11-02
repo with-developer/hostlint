@@ -1,0 +1,42 @@
+id: accounts.su-wheel-only
+version: 1
+title: Only members of the wheel group can use su
+title_ko: su 명령어 사용 그룹 제한
+severity: high
+description: >-
+  Checks that the su PAM stack uses pam_wheel, which limits su to members of the wheel group
+  (or the group given with group=). Hosts without regular user accounts are not applicable.
+rationale: >-
+  Without the restriction, any local user who learns the root password can become root with su.
+remediation: >-
+  Uncomment or add `auth required pam_wheel.so use_uid` in /etc/pam.d/su and add
+  administrators to the wheel group.
+params:
+  first_user_uid: {type: int, default: 1000, stricter: lower, description: First UID of regular user accounts}
+applies: >-
+  accounts.users.exists(u, u.uid >= params.first_user_uid && u.login_shell)
+expect: >-
+  "auth pam_wheel.so" in pam.modules.su
+tests:
+  - name: restricted
+    facts:
+      accounts: {users: [{name: alice, uid: 1000, login_shell: true}]}
+      pam: {modules: {su: ["auth pam_rootok.so", "auth pam_wheel.so", "auth pam_unix.so"]}}
+    want: PASS
+  - name: open to everyone
+    facts:
+      accounts: {users: [{name: alice, uid: 1000, login_shell: true}]}
+      pam: {modules: {su: ["auth pam_rootok.so", "auth pam_unix.so"]}}
+    want: FAIL
+  - name: no regular users
+    facts:
+      accounts: {users: [{name: root, uid: 0, login_shell: true}]}
+      pam: {modules: {su: []}}
+    want: NOT_APPLICABLE
+  - name: accounts incomplete
+    input: incomplete
+    incomplete: [accounts]
+    facts:
+      accounts: {users: [{name: root, uid: 0, login_shell: true}]}
+      pam: {modules: {su: []}}
+    want: ERROR

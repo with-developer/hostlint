@@ -1,0 +1,35 @@
+id: accounts.uid0-only-root
+version: 1
+title: Only root has UID 0
+title_ko: root 이외 UID 0 계정 금지
+severity: high
+description: Lists accounts other than root whose UID is 0.
+rationale: Every UID 0 account has full root privileges, under a name that may escape notice.
+remediation: Give the account another UID (usermod -u) or remove it.
+violations:
+  over: accounts.users
+  as: u
+  where: u.uid == 0 && u.name != "root"
+  key: u.name
+  text: >-
+    u.name + " has UID 0 (" + u.source + ")"
+tests:
+  - name: only root
+    facts:
+      accounts: {users: [{name: root, uid: 0}, {name: alice, uid: 1000}]}
+    want: PASS
+  - name: second UID 0
+    facts:
+      accounts: {users: [{name: root, uid: 0}, {name: toor, uid: 0, source: "/etc/passwd:30"}]}
+    want: FAIL
+  - name: partial list without the extra account cannot pass
+    input: incomplete
+    incomplete: [accounts]
+    facts:
+      accounts: {users: [{name: root, uid: 0}]}
+    want: ERROR
+  - name: empty list
+    input: absent
+    facts:
+      accounts: {users: []}
+    want: ERROR

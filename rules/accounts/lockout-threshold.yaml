@@ -1,0 +1,55 @@
+id: accounts.lockout-threshold
+version: 1
+title: Accounts lock after repeated login failures
+title_ko: 로그인 실패 시 계정 잠금 임계값 설정
+severity: high
+description: >-
+  Checks that the login and (when an SSH server is present) sshd PAM stacks lock an account
+  after at most `max_failures` failed attempts, with pam_faillock or pam_tally2.
+rationale: Without a lockout, an attacker can try passwords against an account indefinitely.
+remediation: >-
+  Enable pam_faillock (authselect enable-feature with-faillock, or pam-auth-update) and set
+  `deny = 10` or less in /etc/security/faillock.conf.
+params:
+  max_failures: {type: int, default: 10, stricter: lower, description: Failed attempts before an account locks}
+expect: >-
+  pam.lockout.login.module != "" &&
+  int(pam.lockout.login.settings.deny.value) >= 1 &&
+  int(pam.lockout.login.settings.deny.value) <= params.max_failures &&
+  (!sshd.present ||
+   (pam.lockout.sshd.module != "" &&
+    int(pam.lockout.sshd.settings.deny.value) >= 1 &&
+    int(pam.lockout.sshd.settings.deny.value) <= params.max_failures))
+tests:
+  - name: faillock on both stacks
+    facts:
+      sshd: {present: true}
+      pam: {lockout: {login: {module: pam_faillock.so, settings: {deny: {value: "5", explicit: true}}}, sshd: {module: pam_faillock.so, settings: {deny: {value: "3", source: "default (faillock.conf(5))"}}}}}
+    want: PASS
+  - name: no SSH server, login stack locks
+    facts:
+      sshd: {present: false}
+      pam: {lockout: {login: {module: pam_tally2.so, settings: {deny: {value: "10", explicit: true}}}, sshd: {module: "", settings: {}}}}
+    want: PASS
+  - name: sshd stack does not lock
+    facts:
+      sshd: {present: true}
+      pam: {lockout: {login: {module: pam_faillock.so, settings: {deny: {value: "5"}}}, sshd: {module: "", settings: {}}}}
+    want: FAIL
+  - name: tally2 without deny never locks
+    facts:
+      sshd: {present: false}
+      pam: {lockout: {login: {module: pam_tally2.so, settings: {deny: {value: "0", source: "default (pam_tally2(8): no lockout)"}}}, sshd: {module: "", settings: {}}}}
+    want: FAIL
+  - name: too many attempts allowed
+    facts:
+      sshd: {present: false}
+      pam: {lockout: {login: {module: pam_faillock.so, settings: {deny: {value: "20"}}}, sshd: {module: "", settings: {}}}}
+    want: FAIL
+  - name: PAM incomplete
+    input: incomplete
+    incomplete: [pam]
+    facts:
+      sshd: {present: false}
+      pam: {lockout: {login: {module: pam_faillock.so, settings: {deny: {value: "5"}}}, sshd: {module: "", settings: {}}}}
+    want: ERROR

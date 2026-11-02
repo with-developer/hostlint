@@ -1,0 +1,25 @@
+id: accounts.session-timeout-set
+version: 1
+title: Idle shells time out
+title_ko: 세션 종료 시간(TMOUT) 설정
+severity: low
+description: Checks that a system-wide or root startup file sets TMOUT.
+rationale: An unattended logged-in terminal can be used by anyone who reaches it.
+remediation: Add `TMOUT=600` and `readonly TMOUT` and `export TMOUT` to a file in /etc/profile.d.
+expect: >-
+  size(shell_env.tmout) > 0
+tests:
+  - name: set
+    facts:
+      shell_env: {tmout: [{value: "600", readonly: true, source: "/etc/profile.d/timeout.sh:1"}]}
+    want: PASS
+  - name: not set
+    facts:
+      shell_env: {tmout: []}
+    want: FAIL
+  - name: startup files incomplete
+    input: incomplete
+    incomplete: [shell_env]
+    facts:
+      shell_env: {tmout: []}
+    want: ERROR

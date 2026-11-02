@@ -1,0 +1,13 @@
+id: accounts.review-admin-groups
+version: 1
+title: Review members of administrative groups
+title_ko: 관리자 그룹 구성원 검토
+severity: medium
+description: Lists the members of the root (GID 0), wheel, sudo and admin groups.
+rationale: Every member of these groups can gain or already has administrative power.
+remediation: Remove accounts that do not need administrative rights (gpasswd -d user group).
+manual:
+  guidance: Confirm that only administrators who need it belong to each listed group.
+  show: >-
+    accounts.groups.filter(g, g.gid == 0 || g.name in ["wheel", "sudo", "admin"])
+      .map(g, g.name + ": " + (size(g.members) == 0 ? "(no supplementary members)" : g.members.join(", ")))
