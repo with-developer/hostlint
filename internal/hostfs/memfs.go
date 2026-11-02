@@ -16,6 +16,9 @@ import (
 // permissions; use SetError to simulate an unreadable path.
 type MemFS struct {
 	nodes map[string]*memNode
+	// ScannerUID is the user the scan runs as; symlinks owned by root or by
+	// this user are followed (default 0).
+	ScannerUID int64
 }
 
 type memNode struct {
@@ -51,9 +54,19 @@ func (m *MemFS) AddDir(name string, perm uint32, uid, gid int64) *MemFS {
 	return m
 }
 
-// AddSymlink adds a symbolic link to target.
+// AddSymlink adds a symbolic link to target, owned by root.
 func (m *MemFS) AddSymlink(name, target string) *MemFS {
 	m.add(name, &memNode{mode: fs.ModeSymlink | 0o777, target: target})
+	return m
+}
+
+// SetOwner changes the owner of an existing path (without following links).
+func (m *MemFS) SetOwner(name string, uid, gid int64) *MemFS {
+	n, ok := m.nodes[name]
+	if !ok {
+		panic(fmt.Sprintf("hostfs.MemFS: SetOwner of missing path %q", name))
+	}
+	n.uid, n.gid = uid, gid
 	return m
 }
 
@@ -117,6 +130,9 @@ func (m *MemFS) resolve(name string, follow bool) (string, *memNode, error) {
 		}
 		last := i == len(parts)-1
 		if n.mode&fs.ModeSymlink != 0 && (follow || !last) {
+			if n.uid != 0 && n.uid != m.ScannerUID {
+				return "", nil, fmt.Errorf("owned by uid %d: %w", n.uid, ErrUnsafeSymlink)
+			}
 			if links++; links > 40 {
 				return "", nil, errLoop
 			}
@@ -192,11 +208,16 @@ func (m *MemFS) ReadLink(name string) (string, error) {
 }
 
 // ReadFile implements FS.
-func (m *MemFS) ReadFile(name string) ([]byte, error) {
+func (m *MemFS) ReadFile(name string) ([]byte, error) { return m.read(name, true) }
+
+// readSensitive reads a denylisted file for a parser in this package.
+func (m *MemFS) readSensitive(name string) ([]byte, error) { return m.read(name, false) }
+
+func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 	if err := checkPath("read", name); err != nil {
 		return nil, err
 	}
-	if denied(name) {
+	if enforceDenylist && denied(name) {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
 	}
 	resolved, n, err := m.resolve(name, true)
@@ -204,7 +225,7 @@ func (m *MemFS) ReadFile(name string) ([]byte, error) {
 	case err != nil:
 	case !n.mode.IsRegular():
 		err = ErrNotRegular
-	case denied(resolved):
+	case enforceDenylist && denied(resolved):
 		err = ErrDenied
 	case len(n.data) > MaxReadSize:
 		err = ErrTooLarge

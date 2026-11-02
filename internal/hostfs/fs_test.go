@@ -12,6 +12,8 @@ type fixture interface {
 	dir(name string, perm uint32)
 	symlink(name, target string)
 	fifo(name string)
+	// chownLink makes a symlink owned by uid; false if unsupported here.
+	chownLink(name string, uid int64) bool
 	fs() FS
 }
 
@@ -22,6 +24,10 @@ func (f memFixture) dir(name string, perm uint32)           { f.m.AddDir(name, p
 func (f memFixture) symlink(name, target string)            { f.m.AddSymlink(name, target) }
 func (f memFixture) fifo(name string)                       { f.m.AddSpecial(name, fs.ModeNamedPipe, 0o644, 0, 0) }
 func (f memFixture) fs() FS                                 { return f.m }
+func (f memFixture) chownLink(name string, uid int64) bool {
+	f.m.SetOwner(name, uid, uid)
+	return true
+}
 
 func TestMemFSConformance(t *testing.T) {
 	testConformance(t, func(*testing.T) fixture { return memFixture{NewMemFS()} })
@@ -47,6 +53,9 @@ func buildTree(f fixture) {
 	f.symlink("/home/u/.rhosts", "/etc/shadow")
 	f.symlink("/home/u/.plan", "/home/u/.ssh/id_rsa")
 	f.fifo("/run/fifo")
+	f.file("/proc/123/task/123/environ", "DB_PASSWORD=secret", 0o400)
+	f.symlink("/proc/thread-self", "123/task/123")
+	f.symlink("/home/u/.forward", "/etc/target")
 }
 
 func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
@@ -75,6 +84,8 @@ func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
 			{name: "denylisted directory", path: "/home/u/.ssh/id_rsa", wantErr: ErrDenied},
 			{name: "symlink to a denylisted file", path: "/home/u/.rhosts", wantErr: ErrDenied},
 			{name: "symlink into a denylisted directory", path: "/home/u/.plan", wantErr: ErrDenied},
+			{name: "task environ", path: "/proc/123/task/123/environ", wantErr: ErrDenied},
+			{name: "thread-self resolves to a denylisted task path", path: "/proc/thread-self/environ", wantErr: ErrDenied},
 			{name: "relative path", path: "etc/target", wantErr: ErrInvalidPath},
 			{name: "unclean path", path: "/etc/../etc/target", wantErr: ErrInvalidPath},
 		}
@@ -86,6 +97,25 @@ func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
 					t.Errorf("ReadFile(%q) = %q, want %q", tt.path, got, tt.want)
 				}
 			})
+		}
+	})
+
+	// A symlink another user planted is never followed, whatever it points to.
+	t.Run("untrusted symlink", func(t *testing.T) {
+		if !f.chownLink("/home/u/.forward", 1000) {
+			t.Skip("changing a symlink's owner needs root")
+		}
+		fsys := f.fs()
+		_, err := fsys.ReadFile("/home/u/.forward")
+		checkErr(t, err, ErrUnsafeSymlink)
+		_, err = fsys.Stat("/home/u/.forward")
+		checkErr(t, err, ErrUnsafeSymlink)
+		fi, err := fsys.Lstat("/home/u/.forward")
+		if err != nil || !fi.IsSymlink() || fi.UID != 1000 {
+			t.Errorf("Lstat = %+v, %v; want the symlink itself", fi, err)
+		}
+		if got, err := fsys.ReadFile("/abs"); err != nil || string(got) != "inside" {
+			t.Errorf("a root-owned symlink must still be followed: %q, %v", got, err)
 		}
 	})
 
@@ -139,7 +169,7 @@ func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
 			}
 			got = append(got, e.Path+":"+kind)
 		}
-		want := []string{"/home/u/.plan:link", "/home/u/.rhosts:link", "/home/u/.ssh:dir"}
+		want := []string{"/home/u/.forward:link", "/home/u/.plan:link", "/home/u/.rhosts:link", "/home/u/.ssh:dir"}
 		if !equal(got, want) {
 			t.Errorf("ReadDir(/home/u) = %v, want %v", got, want)
 		}

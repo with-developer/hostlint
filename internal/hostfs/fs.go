@@ -21,8 +21,11 @@ import (
 // Paths are absolute and slash-separated, and are interpreted inside the scan
 // root: with --root /mnt/img, "/etc/passwd" means /mnt/img/etc/passwd, and
 // symbolic links resolve as if /mnt/img were "/" (they can never escape it).
+// A symbolic link is only followed when it is owned by root or by the
+// scanning user; anyone else could have pointed it at a secret.
 // Errors are *fs.PathError values; use errors.Is with fs.ErrNotExist,
-// fs.ErrPermission, ErrDenied, ErrNotRegular and ErrTooLarge.
+// fs.ErrPermission, ErrDenied, ErrNotRegular, ErrTooLarge and
+// ErrUnsafeSymlink.
 type FS interface {
 	// Stat returns metadata for name, following symbolic links.
 	Stat(name string) (FileInfo, error)
@@ -51,6 +54,9 @@ var (
 	ErrTooLarge = errors.New("file too large")
 	// ErrInvalidPath is returned for paths that are not absolute and clean.
 	ErrInvalidPath = errors.New("path must be absolute and clean")
+	// ErrUnsafeSymlink is returned when a path goes through a symbolic link
+	// owned by someone other than root or the scanning user.
+	ErrUnsafeSymlink = errors.New("symbolic link not owned by root; not followed")
 )
 
 // FileInfo is metadata about one file.

@@ -19,17 +19,27 @@ var (
 		"/etc/ssl/private/*", "/etc/pki/*/private/*",
 		"/etc/krb5.keytab", "/etc/sssd/sssd.conf", "/etc/*.secret",
 		"/etc/NetworkManager/system-connections/*", "/etc/wpa_supplicant/*.conf",
-		"/proc/*/environ", "/proc/*/cmdline", "/proc/*/mem", "/proc/kcore",
-		"/var/lib/sss/secrets/*",
+		"/etc/ssl/private/*/*", "/etc/letsencrypt/archive/*/*", "/etc/letsencrypt/live/*/*",
+		"/etc/wireguard/*", "/etc/ipsec.secrets", "/etc/ipsec.d/private/*", "/etc/ppp/*-secrets",
+		"/etc/mysql/debian.cnf", "/etc/kubernetes/*.conf", "/etc/kubernetes/pki/*", "/etc/kubernetes/pki/*/*",
+		"/boot/grub/user.cfg", "/boot/grub2/user.cfg",
+		"/var/lib/sss/secrets/*", "/var/lib/sss/db/*", "/var/lib/cloud/instance/user-data*",
+		"/run/credentials/*", "/run/credentials/*/*",
+		// Process internals: environments and command lines hold secrets, and
+		// reading /proc/kmsg would steal kernel log lines from the system.
+		"/proc/*/environ", "/proc/*/cmdline", "/proc/*/mem", "/proc/*/auxv",
+		"/proc/*/task/*/environ", "/proc/*/task/*/cmdline", "/proc/*/task/*/mem", "/proc/*/task/*/auxv",
+		"/proc/kcore", "/proc/kmsg", "/proc/kallsyms",
 	}
 	// File names denied in any directory.
 	deniedNames = []string{
-		".*_history", ".my.cnf", ".pgpass", ".netrc", ".git-credentials", "*.keytab",
+		".*_history", ".my.cnf", ".pgpass", ".netrc", ".git-credentials", ".vault-token",
+		"*.keytab", "*.key", "*.p12", "*.pfx", "*privkey*.pem",
 	}
 	// Directory names whose files are denied, wherever the directory is.
 	deniedDirs = []string{".ssh", ".gnupg"}
 	// "<dir>/<file>" pairs denied wherever they appear.
-	deniedPairs = []string{".docker/config.json", ".aws/credentials", ".kube/config"}
+	deniedPairs = []string{".docker/config.json", ".aws/credentials", ".kube/config", "gh/hosts.yml"}
 )
 
 // identityPaths are stat'ed when a host is opened; ReadFile refuses any file
