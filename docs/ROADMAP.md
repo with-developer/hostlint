@@ -7,8 +7,9 @@ only when direction changes (record why in an ADR).
 
 **Goal:** download one binary, run `hostlint scan`, get a trustworthy per-control report.
 **Scope:** Ubuntu 22.04/24.04, Debian 12, Rocky/Alma 9, and CentOS/RHEL 7 (best-effort: past
-end-of-life, but still common among Korean compliance targets); KISA CII Unix profile
-(U-01–U-72). CentOS 6 is out of reach — Go binaries need Linux 3.2 or later.
+end-of-life, but still common among Korean compliance targets); KISA CII Unix profile, 2026
+edition (U-01–U-67, see ADR 0007). CentOS 6 is out of reach — Go binaries need Linux 3.2 or
+later.
 
 Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 
@@ -27,10 +28,10 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 6. **Collectors: packages, services, filesystem** — dpkg/rpm, systemd (degrades gracefully
    without systemd), inetd/xinetd, SUID/SGID, world-writable and unowned files (bounded walks),
    listening sockets.
-7. **KISA profile: accounts** — U-01–U-04, U-44–U-54. Confirm the latest guide edition first.
-8. **KISA profile: files and directories** — U-05–U-18, U-55–U-59.
-9. **KISA profile: services, patching, logging** — U-19–U-43, U-60–U-72. Controls that cannot
-   be automated are `MANUAL` with guidance.
+7. **KISA profile: accounts** — U-01–U-13.
+8. **KISA profile: files and directories** — U-14–U-33.
+9. **KISA profile: services, patching, logging** — U-34–U-67. Controls that cannot be automated
+   are `MANUAL` with guidance.
 10. **`hostlint scan` output** — terminal table, JSON, SARIF, JUnit; `--profile`, `--format`,
     `--output`, `--fail-on`, exit codes; golden-file tests.
 11. **`hostlint report`** — merge many hosts' JSON into one self-contained HTML report

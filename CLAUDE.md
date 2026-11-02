@@ -27,7 +27,7 @@ To be filled in by the scaffold work. Expected: `make build`, `make test`, `make
 | `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
-| `profiles/` | Versioned control mappings per standard (e.g. `kisa-2021`), embedded |
+| `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |
 | `testdata/` | Fixture root filesystems per distro (hardened and default) |
 
 ## Security invariants — never violate

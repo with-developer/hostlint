@@ -1,6 +1,6 @@
 # 0003. Separate checks from control mappings
 
-- Status: Accepted
+- Status: Accepted; the first overlay is amended by [ADR 0007](0007-kisa-2026-edition.md)
 - Date: 2026-11-02
 
 ## Context
