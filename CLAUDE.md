@@ -40,6 +40,7 @@ CI runs test, lint, build (linux amd64/arm64) and vuln. `ci-ok` is the required 
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
 | `profiles/` | Versioned control mappings per standard (e.g. `kisa-2021`), embedded |
+| `schema/` | JSON Schema of the result document (ADR 0006), with a valid example |
 | `testdata/` | Fixture root filesystems per distro (hardened and default) |
 
 ## Security invariants — never violate
