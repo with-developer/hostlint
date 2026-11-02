@@ -163,11 +163,16 @@ func (o *osFS) ReadLink(name string) (string, error) {
 	return "", &fs.PathError{Op: "readlink", Path: name, Err: unix.ENAMETOOLONG}
 }
 
-func (o *osFS) ReadFile(name string) ([]byte, error) {
+func (o *osFS) ReadFile(name string) ([]byte, error) { return o.read(name, true) }
+
+// readSensitive reads a denylisted file for a parser in this package.
+func (o *osFS) readSensitive(name string) ([]byte, error) { return o.read(name, false) }
+
+func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 	if err := checkPath("read", name); err != nil {
 		return nil, err
 	}
-	if denied(name) {
+	if enforceDenylist && denied(name) {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
 	}
 	fd, err := o.open(name, unix.O_PATH)
@@ -182,11 +187,13 @@ func (o *osFS) ReadFile(name string) ([]byte, error) {
 	if st.Mode&unix.S_IFMT != unix.S_IFREG {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrNotRegular}
 	}
-	if _, bad := o.identity[fileID{st.Dev, st.Ino}]; bad {
-		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
-	}
-	if resolved, ok := o.realPath(fd); ok && denied(resolved) {
-		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
+	if enforceDenylist {
+		if _, bad := o.identity[fileID{st.Dev, st.Ino}]; bad {
+			return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
+		}
+		if resolved, ok := o.realPath(fd); ok && denied(resolved) {
+			return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
+		}
 	}
 	if st.Size > MaxReadSize {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrTooLarge}

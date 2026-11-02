@@ -192,11 +192,16 @@ func (m *MemFS) ReadLink(name string) (string, error) {
 }
 
 // ReadFile implements FS.
-func (m *MemFS) ReadFile(name string) ([]byte, error) {
+func (m *MemFS) ReadFile(name string) ([]byte, error) { return m.read(name, true) }
+
+// readSensitive reads a denylisted file for a parser in this package.
+func (m *MemFS) readSensitive(name string) ([]byte, error) { return m.read(name, false) }
+
+func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 	if err := checkPath("read", name); err != nil {
 		return nil, err
 	}
-	if denied(name) {
+	if enforceDenylist && denied(name) {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrDenied}
 	}
 	resolved, n, err := m.resolve(name, true)
@@ -204,7 +209,7 @@ func (m *MemFS) ReadFile(name string) ([]byte, error) {
 	case err != nil:
 	case !n.mode.IsRegular():
 		err = ErrNotRegular
-	case denied(resolved):
+	case enforceDenylist && denied(resolved):
 		err = ErrDenied
 	case len(n.data) > MaxReadSize:
 		err = ErrTooLarge
