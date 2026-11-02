@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -26,18 +27,21 @@ import (
 // directory before it, ".." never climbs above the root, and a symbolic link
 // is followed only when it is owned by root or by the scanning user. So a
 // link planted by another user (say ~/.rhosts -> /etc/wireguard/wg0.conf) is
-// never followed, a mounted root can never be escaped, and no kernel feature
-// newer than O_PATH is needed (CentOS 7 included).
+// never followed, a mounted root can never be escaped, magic /proc links are
+// only followed as text, and no kernel feature newer than O_PATH is needed
+// (CentOS 7 included). O_PATH lookups do not trigger automounts either.
 //
 // Content reads check type, identity and the denylist on an O_PATH
 // descriptor, which has no side effects even on device files, then reopen
 // exactly that file through /proc/self/fd.
 type osFS struct {
-	root     string // real absolute path of the root on this system
-	rootFD   int    // O_PATH descriptor of the root
+	root     string // absolute path of the root on this system, as given
 	live     bool
 	euid     uint32
 	identity map[fileID]string // denylisted files, by device and inode
+
+	mu     sync.RWMutex
+	rootFD int // O_PATH descriptor of the root; -1 once closed
 }
 
 type fileID struct{ dev, ino uint64 }
@@ -45,29 +49,76 @@ type fileID struct{ dev, ino uint64 }
 // maxSymlinks bounds symlink resolution, like the kernel's ELOOP limit.
 const maxSymlinks = 40
 
+// errClosed is returned by a closed osFS.
+var errClosed = errors.New("host is closed")
+
+// newOSFS opens root. The root is used as given, not canonicalized: with
+// /proc/<pid>/root (a running container) the kernel's magic link reaches the
+// container's root, which is a mounted root, not the running system. Only
+// "/" itself is the live system.
 func newOSFS(root string) (*osFS, error) {
-	resolved, err := filepath.EvalSymlinks(root)
-	if err == nil {
-		resolved, err = filepath.Abs(resolved)
+	if root == "" {
+		return nil, errors.New("scan root must not be empty")
 	}
+	abs, err := filepath.Abs(root)
 	if err != nil {
 		return nil, fmt.Errorf("scan root: %w", err)
 	}
-	fd, err := unix.Open(resolved, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	fd, err := retry(func() (int, error) { return unix.Open(abs, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0) })
 	if err != nil {
-		return nil, &fs.PathError{Op: "open", Path: resolved, Err: err}
+		return nil, &fs.PathError{Op: "open", Path: abs, Err: err}
 	}
-	o := &osFS{root: resolved, rootFD: fd, live: resolved == "/", euid: uint32(os.Geteuid())} //nolint:gosec // G115: uids are non-negative
+	o := &osFS{root: abs, rootFD: fd, live: abs == "/", euid: uint32(os.Geteuid())} //nolint:gosec // G115: uids are non-negative
 	o.identity = make(map[fileID]string)
 	for _, p := range identityPaths {
-		if fi, err := o.Stat(p); err == nil && fi.IsRegular() {
+		fi, err := o.Stat(p)
+		switch {
+		case err == nil && fi.IsRegular():
 			o.identity[fileID{fi.Dev, fi.Ino}] = p
+		case err != nil && !errors.Is(err, fs.ErrNotExist):
+			// Fail closed: without the identity, a hard link could expose it.
+			_ = o.close()
+			return nil, fmt.Errorf("cannot identify %s: %w", p, err)
 		}
 	}
 	return o, nil
 }
 
-func (o *osFS) close() error { return unix.Close(o.rootFD) }
+func (o *osFS) close() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.rootFD < 0 {
+		return nil
+	}
+	err := unix.Close(o.rootFD)
+	o.rootFD = -1
+	return err
+}
+
+// dupRoot returns a new descriptor for the root, or errClosed.
+func (o *osFS) dupRoot() (int, error) {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	if o.rootFD < 0 {
+		return -1, errClosed
+	}
+	return unix.FcntlInt(uintptr(o.rootFD), unix.F_DUPFD_CLOEXEC, 0)
+}
+
+// retry repeats a system call interrupted by a signal.
+func retry[T any](call func() (T, error)) (T, error) {
+	for {
+		v, err := call()
+		if !errors.Is(err, unix.EINTR) {
+			return v, err
+		}
+	}
+}
+
+func fstat(fd int, st *unix.Stat_t) error {
+	_, err := retry(func() (struct{}, error) { return struct{}{}, unix.Fstat(fd, st) })
+	return err
+}
 
 // resolved is an O_PATH descriptor and where it is inside the root.
 type resolved struct {
@@ -84,19 +135,19 @@ func (o *osFS) resolve(name string, follow bool) (r resolved, err error) {
 		path string
 		uid  uint32
 	}
-	rootFD, err := unix.FcntlInt(uintptr(o.rootFD), unix.F_DUPFD_CLOEXEC, 0)
+	rootFD, err := o.dupRoot()
 	if err != nil {
 		return r, err
 	}
 	var st unix.Stat_t
-	if err := unix.Fstat(rootFD, &st); err != nil {
+	if err := fstat(rootFD, &st); err != nil {
 		_ = unix.Close(rootFD)
 		return r, err
 	}
 	stack := []dir{{rootFD, "/", st.Uid}}
 	defer func() {
 		for _, d := range stack {
-			if d.fd != r.fd || err != nil {
+			if err != nil || d.fd != r.fd {
 				_ = unix.Close(d.fd)
 			}
 		}
@@ -117,16 +168,17 @@ func (o *osFS) resolve(name string, follow bool) (r resolved, err error) {
 			continue
 		}
 		cur := stack[len(stack)-1]
-		fd, err := unix.Openat(cur.fd, comp, unix.O_PATH|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		fd, err := retry(func() (int, error) {
+			return unix.Openat(cur.fd, comp, unix.O_PATH|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		})
 		if err != nil {
 			return r, err
 		}
-		if err := unix.Fstat(fd, &st); err != nil {
+		if err := fstat(fd, &st); err != nil {
 			_ = unix.Close(fd)
 			return r, err
 		}
-		isLink := st.Mode&unix.S_IFMT == unix.S_IFLNK
-		if isLink && (len(parts) > 0 || follow) {
+		if st.Mode&unix.S_IFMT == unix.S_IFLNK && (len(parts) > 0 || follow) {
 			target, err := o.followable(fd, &st, &links)
 			_ = unix.Close(fd)
 			if err != nil {
@@ -173,7 +225,7 @@ func (o *osFS) followable(fd int, st *unix.Stat_t, links *int) (string, error) {
 func readlinkFD(fd int) (string, error) {
 	for size := 256; size <= 1<<16; size *= 2 {
 		buf := make([]byte, size)
-		n, err := unix.Readlinkat(fd, "", buf)
+		n, err := retry(func() (int, error) { return unix.Readlinkat(fd, "", buf) })
 		if err != nil {
 			return "", err
 		}
@@ -194,7 +246,7 @@ func (o *osFS) stat(op, name string, follow bool) (FileInfo, error) {
 	}
 	defer unix.Close(r.fd)
 	var st unix.Stat_t
-	if err := unix.Fstat(r.fd, &st); err != nil {
+	if err := fstat(r.fd, &st); err != nil {
 		return FileInfo{}, pathErr(op, name, err)
 	}
 	return fileInfo(name, &st), nil
@@ -237,7 +289,7 @@ func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 	}
 	defer unix.Close(r.fd)
 	var st unix.Stat_t
-	if err := unix.Fstat(r.fd, &st); err != nil {
+	if err := fstat(r.fd, &st); err != nil {
 		return nil, pathErr("read", name, err)
 	}
 	if st.Mode&unix.S_IFMT != unix.S_IFREG {
@@ -260,16 +312,37 @@ func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 	if err != nil {
 		return nil, pathErr("read", name, err)
 	}
-	f := os.NewFile(uintptr(rfd), name)
-	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, MaxReadSize+1))
+	defer unix.Close(rfd)
+	data, err := readAll(rfd, st.Size)
 	if err != nil {
 		return nil, pathErr("read", name, err)
 	}
-	if len(data) > MaxReadSize {
-		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrTooLarge}
-	}
 	return data, nil
+}
+
+// readAll reads a file with plain read(2) calls on its non-blocking
+// descriptor. Unlike *os.File, this never parks on a pollable file (such as
+// a tracing pipe) waiting for data that may never come.
+func readAll(fd int, size int64) ([]byte, error) {
+	buf := make([]byte, 0, min(size, MaxReadSize)+512)
+	for {
+		if len(buf) == cap(buf) {
+			buf = append(buf, 0)[:len(buf)]
+		}
+		n, err := retry(func() (int, error) { return unix.Read(fd, buf[len(buf):cap(buf)]) })
+		switch {
+		case errors.Is(err, unix.EAGAIN):
+			return nil, errors.New("file would block: not an ordinary file")
+		case err != nil:
+			return nil, err
+		case n == 0:
+			return buf, nil
+		}
+		buf = buf[:len(buf)+n]
+		if len(buf) > MaxReadSize {
+			return nil, ErrTooLarge
+		}
+	}
 }
 
 // reopen opens the file behind the O_PATH descriptor fd and verifies it is
@@ -277,7 +350,9 @@ func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 // the name again: that could open a different file (or a device) swapped in
 // meanwhile.
 func reopen(fd int, want *unix.Stat_t, flags int) (int, error) {
-	rfd, err := unix.Open("/proc/self/fd/"+strconv.Itoa(fd), flags|unix.O_CLOEXEC, 0)
+	rfd, err := retry(func() (int, error) {
+		return unix.Open("/proc/self/fd/"+strconv.Itoa(fd), flags|unix.O_CLOEXEC, 0)
+	})
 	if err != nil {
 		if errors.Is(err, unix.ENOENT) {
 			return -1, errors.New("cannot reopen through /proc/self/fd: is /proc mounted?")
@@ -285,7 +360,7 @@ func reopen(fd int, want *unix.Stat_t, flags int) (int, error) {
 		return -1, err
 	}
 	var st unix.Stat_t
-	if err := unix.Fstat(rfd, &st); err != nil {
+	if err := fstat(rfd, &st); err != nil {
 		_ = unix.Close(rfd)
 		return -1, err
 	}
@@ -297,43 +372,80 @@ func reopen(fd int, want *unix.Stat_t, flags int) (int, error) {
 }
 
 func (o *osFS) ReadDir(name string) ([]FileInfo, error) {
+	entries, _, err := o.readDirN(name, -1)
+	return entries, err
+}
+
+// readDirN lists at most n entries (all if n < 0); truncated reports whether
+// more were left. Automount points are not entered: reading one would mount
+// a filesystem on the scanned host.
+func (o *osFS) readDirN(name string, n int) (entries []FileInfo, truncated bool, err error) {
 	if err := checkPath("readdir", name); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	r, err := o.resolve(name, true)
 	if err != nil {
-		return nil, pathErr("readdir", name, err)
+		return nil, false, pathErr("readdir", name, err)
 	}
 	defer unix.Close(r.fd)
 	var st unix.Stat_t
-	if err := unix.Fstat(r.fd, &st); err != nil {
-		return nil, pathErr("readdir", name, err)
+	if err := fstat(r.fd, &st); err != nil {
+		return nil, false, pathErr("readdir", name, err)
 	}
 	if st.Mode&unix.S_IFMT != unix.S_IFDIR {
-		return nil, pathErr("readdir", name, unix.ENOTDIR)
+		return nil, false, pathErr("readdir", name, unix.ENOTDIR)
+	}
+	if isAutomount(r.fd) {
+		return nil, false, &fs.PathError{Op: "readdir", Path: name, Err: ErrAutomount}
 	}
 	dfd, err := reopen(r.fd, &st, unix.O_RDONLY|unix.O_DIRECTORY)
 	if err != nil {
-		return nil, pathErr("readdir", name, err)
+		return nil, false, pathErr("readdir", name, err)
 	}
 	f := os.NewFile(uintptr(dfd), name)
 	defer f.Close()
-	names, err := f.Readdirnames(-1)
+	var names []string
+	if n < 0 {
+		names, err = f.Readdirnames(-1)
+	} else {
+		// Read one more name than allowed to tell whether any were left.
+		if names, err = f.Readdirnames(n + 1); errors.Is(err, io.EOF) {
+			err = nil
+		}
+		if len(names) > n {
+			names, truncated = names[:n], true
+		}
+	}
 	if err != nil {
-		return nil, pathErr("readdir", name, err)
+		return nil, false, pathErr("readdir", name, err)
 	}
 	sort.Strings(names)
-	out := make([]FileInfo, 0, len(names))
-	for _, n := range names {
-		if err := unix.Fstatat(dfd, n, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	entries = make([]FileInfo, 0, len(names))
+	for _, child := range names {
+		_, err := retry(func() (struct{}, error) {
+			return struct{}{}, unix.Fstatat(dfd, child, &st, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT)
+		})
+		if err != nil {
 			if errors.Is(err, unix.ENOENT) {
 				continue // removed while listing
 			}
-			return nil, pathErr("readdir", path.Join(name, n), err)
+			return nil, false, pathErr("readdir", path.Join(name, child), err)
 		}
-		out = append(out, fileInfo(path.Join(name, n), &st))
+		entries = append(entries, fileInfo(path.Join(name, child), &st))
 	}
-	return out, nil
+	return entries, truncated, nil
+}
+
+// isAutomount reports whether fd is an automount trigger (statx, Linux 4.11+)
+// or an autofs mount; older kernels only get the autofs check.
+func isAutomount(fd int) bool {
+	var stx unix.Statx_t
+	err := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT|unix.AT_SYMLINK_NOFOLLOW, unix.STATX_TYPE, &stx)
+	if err == nil && stx.Attributes_mask&unix.STATX_ATTR_AUTOMOUNT != 0 && stx.Attributes&unix.STATX_ATTR_AUTOMOUNT != 0 {
+		return true
+	}
+	var sfs unix.Statfs_t
+	return unix.Fstatfs(fd, &sfs) == nil && sfs.Type == unix.AUTOFS_SUPER_MAGIC
 }
 
 func pathErr(op, name string, err error) error {

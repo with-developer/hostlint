@@ -56,6 +56,8 @@ func buildTree(f fixture) {
 	f.file("/proc/123/task/123/environ", "DB_PASSWORD=secret", 0o400)
 	f.symlink("/proc/thread-self", "123/task/123")
 	f.symlink("/home/u/.forward", "/etc/target")
+	f.file("/usr/hostname", "usr-hostname", 0o644)
+	f.symlink("/dotdot", "/etc/dirlink/../hostname")
 }
 
 func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
@@ -75,6 +77,7 @@ func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
 			{name: "dot-dot symlink cannot escape", path: "/escape-dotdot", want: "inside-hostname\n"},
 			{name: "absolute dot-dot symlink cannot escape", path: "/escape-abs", want: "inside-hostname\n"},
 			{name: "symlinked directory", path: "/etc/dirlink/su", want: ""},
+			{name: "dot-dot after a followed directory link", path: "/dotdot", want: "usr-hostname"},
 			{name: "missing", path: "/etc/missing", wantErr: fs.ErrNotExist},
 			{name: "component is a file", path: "/etc/target/x", wantErr: fs.ErrNotExist},
 			{name: "directory", path: "/etc", wantErr: ErrNotRegular},

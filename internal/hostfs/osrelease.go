@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"regexp"
 	"slices"
@@ -24,6 +25,9 @@ type OS struct {
 	IDLike       []string
 	VersionID    string // e.g. "24.04", "9.4", "7"
 	VersionMajor int
+	// VersionKnown is false when VERSION_ID is missing or not numeric; then
+	// VersionMajor is 0 and must not be relied on.
+	VersionKnown bool
 	Name         string // human-readable name, e.g. "Ubuntu 24.04.1 LTS"
 	Family       string // FamilyDebian, FamilyRHEL or FamilyUnknown
 	// Supported is true for versions in the tested matrix (ROADMAP v0.1
@@ -56,7 +60,11 @@ func DetectOS(fsys FS) (OS, error) {
 		if err != nil {
 			return OS{Family: FamilyUnknown}, err
 		}
-		return fromOSRelease(parseOSRelease(data)), nil
+		kv, err := parseOSRelease(data)
+		if err != nil {
+			return OS{Family: FamilyUnknown}, fmt.Errorf("%s: %w", p, err)
+		}
+		return fromOSRelease(kv), nil
 	}
 	for _, p := range []string{"/etc/centos-release", "/etc/redhat-release"} {
 		data, err := fsys.ReadFile(p)
@@ -81,9 +89,10 @@ func DetectOS(fsys FS) (OS, error) {
 
 // parseOSRelease parses os-release(5): KEY=value lines with optional shell
 // quoting.
-func parseOSRelease(data []byte) map[string]string {
+func parseOSRelease(data []byte) (map[string]string, error) {
 	kv := make(map[string]string)
 	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc.Buffer(make([]byte, 0, 4096), 1<<20)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -95,7 +104,7 @@ func parseOSRelease(data []byte) map[string]string {
 		}
 		kv[strings.TrimSpace(key)] = unquote(strings.TrimSpace(value))
 	}
-	return kv
+	return kv, sc.Err()
 }
 
 func unquote(v string) string {
@@ -151,8 +160,8 @@ func fromRedHatRelease(s string) OS {
 		}
 	}
 	if o.ID == "" {
+		// Unrecognized text: say so instead of guessing a family.
 		o.ID = FamilyUnknown
-		o.IDLike = []string{"rhel"}
 	}
 	return finish(o)
 }
@@ -160,7 +169,9 @@ func fromRedHatRelease(s string) OS {
 // finish derives the major version, family and support status.
 func finish(o OS) OS {
 	major, _, _ := strings.Cut(o.VersionID, ".")
-	o.VersionMajor, _ = strconv.Atoi(major)
+	if n, err := strconv.Atoi(major); err == nil {
+		o.VersionMajor, o.VersionKnown = n, true
+	}
 	o.Family = family(o.ID, o.IDLike)
 	if versions, ok := supported[o.ID]; ok {
 		v := major

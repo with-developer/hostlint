@@ -62,7 +62,7 @@ func (m *MemFS) AddSymlink(name, target string) *MemFS {
 
 // SetOwner changes the owner of an existing path (without following links).
 func (m *MemFS) SetOwner(name string, uid, gid int64) *MemFS {
-	n, ok := m.nodes[name]
+	n, ok := m.nodes[m.key(name)]
 	if !ok {
 		panic(fmt.Sprintf("hostfs.MemFS: SetOwner of missing path %q", name))
 	}
@@ -77,10 +77,16 @@ func (m *MemFS) AddSpecial(name string, typ fs.FileMode, perm uint32, uid, gid i
 	return m
 }
 
-// SetError makes every access through name fail with err (e.g.
-// fs.ErrPermission). The path is created as an empty directory if missing.
+// SetError makes reading name, or looking anything up through it, fail with
+// err (e.g. fs.ErrPermission), like a directory without search permission or
+// an unreadable file. Its own metadata stays visible, as on Linux. The path
+// is created as an empty directory if missing.
 func (m *MemFS) SetError(name string, err error) *MemFS {
-	if n, ok := m.nodes[name]; ok {
+	if name == "/" {
+		m.nodes["/"].err = err
+		return m
+	}
+	if n, ok := m.nodes[m.key(name)]; ok {
 		n.err = err
 		return m
 	}
@@ -88,16 +94,52 @@ func (m *MemFS) SetError(name string, err error) *MemFS {
 	return m
 }
 
+// add stores n at name. Missing parent directories are created (0755,
+// root:root); parents that are symlinks are followed, as a real filesystem
+// would, so the node is reachable through every path that leads to it.
 func (m *MemFS) add(name string, n *memNode) {
 	if checkPath("add", name) != nil || name == "/" {
 		panic(fmt.Sprintf("hostfs.MemFS: invalid path %q", name))
 	}
-	for dir := path.Dir(name); dir != "/"; dir = path.Dir(dir) {
-		if _, ok := m.nodes[dir]; !ok {
-			m.nodes[dir] = &memNode{mode: fs.ModeDir | 0o755}
+	m.nodes[m.key(name)] = n
+}
+
+// key returns the canonical path of name for fixture building: parents are
+// resolved through symlinks (without the scan-time checks) and created when
+// missing; the last element is kept as is.
+func (m *MemFS) key(name string) string {
+	stack := []string{"/"}
+	parts := splitPath(path.Dir(name))
+	for links := 0; len(parts) > 0; {
+		comp := parts[0]
+		parts = parts[1:]
+		switch comp {
+		case "", ".":
+			continue
+		case "..":
+			if len(stack) > 1 {
+				stack = stack[:len(stack)-1]
+			}
+			continue
 		}
+		next := path.Join(stack[len(stack)-1], comp)
+		n, ok := m.nodes[next]
+		switch {
+		case !ok:
+			m.nodes[next] = &memNode{mode: fs.ModeDir | 0o755}
+		case n.mode&fs.ModeSymlink != 0:
+			if links++; links > 40 {
+				panic(fmt.Sprintf("hostfs.MemFS: symlink loop under %q", name))
+			}
+			if path.IsAbs(n.target) {
+				stack = stack[:1]
+			}
+			parts = append(splitPath(n.target), parts...)
+			continue
+		}
+		stack = append(stack, next)
 	}
-	m.nodes[name] = n
+	return path.Join(stack[len(stack)-1], path.Base(name))
 }
 
 func modeFromPerm(perm uint32) fs.FileMode {
@@ -114,43 +156,55 @@ func modeFromPerm(perm uint32) fs.FileMode {
 	return mode
 }
 
-// resolve walks name from the root, following symbolic links inside the
-// root (a final link only if follow is set). It returns the resolved path.
+// resolve walks name from the root with the rules of the real filesystem:
+// one component at a time, ".." never above the root, symlinks followed only
+// when owned by root or ScannerUID (a final one only if follow is set). An
+// error set with SetError applies when looking something up through that
+// node. It returns the canonical path and the node.
 func (m *MemFS) resolve(name string, follow bool) (string, *memNode, error) {
+	stack := []string{"/"}
 	parts := splitPath(name)
-	cur, links := "/", 0
-	for i := 0; i < len(parts); i++ {
-		next := path.Join(cur, parts[i])
+	for links := 0; len(parts) > 0; {
+		comp := parts[0]
+		parts = parts[1:]
+		switch comp {
+		case "", ".":
+			continue
+		case "..":
+			if len(stack) > 1 {
+				stack = stack[:len(stack)-1]
+			}
+			continue
+		}
+		cur := stack[len(stack)-1]
+		if err := m.nodes[cur].err; err != nil {
+			return "", nil, err
+		}
+		next := path.Join(cur, comp)
 		n, ok := m.nodes[next]
 		if !ok {
 			return "", nil, fs.ErrNotExist
 		}
-		if n.err != nil {
-			return "", nil, n.err
-		}
-		last := i == len(parts)-1
-		if n.mode&fs.ModeSymlink != 0 && (follow || !last) {
+		if n.mode&fs.ModeSymlink != 0 && (len(parts) > 0 || follow) {
 			if n.uid != 0 && n.uid != m.ScannerUID {
 				return "", nil, fmt.Errorf("owned by uid %d: %w", n.uid, ErrUnsafeSymlink)
 			}
 			if links++; links > 40 {
 				return "", nil, errLoop
 			}
-			base := cur
 			if path.IsAbs(n.target) {
-				base = "/"
+				stack = stack[:1]
 			}
-			// path.Join never climbs above "/", which gives chroot semantics.
-			parts = append(splitPath(path.Join(base, n.target)), parts[i+1:]...)
-			cur, i = "/", -1
+			parts = append(splitPath(n.target), parts...)
 			continue
 		}
-		if !last && !n.mode.IsDir() {
+		if len(parts) > 0 && !n.mode.IsDir() {
 			return "", nil, fs.ErrNotExist
 		}
-		cur = next
+		stack = append(stack, next)
 	}
-	return cur, m.nodes[cur], nil
+	p := stack[len(stack)-1]
+	return p, m.nodes[p], nil
 }
 
 func splitPath(p string) []string {
@@ -223,6 +277,8 @@ func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 	resolved, n, err := m.resolve(name, true)
 	switch {
 	case err != nil:
+	case n.err != nil:
+		err = n.err
 	case !n.mode.IsRegular():
 		err = ErrNotRegular
 	case enforceDenylist && denied(resolved):
@@ -238,11 +294,28 @@ func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 
 // ReadDir implements FS.
 func (m *MemFS) ReadDir(name string) ([]FileInfo, error) {
+	entries, _, err := m.readDirN(name, -1)
+	return entries, err
+}
+
+func (m *MemFS) readDirN(name string, limit int) ([]FileInfo, bool, error) {
+	entries, err := m.readDir(name)
+	if err != nil || limit < 0 || len(entries) <= limit {
+		return entries, false, err
+	}
+	return entries[:limit], true, nil
+}
+
+func (m *MemFS) readDir(name string) ([]FileInfo, error) {
 	if err := checkPath("readdir", name); err != nil {
 		return nil, err
 	}
 	resolved, n, err := m.resolve(name, true)
-	if err == nil && !n.mode.IsDir() {
+	switch {
+	case err != nil:
+	case n.err != nil:
+		err = n.err
+	case !n.mode.IsDir():
 		err = fs.ErrNotExist
 	}
 	if err != nil {

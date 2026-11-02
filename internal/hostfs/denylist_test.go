@@ -32,6 +32,18 @@ func TestDenied(t *testing.T) {
 		{"/root/.bashrc", false},
 		{"/etc/passwd", false},
 		{"/etc/login.defs", false},
+		{"/proc/1/task/1/environ", true},
+		{"/proc/kmsg", true},
+		{"/sys/kernel/debug/tracing/trace_pipe", true},
+		{"/sys/kernel/tracing/trace_pipe", true},
+		{"/var/lib/lxc/c1/rootfs/etc/shadow", true},
+		{"/etc/letsencrypt/live/example.org/privkey.pem", true},
+		{"/etc/wireguard/wg0.conf", true},
+		{"/etc/kubernetes/admin.conf", true},
+		{"/srv/app/server.key", true},
+		{"/run/credentials/app.service/token", true},
+		{"/etc/ssh/ssh_config", false},
+		{"/etc/hosts", false},
 	}
 	for _, tt := range tests {
 		if got := denied(tt.path); got != tt.want {

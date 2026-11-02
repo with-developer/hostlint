@@ -160,6 +160,45 @@ func TestOSFSLive(t *testing.T) {
 	}
 }
 
+func TestOSFSClose(t *testing.T) {
+	f := newOSFixture(t)
+	f.file("/etc/marker", "a", 0o644)
+	o, err := newOSFS(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := o.close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.close(); err != nil {
+		t.Errorf("second close: %v", err)
+	}
+	// A closed host never reads through a reused descriptor number.
+	other := newOSFixture(t)
+	other.file("/etc/marker", "b", 0o644)
+	_ = other.fs()
+	if _, err := o.ReadFile("/etc/marker"); err == nil {
+		t.Error("ReadFile after close succeeded")
+	}
+}
+
+// /proc/<pid>/root is how one scans a running container: it is a mounted
+// root, never the live system, even though it resolves to "/" in some
+// namespaces.
+func TestOpenProcRootIsNotLive(t *testing.T) {
+	h, err := Open("/proc/self/root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if h.Live {
+		t.Error("/proc/self/root was treated as the live system")
+	}
+	if _, err := Open(""); err == nil {
+		t.Error("Open(\"\") succeeded")
+	}
+}
+
 func TestOpen(t *testing.T) {
 	h, err := Open("/")
 	if err != nil {

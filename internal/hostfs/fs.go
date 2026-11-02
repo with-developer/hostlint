@@ -3,9 +3,9 @@
 // It provides a read-only filesystem rooted at "/" (the running system) or at
 // a mounted root (--root), a sensitive-path denylist enforced on content reads,
 // bounded globbing and walking that report what they could not see, a runner
-// for a fixed set of commands, and OS detection. Code outside this package may
+// for a fixed set of commands, and OS detection. Code outside this package must
 // not read the host, run commands or make raw system calls; the lint rules in
-// .golangci.yml enforce that.
+// .golangci.yml catch the common ways of doing so, and review catches the rest.
 package hostfs
 
 import (
@@ -57,6 +57,9 @@ var (
 	// ErrUnsafeSymlink is returned when a path goes through a symbolic link
 	// owned by someone other than root or the scanning user.
 	ErrUnsafeSymlink = errors.New("symbolic link not owned by root; not followed")
+	// ErrAutomount is returned when listing an automount point, which would
+	// mount a filesystem on the scanned host.
+	ErrAutomount = errors.New("automount point: not entered")
 )
 
 // FileInfo is metadata about one file.

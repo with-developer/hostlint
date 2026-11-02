@@ -31,8 +31,13 @@ var (
 		"/proc/*/task/*/environ", "/proc/*/task/*/cmdline", "/proc/*/task/*/mem", "/proc/*/task/*/auxv",
 		"/proc/kcore", "/proc/kmsg", "/proc/kallsyms",
 	}
-	// File names denied in any directory.
+	// Path prefixes whose files are denied: reading tracing pipes consumes
+	// data other tools are waiting for, and debugfs exposes kernel internals.
+	deniedPrefixes = []string{"/sys/kernel/debug/", "/sys/kernel/tracing/"}
+	// File names denied in any directory (e.g. copies of shadow inside
+	// container root filesystems).
 	deniedNames = []string{
+		"shadow", "shadow-", "gshadow", "gshadow-", "opasswd",
 		".*_history", ".my.cnf", ".pgpass", ".netrc", ".git-credentials", ".vault-token",
 		"*.keytab", "*.key", "*.p12", "*.pfx", "*privkey*.pem",
 	}
@@ -53,6 +58,11 @@ var identityPaths = []string{
 func denied(name string) bool {
 	for _, p := range deniedPaths {
 		if ok, _ := path.Match(p, name); ok {
+			return true
+		}
+	}
+	for _, p := range deniedPrefixes {
+		if strings.HasPrefix(name, p) {
 			return true
 		}
 	}
