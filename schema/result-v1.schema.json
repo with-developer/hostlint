@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/with-developer/hostlint/blob/main/schema/result-v1.schema.json",
+  "title": "hostlint scan result, schema version 1",
+  "description": "The result of one hostlint scan of one host. Defined by docs/adr/0006-rule-format-evaluation-results.md. Version 1 only grows by new optional fields; this file is updated when that happens, so validate a document against the schema from the hostlint version that produced it, and ignore fields you do not know.",
+  "type": "object",
+  "required": ["schemaVersion", "scan", "host", "profiles", "summary", "controls", "checks", "collectors"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "scan": {"$ref": "#/$defs/scan"},
+    "host": {"$ref": "#/$defs/host"},
+    "profiles": {"type": "array", "items": {"$ref": "#/$defs/profile"}},
+    "summary": {
+      "description": "Counts per profile, keyed by profile ID.",
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/profileSummary"}
+    },
+    "controls": {
+      "description": "Control results, in profile order.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/control"}
+    },
+    "checks": {
+      "description": "Check results, sorted by ref.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/check"}
+    },
+    "collectors": {
+      "description": "Collector runs, sorted by name.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/collector"}
+    }
+  },
+  "$defs": {
+    "status": {"enum": ["PASS", "FAIL", "MANUAL", "NOT_APPLICABLE", "ERROR", "WAIVED"]},
+    "severity": {"enum": ["low", "medium", "high"]},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "date": {"type": "string", "format": "date"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "checkId": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"},
+    "statusCounts": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/status"},
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "scan": {
+      "type": "object",
+      "required": ["id", "startedAt", "finishedAt", "tool", "target", "privileges"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "UUIDv7.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "startedAt": {"$ref": "#/$defs/timestamp"},
+        "finishedAt": {"$ref": "#/$defs/timestamp"},
+        "tool": {
+          "type": "object",
+          "required": ["name", "version"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"const": "hostlint"},
+            "version": {"type": "string", "minLength": 1},
+            "commit": {"type": "string"}
+          }
+        },
+        "target": {
+          "type": "object",
+          "required": ["kind", "root"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "description": "host: the running system. root: a filesystem mounted at `root` (live facts unavailable).",
+              "enum": ["host", "root"]
+            },
+            "root": {"type": "string", "minLength": 1}
+          }
+        },
+        "privileges": {
+          "type": "object",
+          "required": ["euid"],
+          "additionalProperties": false,
+          "properties": {
+            "euid": {"type": "integer", "minimum": 0},
+            "capabilities": {
+              "description": "Effective capabilities that matter for reading the host.",
+              "type": "array",
+              "items": {"type": "string", "pattern": "^CAP_[A-Z_]+$"}
+            }
+          }
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "required": ["hostname", "os"],
+      "additionalProperties": false,
+      "properties": {
+        "hostname": {"type": "string"},
+        "hostId": {
+          "description": "HMAC-SHA256 of /etc/machine-id under a fixed hostlint key (hex). Absent when there is no machine ID. Cloned machines may share it.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{32,64}$"
+        },
+        "os": {
+          "type": "object",
+          "required": ["id", "family", "supported"],
+          "additionalProperties": false,
+          "properties": {
+            "id": {"type": "string", "description": "ID from os-release, e.g. ubuntu, rocky."},
+            "versionId": {"type": "string"},
+            "family": {"enum": ["debian", "rhel", "unknown"]},
+            "name": {"type": "string"},
+            "supported": {"type": "boolean", "description": "Whether this OS version is in the tested matrix."}
+          }
+        },
+        "kernel": {"type": "string", "description": "Absent when the target is a mounted root."},
+        "arch": {"type": "string"},
+        "labels": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "required": ["id", "revision", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+        "revision": {"type": "integer", "minimum": 1},
+        "digest": {"$ref": "#/$defs/digest"},
+        "title": {"type": "string"}
+      }
+    },
+    "profileSummary": {
+      "type": "object",
+      "required": ["controls", "customized"],
+      "additionalProperties": false,
+      "properties": {
+        "controls": {"$ref": "#/$defs/statusCounts"},
+        "checks": {"$ref": "#/$defs/statusCounts"},
+        "customized": {
+          "description": "Results evaluated with stricter local parameters; also counted under their status.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "required": ["profile", "id", "title", "severity", "status", "checks"],
+      "additionalProperties": false,
+      "properties": {
+        "profile": {"type": "string"},
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string"},
+        "titleKo": {"type": "string"},
+        "severity": {"$ref": "#/$defs/severity"},
+        "status": {"$ref": "#/$defs/status"},
+        "reason": {"type": "string"},
+        "customized": {"type": "boolean"},
+        "checks": {
+          "description": "Refs of the check results this control aggregates.",
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "waiver": {"$ref": "#/$defs/waiver"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["status"], "properties": {"status": {"enum": ["MANUAL", "NOT_APPLICABLE", "ERROR", "WAIVED"]}}},
+          "then": {"required": ["reason"]}
+        }
+      ]
+    },
+    "check": {
+      "type": "object",
+      "required": ["ref", "id", "version", "digest", "title", "severity", "status", "statusSource", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "description": "The check ID, plus '#' and a parameter digest when parameters differ from the check's defaults.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)+(#[0-9a-f]{8})?$"
+        },
+        "id": {"$ref": "#/$defs/checkId"},
+        "version": {"type": "integer", "minimum": 1},
+        "digest": {"$ref": "#/$defs/digest"},
+        "title": {"type": "string"},
+        "titleKo": {"type": "string"},
+        "severity": {"$ref": "#/$defs/severity"},
+        "status": {"$ref": "#/$defs/status"},
+        "originalStatus": {"$ref": "#/$defs/status"},
+        "statusSource": {"enum": ["observed", "attested"]},
+        "reason": {"type": "string"},
+        "params": {"description": "Effective parameter values.", "type": "object"},
+        "customized": {"type": "boolean"},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "evidenceOmitted": {
+          "description": "Number of evidence items left out because of the size limit.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "object",
+          "required": ["population", "count"],
+          "additionalProperties": false,
+          "properties": {
+            "population": {"type": "string", "description": "Fact path of the population, e.g. accounts.users."},
+            "count": {"type": "integer", "minimum": 0}
+          }
+        },
+        "waiver": {"$ref": "#/$defs/waiver"},
+        "attestation": {"$ref": "#/$defs/attestation"},
+        "durationMs": {"type": "integer", "minimum": 0}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["status"], "properties": {"status": {"const": "WAIVED"}}},
+          "then": {"required": ["originalStatus", "waiver", "reason"]}
+        },
+        {
+          "if": {"required": ["status"], "properties": {"status": {"enum": ["MANUAL", "NOT_APPLICABLE", "ERROR"]}}},
+          "then": {"required": ["reason"]}
+        },
+        {
+          "if": {"required": ["statusSource"], "properties": {"statusSource": {"const": "attested"}}},
+          "then": {"required": ["attestation", "reason"]}
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["key", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {"type": "string", "description": "Stable identity (fact path or violation key) for diffs between scans."},
+        "text": {"type": "string"},
+        "source": {"type": "string", "description": "Provenance, e.g. /etc/login.defs:25, default (OpenSSH 9.6), sshd -T."}
+      }
+    },
+    "waiver": {
+      "type": "object",
+      "required": ["reason", "expires", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {"type": "string", "minLength": 1},
+        "expires": {"$ref": "#/$defs/date"},
+        "scope": {"enum": ["check", "control"]},
+        "errors": {"type": "boolean", "description": "The waiver also covers ERROR."}
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "required": ["status", "by", "at", "expires"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["PASS", "FAIL"]},
+        "by": {"type": "string", "minLength": 1},
+        "at": {"$ref": "#/$defs/date"},
+        "expires": {"$ref": "#/$defs/date"},
+        "note": {"type": "string"}
+      }
+    },
+    "collector": {
+      "type": "object",
+      "required": ["name", "version", "access", "status", "complete"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "version": {"type": "integer", "minimum": 1},
+        "access": {"enum": ["live", "filesystem"]},
+        "status": {"enum": ["ok", "error", "unavailable"]},
+        "complete": {"type": "boolean"},
+        "skipped": {"type": "array", "items": {"type": "string"}},
+        "error": {"type": "string"},
+        "durationMs": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

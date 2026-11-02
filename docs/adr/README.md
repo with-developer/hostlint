@@ -10,3 +10,4 @@ Consequences. Don't edit an accepted ADR to change a decision — add a new ADR 
 | [0003](0003-checks-and-control-mappings.md) | Separate checks from control mappings |
 | [0004](0004-observation-only.md) | Observation-only scanning |
 | [0005](0005-license-apache-2.md) | License: Apache-2.0 |
+| [0006](0006-rule-format-evaluation-results.md) | Rule format (CEL), evaluation, statuses and result schema v1 |

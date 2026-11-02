@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "scan": {
+    "id": "019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10",
+    "startedAt": "2026-11-02T12:00:00Z",
+    "finishedAt": "2026-11-02T12:00:09Z",
+    "tool": {"name": "hostlint", "version": "v0.1.0", "commit": "59aea7170c06cab65b282faf397eb492dd86d06d"},
+    "target": {"kind": "host", "root": "/"},
+    "privileges": {"euid": 0, "capabilities": ["CAP_DAC_OVERRIDE", "CAP_DAC_READ_SEARCH"]}
+  },
+  "host": {
+    "hostname": "web-01",
+    "hostId": "bc020a35b7f9cb1382e7b534c68e3c53",
+    "os": {
+      "id": "ubuntu",
+      "versionId": "24.04",
+      "family": "debian",
+      "name": "Ubuntu 24.04.1 LTS",
+      "supported": true
+    },
+    "kernel": "6.8.0-45-generic",
+    "arch": "amd64",
+    "labels": {"env": "prod"}
+  },
+  "profiles": [
+    {
+      "id": "kisa-2026",
+      "revision": 1,
+      "digest": "sha256:1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0",
+      "title": "KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers"
+    }
+  ],
+  "summary": {
+    "kisa-2026": {
+      "controls": {"PASS": 1, "FAIL": 1, "MANUAL": 1, "WAIVED": 1},
+      "checks": {"PASS": 1, "FAIL": 1, "WAIVED": 1},
+      "customized": 1
+    }
+  },
+  "controls": [
+    {
+      "profile": "kisa-2026",
+      "id": "U-01",
+      "title": "Restrict remote root login",
+      "titleKo": "root 원격 접속 제한",
+      "severity": "high",
+      "status": "FAIL",
+      "checks": ["ssh.match-permit-root-login", "ssh.permit-root-login"]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-02",
+      "title": "Password policy",
+      "titleKo": "비밀번호 관리 정책",
+      "severity": "high",
+      "status": "WAIVED",
+      "reason": "accounts.password-max-age: waived until 2027-03-31",
+      "customized": true,
+      "checks": ["accounts.password-max-age#3f9a1c2e"]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-16",
+      "title": "/etc/passwd ownership and permissions",
+      "titleKo": "/etc/passwd 소유자 및 권한",
+      "severity": "high",
+      "status": "PASS",
+      "checks": ["files.passwd-permissions"]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-64",
+      "title": "Apply security patches and vendor advisories",
+      "titleKo": "보안 패치 및 벤더 권고 적용",
+      "severity": "high",
+      "status": "MANUAL",
+      "reason": "Review the patch policy and the latest vendor advisories.",
+      "checks": []
+    }
+  ],
+  "checks": [
+    {
+      "ref": "accounts.password-max-age#3f9a1c2e",
+      "id": "accounts.password-max-age",
+      "version": 1,
+      "digest": "sha256:73ebe73b0b8207bf92506d2803b3460747284e63759cf8354424027e079c5a97",
+      "title": "Passwords expire",
+      "titleKo": "비밀번호 최대 사용 기간 설정",
+      "severity": "medium",
+      "status": "WAIVED",
+      "originalStatus": "FAIL",
+      "statusSource": "observed",
+      "reason": "waived until 2027-03-31: legacy batch accounts, ticket OPS-1182",
+      "params": {"max_days": 60},
+      "customized": true,
+      "evidence": [
+        {
+          "key": "login_defs.settings.PASS_MAX_DAYS",
+          "text": "PASS_MAX_DAYS is 99999 (explicit); expected 1–60",
+          "source": "/etc/login.defs:165"
+        }
+      ],
+      "waiver": {
+        "reason": "legacy batch accounts, ticket OPS-1182",
+        "expires": "2027-03-31",
+        "scope": "check"
+      },
+      "durationMs": 0
+    },
+    {
+      "ref": "files.passwd-permissions",
+      "id": "files.passwd-permissions",
+      "version": 1,
+      "digest": "sha256:059ae280ce226c167508b8754691e3d1e59003392e857cc7a8d5e227f54a879c",
+      "title": "/etc/passwd is owned by root and mode 0644 or stricter",
+      "severity": "high",
+      "status": "PASS",
+      "statusSource": "observed",
+      "evidence": [
+        {"key": "/etc/passwd", "text": "/etc/passwd: root:root 0644", "source": "/etc/passwd"}
+      ],
+      "durationMs": 0
+    },
+    {
+      "ref": "ssh.match-permit-root-login",
+      "id": "ssh.match-permit-root-login",
+      "version": 1,
+      "digest": "sha256:2982f5f678edf54fdc230c3376969fb4ba6cbe3a5c92900f4748d12fbd688ea0",
+      "title": "No SSH Match block allows root login",
+      "severity": "high",
+      "status": "PASS",
+      "statusSource": "observed",
+      "evidence": [],
+      "coverage": {"population": "sshd.match", "count": 2},
+      "durationMs": 0
+    },
+    {
+      "ref": "ssh.permit-root-login",
+      "id": "ssh.permit-root-login",
+      "version": 1,
+      "digest": "sha256:5a5aef0627fdbe02f12b4c1a7cb945fe85032189e14f53148481dc4fe480acce",
+      "title": "SSH does not allow direct root login",
+      "titleKo": "SSH root 직접 로그인 차단",
+      "severity": "high",
+      "status": "FAIL",
+      "statusSource": "observed",
+      "evidence": [
+        {
+          "key": "sshd.config.permitrootlogin",
+          "text": "PermitRootLogin is \"yes\" (explicit); expected one of [no]",
+          "source": "/etc/ssh/sshd_config:32"
+        }
+      ],
+      "durationMs": 1
+    }
+  ],
+  "collectors": [
+    {"name": "files", "version": 1, "access": "filesystem", "status": "ok", "complete": true, "durationMs": 0},
+    {"name": "login_defs", "version": 1, "access": "filesystem", "status": "ok", "complete": true, "durationMs": 1},
+    {"name": "sshd", "version": 1, "access": "live", "status": "ok", "complete": true, "durationMs": 4}
+  ]
+}
