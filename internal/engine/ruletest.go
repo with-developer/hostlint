@@ -93,7 +93,7 @@ func (e *Engine) runCase(ctx context.Context, cc *compiledCheck, tc TestCase) (S
 			}
 			env.collected[name] = &collected{facts: Facts{Value: v, Complete: !incomplete[name], Skipped: []string{"test"}}}
 		case name == "os":
-			env.collected[name] = &collected{facts: Facts{Value: osFacts(family), Complete: true}}
+			env.collected[name] = &collected{facts: Facts{Value: osFacts(family), Complete: !incomplete[name], Skipped: []string{"test"}}}
 		default:
 			return "", "", fmt.Errorf("the check reads %s: give its facts or list it as unavailable", name)
 		}

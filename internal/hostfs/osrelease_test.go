@@ -3,6 +3,7 @@ package hostfs
 import (
 	"errors"
 	"io/fs"
+	"strings"
 	"testing"
 )
 
@@ -93,6 +94,21 @@ ID_LIKE=debian
 				t.Errorf("DetectOS() = %+v\nwant          %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestDetectOSDoesNotGuess(t *testing.T) {
+	garbage := NewMemFS().AddFile("/etc/redhat-release", "Something Else entirely\n", 0o644, 0, 0)
+	if got, err := DetectOS(garbage); err != nil || got.Family != FamilyUnknown {
+		t.Errorf("unrecognized redhat-release: %+v, %v; want family unknown", got, err)
+	}
+	testing := NewMemFS().AddFile("/etc/os-release", "ID=debian\nPRETTY_NAME=\"Debian GNU/Linux forky/sid\"\n", 0o644, 0, 0)
+	if got, err := DetectOS(testing); err != nil || got.VersionKnown || got.Family != FamilyDebian {
+		t.Errorf("no VERSION_ID: %+v, %v; want a known family with an unknown version", got, err)
+	}
+	long := NewMemFS().AddFile("/etc/os-release", "X="+strings.Repeat("a", 2<<20)+"\nID=ubuntu\n", 0o644, 0, 0)
+	if _, err := DetectOS(long); err == nil {
+		t.Error("an unparseable os-release must be an error, not a partial guess")
 	}
 }
 

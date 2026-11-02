@@ -216,6 +216,21 @@ func TestScanIncompleteCollector(t *testing.T) {
 	}
 }
 
+// Without a known OS version, a check that depends on it errors; the rest run.
+func TestScanUnknownOSVersion(t *testing.T) {
+	e := newDemoEngine(t, demoSvc())
+	m := demoHost().AddFile("/etc/os-release", "ID=debian\nPRETTY_NAME=\"Debian GNU/Linux forky/sid\"\n", 0o644, 0, 0)
+	res, err := e.Scan(context.Background(), hostfs.NewTestHost(m, nil, false), Options{Profile: "demo-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := statuses(res)
+	if got["demo.modern"] != StatusError || got["demo.root-login"] != StatusPass {
+		t.Errorf("modern %s, root-login %s; want ERROR and PASS", got["demo.modern"], got["demo.root-login"])
+	}
+	validateSchema(t, res)
+}
+
 func TestUnknownProfile(t *testing.T) {
 	e := newDemoEngine(t, demoSvc())
 	_, err := e.Scan(context.Background(), hostfs.NewTestHost(demoHost(), nil, false), Options{Profile: "nope"})

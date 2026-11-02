@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/hostlint/internal/version"
 )
 
 // Engine evaluates the checks of a Content with a set of collectors.
@@ -170,6 +171,10 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 	}
 	if res.Scan.Tool.Name == "" {
 		res.Scan.Tool.Name = "hostlint"
+	}
+	if res.Scan.Tool.Version == "" {
+		info := version.Get()
+		res.Scan.Tool.Version, res.Scan.Tool.Commit = info.Version, info.Commit
 	}
 	return res, nil
 }

@@ -3,9 +3,9 @@
 // It provides a read-only filesystem rooted at "/" (the running system) or at
 // a mounted root (--root), a sensitive-path denylist enforced on content reads,
 // bounded globbing and walking that report what they could not see, a runner
-// for a fixed set of commands, and OS detection. Code outside this package may
+// for a fixed set of commands, and OS detection. Code outside this package must
 // not read the host, run commands or make raw system calls; the lint rules in
-// .golangci.yml enforce that.
+// .golangci.yml catch the common ways of doing so, and review catches the rest.
 package hostfs
 
 import (
@@ -21,8 +21,11 @@ import (
 // Paths are absolute and slash-separated, and are interpreted inside the scan
 // root: with --root /mnt/img, "/etc/passwd" means /mnt/img/etc/passwd, and
 // symbolic links resolve as if /mnt/img were "/" (they can never escape it).
+// A symbolic link is only followed when it is owned by root or by the
+// scanning user; anyone else could have pointed it at a secret.
 // Errors are *fs.PathError values; use errors.Is with fs.ErrNotExist,
-// fs.ErrPermission, ErrDenied, ErrNotRegular and ErrTooLarge.
+// fs.ErrPermission, ErrDenied, ErrNotRegular, ErrTooLarge and
+// ErrUnsafeSymlink.
 type FS interface {
 	// Stat returns metadata for name, following symbolic links.
 	Stat(name string) (FileInfo, error)
@@ -51,6 +54,12 @@ var (
 	ErrTooLarge = errors.New("file too large")
 	// ErrInvalidPath is returned for paths that are not absolute and clean.
 	ErrInvalidPath = errors.New("path must be absolute and clean")
+	// ErrUnsafeSymlink is returned when a path goes through a symbolic link
+	// owned by someone other than root or the scanning user.
+	ErrUnsafeSymlink = errors.New("symbolic link not owned by root; not followed")
+	// ErrAutomount is returned when listing an automount point, which would
+	// mount a filesystem on the scanned host.
+	ErrAutomount = errors.New("automount point: not entered")
 )
 
 // FileInfo is metadata about one file.

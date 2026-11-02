@@ -176,7 +176,9 @@ type TestFile struct {
 	Owner  string `yaml:"owner"`
 	Group  string `yaml:"group"`
 	Target string `yaml:"target"`
-	Error  string `yaml:"error"` // "permission": accessing it fails
+	// Error "permission": reading it, or looking anything up through it,
+	// fails (its own metadata stays visible, as on Linux).
+	Error string `yaml:"error"`
 }
 
 // Profile maps one standard edition's controls to checks.

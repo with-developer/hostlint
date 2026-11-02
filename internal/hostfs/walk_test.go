@@ -3,9 +3,11 @@ package hostfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"strings"
 	"testing"
+	"time"
 )
 
 func walkFixture() *MemFS {
@@ -52,22 +54,23 @@ func TestGlob(t *testing.T) {
 			}
 		})
 	}
-	for _, bad := range []string{"etc/*", "/etc/[", "/etc/../x"} {
+	for _, bad := range []string{"etc/*", "/etc/[", "/etc/../x", "/etc/[a/b]"} {
 		if _, _, err := Glob(fsys, bad); err == nil {
 			t.Errorf("Glob(%q) succeeded, want an error", bad)
 		}
 	}
 }
 
+func collect(fsys FS, opts WalkOptions) ([]string, WalkResult, error) {
+	var seen []string
+	res, err := Walk(context.Background(), fsys, "/", opts, func(fi FileInfo) error {
+		seen = append(seen, fi.Path)
+		return nil
+	})
+	return seen, res, err
+}
+
 func TestWalk(t *testing.T) {
-	collect := func(fsys FS, opts WalkOptions) ([]string, WalkResult, error) {
-		var seen []string
-		res, err := Walk(context.Background(), fsys, "/", opts, func(fi FileInfo) error {
-			seen = append(seen, fi.Path)
-			return nil
-		})
-		return seen, res, err
-	}
 
 	t.Run("visits everything in order without following links", func(t *testing.T) {
 		seen, res, err := collect(walkFixture(), WalkOptions{})
@@ -125,7 +128,111 @@ func TestWalk(t *testing.T) {
 	})
 
 	t.Run("missing root", func(t *testing.T) {
-		_, err := Walk(context.Background(), walkFixture(), "/nope", WalkOptions{}, func(FileInfo) error { return nil })
+		res, err := Walk(context.Background(), walkFixture(), "/nope", WalkOptions{}, func(FileInfo) error { return nil })
 		checkErr(t, err, fs.ErrNotExist)
+		if res.Complete {
+			t.Error("a walk that could not start is not complete")
+		}
 	})
+
+	t.Run("a symlinked root is followed", func(t *testing.T) {
+		m := NewMemFS().AddFile("/usr/bin/su", "", 0o4755, 0, 0).AddSymlink("/bin", "usr/bin")
+		var seen []string
+		res, err := Walk(context.Background(), m, "/bin", WalkOptions{}, func(fi FileInfo) error {
+			seen = append(seen, fi.Path)
+			return nil
+		})
+		if err != nil || !res.Complete || !equal(seen, []string{"/bin", "/bin/su"}) {
+			t.Errorf("seen %v, %+v, %v", seen, res, err)
+		}
+	})
+
+	t.Run("SkipDir skips; other errors stop and leave it incomplete", func(t *testing.T) {
+		var seen []string
+		res, err := Walk(context.Background(), walkFixture(), "/", WalkOptions{}, func(fi FileInfo) error {
+			seen = append(seen, fi.Path)
+			if fi.Path == "/home" {
+				return fs.SkipDir
+			}
+			return nil
+		})
+		if err != nil || !res.Complete || strings.Contains(strings.Join(seen, " "), "/home/u") {
+			t.Errorf("SkipDir: seen %v, %+v, %v", seen, res, err)
+		}
+		res, err = Walk(context.Background(), walkFixture(), "/", WalkOptions{}, func(fi FileInfo) error {
+			if fi.Path == "/etc" {
+				return fs.SkipAll
+			}
+			return nil
+		})
+		if !errors.Is(err, fs.SkipAll) || res.Complete {
+			t.Errorf("SkipAll: %+v, %v; want an incomplete result", res, err)
+		}
+	})
+
+	t.Run("a directory that vanishes makes the walk incomplete", func(t *testing.T) {
+		_, res, _ := collect(vanishingFS{walkFixture(), "/home/v"}, WalkOptions{})
+		if res.Complete {
+			t.Errorf("%+v", res)
+		}
+	})
+
+	t.Run("automount points are not entered", func(t *testing.T) {
+		_, res, err := collect(automountFS{walkFixture(), "/home"}, WalkOptions{})
+		if err != nil || !res.Complete || !equal(res.NotEntered, []string{"/home"}) {
+			t.Errorf("%+v, %v", res, err)
+		}
+	})
+
+	t.Run("a huge directory is listed only up to the budget", func(t *testing.T) {
+		m := NewMemFS()
+		for i := range 500 {
+			m.AddFile(fmt.Sprintf("/big/f%03d", i), "", 0o644, 0, 0)
+		}
+		seen, res, _ := collect(m, WalkOptions{MaxEntries: 20})
+		if res.Complete || len(seen) > 20 {
+			t.Errorf("visited %d entries, complete %v", len(seen), res.Complete)
+		}
+	})
+
+	t.Run("the deadline is checked on every entry", func(t *testing.T) {
+		_, res, _ := collect(slowFS{walkFixture()}, WalkOptions{Timeout: 30 * time.Millisecond})
+		if res.Complete {
+			t.Errorf("a walk past its deadline must be incomplete: %+v", res)
+		}
+	})
+}
+
+// vanishingFS reports one directory as gone when it is listed.
+type vanishingFS struct {
+	FS
+	gone string
+}
+
+func (v vanishingFS) ReadDir(name string) ([]FileInfo, error) {
+	if name == v.gone {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrNotExist}
+	}
+	return v.FS.ReadDir(name)
+}
+
+// automountFS reports one directory as an automount point.
+type automountFS struct {
+	FS
+	mount string
+}
+
+func (a automountFS) ReadDir(name string) ([]FileInfo, error) {
+	if name == a.mount {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: ErrAutomount}
+	}
+	return a.FS.ReadDir(name)
+}
+
+// slowFS makes every listing take 10ms.
+type slowFS struct{ FS }
+
+func (s slowFS) ReadDir(name string) ([]FileInfo, error) {
+	time.Sleep(10 * time.Millisecond)
+	return s.FS.ReadDir(name)
 }

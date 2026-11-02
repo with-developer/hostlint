@@ -1,0 +1,30 @@
+id: demo.modern
+version: 1
+title: Demo check for newer releases only
+severity: low
+applies: >-
+  os.version_major >= 9
+expect: >-
+  svc.present
+tests:
+  - name: newer release
+    os: rhel
+    facts:
+      svc: {present: true}
+    want: PASS
+  - name: newer release without the service
+    os: rhel
+    facts:
+      svc: {present: false}
+    want: FAIL
+  - name: older release
+    facts:
+      svc: {present: true}
+      os: {id: centos, family: rhel, version_id: "7", version_major: 7}
+    want: NOT_APPLICABLE
+  - name: unknown version cannot decide
+    input: incomplete
+    incomplete: [os]
+    facts:
+      svc: {present: true}
+    want: ERROR

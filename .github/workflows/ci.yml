@@ -32,6 +32,9 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - run: make test
+      # Some host-access tests need root (files owned by other users).
+      - name: Host access tests as root
+        run: sudo env "PATH=$PATH" GOCACHE=/tmp/gocache-root GOMODCACHE="$(go env GOMODCACHE)" go test -count=1 ./internal/hostfs/
 
   lint:
     runs-on: ubuntu-latest
