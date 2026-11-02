@@ -61,8 +61,10 @@ See [ADR 0004](docs/adr/0004-observation-only.md).
 
 - **Go:** `gofmt` and `golangci-lint` clean; table-driven tests; no global mutable state;
   collectors take a `context.Context` and are time-bounded.
-- **Tests:** every collector has fixture tests; every check has at least one PASS and one FAIL
-  fixture.
+- **Tests:** every collector has fixture tests (`hostfs.MemFS`, or files captured from real
+  distributions); every check has PASS, FAIL and absent/incomplete cases (ADR 0006). Linux-only
+  code (`*_linux.go`) is tested in CI or locally in Docker, e.g. `docker run --rm -v "$PWD":/src:ro
+  -w /src -e GOCACHE=/tmp/gc golang:1.27 go test ./...`.
 - **Content:** rule titles and descriptions are written by us. Never copy text from CIS
   Benchmarks (CC BY-NC-SA 4.0) or the KISA guide; reference control IDs only.
 - **Language:** code, comments, commits, PRs and issues in English. English docs are the source
