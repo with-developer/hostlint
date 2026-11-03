@@ -51,6 +51,10 @@ type fileObservation struct {
 	Info hostfs.FileInfo // valid when the path exists and Err is empty
 	// Missing is true when nothing exists at the path.
 	Missing bool
+	// Masked is true when the path is a symbolic link to /dev/null: how
+	// systemd masks a unit and how a configuration file is blanked. It is
+	// absent in effect, and /dev/null's own mode says nothing about it.
+	Masked bool
 	// DanglingLink is set when the path does not resolve because it, or a
 	// directory on the way, is a symbolic link whose target (DanglingTarget)
 	// does not exist. Creating the target would create the file.
@@ -174,6 +178,11 @@ func observePattern(ctx context.Context, fsys hostfs.FS, pattern string) (patter
 // missing only if no element on the way is a symbolic link to a missing
 // target.
 func observeFile(fsys hostfs.FS, p string) fileObservation {
+	if li, err := fsys.Lstat(p); err == nil && li.IsSymlink() {
+		if target, err := fsys.ReadLink(p); err == nil && linkTarget(p, target) == nullDevice {
+			return fileObservation{Path: p, Masked: true}
+		}
+	}
 	fi, err := fsys.Stat(p)
 	switch {
 	case err == nil:
@@ -198,6 +207,16 @@ func observeFile(fsys hostfs.FS, p string) fileObservation {
 		}
 	}
 	return fileObservation{Path: p, Err: p + ": changed while being observed"}
+}
+
+const nullDevice = "/dev/null"
+
+// linkTarget is where the link at p points, as a clean absolute path.
+func linkTarget(p, target string) string {
+	if path.IsAbs(target) {
+		return path.Clean(target)
+	}
+	return path.Join(path.Dir(p), target)
 }
 
 // isGlob reports whether a file check path is a glob (hostfs.Glob syntax).

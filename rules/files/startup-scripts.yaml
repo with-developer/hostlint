@@ -20,6 +20,11 @@ tests:
       /etc/init.d/ssh: {mode: "0755"}
       /etc/systemd/system/app.service: {mode: "0644"}
     want: PASS
+  - name: masked units link to /dev/null
+    files:
+      /etc/systemd/system/console-getty.service: {type: symlink, target: /dev/null}
+      /etc/systemd/system/app.service: {mode: "0644"}
+    want: PASS
   - name: unit writable by a group
     files:
       /etc/systemd/system/app.service: {mode: "0664"}
