@@ -24,6 +24,7 @@ type svcFacts struct {
 	Present bool                     `json:"present"`
 	Config  map[string]facts.Setting `json:"config"`
 	Users   []svcUser                `json:"users"`
+	Mode    facts.Setting            `json:"mode"`
 }
 
 type svcUser struct {

@@ -194,7 +194,7 @@ func (e *evalEnv) evalSetting(cc *compiledCheck, params, act map[string]any, fai
 			return errorOutcome("%s is not set and its default is not known", key)
 		}
 	}
-	s, ok := opt.GetValue().Value().(facts.Setting)
+	s, ok := asSetting(opt.GetValue())
 	if !ok {
 		return errorOutcome("setting.fact: %s is not a Setting", key)
 	}
@@ -284,7 +284,7 @@ func (e *evalEnv) pathEvidence(cc *compiledCheck, act map[string]any) []Evidence
 // describeValue renders one fact value as evidence text: settings with their
 // state and source, maps as their keys, anything else as a literal.
 func describeValue(path string, v ref.Val) (text, source string) {
-	if s, ok := v.Value().(facts.Setting); ok {
+	if s, ok := asSetting(v); ok {
 		state := "explicit"
 		if !s.Explicit {
 			state = "default"
@@ -381,13 +381,27 @@ func (e *evalEnv) matchViolations(cc *compiledCheck, over ref.Val, act map[strin
 	return o
 }
 
+// asSetting returns v as a Setting: map entries hold Setting values, struct
+// fields come back as pointers.
+func asSetting(v ref.Val) (facts.Setting, bool) {
+	switch x := v.Value().(type) {
+	case facts.Setting:
+		return x, true
+	case *facts.Setting:
+		if x != nil {
+			return *x, true
+		}
+	}
+	return facts.Setting{}, false
+}
+
 // render formats a CEL value for evidence.
 func render(v ref.Val) string {
-	switch x := v.Value().(type) {
-	case string:
+	if s, ok := asSetting(v); ok {
+		return strconv.Quote(s.Value)
+	}
+	if x, ok := v.Value().(string); ok {
 		return strconv.Quote(x)
-	case facts.Setting:
-		return strconv.Quote(x.Value)
 	}
 	if l, ok := v.(traits.Lister); ok {
 		n := int(l.Size().(types.Int))
