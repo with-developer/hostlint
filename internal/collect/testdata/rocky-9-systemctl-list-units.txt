@@ -1,0 +1,99 @@
+dev-vdb1.device                        loaded    activating tentative /dev/vdb1
+-.mount                                loaded    active     mounted   Root Mount
+dev-hugepages.mount                    loaded    inactive   dead      Huge Pages File System
+dev-mqueue.mount                       loaded    active     mounted   POSIX Message Queue File System
+etc-hostname.mount                     loaded    active     mounted   /etc/hostname
+etc-hosts.mount                        loaded    active     mounted   /etc/hosts
+etc-resolv.conf.mount                  loaded    active     mounted   /etc/resolv.conf
+home.mount                             not-found inactive   dead      home.mount
+sys-fs-fuse-connections.mount          loaded    active     mounted   FUSE Control File System
+sys-kernel-config.mount                loaded    inactive   dead      Kernel Configuration File System
+sys-kernel-debug.mount                 loaded    active     mounted   Kernel Debug File System
+sys-kernel-tracing.mount               loaded    active     mounted   Kernel Trace File System
+tmp.mount                              loaded    inactive   dead      Temporary Directory /tmp
+systemd-ask-password-console.path      loaded    active     waiting   Dispatch Password Requests to Console Directory Watch
+systemd-ask-password-wall.path         loaded    active     waiting   Forward Password Requests to Wall Directory Watch
+init.scope                             loaded    active     running   System and Service Manager
+auditd.service                         not-found inactive   dead      auditd.service
+console-getty.service                  loaded    inactive   dead      Console Getty
+dbus-broker.service                    loaded    active     running   D-Bus System Message Bus
+display-manager.service                not-found inactive   dead      display-manager.service
+dnf-makecache.service                  loaded    inactive   dead      dnf makecache
+emergency.service                      loaded    inactive   dead      Emergency Shell
+getty@tty1.service                     loaded    inactive   dead      Getty on tty1
+ldconfig.service                       loaded    active     exited    Rebuild Dynamic Linker Cache
+modprobe@configfs.service              loaded    inactive   dead      Load Kernel Module configfs
+modprobe@drm.service                   loaded    inactive   dead      Load Kernel Module drm
+modprobe@fuse.service                  loaded    inactive   dead      Load Kernel Module fuse
+nis-domainname.service                 loaded    active     exited    Read and set NIS domainname from /etc/sysconfig/network
+plymouth-quit-wait.service             not-found inactive   dead      plymouth-quit-wait.service
+plymouth-start.service                 not-found inactive   dead      plymouth-start.service
+rc-local.service                       loaded    inactive   dead      /etc/rc.d/rc.local Compatibility
+rescue.service                         loaded    inactive   dead      Rescue Shell
+syslog.service                         not-found inactive   dead      syslog.service
+systemd-ask-password-console.service   loaded    inactive   dead      Dispatch Password Requests to Console
+systemd-ask-password-wall.service      loaded    inactive   dead      Forward Password Requests to Wall
+systemd-firstboot.service              loaded    inactive   dead      First Boot Wizard
+systemd-initctl.service                loaded    inactive   dead      initctl Compatibility Daemon
+systemd-journal-catalog-update.service loaded    active     exited    Rebuild Journal Catalog
+systemd-journal-flush.service          loaded    active     exited    Flush Journal to Persistent Storage
+systemd-journald.service               loaded    active     running   Journal Service
+systemd-logind.service                 loaded    active     running   User Login Management
+systemd-machine-id-commit.service      loaded    inactive   dead      Commit a transient machine-id on disk
+systemd-network-generator.service      loaded    active     exited    Generate network units from Kernel command line
+systemd-pcrmachine.service             loaded    inactive   dead      TPM2 PCR Machine ID Measurement
+systemd-remount-fs.service             not-found inactive   dead      systemd-remount-fs.service
+systemd-sysusers.service               loaded    active     exited    Create System Users
+systemd-tmpfiles-clean.service         loaded    inactive   dead      Cleanup of Temporary Directories
+systemd-tmpfiles-setup.service         loaded    active     exited    Create Volatile Files and Directories
+systemd-udevd.service                  not-found inactive   dead      systemd-udevd.service
+systemd-update-done.service            loaded    active     exited    Update is Completed
+systemd-update-utmp-runlevel.service   loaded    inactive   dead      Record Runlevel Change in UTMP
+systemd-update-utmp.service            loaded    active     exited    Record System Boot/Shutdown in UTMP
+systemd-user-sessions.service          loaded    active     exited    Permit User Sessions
+systemd-vconsole-setup.service         not-found inactive   dead      systemd-vconsole-setup.service
+ypbind.service                         not-found inactive   dead      ypbind.service
+yppasswdd.service                      not-found inactive   dead      yppasswdd.service
+ypserv.service                         not-found inactive   dead      ypserv.service
+ypxfrd.service                         not-found inactive   dead      ypxfrd.service
+-.slice                                loaded    active     active    Root Slice
+system-getty.slice                     loaded    active     active    Slice /system/getty
+system-modprobe.slice                  loaded    active     active    Slice /system/modprobe
+system.slice                           loaded    active     active    System Slice
+user.slice                             loaded    active     active    User and Session Slice
+dbus.socket                            loaded    active     running   D-Bus System Message Bus Socket
+syslog.socket                          loaded    inactive   dead      Syslog Socket
+systemd-initctl.socket                 loaded    active     listening initctl Compatibility Named Pipe
+systemd-journald-dev-log.socket        loaded    active     running   Journal Socket (/dev/log)
+systemd-journald.socket                loaded    active     running   Journal Socket
+telnet.socket                          loaded    active     listening Telnet Server Activation Socket
+basic.target                           loaded    active     active    Basic System
+blockdev@dev-vdb1.target               loaded    inactive   dead      Block Device Preparation for /dev/vdb1
+cryptsetup.target                      not-found inactive   dead      cryptsetup.target
+emergency.target                       loaded    inactive   dead      Emergency Mode
+first-boot-complete.target             loaded    inactive   dead      First Boot Complete
+getty-pre.target                       loaded    inactive   dead      Preparation for Logins
+getty.target                           loaded    active     active    Login Prompts
+graphical.target                       loaded    active     active    Graphical Interface
+initrd-switch-root.target              not-found inactive   dead      initrd-switch-root.target
+local-fs-pre.target                    loaded    inactive   dead      Preparation for Local File Systems
+local-fs.target                        loaded    active     active    Local File Systems
+multi-user.target                      loaded    active     active    Multi-User System
+network-online.target                  loaded    active     active    Network is Online
+network-pre.target                     loaded    active     active    Preparation for Network
+network.target                         loaded    inactive   dead      Network
+nss-user-lookup.target                 loaded    inactive   dead      User and Group Name Lookups
+paths.target                           loaded    active     active    Path Units
+remote-fs-pre.target                   loaded    inactive   dead      Preparation for Remote File Systems
+remote-fs.target                       loaded    active     active    Remote File Systems
+rescue.target                          loaded    inactive   dead      Rescue Mode
+shutdown.target                        loaded    inactive   dead      System Shutdown
+slices.target                          loaded    active     active    Slice Units
+sockets.target                         loaded    active     active    Socket Units
+swap.target                            loaded    active     active    Swaps
+sysinit.target                         loaded    active     active    System Initialization
+time-set.target                        loaded    inactive   dead      System Time Set
+timers.target                          loaded    active     active    Timer Units
+umount.target                          loaded    inactive   dead      Unmount All Filesystems
+dnf-makecache.timer                    loaded    active     waiting   dnf makecache --timer
+systemd-tmpfiles-clean.timer           loaded    active     waiting   Daily Cleanup of Temporary Directories

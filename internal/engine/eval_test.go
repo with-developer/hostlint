@@ -208,3 +208,37 @@ func (unknownCollector) Type() reflect.Type { return reflect.TypeFor[svcFacts]()
 func (u unknownCollector) Collect(context.Context, *hostfs.Host) (Facts, error) {
 	return Facts{Value: &svcFacts{}, Complete: true, Unknown: []string{u.field}}, nil
 }
+
+// target.live lets a check require live facts only on a live target, so it
+// is decided under --root instead of ERROR.
+func TestTargetLive(t *testing.T) {
+	absent := demoSvc()
+	absent.facts.Present = false
+	tests := []struct {
+		live bool
+		svc  *fakeCollector
+		want Status
+	}{
+		{false, &fakeCollector{name: "svc", access: AccessLive}, StatusPass}, // unavailable, not read
+		{true, demoSvc(), StatusPass},
+		{true, absent, StatusFail},
+	}
+	for _, tt := range tests {
+		content := &Content{
+			Checks: map[string]*Check{"x.live": {ID: "x.live", Version: 1, Title: "T", Severity: SeverityLow, Expect: "!target.live || svc.present"}},
+			Profiles: map[string]*Profile{"p": {ID: "p", Revision: 1, Title: "P", Controls: []Control{
+				{ID: "C", Title: "C", Severity: SeverityLow, Checks: []string{"x.live"}}}}},
+		}
+		e, err := New(content, tt.svc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := e.Scan(context.Background(), hostfs.NewTestHost(demoHost(), nil, tt.live), Options{Profile: "p"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := res.Checks[0]; got.Status != tt.want {
+			t.Errorf("live %v: %s (%q), want %s", tt.live, got.Status, got.Reason, tt.want)
+		}
+	}
+}

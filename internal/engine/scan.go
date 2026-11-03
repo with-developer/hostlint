@@ -30,7 +30,7 @@ type Engine struct {
 // type-check against the collectors' facts, so broken rules fail CI.
 func New(content *Content, collectors ...Collector) (*Engine, error) {
 	e := &Engine{content: content, collectors: map[string]Collector{}, compiled: map[string]*compiledCheck{}}
-	for _, c := range append([]Collector{osCollector{}}, collectors...) {
+	for _, c := range append([]Collector{osCollector{}, targetCollector{}}, collectors...) {
 		switch name := c.Name(); {
 		case !identRe.MatchString(name) || name == "params":
 			return nil, fmt.Errorf("collector name %q must be an identifier other than params", name)
