@@ -1,0 +1,39 @@
+id: files.inetd-conf-perms
+version: 1
+title: inetd and xinetd configuration is owned by root and private
+title_ko: inetd·xinetd 설정은 root 소유, 비공개
+severity: high
+description: >-
+  Checks that /etc/inetd.conf, /etc/xinetd.conf and the files in /etc/xinetd.d are owned by
+  root with mode 0600 or stricter. Not applicable when none exists.
+rationale: The super-server starts the programs these files name, as the users they name.
+remediation: Run `chown root` and `chmod 600` on each file.
+file:
+  paths: [/etc/inetd.conf, /etc/xinetd.conf, /etc/xinetd.d/*]
+  owner: [root]
+  mode: "0600"
+  missing: not_applicable
+  no_match: not_applicable
+tests:
+  - name: private
+    files:
+      /etc/xinetd.conf: {mode: "0600"}
+      /etc/xinetd.d/telnet: {mode: "0600"}
+    want: PASS
+  - name: readable by all
+    files:
+      /etc/inetd.conf: {mode: "0644"}
+    want: FAIL
+  - name: one service file writable
+    files:
+      /etc/xinetd.conf: {mode: "0600"}
+      /etc/xinetd.d/telnet: {mode: "0666"}
+    want: FAIL
+  - name: not installed
+    input: absent
+    want: NOT_APPLICABLE
+  - name: /etc/xinetd.d unreadable
+    input: unavailable
+    files:
+      /etc/xinetd.d: {type: dir, mode: "0700", error: permission}
+    want: ERROR

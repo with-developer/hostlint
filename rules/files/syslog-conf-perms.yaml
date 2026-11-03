@@ -1,0 +1,38 @@
+id: files.syslog-conf-perms
+version: 1
+title: syslog configuration is owned by a system account and not readable by others
+title_ko: syslog 설정은 시스템 계정 소유, 다른 사용자 읽기 금지
+severity: high
+description: >-
+  Checks that /etc/syslog.conf, /etc/rsyslog.conf and /etc/rsyslog.d/*.conf are owned by root,
+  bin or sys with mode 0640 or stricter. Not applicable without a syslog daemon configuration.
+rationale: Whoever can change the logging configuration can hide their tracks.
+remediation: Run `chown root` and `chmod 640` on each file.
+file:
+  paths: [/etc/syslog.conf, /etc/rsyslog.conf, /etc/rsyslog.d/*.conf]
+  owner: [root, bin, sys]
+  mode: "0640"
+  missing: not_applicable
+  no_match: not_applicable
+tests:
+  - name: private
+    files:
+      /etc/rsyslog.conf: {mode: "0640"}
+    want: PASS
+  - name: distribution default
+    files:
+      /etc/rsyslog.conf: {mode: "0644"}
+    want: FAIL
+  - name: owned by a user
+    files:
+      /etc/rsyslog.conf: {mode: "0600", owner: user}
+    want: FAIL
+  - name: journald only
+    input: absent
+    want: NOT_APPLICABLE
+  - name: /etc/rsyslog.d unreadable
+    input: unavailable
+    files:
+      /etc/rsyslog.conf: {mode: "0640"}
+      /etc/rsyslog.d: {type: dir, mode: "0700", error: permission}
+    want: ERROR

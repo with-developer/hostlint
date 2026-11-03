@@ -1,0 +1,33 @@
+id: files.rhosts
+version: 1
+title: .rhosts and hosts.equiv files are owned correctly and private
+title_ko: .rhosts·hosts.equiv는 root 소유, 비공개
+severity: high
+description: >-
+  Checks that /etc/hosts.equiv and the .rhosts files of root and home directories under /home
+  are owned by root and private (mode 0600 or stricter). Such files should not exist unless the
+  r-services are needed.
+rationale: These files let hosts and users log in through rlogin and rsh without a password.
+remediation: Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
+file:
+  paths: [/etc/hosts.equiv, /root/.rhosts, /home/*/.rhosts]
+  owner: [root]
+  mode: "0600"
+  missing: pass
+  no_match: pass
+tests:
+  - name: none
+    want: PASS
+  - name: user file readable by all
+    files:
+      /home/alice/.rhosts: {mode: "0644"}
+    want: FAIL
+  - name: hosts.equiv writable
+    files:
+      /etc/hosts.equiv: {mode: "0666"}
+    want: FAIL
+  - name: /home unreadable
+    input: unavailable
+    files:
+      /home: {type: dir, mode: "0700", error: permission}
+    want: ERROR
