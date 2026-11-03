@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path"
 	"reflect"
 	"slices"
@@ -46,6 +47,25 @@ type Services struct {
 	// Xinetd lists the services of /etc/xinetd.conf and /etc/xinetd.d,
 	// enabled or not.
 	Xinetd []XinetdService `json:"xinetd"`
+	// Started lists everything above that starts a service: enabled units
+	// that are not masked, active units (live), enabled SysV scripts without
+	// a unit of the same name, inetd lines and enabled xinetd services.
+	// Checks for a service match it by name or program. It is partial when
+	// the active units are unknown.
+	Started []StartedService `json:"started"`
+}
+
+// StartedService is one way a service is started.
+type StartedService struct {
+	// Service is the service's name without unit type or instance:
+	// "telnet" for telnet.socket, telnet@.service or an inetd telnet line.
+	Service string `json:"service"`
+	// Name is the unit, script or inetd/xinetd service name.
+	Name string `json:"name"`
+	Kind string `json:"kind"` // unit, active, sysv, inetd or xinetd
+	// Program is the path of the program it runs, when known.
+	Program string `json:"program"`
+	Source  string `json:"source"`
 }
 
 // Unit is how one systemd unit is set up.
@@ -129,24 +149,112 @@ func (servicesCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Fa
 	s := &Services{Units: r.units(), SysV: r.sysv(), Inetd: r.inetd(), Xinetd: r.xinetd(), Active: map[string]string{}}
 	s.Systemd = r.systemd
 	f := engine.Facts{Value: s, Complete: len(r.skipped) == 0, Skipped: r.skipped}
-	if !h.Live {
-		return f, nil
+	if err := s.readActive(ctx, h); err != nil {
+		// Without the active units, a running service can hide.
+		f.Unknown, f.Partial, f.Skipped = []string{"active"}, []string{"started"}, append(f.Skipped, err.Error())
 	}
-	// systemd is running when /run/systemd/system exists (sd_booted(3)).
+	s.Started = s.started()
+	return f, nil
+}
+
+// readActive fills Active on a live target running systemd (sd_booted(3):
+// /run/systemd/system exists).
+func (s *Services) readActive(ctx context.Context, h *hostfs.Host) error {
+	if !h.Live {
+		return nil
+	}
 	switch _, err := h.FS.Stat("/run/systemd/system"); {
 	case errors.Is(err, fs.ErrNotExist):
-		return f, nil // nothing is active as a systemd unit
+		return nil // nothing is active as a systemd unit
 	case err != nil:
-		f.Unknown, f.Skipped = []string{"active"}, append(f.Skipped, err.Error())
-		return f, nil
+		return err
 	}
 	active, err := systemdActive(ctx, h)
 	if err != nil {
-		f.Unknown, f.Skipped = []string{"active"}, append(f.Skipped, err.Error())
-		return f, nil
+		return err
 	}
 	s.Active = active
-	return f, nil
+	return nil
+}
+
+// started lists how services are started; see Services.Started.
+func (s *Services) started() []StartedService {
+	out := []StartedService{}
+	for _, name := range slices.Sorted(maps.Keys(s.Units)) {
+		if u := s.Units[name]; u.Enabled && !u.Masked {
+			out = append(out, StartedService{Service: serviceName(name), Name: name, Kind: "unit", Program: s.program(name), Source: u.Source})
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(s.Active)) {
+		out = append(out, StartedService{Service: serviceName(name), Name: name, Kind: "active", Program: s.program(name), Source: "systemctl list-units"})
+	}
+	for _, name := range slices.Sorted(maps.Keys(s.SysV)) {
+		// systemd ignores a script when a unit of the same name exists.
+		if sv := s.SysV[name]; sv.Enabled && s.Units[name+".service"].Source == "" {
+			out = append(out, StartedService{Service: name, Name: name, Kind: "sysv", Source: sv.Source})
+		}
+	}
+	for _, svc := range s.Inetd {
+		out = append(out, StartedService{Service: svc.Name, Name: svc.Name, Kind: "inetd", Program: inetdProgram(svc.Server, svc.Args), Source: svc.Source})
+	}
+	for _, svc := range s.Xinetd {
+		if !svc.Disabled {
+			out = append(out, StartedService{Service: svc.Name, Name: svc.Name, Kind: "xinetd", Program: inetdProgram(svc.Settings["server"], svc.Settings["server_args"]), Source: svc.Source})
+		}
+	}
+	return out
+}
+
+// program returns the program a unit runs: its own ExecStart, its alias
+// target's, its template's, or for a socket, path or timer unit the service
+// it activates.
+func (s *Services) program(name string) string {
+	if a := s.Units[name].AliasOf; a != "" {
+		name = a
+	}
+	if p := s.Units[name].Exec; p != "" {
+		return p
+	}
+	dot := strings.LastIndex(name, ".")
+	if dot < 0 {
+		return ""
+	}
+	base, suffix := name[:dot], name[dot:]
+	if at := strings.Index(base, "@"); at >= 0 {
+		base = base[:at] // an instance or a template
+	}
+	candidates := []string{base + "@.service"}
+	if suffix != ".service" {
+		candidates = append([]string{base + ".service"}, candidates...)
+	}
+	for _, c := range candidates {
+		if p := s.Units[c].Exec; p != "" {
+			return p
+		}
+	}
+	return ""
+}
+
+// serviceName strips the unit type and instance: telnet@.service → telnet.
+func serviceName(unit string) string {
+	if dot := strings.LastIndex(unit, "."); dot > 0 {
+		unit = unit[:dot]
+	}
+	if at := strings.Index(unit, "@"); at >= 0 {
+		unit = unit[:at]
+	}
+	return unit
+}
+
+// inetdProgram is the program an inetd or xinetd entry runs: the server,
+// or the program tcpd wraps.
+func inetdProgram(server, args string) string {
+	if path.Base(server) == "tcpd" {
+		if prog, _, _ := strings.Cut(strings.TrimSpace(args), " "); prog != "" {
+			return prog
+		}
+	}
+	return server
 }
 
 // systemdActive asks systemd which units are active:
