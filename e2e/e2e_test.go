@@ -55,7 +55,7 @@ func TestE2E(t *testing.T) {
 				if variant == "hardened" {
 					image = buildHardened(t, d.name, d.image)
 				}
-				res := scan(t, bin, image)
+				res := scan(t, installed(t, bin, image, name))
 				got := summary(res)
 				golden := filepath.Join("testdata", name+".golden")
 				if *update {
@@ -103,12 +103,24 @@ func buildHardened(t *testing.T, name, base string) string {
 	return tag
 }
 
+// installed returns image with hostlint installed as a real host has it:
+// /usr/local/bin/hostlint, owned by root. A bind mount would show the
+// builder's uid (1001 on CI runners), which the image does not know, as an
+// unowned file.
+func installed(t *testing.T, bin, image, name string) string {
+	t.Helper()
+	tag := "hostlint-e2e/" + name + ":scan"
+	dockerfile := "FROM " + image + "\nCOPY --chown=0:0 hostlint /usr/local/bin/hostlint\n"
+	runInput(t, dockerfile, "docker", "build", "--quiet", "--tag", tag, "--file", "-", bin)
+	return tag
+}
+
 // scan runs hostlint in a container without network access and returns
 // its result.
-func scan(t *testing.T, bin, image string) *engine.Result {
+func scan(t *testing.T, image string) *engine.Result {
 	t.Helper()
 	out := run(t, "docker", "run", "--rm", "--network", "none", "--hostname", "e2e-host",
-		"--volume", bin+":/hostlint:ro", image, "/hostlint/hostlint", "scan", "--format", "json", "--fail-on", "none")
+		image, "/usr/local/bin/hostlint", "scan", "--format", "json", "--fail-on", "none")
 	var res engine.Result
 	if err := json.Unmarshal([]byte(out), &res); err != nil {
 		t.Fatalf("result: %v\n%.500s", err, out)
@@ -118,10 +130,17 @@ func scan(t *testing.T, bin, image string) *engine.Result {
 
 func run(t *testing.T, name string, args ...string) string {
 	t.Helper()
+	return runInput(t, "", name, args...)
+}
+
+// runInput runs a command with stdin and returns its standard output.
+func runInput(t *testing.T, stdin, name string, args ...string) string {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("%s %s: %v\n%s", name, strings.Join(args, " "), err, stderr.String())
