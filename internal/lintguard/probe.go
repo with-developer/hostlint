@@ -35,6 +35,7 @@ func ReadHostDirectly() {
 	_, _ = os.Open("/etc/hostname")            // want forbidigo
 	_, _ = os.Stat("/etc/hostname")            // want forbidigo
 	_ = os.DirFS("/")                          // want forbidigo
+	_, _ = os.Hostname()                       // want forbidigo
 	_ = filepath.WalkDir("/etc", nil)          // want forbidigo
 	_, _ = net.Dial("unix", "/run/x.sock")     // want forbidigo
 	_, _ = http.Get("http://example.invalid/") // import already reported

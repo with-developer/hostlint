@@ -110,8 +110,8 @@ func TestShellEnvEffectiveTMOUT(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			env := shellEnv(t, hostfs.NewMemFS().AddFile("/etc/profile", tt.profile, 0o644, 0, 0))
-			if got := env.EffectiveTMOUT; got.Value != tt.want || got.Explicit != (tt.want != "") {
-				t.Errorf("effective = %+v, want %q", got, tt.want)
+			if got, ok := env.Effective["TMOUT"]; got.Value != tt.want || ok != (tt.want != "") {
+				t.Errorf("effective = %+v (present %v), want %q", got, ok, tt.want)
 			}
 		})
 	}

@@ -8,13 +8,16 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"path"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
+
+	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
 // Severity of a check or control.
@@ -66,23 +69,6 @@ type Check struct {
 	Manual     *ManualSpec     `yaml:"manual"`
 
 	Tests []TestCase `yaml:"tests"`
-}
-
-// Kind names the check's kind.
-func (c *Check) Kind() string {
-	switch {
-	case c.Setting != nil:
-		return "setting"
-	case c.File != nil:
-		return "file"
-	case c.Violations != nil:
-		return "violations"
-	case c.Expect != "":
-		return "expect"
-	case c.Manual != nil:
-		return "manual"
-	}
-	return ""
 }
 
 // ParamSpec declares a tunable parameter.
@@ -349,8 +335,8 @@ func validateCheck(file string, c *Check) error {
 		if !factPathRe.MatchString(v.Over) {
 			p.add("violations.over must be a fact path")
 		}
-		if !identRe.MatchString(v.As) {
-			p.add("violations.as must be an identifier")
+		if !identRe.MatchString(v.As) || v.As == "params" {
+			p.add("violations.as must be an identifier other than params")
 		}
 		if v.Where == "" || v.Key == "" || v.Text == "" {
 			p.add("violations needs where, key and text")
@@ -430,15 +416,11 @@ func validateFile(p *problems, f *FileSpec) {
 	}
 	glob := false
 	for _, fp := range f.Paths {
-		if !strings.HasPrefix(fp, "/") || path.Clean(fp) != fp {
-			p.add("file path %q must be absolute and clean", fp)
+		// The same validation as hostfs.Glob, which reads the pattern.
+		if err := hostfs.CheckPattern(fp); err != nil {
+			p.add("file path %q must be absolute, clean and a valid pattern: %v", fp, err)
 		}
-		if _, err := path.Match(fp, ""); err != nil {
-			p.add("file path %q: %v", fp, err)
-		}
-		if strings.ContainsAny(fp, `*?[`) {
-			glob = true
-		}
+		glob = glob || isGlob(fp)
 	}
 	if f.Mode != "" && !modeRe.MatchString(f.Mode) {
 		p.add("file.mode %q must be an octal string such as \"0644\"", f.Mode)
@@ -480,6 +462,20 @@ func validateTests(p *problems, c *Check) {
 		}
 		if tc.Input != "" {
 			guarded = true
+		}
+		// The input label must describe the case, or the gate below proves
+		// nothing.
+		fileError := false
+		for _, f := range tc.Files {
+			fileError = fileError || (c.File != nil && f.Error != "")
+		}
+		switch {
+		case tc.Input == "unavailable" && len(tc.Unavailable) == 0 && !fileError:
+			p.add("test %q: input unavailable needs an unavailable collector or, in a file check, a file with an error", tc.Name)
+		case tc.Input == "incomplete" && len(tc.Incomplete) == 0 && !fileError:
+			p.add("test %q: input incomplete needs an incomplete collector or, in a file check, a file with an error", tc.Name)
+		case tc.Input == "" && len(tc.Unavailable)+len(tc.Incomplete) > 0:
+			p.add("test %q: a case with unavailable or incomplete collectors needs input unavailable or incomplete", tc.Name)
 		}
 	}
 	if c.Manual != nil {
@@ -559,11 +555,4 @@ func checkParamValue(c *Check, name string, v any) error {
 }
 
 // sortedKeys returns the keys of m in order.
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
+func sortedKeys[V any](m map[string]V) []string { return slices.Sorted(maps.Keys(m)) }

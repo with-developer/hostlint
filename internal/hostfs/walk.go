@@ -24,32 +24,35 @@ const (
 // Unlike filepath.Glob, it never hides what it could not see: directories it
 // could not read are returned as problems, and the caller must treat the
 // matches as incomplete when there are any.
+//
+// A symbolic link to a missing target on the way is a problem too, not an
+// empty directory: whoever can create the target controls what matches.
 func Glob(fsys FS, pattern string) (matches, problems []string, err error) {
-	if err := checkPath("glob", pattern); err != nil {
+	if err := CheckPattern(pattern); err != nil {
 		return nil, nil, err
 	}
-	elems := splitPath(pattern)
-	for _, elem := range elems {
-		if _, err := path.Match(elem, ""); err != nil {
-			return nil, nil, fmt.Errorf("glob %q: %w", pattern, err)
-		}
-	}
 	paths := []string{"/"}
-	for _, elem := range elems {
+	for _, elem := range splitPath(pattern) {
 		var next []string
 		for _, dir := range paths {
-			if !strings.ContainsAny(elem, `*?[\`) {
+			if !HasMeta(elem) {
 				p := path.Join(dir, elem)
-				if _, err := fsys.Lstat(p); err == nil {
+				_, err := fsys.Lstat(p)
+				switch {
+				case err == nil:
 					next = append(next, p)
-				} else if !errors.Is(err, fs.ErrNotExist) {
+				case !errors.Is(err, fs.ErrNotExist):
 					problems = addProblem(problems, err)
+				default:
+					problems = addDangling(fsys, problems, dir)
 				}
 				continue
 			}
 			entries, err := fsys.ReadDir(dir)
 			if err != nil {
-				if !errors.Is(err, fs.ErrNotExist) {
+				if errors.Is(err, fs.ErrNotExist) {
+					problems = addDangling(fsys, problems, dir)
+				} else {
 					problems = addProblem(problems, err)
 				}
 				continue
@@ -197,6 +200,52 @@ func Walk(ctx context.Context, fsys FS, root string, opts WalkOptions, fn func(F
 func (r *WalkResult) stop(problem string) {
 	r.Complete = false
 	r.Problems = addProblem(r.Problems, errors.New(problem))
+}
+
+// CheckPattern reports whether pattern is a valid Glob pattern: an absolute,
+// clean path whose elements are valid path.Match patterns.
+func CheckPattern(pattern string) error {
+	if err := checkPath("glob", pattern); err != nil {
+		return err
+	}
+	for _, elem := range splitPath(pattern) {
+		if _, err := path.Match(elem, ""); err != nil {
+			return fmt.Errorf("glob %q: %w", pattern, err)
+		}
+	}
+	return nil
+}
+
+// HasMeta reports whether a path or path element has Glob metacharacters.
+func HasMeta(p string) bool { return strings.ContainsAny(p, `*?[\`) }
+
+// DanglingLink reports the target of p when p is a symbolic link whose
+// target does not exist.
+func DanglingLink(fsys FS, p string) (target string, ok bool) {
+	li, err := fsys.Lstat(p)
+	if err != nil || !li.IsSymlink() {
+		return "", false
+	}
+	if _, err := fsys.Stat(p); !errors.Is(err, fs.ErrNotExist) {
+		return "", false
+	}
+	target, err = fsys.ReadLink(p)
+	switch {
+	case err != nil:
+		target = "an unreadable target"
+	case target == "":
+		target = "an empty target"
+	}
+	return target, true
+}
+
+// addDangling records dir as a problem if it is a symbolic link to a missing
+// target, which Glob would otherwise see as an empty directory.
+func addDangling(fsys FS, problems []string, dir string) []string {
+	if target, ok := DanglingLink(fsys, dir); ok {
+		return addProblem(problems, fmt.Errorf("%s: symbolic link to %s, which does not exist", dir, target))
+	}
+	return problems
 }
 
 func addProblem(problems []string, err error) []string {

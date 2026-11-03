@@ -50,8 +50,8 @@ func TestPAMDebian12(t *testing.T) {
 	if s := q.Settings["enforcing"]; s.Value != "1" || s.Explicit {
 		t.Errorf("enforcing = %+v, want the default 1", s)
 	}
-	if p.SuWheel != (facts.Setting{}) {
-		t.Errorf("stock Debian su has no pam_wheel line, got %+v", p.SuWheel)
+	if s, ok := p.Effective["su_wheel"]; ok {
+		t.Errorf("stock Debian su has no pam_wheel line, got %+v", s)
 	}
 	if l := p.Lockout["login"]; l.Module != "" {
 		t.Errorf("stock Debian has no lockout, got %+v", l)
@@ -143,17 +143,18 @@ func TestPAMSuWheel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := pamFacts(t, hostfs.NewMemFS().AddFile("/etc/pam.d/su", tt.su, 0o644, 0, 0))
-			if p.SuWheel.Value != tt.want || (tt.want != "") != p.SuWheel.Explicit {
-				t.Errorf("su_wheel = %+v, want %q", p.SuWheel, tt.want)
+			s, ok := p.Effective["su_wheel"]
+			if s.Value != tt.want || ok != (tt.want != "") || ok != s.Explicit {
+				t.Errorf("su_wheel = %+v (present %v), want %q", s, ok, tt.want)
 			}
-			if tt.want != "" && !strings.HasPrefix(p.SuWheel.Source, "/etc/pam.d/su:") {
-				t.Errorf("source = %q", p.SuWheel.Source)
+			if ok && !strings.HasPrefix(s.Source, "/etc/pam.d/su:") {
+				t.Errorf("source = %q", s.Source)
 			}
 		})
 	}
 	// Both distributions ship the pam_wheel lines commented out.
 	for _, distro := range []string{"debian-12", "rocky-9"} {
-		if w := pamFacts(t, fixtureFS(t, distro)).SuWheel; w != (facts.Setting{}) {
+		if w, ok := pamFacts(t, fixtureFS(t, distro)).Effective["su_wheel"]; ok {
 			t.Errorf("%s: su_wheel = %+v", distro, w)
 		}
 	}
@@ -240,15 +241,15 @@ func TestPAMHistoryConfByVersion(t *testing.T) {
 }
 
 func TestPAMPasswordHash(t *testing.T) {
-	deb := pamFacts(t, fixtureFS(t, "debian-12")).PasswordHash
+	deb := pamFacts(t, fixtureFS(t, "debian-12")).Effective["password_hash"]
 	if deb.Value != "yescrypt" || !strings.HasPrefix(deb.Source, "/etc/pam.d/common-password:") {
 		t.Errorf("debian 12 = %+v", deb)
 	}
-	if rocky := pamFacts(t, fixtureFS(t, "rocky-9")).PasswordHash; rocky.Value != "sha512" {
+	if rocky := pamFacts(t, fixtureFS(t, "rocky-9")).Effective["password_hash"]; rocky.Value != "sha512" {
 		t.Errorf("rocky 9 = %+v", rocky)
 	}
 	none := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", "password required pam_unix.so use_authtok\n", 0o644, 0, 0)
-	if h := pamFacts(t, none).PasswordHash; h != (facts.Setting{}) {
+	if h, ok := pamFacts(t, none).Effective["password_hash"]; ok {
 		t.Errorf("no hash option = %+v", h)
 	}
 }

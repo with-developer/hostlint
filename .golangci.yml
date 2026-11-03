@@ -58,7 +58,7 @@ linters:
         - pattern: ^(syscall|unix)\.(Unlink|Unlinkat|Rmdir|Rename|Renameat|Renameat2|Chmod|Fchmod|Fchmodat|Chown|Fchown|Fchownat|Lchown|Truncate|Ftruncate|Mkdir|Mkdirat|Mknod|Mknodat|Symlink|Symlinkat|Link|Linkat|Write|Pwrite|Writev|Pwritev|Utimes|UtimesNano|UtimesNanoAt|Futimes|Setxattr|Lsetxattr|Fsetxattr|Removexattr|Lremovexattr|Fremovexattr|Mount|Unmount|Kill|Tgkill|Exec|ForkExec)$
           msg: hostlint must not modify the host (ADR 0004)
         # Read the host only through internal/hostfs (denylist, --root).
-        - pattern: ^os\.(Open|ReadFile|ReadDir|Stat|Lstat|Readlink|DirFS|OpenRoot|OpenInRoot)$
+        - pattern: ^os\.(Open|ReadFile|ReadDir|Stat|Lstat|Readlink|DirFS|OpenRoot|OpenInRoot|Hostname)$
           msg: read the host through internal/hostfs (ADR 0004)
         - pattern: ^filepath\.(Walk|WalkDir|Glob|EvalSymlinks)$
           msg: read the host through internal/hostfs (ADR 0004)

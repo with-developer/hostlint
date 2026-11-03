@@ -34,15 +34,16 @@ type PAM struct {
 	PasswordHistory PasswordPolicy `json:"password_history"`
 	// Lockout maps a service to the lockout policy of its stack.
 	Lockout map[string]LockoutPolicy `json:"lockout"`
-	// SuWheel says whether pam_wheel restricts su: "restricted", or
-	// "not restricted: <why>" for pam_wheel.so lines that do not (trust,
-	// deny, a control that does not deny, an earlier sufficient rule). It
-	// is unset when the su stack has no pam_wheel.so line.
-	SuWheel facts.Setting `json:"su_wheel"`
-	// PasswordHash is the hash that pam_unix in the passwd stack is told
-	// to use (md5, sha256, sha512, yescrypt, ...). It is unset when no
-	// argument names one and pam_unix follows ENCRYPT_METHOD in login.defs.
-	PasswordHash facts.Setting `json:"password_hash"`
+	// Effective holds what the stacks amount to. A key is absent when the
+	// stacks do not decide it:
+	//   - su_wheel: whether pam_wheel restricts su: "restricted", or "not
+	//     restricted: <why>" for pam_wheel.so lines that do not (trust, deny,
+	//     a control that does not deny, an earlier sufficient rule); absent
+	//     when the su stack has no pam_wheel.so line.
+	//   - password_hash: the hash pam_unix in the passwd stack is told to use
+	//     (md5, sha256, sha512, yescrypt, ...); absent when no argument names
+	//     one and pam_unix follows ENCRYPT_METHOD in login.defs.
+	Effective map[string]facts.Setting `json:"effective"`
 }
 
 // pamUnixHashes are pam_unix's hashing options (pam_unix(8)).
@@ -118,8 +119,13 @@ func (pamCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 	}
 	p.PasswordQuality = r.quality(p.Stacks["passwd"])
 	p.PasswordHistory = r.history(p.Stacks["passwd"])
-	p.SuWheel = suWheel(p.Stacks["su"])
-	p.PasswordHash = passwordHash(p.Stacks["passwd"])
+	p.Effective = map[string]facts.Setting{}
+	if s := suWheel(p.Stacks["su"]); s.Source != "" {
+		p.Effective["su_wheel"] = s
+	}
+	if s := passwordHash(p.Stacks["passwd"]); s.Source != "" {
+		p.Effective["password_hash"] = s
+	}
 	return engine.Facts{Value: p, Complete: len(r.skipped) == 0, Skipped: r.skipped}, nil
 }
 

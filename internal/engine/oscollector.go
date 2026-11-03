@@ -27,8 +27,12 @@ func (osCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
 		Name: o.Name, Family: o.Family, Supported: o.Supported,
 	}, Complete: true}
 	if !o.VersionKnown {
-		// version_major is 0 here; a check that depends on it must not decide.
-		f.Complete = false
+		// version_major is 0 here: a check that reads it must not decide,
+		// while the rest (id, family) is known.
+		if o.VersionID == "" {
+			f.Unknown = append(f.Unknown, "version_id")
+		}
+		f.Unknown = append(f.Unknown, "version_major")
 		f.Skipped = []string{"the OS version is missing or not numeric (VERSION_ID)"}
 	}
 	return f, nil
