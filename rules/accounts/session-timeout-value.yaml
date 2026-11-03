@@ -1,7 +1,7 @@
 id: accounts.session-timeout-value
 version: 1
 title: The idle timeout is short enough
-title_ko: 세션 종료 시간 600초 이하
+title_ko: 유휴 시간 제한이 충분히 짧음
 severity: low
 description: >-
   Lists TMOUT assignments that are empty, zero or longer than `max_seconds`, and unset TMOUT
