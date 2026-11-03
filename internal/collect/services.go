@@ -377,6 +377,11 @@ func (r *serviceReader) unitFile(e hostfs.FileInfo) Unit {
 	switch {
 	case e.IsSymlink():
 		target, err := r.fsys.ReadLink(e.Path)
+		if err == nil && !path.IsAbs(target) {
+			// Relative to the link's directory: EL7 links dracut's units
+			// as ../../dracut/modules.d/98systemd/<unit>.
+			target = path.Join(path.Dir(e.Path), target)
+		}
 		switch {
 		case err != nil:
 			r.skipped = append(r.skipped, err.Error())
@@ -391,7 +396,8 @@ func (r *serviceReader) unitFile(e hostfs.FileInfo) Unit {
 		u.Masked, u.File = true, ""
 	}
 	if u.File != "" && strings.HasSuffix(u.File, ".service") {
-		if data, ok := r.readFile(u.File); ok {
+		// Read through the link itself, so it resolves as the kernel would.
+		if data, ok := r.readFile(e.Path); ok {
 			u.Exec = execStart(data)
 		}
 	}
