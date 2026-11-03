@@ -64,9 +64,10 @@ func (e *Engine) runCase(ctx context.Context, cc *compiledCheck, tc TestCase) (S
 	if family != hostfs.FamilyDebian && family != hostfs.FamilyRHEL {
 		return "", "", fmt.Errorf("os must be debian or rhel, not %q", family)
 	}
-	env := &evalEnv{
-		ctx: ctx, host: hostfs.NewTestHost(m, nil, false), collected: map[string]*collected{},
-		os: osFromFacts(osFacts(family)), ids: newIDMap(m),
+	env := &evalEnv{ctx: ctx, collected: map[string]*collected{}, os: osFromFacts(osFacts(family))}
+	if f := cc.check.File; f != nil {
+		// File checks read the case's files through the real file collector.
+		env.files = runCollector(ctx, &fileCollector{patterns: f.Paths}, hostfs.NewTestHost(m, nil, false), defaultCollectorTimeout)
 	}
 	unavailable := map[string]bool{}
 	for _, name := range tc.Unavailable {

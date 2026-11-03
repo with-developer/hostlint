@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
@@ -12,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
 	"time"
 
@@ -32,8 +30,11 @@ type Engine struct {
 func New(content *Content, collectors ...Collector) (*Engine, error) {
 	e := &Engine{content: content, collectors: map[string]Collector{}, compiled: map[string]*compiledCheck{}}
 	for _, c := range append([]Collector{osCollector{}}, collectors...) {
-		if _, dup := e.collectors[c.Name()]; dup {
-			return nil, fmt.Errorf("two collectors named %s", c.Name())
+		switch name := c.Name(); {
+		case name == fileCollectorName || name == hostCollectorName:
+			return nil, fmt.Errorf("collector name %s is reserved for the engine", name)
+		case e.collectors[name] != nil:
+			return nil, fmt.Errorf("two collectors named %s", name)
 		}
 		e.collectors[c.Name()] = c
 	}
@@ -104,17 +105,28 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		}
 	}
 
-	// Collect: only what the planned checks need, each collector once.
+	// Collect: only what the planned checks need, each collector once. All
+	// I/O happens here, bounded per collector; evaluation below does none.
 	needed := map[string]bool{"os": true}
+	patterns := map[string]bool{}
 	for _, in := range instances {
 		for _, v := range in.cc.vars {
 			needed[v] = true
 		}
+		if f := in.cc.check.File; f != nil {
+			for _, p := range f.Paths {
+				patterns[p] = true
+			}
+		}
 	}
-	env := &evalEnv{ctx: ctx, host: h, collected: map[string]*collected{}, ids: newIDMap(h.FS)}
+	env := &evalEnv{ctx: ctx, collected: map[string]*collected{}}
 	for _, name := range sortedKeys(needed) {
 		env.collected[name] = runCollector(ctx, e.collectors[name], h, timeout)
 	}
+	if len(patterns) > 0 {
+		env.files = runCollector(ctx, &fileCollector{patterns: sortedKeys(patterns)}, h, timeout)
+	}
+	hostc := runCollector(ctx, hostCollector{}, h, timeout)
 	if c := env.collected["os"]; c.ok() {
 		env.os = osFromFacts(c.facts.Value)
 	} else {
@@ -154,10 +166,17 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		res.Checks = append(res.Checks, *checks[ref])
 	}
 	res.Summary[profile.ID] = summary
-	for _, name := range sortedKeys(env.collected) {
-		res.Collectors = append(res.Collectors, env.collected[name].run)
+	runs := map[string]*collected{hostCollectorName: hostc}
+	for name, c := range env.collected {
+		runs[name] = c
 	}
-	res.Host = hostInfo(h, env.os, opts.Labels)
+	if env.files != nil {
+		runs[fileCollectorName] = env.files
+	}
+	for _, name := range sortedKeys(runs) {
+		res.Collectors = append(res.Collectors, runs[name].run)
+	}
+	res.Host = hostInfo(hostc, env.os, opts.Labels)
 	res.Scan = ScanInfo{
 		ID:         newScanID(started),
 		StartedAt:  started.UTC().Format(time.RFC3339),
@@ -186,7 +205,7 @@ func (e *Engine) checkResult(in *instance, o outcome) *CheckResult {
 	cr := &CheckResult{
 		Ref: in.ref, ID: c.ID, Version: c.Version, Digest: checkDigest(c),
 		Title: c.Title, TitleKo: c.TitleKo, Severity: c.Severity,
-		Status: o.status, StatusSource: "observed", Reason: o.reason,
+		Status: o.status, StatusSource: "observed", Reason: truncate(o.reason, maxReasonLen),
 		Evidence: ev, EvidenceOmitted: omitted, Coverage: o.coverage,
 	}
 	if len(in.params) > 0 {
@@ -221,7 +240,7 @@ func aggregate(profileID string, ctl Control, refs []string, checks map[string]*
 		}
 	}
 	if cr.Status != StatusPass && cr.Status != StatusFail {
-		cr.Reason = strings.Join(reasons, "; ")
+		cr.Reason = truncate(strings.Join(reasons, "; "), maxReasonLen)
 	}
 	return cr
 }
@@ -312,31 +331,4 @@ func newScanID(t time.Time) string {
 	b[8] = 0x80 | b[8]&0x3f // RFC 9562 variant
 	h := hex.EncodeToString(b[:])
 	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
-}
-
-// hostIDKey derives host IDs; the raw machine ID never leaves the host.
-var hostIDKey = []byte("hostlint host id v1")
-
-func hostInfo(h *hostfs.Host, o hostfs.OS, labels map[string]string) HostInfo {
-	hi := HostInfo{
-		OS:     OSInfo{ID: o.ID, VersionID: o.VersionID, Family: o.Family, Name: o.Name, Supported: o.Supported},
-		Labels: labels,
-	}
-	if data, err := h.FS.ReadFile("/etc/hostname"); err == nil {
-		hi.Hostname = strings.TrimSpace(string(data))
-	}
-	if h.Live {
-		if name, err := os.Hostname(); err == nil {
-			hi.Hostname = name
-		}
-		hi.Arch = runtime.GOARCH
-	}
-	if data, err := h.FS.ReadFile("/etc/machine-id"); err == nil {
-		if id := strings.TrimSpace(string(data)); id != "" {
-			mac := hmac.New(sha256.New, hostIDKey)
-			mac.Write([]byte(id))
-			hi.HostID = hex.EncodeToString(mac.Sum(nil))[:32]
-		}
-	}
-	return hi
 }
