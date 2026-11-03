@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"regexp"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
@@ -20,19 +20,25 @@ import (
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
-// Evidence bounds (ADR 0006 §8).
+// Evidence and reason bounds (ADR 0006 §8).
 const (
 	maxEvidence     = 50
 	maxEvidenceText = 300
+	maxReasonItems  = 5
+	maxReasonLen    = 1000
+	maxSkipped      = 50
+	maxShownKeys    = 20
 )
 
-// evalEnv is what checks are evaluated against on one host.
+// evalEnv is what checks are evaluated against on one host. Evaluation reads
+// only collected facts; it does no I/O.
 type evalEnv struct {
 	ctx       context.Context
-	host      *hostfs.Host
 	os        hostfs.OS
 	collected map[string]*collected
-	ids       *idMap
+	// files holds the file collector's observations; nil when no planned
+	// check is a file check.
+	files *collected
 }
 
 // outcome is a check's result before waivers and attestations.
@@ -85,7 +91,7 @@ func (e *evalEnv) unknownReason(failed, incomplete []string) string {
 	}
 	for _, name := range incomplete {
 		c := e.collected[name]
-		parts = append(parts, fmt.Sprintf("%s: incomplete observation (%s)", name, strings.Join(c.facts.Skipped, "; ")))
+		parts = append(parts, fmt.Sprintf("%s: incomplete observation (%s)", name, summarize(c.facts.Skipped)))
 	}
 	return strings.Join(parts, "; ")
 }
@@ -112,9 +118,6 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 			return outcome{status: StatusNotApplicable, reason: fmt.Sprintf("applies to %s, not %s", strings.Join(c.Platforms, ", "), e.os.Family)}
 		}
 	}
-	if c.File != nil {
-		return e.evalFile(c.File)
-	}
 	strict, partial, failed, incomplete := e.activations(cc, params)
 
 	if cc.applies != nil {
@@ -130,6 +133,8 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 	}
 
 	switch {
+	case c.File != nil:
+		return e.evalFile(c.File)
 	case cc.setting != nil:
 		return e.evalSetting(cc, params, strict, failed, incomplete)
 	case cc.expect != nil:
@@ -189,7 +194,7 @@ func (e *evalEnv) evalSetting(cc *compiledCheck, params, act map[string]any, fai
 			return errorOutcome("%s is not set and its default is not known", key)
 		}
 	}
-	s, ok := opt.GetValue().Value().(facts.Setting)
+	s, ok := asSetting(opt.GetValue())
 	if !ok {
 		return errorOutcome("setting.fact: %s is not a Setting", key)
 	}
@@ -258,28 +263,46 @@ func describeWant(spec *SettingSpec, params map[string]any) string {
 func (e *evalEnv) pathEvidence(cc *compiledCheck, act map[string]any) []Evidence {
 	var ev []Evidence
 	for _, p := range cc.evidencePaths {
-		v, err := e.eval(cc.env, p, act)
-		item := Evidence{Key: p.source}
+		v, err := e.eval(cc.env, p.prog, act)
+		item := Evidence{Key: p.path}
 		switch {
+		case err != nil && p.mapKey:
+			// Selecting a fact path only fails on a map key the host does not have.
+			item.Text = p.path + ": not set"
 		case err != nil:
-			item.Text = p.source + ": " + err.Error()
+			item.Text = p.path + ": " + err.Error()
 		case types.IsUnknown(v):
 			continue
 		default:
-			if s, ok := v.Value().(facts.Setting); ok {
-				state := "explicit"
-				if !s.Explicit {
-					state = "default"
-				}
-				item.Text = fmt.Sprintf("%s = %q (%s)", p.source, s.Value, state)
-				item.Source = s.Source
-			} else {
-				item.Text = p.source + " = " + render(v)
-			}
+			item.Text, item.Source = describeValue(p.path, v)
 		}
 		ev = append(ev, item)
 	}
 	return ev
+}
+
+// describeValue renders one fact value as evidence text: settings with their
+// state and source, maps as their keys, anything else as a literal.
+func describeValue(path string, v ref.Val) (text, source string) {
+	if s, ok := asSetting(v); ok {
+		state := "explicit"
+		if !s.Explicit {
+			state = "default"
+		}
+		return fmt.Sprintf("%s = %q (%s)", path, s.Value, state), s.Source
+	}
+	if m, ok := v.(traits.Mapper); ok {
+		var keys []string
+		for it := m.Iterator(); it.HasNext() == types.True; {
+			keys = append(keys, fmt.Sprint(it.Next().Value()))
+		}
+		if len(keys) == 0 {
+			return path + " is empty", ""
+		}
+		sort.Strings(keys)
+		return path + " has " + strings.Join(boundList(keys, maxShownKeys), ", "), ""
+	}
+	return path + " = " + render(v), ""
 }
 
 func (e *evalEnv) evalViolations(cc *compiledCheck, strict, partial map[string]any, failed, incomplete []string) outcome {
@@ -358,13 +381,27 @@ func (e *evalEnv) matchViolations(cc *compiledCheck, over ref.Val, act map[strin
 	return o
 }
 
+// asSetting returns v as a Setting: map entries hold Setting values, struct
+// fields come back as pointers.
+func asSetting(v ref.Val) (facts.Setting, bool) {
+	switch x := v.Value().(type) {
+	case facts.Setting:
+		return x, true
+	case *facts.Setting:
+		if x != nil {
+			return *x, true
+		}
+	}
+	return facts.Setting{}, false
+}
+
 // render formats a CEL value for evidence.
 func render(v ref.Val) string {
-	switch x := v.Value().(type) {
-	case string:
+	if s, ok := asSetting(v); ok {
+		return strconv.Quote(s.Value)
+	}
+	if x, ok := v.Value().(string); ok {
 		return strconv.Quote(x)
-	case facts.Setting:
-		return strconv.Quote(x.Value)
 	}
 	if l, ok := v.(traits.Lister); ok {
 		n := int(l.Size().(types.Int))
@@ -390,8 +427,19 @@ func listEvidence(key string, v ref.Val) []Evidence {
 	return []Evidence{{Key: key, Text: render(v)}}
 }
 
-// evalFile evaluates a file check from metadata (ADR 0006 §3).
+// evalFile evaluates a file check from the file collector's metadata
+// (ADR 0006 §3).
 func (e *evalEnv) evalFile(spec *FileSpec) outcome {
+	switch {
+	case e.files == nil:
+		return errorOutcome("file metadata was not collected")
+	case !e.files.ok():
+		return errorOutcome("files: %v", e.files.err)
+	}
+	ff, ok := e.files.facts.Value.(*fileFacts)
+	if !ok {
+		return errorOutcome("files: unexpected facts %T", e.files.facts.Value)
+	}
 	type pathResult struct {
 		status Status
 		ev     Evidence
@@ -403,36 +451,47 @@ func (e *evalEnv) evalFile(spec *FileSpec) outcome {
 	}
 	for _, pattern := range spec.Paths {
 		paths := []string{pattern}
-		if strings.ContainsAny(pattern, `*?[`) {
-			matches, probs, err := hostfs.Glob(e.host.FS, pattern)
-			if err != nil {
-				return errorOutcome("%v", err)
+		if isGlob(pattern) {
+			g, ok := ff.Globs[pattern]
+			if !ok {
+				problems = append(problems, pattern+": not collected")
+				continue
 			}
-			problems = append(problems, probs...)
-			if len(matches) == 0 {
-				if len(probs) == 0 {
+			problems = append(problems, g.Problems...)
+			if len(g.Matches) == 0 {
+				if len(g.Problems) == 0 {
 					add(outcomeStatus(spec.NoMatch), pattern, pattern+": no matching files")
 				}
 				continue
 			}
-			paths = matches
+			paths = g.Matches
 		}
 		for _, p := range paths {
-			fi, err := e.host.FS.Stat(p)
+			obs, ok := ff.Files[p]
 			switch {
-			case errors.Is(err, fs.ErrNotExist):
+			case !ok:
+				problems = append(problems, p+": not collected")
+			case obs.Err != "":
+				problems = append(problems, obs.Err)
+			case obs.DanglingTarget != "":
+				// Not missing: the file appears as soon as the target is
+				// created, so this can fail but never pass.
+				text := fmt.Sprintf("%s: symbolic link to %s, which does not exist", p, obs.DanglingTarget)
+				if outcomeStatus(spec.Missing) == StatusFail {
+					add(StatusFail, p, text)
+				} else {
+					problems = append(problems, text)
+				}
+			case obs.Missing:
 				add(outcomeStatus(spec.Missing), p, p+": does not exist")
-				continue
-			case err != nil:
-				problems = append(problems, err.Error())
-				continue
+			default:
+				st, text, err := checkFile(spec, obs.Info, ff.IDs)
+				if err != nil {
+					problems = append(problems, err.Error())
+					continue
+				}
+				add(st, p, text)
 			}
-			st, text, err := e.checkFile(spec, fi)
-			if err != nil {
-				problems = append(problems, err.Error())
-				continue
-			}
-			add(st, p, text)
 		}
 	}
 	o := outcome{status: StatusNotApplicable}
@@ -450,7 +509,7 @@ func (e *evalEnv) evalFile(spec *FileSpec) outcome {
 	case o.status == StatusFail:
 		return o // what was seen fails, whatever could not be seen
 	case len(problems) > 0:
-		return errorOutcome("%s", strings.Join(problems, "; "))
+		return errorOutcome("%s", summarize(problems))
 	case o.status == StatusNotApplicable:
 		o.reason = "no matching files exist"
 	case o.status == StatusError:
@@ -472,24 +531,24 @@ func outcomeStatus(s string) Status {
 }
 
 // checkFile compares one file's owner, group and mode with the spec.
-func (e *evalEnv) checkFile(spec *FileSpec, fi hostfs.FileInfo) (Status, string, error) {
+func checkFile(spec *FileSpec, fi hostfs.FileInfo, ids *idMap) (Status, string, error) {
 	var bad []string
 	if len(spec.Owner) > 0 {
-		ok, err := e.ids.matches(spec.Owner, fi.UID, false)
+		ok, err := ids.matches(spec.Owner, fi.UID, false)
 		if err != nil {
 			return "", "", err
 		}
 		if !ok {
-			bad = append(bad, fmt.Sprintf("owner %s is not %s", e.ids.userName(fi.UID), strings.Join(spec.Owner, " or ")))
+			bad = append(bad, fmt.Sprintf("owner %s is not %s", ids.userName(fi.UID), strings.Join(spec.Owner, " or ")))
 		}
 	}
 	if len(spec.Group) > 0 {
-		ok, err := e.ids.matches(spec.Group, fi.GID, true)
+		ok, err := ids.matches(spec.Group, fi.GID, true)
 		if err != nil {
 			return "", "", err
 		}
 		if !ok {
-			bad = append(bad, fmt.Sprintf("group %s is not %s", e.ids.groupName(fi.GID), strings.Join(spec.Group, " or ")))
+			bad = append(bad, fmt.Sprintf("group %s is not %s", ids.groupName(fi.GID), strings.Join(spec.Group, " or ")))
 		}
 	}
 	if spec.Mode != "" {
@@ -498,7 +557,7 @@ func (e *evalEnv) checkFile(spec *FileSpec, fi hostfs.FileInfo) (Status, string,
 			bad = append(bad, fmt.Sprintf("mode %04o exceeds %04o", perm, maxMode))
 		}
 	}
-	desc := fmt.Sprintf("%s: %s:%s %04o", fi.Path, e.ids.userName(fi.UID), e.ids.groupName(fi.GID), fi.Perm())
+	desc := fmt.Sprintf("%s: %s:%s %04o", fi.Path, ids.userName(fi.UID), ids.groupName(fi.GID), fi.Perm())
 	if len(bad) > 0 {
 		return StatusFail, desc + " — " + strings.Join(bad, ", "), nil
 	}
@@ -514,12 +573,43 @@ func limitEvidence(ev []Evidence) ([]Evidence, int) {
 		ev = ev[:maxEvidence]
 	}
 	for i := range ev {
-		if len(ev[i].Text) > maxEvidenceText {
-			ev[i].Text = ev[i].Text[:maxEvidenceText] + "…"
-		}
+		ev[i].Text = truncate(ev[i].Text, maxEvidenceText)
 	}
 	if ev == nil {
 		ev = []Evidence{}
 	}
 	return ev, omitted
+}
+
+// summarize joins the distinct items, showing at most maxReasonItems.
+func summarize(items []string) string {
+	seen := map[string]bool{}
+	var distinct []string
+	for _, s := range items {
+		if !seen[s] {
+			seen[s] = true
+			distinct = append(distinct, s)
+		}
+	}
+	return strings.Join(boundList(distinct, maxReasonItems), "; ")
+}
+
+// boundList keeps the first n items and says how many were left out.
+func boundList(items []string, n int) []string {
+	if len(items) <= n {
+		return items
+	}
+	return append(items[:n:n], fmt.Sprintf("and %d more", len(items)-n))
+}
+
+// truncate shortens s to at most n bytes without splitting a UTF-8 sequence.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	cut := n
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + "…"
 }

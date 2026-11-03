@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/internal/facts"
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
@@ -20,16 +21,22 @@ import (
 // occurrence is listed, in the order the files are read, with a flag for
 // occurrences inside if/case blocks; rules decide what to accept.
 type ShellEnv struct {
-	TMOUT []ShellValue `json:"tmout"` // TMOUT assignments
+	TMOUT []ShellValue `json:"tmout"` // TMOUT assignments and unsets
 	Umask []ShellValue `json:"umask"` // umask commands
 	Path  []ShellValue `json:"path"`  // PATH assignments
+	// EffectiveTMOUT is what the unconditional TMOUT assignments and unsets
+	// leave, in reading order; once TMOUT is read-only, later changes fail.
+	// It is unset when none survives. Conditional occurrences are only in
+	// TMOUT, for rules to judge.
+	EffectiveTMOUT facts.Setting `json:"effective_tmout"`
 }
 
 // ShellValue is one occurrence in a startup file.
 type ShellValue struct {
 	Value       string `json:"value"`
 	Readonly    bool   `json:"readonly"`    // readonly or declare -r on the same line
-	Conditional bool   `json:"conditional"` // inside an if or case block
+	Conditional bool   `json:"conditional"` // inside an if or case block, or a one-line one
+	Unset       bool   `json:"unset"`       // an unset command (TMOUT only); Value is ""
 	Source      string `json:"source"`
 }
 
@@ -42,11 +49,11 @@ var shellFiles = []string{
 }
 
 var (
-	tmoutRe = regexp.MustCompile(`(?:^|[;\s])(readonly\s+|export\s+|declare\s+-[a-zA-Z]+\s+|typeset\s+-[a-zA-Z]+\s+)?TMOUT=["']?(\d*)["']?`)
-	umaskRe = regexp.MustCompile(`(?:^|[;\s])umask\s+([0-7]{3,4}|[ugoa=+,rwx-]+)\b`)
-	pathRe  = regexp.MustCompile(`(?:^|[;\s])(?:export\s+)?PATH=("[^"]*"|'[^']*'|\S*)`)
-	openRe  = regexp.MustCompile(`^(if|case)\b`)
-	closeRe = regexp.MustCompile(`^(fi|esac)\b`)
+	tmoutRe      = regexp.MustCompile(`(?:^|[;&|\s])(readonly\s+|export\s+|declare\s+-[a-zA-Z]+\s+|typeset\s+-[a-zA-Z]+\s+)?TMOUT=["']?(\d*)["']?`)
+	unsetTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s])unset\s+(?:-v\s+)?(?:\w+\s+)*TMOUT\b`)
+	umaskRe      = regexp.MustCompile(`(?:^|[;&|\s])umask\s+([0-7]{3,4}|[ugoa=+,rwx-]+)\b`)
+	pathRe       = regexp.MustCompile(`(?:^|[;&|\s])(?:export\s+)?PATH=("[^"]*"|'[^']*'|\S*)`)
+	shellSepRe   = regexp.MustCompile(`[\s;&|()]+`)
 )
 
 type shellEnvCollector struct{}
@@ -80,7 +87,25 @@ func (shellEnvCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 			scanShellFile(env, file, data)
 		}
 	}
+	env.EffectiveTMOUT = effectiveTMOUT(env.TMOUT)
 	return engine.Facts{Value: env, Complete: len(skipped) == 0, Skipped: skipped}, nil
+}
+
+// effectiveTMOUT replays the unconditional TMOUT occurrences in order.
+func effectiveTMOUT(occurrences []ShellValue) facts.Setting {
+	var cur facts.Setting
+	readonly := false
+	for _, v := range occurrences {
+		switch {
+		case v.Conditional || readonly:
+		case v.Unset:
+			cur = facts.Setting{}
+		default:
+			cur = facts.Setting{Value: v.Value, Explicit: true, Source: v.Source}
+			readonly = v.Readonly
+		}
+	}
+	return cur
 }
 
 func scanShellFile(env *ShellEnv, file string, data []byte) {
@@ -88,30 +113,55 @@ func scanShellFile(env *ShellEnv, file string, data []byte) {
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
 	for line := 1; sc.Scan(); line++ {
-		text := strings.TrimSpace(sc.Text())
-		if i := strings.Index(text, "#"); i == 0 {
+		code := stripShellComment(strings.TrimSpace(sc.Text()))
+		if code == "" {
 			continue
 		}
-		if closeRe.MatchString(text) && depth > 0 {
-			depth--
-		}
+		opens, closes := blockWords(code)
 		src := fmt.Sprintf("%s:%d", file, line)
-		cond := depth > 0
-		if m := tmoutRe.FindStringSubmatch(text); m != nil {
-			env.TMOUT = append(env.TMOUT, ShellValue{Value: m[2], Readonly: readonlyTMOUT(m[1], text), Conditional: cond, Source: src})
-		} else if strings.Contains(text, "readonly TMOUT") && len(env.TMOUT) > 0 {
+		// Inside a block, or on a line that opens one (a one-line if or
+		// case), a command may not run.
+		cond := depth > 0 || opens > 0
+		switch m := tmoutRe.FindStringSubmatch(code); {
+		case m != nil:
+			env.TMOUT = append(env.TMOUT, ShellValue{Value: m[2], Readonly: readonlyTMOUT(m[1], code), Conditional: cond, Source: src})
+		case unsetTMOUTRe.MatchString(code):
+			env.TMOUT = append(env.TMOUT, ShellValue{Unset: true, Conditional: cond, Source: src})
+		case strings.Contains(code, "readonly TMOUT") && len(env.TMOUT) > 0:
 			env.TMOUT[len(env.TMOUT)-1].Readonly = true
 		}
-		if m := umaskRe.FindStringSubmatch(text); m != nil {
+		if m := umaskRe.FindStringSubmatch(code); m != nil {
 			env.Umask = append(env.Umask, ShellValue{Value: m[1], Conditional: cond, Source: src})
 		}
-		if m := pathRe.FindStringSubmatch(text); m != nil {
+		if m := pathRe.FindStringSubmatch(code); m != nil {
 			env.Path = append(env.Path, ShellValue{Value: strings.Trim(m[1], `"'`), Conditional: cond, Source: src})
 		}
-		if openRe.MatchString(text) && !strings.Contains(text, "; fi") && !strings.HasSuffix(text, "esac") {
-			depth++
+		depth = max(depth+opens-closes, 0)
+	}
+}
+
+// blockWords counts the words that open (if, case) and close (fi, esac)
+// shell blocks on a line.
+func blockWords(code string) (opens, closes int) {
+	for _, w := range shellSepRe.Split(code, -1) {
+		switch w {
+		case "if", "case":
+			opens++
+		case "fi", "esac":
+			closes++
 		}
 	}
+	return opens, closes
+}
+
+// stripShellComment removes a comment: "#" at the start of a word.
+func stripShellComment(text string) string {
+	for i := 0; i < len(text); i++ {
+		if text[i] == '#' && (i == 0 || text[i-1] == ' ' || text[i-1] == '\t') {
+			return strings.TrimSpace(text[:i])
+		}
+	}
+	return text
 }
 
 // readonlyTMOUT reports whether a TMOUT assignment is made read-only: by

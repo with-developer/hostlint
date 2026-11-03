@@ -13,29 +13,23 @@ import (
 )
 
 // idMap resolves user and group names from the target's /etc/passwd and
-// /etc/group (only names and IDs are read). It is loaded on first use.
+// /etc/group (only names and IDs are read). The file collector loads it, so
+// evaluating file checks does no I/O.
 type idMap struct {
-	fsys   hostfs.FS
-	loaded bool
-	err    error
+	err    error // set when either file could not be read
 	users  map[string]int64
 	groups map[string]int64
 	uids   map[int64]string
 	gids   map[int64]string
 }
 
-func newIDMap(fsys hostfs.FS) *idMap { return &idMap{fsys: fsys} }
-
-func (m *idMap) load() error {
-	if m.loaded {
-		return m.err
-	}
-	m.loaded = true
-	m.users, m.uids, m.err = parseIDs(m.fsys, "/etc/passwd")
+func loadIDMap(fsys hostfs.FS) *idMap {
+	m := &idMap{}
+	m.users, m.uids, m.err = parseIDs(fsys, "/etc/passwd")
 	if m.err == nil {
-		m.groups, m.gids, m.err = parseIDs(m.fsys, "/etc/group")
+		m.groups, m.gids, m.err = parseIDs(fsys, "/etc/group")
 	}
-	return m.err
+	return m
 }
 
 // parseIDs reads name:x:id lines; only the first and third fields are kept.
@@ -84,8 +78,8 @@ func (m *idMap) matches(want []string, id int64, group bool) (bool, error) {
 			}
 			continue
 		}
-		if err := m.load(); err != nil {
-			return false, fmt.Errorf("cannot resolve %q: %w", w, err)
+		if m.err != nil {
+			return false, fmt.Errorf("cannot resolve %q: %w", w, m.err)
 		}
 		table := m.users
 		if group {
@@ -102,14 +96,12 @@ func (m *idMap) userName(id int64) string  { return m.name(id, false) }
 func (m *idMap) groupName(id int64) string { return m.name(id, true) }
 
 func (m *idMap) name(id int64, group bool) string {
-	if m.load() == nil {
-		table := m.uids
-		if group {
-			table = m.gids
-		}
-		if n, ok := table[id]; ok {
-			return n
-		}
+	table := m.uids
+	if group {
+		table = m.gids
+	}
+	if n, ok := table[id]; ok {
+		return n
 	}
 	if id == 0 {
 		return "root"
