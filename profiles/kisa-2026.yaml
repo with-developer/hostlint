@@ -86,9 +86,7 @@ controls:
     title: No files without an owner
     title_ko: 소유자 없는 파일 정리
     severity: high
-    manual: >-
-      Look for files and directories whose owner or group has no account (for example
-      `find / -xdev \( -nouser -o -nogroup \) -ls`) and give them an owner or remove them.
+    checks: [files.unowned]
   - id: U-16
     title: Ownership and permissions of /etc/passwd
     title_ko: /etc/passwd 소유자·권한
@@ -128,9 +126,7 @@ controls:
     title: Set-ID programs are reviewed
     title_ko: SUID·SGID 파일 점검
     severity: high
-    manual: >-
-      List programs with the set-user-ID or set-group-ID bit (for example
-      `find / -xdev -type f -perm /6000 -ls`) and remove the bits from those that do not need them.
+    checks: [files.setid-outside-system-dirs, files.review-setid]
   - id: U-24
     title: Users' startup files are protected
     title_ko: 사용자 시작 파일 소유자·권한
@@ -142,16 +138,12 @@ controls:
     title: World-writable files are known
     title_ko: 모든 사용자 쓰기 가능 파일 점검
     severity: high
-    manual: >-
-      List world-writable files (for example `find / -xdev -type f -perm -0002 -ls`), and make
-      sure each one has a reason; remove the permission from the others.
+    checks: [files.world-writable]
   - id: U-26
     title: No stray files in /dev
     title_ko: /dev의 일반 파일 점검
     severity: high
-    manual: >-
-      Look for regular files under /dev (for example `find /dev -type f`), which hold no devices,
-      and remove those that do not belong there.
+    checks: [files.dev-regular-files]
   - id: U-27
     title: No password-less trust through .rhosts or hosts.equiv
     title_ko: .rhosts·hosts.equiv 신뢰 관계 제한
