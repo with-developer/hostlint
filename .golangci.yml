@@ -1,5 +1,8 @@
 version: "2"
 
+run:
+  build-tags: [e2e] # lint the end-to-end tests too
+
 linters:
   default: standard
   enable:
@@ -89,6 +92,12 @@ linters:
         linters:
           - forbidigo
         text: (read the host through internal/hostfs|raw system calls belong)
+      # The end-to-end tests drive Docker on the developer's machine or CI; they
+      # are not part of hostlint.
+      - path: e2e/
+        linters:
+          - depguard
+        text: only internal/hostfs may run commands
       - path: internal/output/
         linters:
           - forbidigo

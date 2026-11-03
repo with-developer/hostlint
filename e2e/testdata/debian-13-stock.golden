@@ -1,0 +1,340 @@
+os: Debian GNU/Linux 13 (trixie) (id debian, version 13, family debian, supported true)
+profile kisa-2026 revision 1: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
+
+U-01 NOT_APPLICABLE
+  ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+  ssh.match-permit-root-login NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+U-02 FAIL
+  accounts.password-min-length FAIL
+    - pam.password_quality.module = ""
+    - pam.password_quality.settings.dcredit.value: not set
+    - pam.password_quality.settings.enforcing.value: not set
+    - pam.password_quality.settings.lcredit.value: not set
+    - pam.password_quality.settings.minlen.value: not set
+    - pam.password_quality.settings.ocredit.value: not set
+    - pam.password_quality.settings.ucredit.value: not set
+  accounts.password-complexity FAIL
+    - pam.password_quality.module = ""
+    - pam.password_quality.settings.dcredit.value: not set
+    - pam.password_quality.settings.enforcing.value: not set
+    - pam.password_quality.settings.lcredit.value: not set
+    - pam.password_quality.settings.minclass.value: not set
+    - pam.password_quality.settings.ocredit.value: not set
+    - pam.password_quality.settings.ucredit.value: not set
+  accounts.password-quality-root FAIL
+    - pam.password_quality.module = ""
+    - pam.password_quality.settings.enforcing.value: not set
+  accounts.password-max-age FAIL
+    - "99999" (explicit); expected 1–90  [/etc/login.defs:97]
+  accounts.password-min-age FAIL
+    - "0" (explicit); expected 1–99999  [/etc/login.defs:98]
+  accounts.password-history FAIL
+    - pam.password_history.module = ""
+    - pam.password_history.settings.remember.value: not set
+
+U-03 FAIL
+  accounts.lockout-threshold FAIL
+    - pam.lockout.login.enforced = false
+    - pam.lockout.login.settings.deny.value: not set
+    - pam.lockout.sshd.enforced = false
+    - pam.lockout.sshd.settings.deny.value: not set
+    - sshd.config.usepam.value: not set
+    - sshd.present = false
+
+U-04 PASS
+  accounts.passwd-no-hashes PASS
+  accounts.shadow-file PASS
+    - shadow.present = true
+
+U-05 PASS
+  accounts.uid0-only-root PASS
+
+U-06 FAIL
+  accounts.su-wheel-only FAIL
+    - not set; expected one of [restricted]
+
+U-07 MANUAL
+  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially default accounts such as lp, uucp or games, and accounts of people who have left.
+    - root (uid 0, /bin/bash)
+
+U-08 MANUAL
+  accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
+    - root: (no supplementary members)
+    - sudo: (no supplementary members)
+
+U-09 MANUAL
+  accounts.review-empty-groups MANUAL: Confirm whether each listed group is still needed; many belong to installed software and own files or devices.
+    - adm (gid 4)
+    - tty (gid 5)
+    - disk (gid 6)
+    - kmem (gid 15)
+    - dialout (gid 20)
+    - fax (gid 21)
+    - voice (gid 22)
+    - cdrom (gid 24)
+    - floppy (gid 25)
+    - tape (gid 26)
+    - sudo (gid 27)
+    - audio (gid 29)
+    - dip (gid 30)
+    - operator (gid 37)
+    - src (gid 40)
+    - shadow (gid 42)
+    - utmp (gid 43)
+    - video (gid 44)
+    - sasl (gid 45)
+    - plugdev (gid 46)
+    - staff (gid 50)
+    - users (gid 100)
+
+U-10 PASS
+  accounts.unique-uids PASS
+
+U-11 PASS
+  accounts.system-account-shells PASS
+
+U-12 FAIL
+  accounts.session-timeout-set FAIL
+    - not set; expected a value matching [1-9][0-9]*
+  accounts.session-timeout-value PASS
+
+U-13 PASS
+  accounts.password-hash-method PASS
+    - login_defs.settings.ENCRYPT_METHOD.value = "YESCRYPT"
+    - os.id = "debian"
+    - os.version_major = 13
+    - pam.effective.password_hash.value = "yescrypt"
+  accounts.password-hash-strength PASS
+
+U-14 PASS
+  env.path-current-dir PASS
+
+U-15 PASS
+  files.unowned PASS
+
+U-16 PASS
+  files.passwd-perms PASS
+    - /etc/passwd: root:root 0644  [/etc/passwd]
+
+U-17 PASS
+  files.startup-scripts PASS
+    - /etc/init.d/*: no matching files  [/etc/init.d/*]
+    - /etc/rc.d/init.d/*: no matching files  [/etc/rc.d/init.d/*]
+    - /etc/rc.d/rc.local: does not exist  [/etc/rc.d/rc.local]
+    - /etc/rc.local: does not exist  [/etc/rc.local]
+    - /etc/systemd/system/*.service: no matching files  [/etc/systemd/system/*.service]
+
+U-18 FAIL
+  files.shadow-perms FAIL
+    - /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400  [/etc/shadow]
+
+U-19 PASS
+  files.hosts-perms PASS
+    - /etc/hosts: root:root 0644  [/etc/hosts]
+
+U-20 NOT_APPLICABLE
+  files.inetd-conf-perms NOT_APPLICABLE: no matching files exist
+    - /etc/inetd.conf: does not exist  [/etc/inetd.conf]
+    - /etc/xinetd.conf: does not exist  [/etc/xinetd.conf]
+    - /etc/xinetd.d/*: no matching files  [/etc/xinetd.d/*]
+
+U-21 NOT_APPLICABLE
+  files.syslog-conf-perms NOT_APPLICABLE: no matching files exist
+    - /etc/rsyslog.conf: does not exist  [/etc/rsyslog.conf]
+    - /etc/rsyslog.d/*.conf: no matching files  [/etc/rsyslog.d/*.conf]
+    - /etc/syslog.conf: does not exist  [/etc/syslog.conf]
+
+U-22 NOT_APPLICABLE
+  files.services-perms NOT_APPLICABLE: no matching files exist
+    - /etc/services: does not exist  [/etc/services]
+
+U-23 MANUAL
+  files.setid-outside-system-dirs PASS
+  files.review-setid MANUAL: Check that every listed program needs its set-ID bit.
+    - /usr/bin/chage 2755 root
+    - /usr/bin/chfn 4755 root
+    - /usr/bin/chsh 4755 root
+    - /usr/bin/expiry 2755 root
+    - /usr/bin/gpasswd 4755 root
+    - /usr/bin/mount 4755 root
+    - /usr/bin/newgrp 4755 root
+    - /usr/bin/passwd 4755 root
+    - /usr/bin/su 4755 root
+    - /usr/bin/umount 4755 root
+    - /usr/sbin/unix_chkpwd 2755 root
+
+U-24 PASS
+  homes.startup-files PASS
+
+U-25 PASS
+  files.world-writable PASS
+
+U-26 PASS
+  files.dev-regular-files PASS
+
+U-27 PASS
+  files.rhosts PASS
+    - /etc/hosts.equiv: does not exist  [/etc/hosts.equiv]
+    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
+    - /root/.rhosts: does not exist  [/root/.rhosts]
+
+U-28 MANUAL
+
+U-29 PASS
+  files.hosts-lpd-perms PASS
+    - /etc/hosts.lpd: does not exist  [/etc/hosts.lpd]
+
+U-30 PASS
+  env.umask-login-defs PASS
+    - "022" (default); expected a value matching 0*[0-7]?[2367][2367]  [default (login.defs(5))]
+  env.umask-startup-files PASS
+
+U-31 PASS
+  homes.owner-perms PASS
+
+U-32 PASS
+  homes.exists PASS
+
+U-33 MANUAL
+
+U-34 PASS
+  services.no-finger PASS
+
+U-35 NOT_APPLICABLE
+  services.review-anonymous-sharing NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "smb", "smbd", "samba"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd|smbd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-36 PASS
+  services.no-r-services PASS
+
+U-37 PASS
+  files.cron-commands PASS
+    - /usr/bin/at: does not exist  [/usr/bin/at]
+    - /usr/bin/crontab: does not exist  [/usr/bin/crontab]
+  files.cron-files PASS
+    - /etc/at.allow: does not exist  [/etc/at.allow]
+    - /etc/at.deny: does not exist  [/etc/at.deny]
+    - /etc/cron.allow: does not exist  [/etc/cron.allow]
+    - /etc/cron.d/*: no matching files  [/etc/cron.d/*]
+    - /etc/cron.deny: does not exist  [/etc/cron.deny]
+    - /etc/crontab: does not exist  [/etc/crontab]
+
+U-38 PASS
+  services.no-dos-prone PASS
+
+U-39 PASS
+  services.no-nfs-server PASS
+
+U-40 NOT_APPLICABLE
+  services.review-nfs-exports NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-41 PASS
+  services.no-automount PASS
+
+U-42 PASS
+  services.no-rpc PASS
+
+U-43 PASS
+  services.no-nis PASS
+
+U-44 PASS
+  services.no-tftp-talk PASS
+
+U-45 NOT_APPLICABLE
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-46 NOT_APPLICABLE
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-47 NOT_APPLICABLE
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-48 NOT_APPLICABLE
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-49 NOT_APPLICABLE
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-50 NOT_APPLICABLE
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-51 NOT_APPLICABLE
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-52 PASS
+  services.no-telnet PASS
+
+U-53 NOT_APPLICABLE
+  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-54 NOT_APPLICABLE
+  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-55 PASS
+  services.ftp-account-shell PASS
+
+U-56 NOT_APPLICABLE
+  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-57 NOT_APPLICABLE
+  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-58 PASS
+  services.no-snmp PASS
+
+U-59 NOT_APPLICABLE
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-60 NOT_APPLICABLE
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-61 NOT_APPLICABLE
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+
+U-62 MANUAL
+
+U-63 NOT_APPLICABLE
+  files.sudoers-perms NOT_APPLICABLE: no matching files exist
+    - /etc/sudoers: does not exist  [/etc/sudoers]
+    - /etc/sudoers.d/*: no matching files  [/etc/sudoers.d/*]
+
+U-64 MANUAL
+
+U-65 FAIL
+  services.time-sync FAIL
+    - services.active is empty
+    - services.units["chrony.service"].enabled: not set
+    - services.units["chrony.service"].masked: not set
+    - services.units["chronyd.service"].enabled: not set
+    - services.units["chronyd.service"].masked: not set
+    - services.units["ntp.service"].enabled: not set
+    - services.units["ntp.service"].masked: not set
+    - services.units["ntpd.service"].enabled: not set
+    - services.units["ntpd.service"].masked: not set
+    - services.units["ntpsec.service"].enabled: not set
+    - services.units["ntpsec.service"].masked: not set
+    - services.units["systemd-timesyncd.service"].enabled: not set
+    - services.units["systemd-timesyncd.service"].masked: not set
+  services.review-time-sync MANUAL: Check that the time service uses your approved servers (chrony.conf, ntp.conf or timesyncd.conf).
+
+U-66 MANUAL
+
+U-67 MANUAL

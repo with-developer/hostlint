@@ -21,7 +21,7 @@ GOLANGCI_LINT := $(TOOLS)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 GOVULNCHECK_VERSION := v1.9.0
 
 .DEFAULT_GOAL := help
-.PHONY: help build test lint lint-guards fmt tidy vuln clean
+.PHONY: help build test lint lint-guards fmt tidy vuln e2e clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -50,6 +50,13 @@ tidy: ## Tidy go.mod and go.sum
 
 vuln: ## Scan dependencies for known vulnerabilities
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+
+# E2E_RUN selects distributions (e.g. debian-12); E2E_UPDATE=1 rewrites their goldens.
+E2E_RUN ?=
+E2E_UPDATE ?=
+
+e2e: ## Scan every supported distribution in Docker, stock and hardened, against e2e/testdata
+	cd e2e && go test -tags e2e -count=1 -timeout 60m $(if $(E2E_RUN),-run 'TestE2E/$(E2E_RUN)-') $(if $(E2E_UPDATE),-update) .
 
 clean: ## Remove build output and downloaded tools
 	rm -rf $(BINARY) dist/ $(TOOLS)
