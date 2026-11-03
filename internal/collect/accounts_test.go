@@ -3,6 +3,7 @@ package collect
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"reflect"
 	"strings"
@@ -92,6 +93,33 @@ func TestAccountsMalformedLinesMakeFactsIncomplete(t *testing.T) {
 	}
 	if f.Complete || len(f.Skipped) != 2 || strings.Contains(strings.Join(f.Skipped, " "), "notanumber") {
 		t.Errorf("complete %v, skipped %q", f.Complete, f.Skipped)
+	}
+}
+
+// glibc accepts records without their trailing fields and comments after
+// blanks; a hash behind a lock marker is still a readable hash.
+func TestAccountsRecords(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/passwd", "root:x:0:0:root:/root:/bin/bash\ntoor:x:0:0::/root\n  # old:x:0:0::/:/bin/sh\n"+
+			"legacy:!$6$salt$abcdefghijklmnopqrstuvwxyz:1000:1000::/home/legacy:/bin/bash\nsvc:NP:999:999::/:/sbin/nologin\n", 0o644, 0, 0).
+		AddFile("/etc/group", "root:x:0:\nwheel:x:10\n", 0o644, 0, 0)
+	f, err := collect(t, accountsCollector{}, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.Complete {
+		t.Errorf("skipped %v", f.Skipped)
+	}
+	a := f.Value.(*Accounts)
+	var got []string
+	for _, u := range a.Users {
+		got = append(got, fmt.Sprintf("%s:%d:%s:%v", u.Name, u.UID, u.Password, u.LoginShell))
+	}
+	if want := "root:0:shadowed:true toor:0:shadowed:true legacy:1000:hash:true svc:999:locked:false"; strings.Join(got, " ") != want {
+		t.Errorf("users = %s, want %s", strings.Join(got, " "), want)
+	}
+	if len(a.Groups) != 2 || a.Groups[1].Name != "wheel" || a.Groups[1].GID != 10 {
+		t.Errorf("groups = %+v", a.Groups)
 	}
 }
 

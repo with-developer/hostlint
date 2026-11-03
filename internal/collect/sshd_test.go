@@ -115,3 +115,24 @@ func TestSSHDUnreadableInclude(t *testing.T) {
 		t.Errorf("complete %v, skipped %v", f.Complete, f.Skipped)
 	}
 }
+
+// An included file's Match block ends with the file, as in sshd; hidden
+// files are not included.
+func TestSSHDIncludeScope(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/usr/sbin/sshd", "", 0o755, 0, 0).
+		AddFile("/etc/ssh/sshd_config", "Include /etc/ssh/sshd_config.d/*.conf\nPermitRootLogin no\nUsePAM yes\n", 0o644, 0, 0).
+		AddFile("/etc/ssh/sshd_config.d/10-sftp.conf", "Match Group sftponly\n    ForceCommand internal-sftp\n", 0o644, 0, 0).
+		AddFile("/etc/ssh/sshd_config.d/.05-disabled.conf", "PermitRootLogin yes\n", 0o644, 0, 0)
+	f, err := sshdCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := f.Value.(*SSHD)
+	if s.Config["permitrootlogin"].Value != "no" || s.Config["usepam"].Value != "yes" {
+		t.Errorf("global config = %+v", s.Config)
+	}
+	if len(s.Match) != 1 || len(s.Match[0].Settings) != 1 {
+		t.Errorf("match = %+v", s.Match)
+	}
+}
