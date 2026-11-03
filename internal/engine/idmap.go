@@ -3,9 +3,7 @@ package engine
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
-	"io/fs"
 	"strconv"
 	"strings"
 
@@ -16,33 +14,31 @@ import (
 // /etc/group (only names and IDs are read). The file collector loads it, so
 // evaluating file checks does no I/O.
 type idMap struct {
-	err    error // set when either file could not be read
-	users  map[string]int64
-	groups map[string]int64
-	uids   map[int64]string
-	gids   map[int64]string
+	users, groups idTable
+}
+
+// idTable is one of the two files. When err is set, names cannot be
+// resolved: a missing or unreadable file must not make a name look unused.
+type idTable struct {
+	err    error
+	byName map[string]int64
+	byID   map[int64]string
 }
 
 func loadIDMap(fsys hostfs.FS) *idMap {
-	m := &idMap{}
-	m.users, m.uids, m.err = parseIDs(fsys, "/etc/passwd")
-	if m.err == nil {
-		m.groups, m.gids, m.err = parseIDs(fsys, "/etc/group")
-	}
-	return m
+	return &idMap{users: parseIDs(fsys, "/etc/passwd"), groups: parseIDs(fsys, "/etc/group")}
 }
 
 // parseIDs reads name:x:id lines; only the first and third fields are kept.
-func parseIDs(fsys hostfs.FS, path string) (map[string]int64, map[int64]string, error) {
-	byName, byID := map[string]int64{}, map[int64]string{}
+func parseIDs(fsys hostfs.FS, path string) idTable {
+	t := idTable{byName: map[string]int64{}, byID: map[int64]string{}}
 	data, err := fsys.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return byName, byID, nil
-	}
 	if err != nil {
-		return nil, nil, err
+		t.err = err
+		return t
 	}
 	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc.Buffer(make([]byte, 0, 64<<10), 1<<20) // group lines list members
 	for sc.Scan() {
 		f := strings.SplitN(sc.Text(), ":", 4)
 		if len(f) < 3 || f[0] == "" || strings.HasPrefix(f[0], "#") {
@@ -52,19 +48,37 @@ func parseIDs(fsys hostfs.FS, path string) (map[string]int64, map[int64]string, 
 		if err != nil {
 			continue
 		}
-		if _, dup := byName[f[0]]; !dup {
-			byName[f[0]] = id
+		if _, dup := t.byName[f[0]]; !dup {
+			t.byName[f[0]] = id
 		}
-		if _, dup := byID[id]; !dup {
-			byID[id] = f[0]
+		if _, dup := t.byID[id]; !dup {
+			t.byID[id] = f[0]
 		}
 	}
-	return byName, byID, sc.Err()
+	if err := sc.Err(); err != nil {
+		t.err = fmt.Errorf("%s: %w", path, err)
+	}
+	return t
+}
+
+// problems lists the files that could not be read.
+func (m *idMap) problems() []string {
+	var out []string
+	for _, t := range []idTable{m.users, m.groups} {
+		if t.err != nil {
+			out = append(out, t.err.Error())
+		}
+	}
+	return out
 }
 
 // matches reports whether id is one of the names or numeric IDs in want.
 // "root" (and 0) always resolve, even without /etc/passwd.
 func (m *idMap) matches(want []string, id int64, group bool) (bool, error) {
+	t := m.users
+	if group {
+		t = m.groups
+	}
 	for _, w := range want {
 		if n, err := strconv.ParseInt(w, 10, 64); err == nil {
 			if n == id {
@@ -78,29 +92,21 @@ func (m *idMap) matches(want []string, id int64, group bool) (bool, error) {
 			}
 			continue
 		}
-		if m.err != nil {
-			return false, fmt.Errorf("cannot resolve %q: %w", w, m.err)
+		if t.err != nil {
+			return false, fmt.Errorf("cannot resolve %q: %w", w, t.err)
 		}
-		table := m.users
-		if group {
-			table = m.groups
-		}
-		if want, ok := table[w]; ok && want == id {
+		if v, ok := t.byName[w]; ok && v == id {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func (m *idMap) userName(id int64) string  { return m.name(id, false) }
-func (m *idMap) groupName(id int64) string { return m.name(id, true) }
+func (m *idMap) userName(id int64) string  { return m.users.name(id) }
+func (m *idMap) groupName(id int64) string { return m.groups.name(id) }
 
-func (m *idMap) name(id int64, group bool) string {
-	table := m.uids
-	if group {
-		table = m.gids
-	}
-	if n, ok := table[id]; ok {
+func (t idTable) name(id int64) string {
+	if n, ok := t.byID[id]; ok {
 		return n
 	}
 	if id == 0 {

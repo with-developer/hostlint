@@ -236,3 +236,56 @@ func (s slowFS) ReadDir(name string) ([]FileInfo, error) {
 	time.Sleep(10 * time.Millisecond)
 	return s.FS.ReadDir(name)
 }
+
+// A symbolic link to a missing target is not an empty directory: whoever can
+// create the target controls what the pattern matches.
+func TestGlobDanglingLink(t *testing.T) {
+	fsys := walkFixture().
+		AddSymlink("/etc/cron.daily", "/tmp/gone").
+		AddSymlink("/home/x", "/tmp/gone")
+	tests := []struct {
+		pattern string
+		problem string
+	}{
+		{"/etc/cron.daily/*", "/etc/cron.daily: symbolic link to /tmp/gone, which does not exist"},
+		{"/etc/cron.daily/job", "/etc/cron.daily: symbolic link to /tmp/gone, which does not exist"},
+		{"/home/*/.rhosts", "/home/x: symbolic link to /tmp/gone, which does not exist"},
+		{"/etc/missing/*", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pattern, func(t *testing.T) {
+			_, problems, err := Glob(fsys, tt.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Join(problems, "; "); got != tt.problem {
+				t.Errorf("problems = %q, want %q", got, tt.problem)
+			}
+		})
+	}
+	if target, ok := DanglingLink(fsys, "/home/x"); !ok || target != "/tmp/gone" {
+		t.Errorf("DanglingLink(/home/x) = %q, %v", target, ok)
+	}
+	for _, p := range []string{"/home/link", "/etc", "/nowhere"} {
+		if _, ok := DanglingLink(fsys, p); ok {
+			t.Errorf("DanglingLink(%s) = true", p)
+		}
+	}
+}
+
+func TestHostname(t *testing.T) {
+	tests := []struct{ file, want string }{
+		{"# set by cloud-init\n\nweb-01\n", "web-01"},
+		{"  db  \n", "db"},
+		{"# only a comment\n", ""},
+	}
+	for _, tt := range tests {
+		h := NewTestHost(NewMemFS().AddFile("/etc/hostname", tt.file, 0o644, 0, 0), nil, false)
+		if got := h.Hostname(); got != tt.want {
+			t.Errorf("Hostname() with %q = %q, want %q", tt.file, got, tt.want)
+		}
+	}
+	if got := NewTestHost(NewMemFS(), nil, false).Hostname(); got != "" {
+		t.Errorf("Hostname() without /etc/hostname = %q", got)
+	}
+}

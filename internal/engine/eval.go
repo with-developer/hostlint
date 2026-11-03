@@ -1,12 +1,11 @@
 package engine
 
 import (
+	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -46,6 +45,7 @@ type outcome struct {
 	status   Status
 	reason   string
 	evidence []Evidence
+	omitted  int // evidence items not built
 	coverage *Coverage
 }
 
@@ -53,58 +53,123 @@ func errorOutcome(format string, args ...any) outcome {
 	return outcome{status: StatusError, reason: fmt.Sprintf(format, args...)}
 }
 
-// activations builds the two activations of ADR 0006 §5 step 2: complete
-// facts only (failed, unavailable and incomplete collectors are unknown),
-// and all available facts including incomplete ones.
-func (e *evalEnv) activations(cc *compiledCheck, params map[string]any) (strict, partial map[string]any, failed, incomplete []string) {
-	strictVars := map[string]any{}
-	partialVars := map[string]any{}
+// bindings are the variables of one check evaluation (ADR 0006 §5 step 2).
+// strict binds complete facts only: failed, unavailable and incomplete
+// collectors, and the fields a collector could not determine, are CEL
+// unknowns. partial also binds the facts of incomplete collectors.
+type bindings struct {
+	strict, partial               cel.PartialActivation
+	strictUnknown, partialUnknown []*cel.AttributePatternType
+	failed, incomplete            []string // collectors
+	unknownFields                 []string // collector.field
+}
+
+func (e *evalEnv) bind(cc *compiledCheck, params map[string]any) (*bindings, error) {
+	b := &bindings{}
+	strictVars, partialVars := map[string]any{}, map[string]any{}
 	for name, v := range params {
 		strictVars["params."+name] = v
 		partialVars["params."+name] = v
 	}
 	for _, name := range cc.vars {
 		c := e.collected[name]
-		switch {
-		case c == nil || !c.ok():
-			failed = append(failed, name)
-		case !c.facts.Complete:
-			incomplete = append(incomplete, name)
-			partialVars[name] = c.facts.Value
-		default:
+		if c == nil || !c.ok() {
+			b.failed = append(b.failed, name)
+			b.strictUnknown = append(b.strictUnknown, cel.AttributePattern(name))
+			b.partialUnknown = append(b.partialUnknown, cel.AttributePattern(name))
+			continue
+		}
+		partialVars[name] = c.facts.Value
+		if c.facts.Complete {
 			strictVars[name] = c.facts.Value
-			partialVars[name] = c.facts.Value
+		} else {
+			b.incomplete = append(b.incomplete, name)
+			b.strictUnknown = append(b.strictUnknown, cel.AttributePattern(name))
+		}
+		for _, field := range c.facts.Unknown {
+			pat := cel.AttributePattern(name)
+			for _, q := range strings.Split(field, ".") {
+				pat = pat.QualString(q)
+			}
+			b.strictUnknown = append(b.strictUnknown, pat)
+			b.partialUnknown = append(b.partialUnknown, pat)
+			b.unknownFields = append(b.unknownFields, name+"."+field)
 		}
 	}
-	return strictVars, partialVars, failed, incomplete
+	var err error
+	if b.strict, err = cel.PartialVars(strictVars, b.strictUnknown...); err != nil {
+		return nil, err
+	}
+	if b.partial, err = cel.PartialVars(partialVars, b.partialUnknown...); err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
-// unknownReason explains an undetermined result.
-func (e *evalEnv) unknownReason(failed, incomplete []string) string {
-	var parts []string
-	for _, name := range failed {
-		if c := e.collected[name]; c != nil && c.err != nil {
-			parts = append(parts, fmt.Sprintf("%s: %v", name, c.err))
-		} else {
-			parts = append(parts, name+": not collected")
-		}
-	}
-	for _, name := range incomplete {
-		c := e.collected[name]
-		parts = append(parts, fmt.Sprintf("%s: incomplete observation (%s)", name, summarize(c.facts.Skipped)))
+// unknownReason explains an undetermined result v. It names the collectors
+// v depends on when v says which; otherwise every unknown input.
+func (e *evalEnv) unknownReason(b *bindings, v ref.Val) string {
+	vars := unknownVars(v)
+	parts := e.unknownParts(b, vars)
+	if len(parts) == 0 && vars != nil {
+		parts = e.unknownParts(b, nil)
 	}
 	return strings.Join(parts, "; ")
 }
 
-// eval evaluates p with vars; collector variables missing from vars are
-// CEL unknowns.
-func (e *evalEnv) eval(env *cel.Env, p *program, vars map[string]any) (ref.Val, error) {
-	act, err := env.PartialVars(vars)
-	if err != nil {
-		return nil, err
+func (e *evalEnv) unknownParts(b *bindings, vars map[string]bool) []string {
+	relevant := func(name string) bool { return vars == nil || vars[name] }
+	var parts []string
+	for _, name := range b.failed {
+		switch c := e.collected[name]; {
+		case !relevant(name):
+		case c != nil && c.err != nil:
+			parts = append(parts, fmt.Sprintf("%s: %v", name, c.err))
+		default:
+			parts = append(parts, name+": not collected")
+		}
 	}
-	v, _, err := p.prg.ContextEval(e.ctx, act)
-	return v, err
+	for _, name := range b.incomplete {
+		if relevant(name) {
+			parts = append(parts, fmt.Sprintf("%s: incomplete observation (%s)", name, summarize(e.collected[name].facts.Skipped)))
+		}
+	}
+	for _, field := range b.unknownFields {
+		name, _, _ := strings.Cut(field, ".")
+		if relevant(name) {
+			parts = append(parts, fmt.Sprintf("%s: not determined (%s)", field, summarize(e.collected[name].facts.Skipped)))
+		}
+	}
+	return parts
+}
+
+// unknownVars returns the variables an unknown value depends on, or nil.
+func unknownVars(v ref.Val) map[string]bool {
+	u, ok := v.(*types.Unknown)
+	if !ok {
+		return nil
+	}
+	vars := map[string]bool{}
+	for _, id := range u.IDs() {
+		trails, _ := u.GetAttributeTrails(id)
+		for _, t := range trails {
+			vars[t.Variable()] = true
+		}
+	}
+	if len(vars) == 0 {
+		return nil
+	}
+	return vars
+}
+
+// eval evaluates p and reports its cost.
+func (e *evalEnv) eval(p *program, act cel.Activation) (ref.Val, uint64, error) {
+	v, det, err := p.prg.ContextEval(e.ctx, act)
+	var cost uint64
+	if c := det.ActualCost(); c != nil {
+		cost = *c
+	}
+	return v, cost, err
 }
 
 // evaluate runs one check instance (ADR 0006 §5).
@@ -118,17 +183,21 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 			return outcome{status: StatusNotApplicable, reason: fmt.Sprintf("applies to %s, not %s", strings.Join(c.Platforms, ", "), e.os.Family)}
 		}
 	}
-	strict, partial, failed, incomplete := e.activations(cc, params)
+	b, err := e.bind(cc, params)
+	if err != nil {
+		return errorOutcome("%v", err)
+	}
 
 	if cc.applies != nil {
-		v, err := e.eval(cc.env, cc.applies, strict)
+		v, _, err := e.eval(cc.applies, b.strict)
 		switch {
 		case err != nil:
 			return errorOutcome("applies: %v", err)
 		case types.IsUnknown(v):
-			return errorOutcome("cannot decide whether the check applies: %s", e.unknownReason(failed, incomplete))
+			return errorOutcome("cannot decide whether the check applies: %s", e.unknownReason(b, v))
 		case v == types.False:
-			return outcome{status: StatusNotApplicable, reason: "applies is false: " + cc.applies.source}
+			return outcome{status: StatusNotApplicable, reason: "applies is false: " + cc.applies.source,
+				evidence: e.pathEvidence(cc.appliesPaths, b.strict)}
 		}
 	}
 
@@ -136,33 +205,33 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 	case c.File != nil:
 		return e.evalFile(c.File)
 	case cc.setting != nil:
-		return e.evalSetting(cc, params, strict, failed, incomplete)
+		return e.evalSetting(cc, params, b)
 	case cc.expect != nil:
-		v, err := e.eval(cc.env, cc.expect, strict)
+		v, _, err := e.eval(cc.expect, b.strict)
 		switch {
 		case err != nil:
 			return errorOutcome("expect: %v", err)
 		case types.IsUnknown(v):
-			return errorOutcome("%s", e.unknownReason(failed, incomplete))
+			return errorOutcome("%s", e.unknownReason(b, v))
 		}
-		o := outcome{status: StatusFail, evidence: e.pathEvidence(cc, strict)}
+		o := outcome{status: StatusFail, evidence: e.pathEvidence(cc.evidencePaths, b.strict)}
 		if v == types.True {
 			o.status = StatusPass
 		}
 		return o
 	case cc.over != nil:
-		return e.evalViolations(cc, strict, partial, failed, incomplete)
+		return e.evalViolations(cc, b)
 	case c.Manual != nil:
 		o := outcome{status: StatusManual, reason: c.Manual.Guidance}
 		if cc.show != nil {
-			v, err := e.eval(cc.env, cc.show, strict)
+			v, _, err := e.eval(cc.show, b.strict)
 			switch {
 			case err != nil:
 				o.reason += " (evidence unavailable: " + err.Error() + ")"
 			case types.IsUnknown(v):
-				o.reason += " (evidence unavailable: " + e.unknownReason(failed, incomplete) + ")"
+				o.reason += " (evidence unavailable: " + e.unknownReason(b, v) + ")"
 			default:
-				o.evidence = listEvidence("show", v)
+				o.evidence, o.omitted = listEvidence("show", v)
 			}
 		}
 		return o
@@ -170,22 +239,32 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 	return errorOutcome("check has no kind")
 }
 
-func (e *evalEnv) evalSetting(cc *compiledCheck, params, act map[string]any, failed, incomplete []string) outcome {
+func (e *evalEnv) evalSetting(cc *compiledCheck, params map[string]any, b *bindings) outcome {
 	spec := cc.check.Setting
-	v, err := e.eval(cc.env, cc.setting, act)
+	var lo, hi int64
+	if r := spec.Range; r != nil {
+		var err error
+		if lo, err = r.Min.resolve(params); err == nil {
+			hi, err = r.Max.resolve(params)
+		}
+		if err != nil {
+			return errorOutcome("setting.range: %v", err)
+		}
+	}
+	v, _, err := e.eval(cc.setting, b.strict)
 	switch {
 	case err != nil:
 		return errorOutcome("setting.fact: %v", err)
 	case types.IsUnknown(v):
 		// The unreadable part may hold the value that matters: never decide.
-		return errorOutcome("%s", e.unknownReason(failed, incomplete))
+		return errorOutcome("%s", e.unknownReason(b, v))
 	}
 	opt, ok := v.(*types.Optional)
 	if !ok {
 		return errorOutcome("setting.fact: unexpected value %v", v)
 	}
 	key := spec.Fact
-	want := describeWant(spec, params)
+	want := describeWant(spec, lo, hi)
 	if !opt.HasValue() {
 		switch spec.Absent {
 		case "fail":
@@ -209,7 +288,7 @@ func (e *evalEnv) evalSetting(cc *compiledCheck, params, act map[string]any, fai
 			return errorOutcome("%s is not set explicitly", key)
 		}
 	}
-	pass, err := compareSetting(spec, params, s.Value)
+	pass, err := compareSetting(spec, lo, hi, s.Value)
 	if err != nil {
 		return errorOutcome("%s: %v", key, err)
 	}
@@ -221,7 +300,7 @@ func (e *evalEnv) evalSetting(cc *compiledCheck, params, act map[string]any, fai
 	return o
 }
 
-func compareSetting(spec *SettingSpec, params map[string]any, value string) (bool, error) {
+func compareSetting(spec *SettingSpec, lo, hi int64, value string) (bool, error) {
 	switch {
 	case len(spec.In) > 0:
 		return slices.Contains(spec.In, value), nil
@@ -230,7 +309,6 @@ func compareSetting(spec *SettingSpec, params map[string]any, value string) (boo
 		if err != nil {
 			return false, fmt.Errorf("value %q is not an integer", value)
 		}
-		lo, hi := spec.Range.Min.resolve(params), spec.Range.Max.resolve(params)
 		return n >= lo && n <= hi, nil
 	default:
 		re, err := regexp.Compile(`^(?:` + spec.Matches + `)$`)
@@ -241,29 +319,33 @@ func compareSetting(spec *SettingSpec, params map[string]any, value string) (boo
 	}
 }
 
-func (b *Bound) resolve(params map[string]any) int64 {
-	if b.Param != "" {
-		v, _ := params[b.Param].(int64)
-		return v
+// resolve returns the bound's value; a parameter must be an int.
+func (b *Bound) resolve(params map[string]any) (int64, error) {
+	if b.Param == "" {
+		return b.Value, nil
 	}
-	return b.Value
+	v, ok := params[b.Param].(int64)
+	if !ok {
+		return 0, fmt.Errorf("params.%s is not an integer", b.Param)
+	}
+	return v, nil
 }
 
-func describeWant(spec *SettingSpec, params map[string]any) string {
+func describeWant(spec *SettingSpec, lo, hi int64) string {
 	switch {
 	case len(spec.In) > 0:
 		return "one of [" + strings.Join(spec.In, ", ") + "]"
 	case spec.Range != nil:
-		return fmt.Sprintf("%d–%d", spec.Range.Min.resolve(params), spec.Range.Max.resolve(params))
+		return fmt.Sprintf("%d–%d", lo, hi)
 	}
 	return "a value matching " + spec.Matches
 }
 
-// pathEvidence reports the values of the fact paths an expect expression reads.
-func (e *evalEnv) pathEvidence(cc *compiledCheck, act map[string]any) []Evidence {
+// pathEvidence reports the values of fact paths an expression reads.
+func (e *evalEnv) pathEvidence(paths []evidencePath, act cel.Activation) []Evidence {
 	var ev []Evidence
-	for _, p := range cc.evidencePaths {
-		v, err := e.eval(cc.env, p.prog, act)
+	for _, p := range paths {
+		v, _, err := e.eval(p.prog, act)
 		item := Evidence{Key: p.path}
 		switch {
 		case err != nil && p.mapKey:
@@ -299,57 +381,89 @@ func describeValue(path string, v ref.Val) (text, source string) {
 		if len(keys) == 0 {
 			return path + " is empty", ""
 		}
-		sort.Strings(keys)
+		slices.Sort(keys)
 		return path + " has " + strings.Join(boundList(keys, maxShownKeys), ", "), ""
 	}
 	return path + " = " + render(v), ""
 }
 
-func (e *evalEnv) evalViolations(cc *compiledCheck, strict, partial map[string]any, failed, incomplete []string) outcome {
+func (e *evalEnv) evalViolations(cc *compiledCheck, b *bindings) outcome {
 	spec := cc.check.Violations
-	over, err := e.eval(cc.env, cc.over, strict)
+	over, _, err := e.eval(cc.over, b.strict)
 	if err != nil {
 		return errorOutcome("violations.over: %v", err)
 	}
-	if types.IsUnknown(over) {
-		if len(failed) > 0 {
-			return errorOutcome("%s", e.unknownReason(failed, incomplete))
-		}
-		// Only incomplete facts: what was seen can still fail the check.
-		if over, err = e.eval(cc.env, cc.over, partial); err != nil || types.IsUnknown(over) {
-			return errorOutcome("%s", e.unknownReason(failed, incomplete))
-		}
-		o := e.matchViolations(cc, over, partial, failed, incomplete)
-		if o.status != StatusFail {
-			return errorOutcome("%s", e.unknownReason(failed, incomplete))
+	if !types.IsUnknown(over) {
+		o := e.matchViolations(cc, b, over)
+		if o.status == StatusPass && o.coverage.Count == 0 && !spec.AllowEmpty {
+			return errorOutcome("%s is empty, so there was nothing to check", spec.Over)
 		}
 		return o
 	}
-	o := e.matchViolations(cc, over, strict, failed, incomplete)
-	if o.status == StatusPass && o.coverage.Count == 0 && !spec.AllowEmpty {
-		return errorOutcome("%s is empty, so there was nothing to check", spec.Over)
+	reason := e.unknownReason(b, over)
+	for name := range unknownVars(over) {
+		if slices.Contains(b.failed, name) {
+			return errorOutcome("%s", reason)
+		}
+	}
+	// Only incomplete facts: the elements that were seen can still fail the
+	// check (ADR 0006 §5). matchViolations judges them with complete facts
+	// only, so a guess about what was not seen never makes one fail.
+	if over, _, err = e.eval(cc.over, b.partial); err != nil || types.IsUnknown(over) {
+		return errorOutcome("%s", reason)
+	}
+	o := e.matchViolations(cc, b, over)
+	if o.status != StatusFail {
+		return errorOutcome("%s", reason)
 	}
 	return o
 }
 
-// matchViolations evaluates where for every element of the population.
-func (e *evalEnv) matchViolations(cc *compiledCheck, over ref.Val, act map[string]any, failed, incomplete []string) outcome {
+// elemActivation binds the violations element on top of the check's other
+// variables, so they are bound once per check rather than once per element.
+type elemActivation struct {
+	base cel.Activation
+	name string
+	val  ref.Val
+}
+
+func (a *elemActivation) ResolveName(name string) (any, bool) {
+	if name == a.name {
+		return a.val, true
+	}
+	return a.base.ResolveName(name)
+}
+
+func (a *elemActivation) Parent() cel.Activation { return nil }
+
+// matchViolations evaluates where for every element of the population, with
+// complete facts only. Together, the evaluations may cost at most
+// celCheckBudget.
+func (e *evalEnv) matchViolations(cc *compiledCheck, b *bindings, over ref.Val) outcome {
 	spec := cc.check.Violations
 	list, ok := over.(traits.Lister)
 	if !ok {
 		return errorOutcome("violations.over is not a list")
 	}
 	n := int(list.Size().(types.Int))
-	o := outcome{status: StatusPass, coverage: &Coverage{Population: spec.Over, Count: n}}
+	elem := &elemActivation{base: b.strict, name: spec.As}
+	act, err := cel.PartialVars(elem, b.strictUnknown...)
+	if err != nil {
+		return errorOutcome("%v", err)
+	}
+	var spent uint64
+	eval := func(p *program) (ref.Val, error) {
+		v, cost, err := e.eval(p, act)
+		spent += cost
+		return v, err
+	}
+	o := outcome{status: StatusPass}
 	var firstErr error
-	undecided := false
-	for i := 0; i < n; i++ {
-		elemVars := make(map[string]any, len(act)+1)
-		for k, v := range act {
-			elemVars[k] = v
-		}
-		elemVars[spec.As] = list.Get(types.Int(i))
-		v, err := e.eval(cc.elemEnv, cc.where, elemVars)
+	var firstUnknown ref.Val
+	checked := 0
+	for ; checked < n && spent <= celCheckBudget; checked++ {
+		elem.val = list.Get(types.Int(checked))
+		v, err := eval(cc.where)
 		switch {
 		case err != nil:
 			if firstErr == nil {
@@ -357,28 +471,50 @@ func (e *evalEnv) matchViolations(cc *compiledCheck, over ref.Val, act map[strin
 			}
 			continue
 		case types.IsUnknown(v):
-			undecided = true
+			if firstUnknown == nil {
+				firstUnknown = v
+			}
 			continue
 		case v != types.True:
 			continue
 		}
-		key, kerr := e.eval(cc.elemEnv, cc.key, elemVars)
-		text, terr := e.eval(cc.elemEnv, cc.text, elemVars)
-		if kerr != nil || terr != nil || types.IsUnknown(key) || types.IsUnknown(text) {
-			return errorOutcome("violations key/text: %v", errors.Join(kerr, terr))
-		}
 		o.status = StatusFail
-		o.evidence = append(o.evidence, Evidence{Key: fmt.Sprint(key.Value()), Text: fmt.Sprint(text.Value())})
+		if len(o.evidence) == maxEvidence {
+			o.omitted++
+			continue
+		}
+		o.evidence = append(o.evidence, violation(cc, checked, eval))
 	}
+	o.coverage = &Coverage{Population: spec.Over, Count: checked}
 	switch {
 	case o.status == StatusFail:
-		return o
+		return o // what matched fails, whatever else could not be decided
+	case checked < n:
+		return errorOutcome("stopped after %d of %d elements of %s: the evaluation cost limit was reached", checked, n, spec.Over)
 	case firstErr != nil:
 		return errorOutcome("violations.where: %v", firstErr)
-	case undecided:
-		return errorOutcome("%s", e.unknownReason(failed, incomplete))
+	case firstUnknown != nil:
+		return errorOutcome("%s", e.unknownReason(b, firstUnknown))
 	}
 	return o
+}
+
+// violation is the evidence of one matching element. A key or text that
+// cannot be evaluated does not undo the match.
+func violation(cc *compiledCheck, i int, eval func(*program) (ref.Val, error)) Evidence {
+	ev := Evidence{Key: fmt.Sprintf("%s[%d]", cc.check.Violations.Over, i)}
+	if k, err := eval(cc.key); err == nil && !types.IsUnknown(k) {
+		ev.Key = fmt.Sprint(k.Value())
+	}
+	switch t, err := eval(cc.text); {
+	case err != nil:
+		ev.Text = "matched; its text could not be evaluated: " + err.Error()
+	case types.IsUnknown(t):
+		ev.Text = "matched; its text depends on facts that were not observed"
+	default:
+		ev.Text = fmt.Sprint(t.Value())
+	}
+	return ev
 }
 
 // asSetting returns v as a Setting: map entries hold Setting values, struct
@@ -395,7 +531,8 @@ func asSetting(v ref.Val) (facts.Setting, bool) {
 	return facts.Setting{}, false
 }
 
-// render formats a CEL value for evidence.
+// render formats a CEL value for evidence; it shows at most maxShownKeys
+// elements of a list.
 func render(v ref.Val) string {
 	if s, ok := asSetting(v); ok {
 		return strconv.Quote(s.Value)
@@ -405,30 +542,41 @@ func render(v ref.Val) string {
 	}
 	if l, ok := v.(traits.Lister); ok {
 		n := int(l.Size().(types.Int))
-		parts := make([]string, 0, n)
-		for i := 0; i < n; i++ {
+		parts := make([]string, 0, min(n, maxShownKeys))
+		for i := range min(n, maxShownKeys) {
 			parts = append(parts, render(l.Get(types.Int(i))))
+		}
+		if n > maxShownKeys {
+			parts = append(parts, fmt.Sprintf("and %d more", n-maxShownKeys))
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
 	}
 	return fmt.Sprint(v.Value())
 }
 
-// listEvidence turns a show value into evidence items, one per list element.
-func listEvidence(key string, v ref.Val) []Evidence {
-	if l, ok := v.(traits.Lister); ok {
-		n := int(l.Size().(types.Int))
-		ev := make([]Evidence, 0, n)
-		for i := 0; i < n; i++ {
-			ev = append(ev, Evidence{Key: fmt.Sprintf("%s[%d]", key, i), Text: strings.Trim(render(l.Get(types.Int(i))), `"`)})
-		}
-		return ev
+// listEvidence turns a show value into evidence items, one per list element
+// up to maxEvidence; strings are shown as they are.
+func listEvidence(key string, v ref.Val) ([]Evidence, int) {
+	l, ok := v.(traits.Lister)
+	if !ok {
+		return []Evidence{{Key: key, Text: render(v)}}, 0
 	}
-	return []Evidence{{Key: key, Text: render(v)}}
+	n := int(l.Size().(types.Int))
+	ev := make([]Evidence, 0, min(n, maxEvidence))
+	for i := range min(n, maxEvidence) {
+		item := l.Get(types.Int(i))
+		text, ok := item.Value().(string)
+		if !ok {
+			text = render(item)
+		}
+		ev = append(ev, Evidence{Key: fmt.Sprintf("%s[%d]", key, i), Text: text})
+	}
+	return ev, n - len(ev)
 }
 
 // evalFile evaluates a file check from the file collector's metadata
-// (ADR 0006 §3).
+// (ADR 0006 §3). Only the check's own patterns matter: what the collector
+// could not observe elsewhere does not affect it.
 func (e *evalEnv) evalFile(spec *FileSpec) outcome {
 	switch {
 	case e.files == nil:
@@ -450,33 +598,34 @@ func (e *evalEnv) evalFile(spec *FileSpec) outcome {
 		results = append(results, pathResult{st, Evidence{Key: key, Text: text, Source: key}})
 	}
 	for _, pattern := range spec.Paths {
-		paths := []string{pattern}
-		if isGlob(pattern) {
-			g, ok := ff.Globs[pattern]
-			if !ok {
-				problems = append(problems, pattern+": not collected")
-				continue
-			}
-			problems = append(problems, g.Problems...)
-			if len(g.Matches) == 0 {
-				if len(g.Problems) == 0 {
-					add(outcomeStatus(spec.NoMatch), pattern, pattern+": no matching files")
-				}
-				continue
-			}
-			paths = g.Matches
+		po, ok := ff.Patterns[pattern]
+		switch {
+		case !ok:
+			problems = append(problems, pattern+notObserved)
+			continue
+		case po.Err != "":
+			problems = append(problems, po.Err)
+			continue
 		}
-		for _, p := range paths {
-			obs, ok := ff.Files[p]
+		problems = append(problems, po.Problems...)
+		if isGlob(pattern) && len(po.Files) == 0 {
+			if len(po.Problems) == 0 {
+				add(outcomeStatus(spec.NoMatch), pattern, pattern+": no matching files")
+			}
+			continue
+		}
+		for _, obs := range po.Files {
+			p := obs.Path
 			switch {
-			case !ok:
-				problems = append(problems, p+": not collected")
 			case obs.Err != "":
 				problems = append(problems, obs.Err)
-			case obs.DanglingTarget != "":
+			case obs.DanglingLink != "":
 				// Not missing: the file appears as soon as the target is
 				// created, so this can fail but never pass.
 				text := fmt.Sprintf("%s: symbolic link to %s, which does not exist", p, obs.DanglingTarget)
+				if obs.DanglingLink != p {
+					text = fmt.Sprintf("%s: %s is a symbolic link to %s, which does not exist", p, obs.DanglingLink, obs.DanglingTarget)
+				}
 				if outcomeStatus(spec.Missing) == StatusFail {
 					add(StatusFail, p, text)
 				} else {
@@ -564,12 +713,12 @@ func checkFile(spec *FileSpec, fi hostfs.FileInfo, ids *idMap) (Status, string, 
 	return StatusPass, desc, nil
 }
 
-// limitEvidence sorts evidence by key and bounds its size.
-func limitEvidence(ev []Evidence) ([]Evidence, int) {
-	sort.SliceStable(ev, func(i, j int) bool { return ev[i].Key < ev[j].Key })
-	omitted := 0
+// limitEvidence sorts evidence by key (ADR 0006 §8) and bounds its size;
+// omitted counts items left out before.
+func limitEvidence(ev []Evidence, omitted int) ([]Evidence, int) {
+	slices.SortStableFunc(ev, func(a, b Evidence) int { return compareKeys(a.Key, b.Key) })
 	if len(ev) > maxEvidence {
-		omitted = len(ev) - maxEvidence
+		omitted += len(ev) - maxEvidence
 		ev = ev[:maxEvidence]
 	}
 	for i := range ev {
@@ -581,17 +730,48 @@ func limitEvidence(ev []Evidence) ([]Evidence, int) {
 	return ev, omitted
 }
 
+// compareKeys orders evidence keys, comparing list indexes as numbers:
+// show[2] comes before show[10].
+func compareKeys(a, b string) int {
+	pa, ia, oka := splitIndex(a)
+	pb, ib, okb := splitIndex(b)
+	if !oka || !okb || pa != pb {
+		return strings.Compare(a, b)
+	}
+	return cmp.Or(cmp.Compare(len(ia), len(ib)), strings.Compare(ia, ib))
+}
+
+// splitIndex splits "name[12]" into "name" and "12".
+func splitIndex(key string) (prefix, index string, ok bool) {
+	i := strings.LastIndexByte(key, '[')
+	if i < 0 || !strings.HasSuffix(key, "]") {
+		return "", "", false
+	}
+	index = strings.TrimLeft(key[i+1:len(key)-1], "0")
+	for _, r := range key[i+1 : len(key)-1] {
+		if r < '0' || r > '9' {
+			return "", "", false
+		}
+	}
+	return key[:i], index, i+2 < len(key)
+}
+
 // summarize joins the distinct items, showing at most maxReasonItems.
 func summarize(items []string) string {
+	return strings.Join(boundList(distinct(items), maxReasonItems), "; ")
+}
+
+// distinct returns items without repeats, in their first order.
+func distinct(items []string) []string {
 	seen := map[string]bool{}
-	var distinct []string
+	var out []string
 	for _, s := range items {
 		if !seen[s] {
 			seen[s] = true
-			distinct = append(distinct, s)
+			out = append(out, s)
 		}
 	}
-	return strings.Join(boundList(distinct, maxReasonItems), "; ")
+	return out
 }
 
 // boundList keeps the first n items and says how many were left out.

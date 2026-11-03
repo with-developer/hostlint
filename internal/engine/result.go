@@ -13,18 +13,29 @@ const (
 	StatusWaived        Status = "WAIVED"
 )
 
-// AllStatuses lists every status, in aggregation precedence (highest first).
-var AllStatuses = []Status{StatusFail, StatusError, StatusManual, StatusWaived, StatusPass, StatusNotApplicable}
+// Statuses lists every status, in aggregation precedence (highest first).
+func Statuses() []Status {
+	return []Status{StatusFail, StatusError, StatusManual, StatusWaived, StatusPass, StatusNotApplicable}
+}
 
 func (s Status) valid() bool { return s.precedence() > 0 }
 
 // precedence ranks statuses for control aggregation (ADR 0006 §7): FAIL >
 // ERROR > MANUAL > WAIVED > PASS > NOT_APPLICABLE; 0 for anything else.
 func (s Status) precedence() int {
-	for i, st := range AllStatuses {
-		if s == st {
-			return len(AllStatuses) - i
-		}
+	switch s {
+	case StatusFail:
+		return 6
+	case StatusError:
+		return 5
+	case StatusManual:
+		return 4
+	case StatusWaived:
+		return 3
+	case StatusPass:
+		return 2
+	case StatusNotApplicable:
+		return 1
 	}
 	return 0
 }
