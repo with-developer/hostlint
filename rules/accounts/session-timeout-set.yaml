@@ -3,23 +3,32 @@ version: 1
 title: Idle shells time out
 title_ko: 세션 종료 시간(TMOUT) 설정
 severity: low
-description: Checks that a system-wide or root startup file sets TMOUT.
+description: >-
+  Checks that the system-wide and root startup files leave TMOUT set to a positive number of
+  seconds: assignments inside if or case blocks do not count, and a later unset removes it.
 rationale: An unattended logged-in terminal can be used by anyone who reaches it.
 remediation: Add `TMOUT=600` and `readonly TMOUT` and `export TMOUT` to a file in /etc/profile.d.
-expect: >-
-  size(shell_env.tmout) > 0
+setting:
+  fact: shell_env.effective_tmout
+  matches: "[1-9][0-9]*"
+  absent: fail
 tests:
   - name: set
     facts:
-      shell_env: {tmout: [{value: "600", readonly: true, source: "/etc/profile.d/timeout.sh:1"}]}
+      shell_env: {effective_tmout: {value: "600", explicit: true, source: "/etc/profile.d/timeout.sh:1"}}
     want: PASS
-  - name: not set
+  - name: disabled
     facts:
-      shell_env: {tmout: []}
+      shell_env: {effective_tmout: {value: "0", explicit: true, source: "/root/.bashrc:3"}}
+    want: FAIL
+  - name: not set, or only conditionally
+    input: absent
+    facts:
+      shell_env: {tmout: [{value: "600", conditional: true, source: "/etc/profile:40"}]}
     want: FAIL
   - name: startup files incomplete
     input: incomplete
     incomplete: [shell_env]
     facts:
-      shell_env: {tmout: []}
+      shell_env: {effective_tmout: {value: "600", explicit: true}}
     want: ERROR

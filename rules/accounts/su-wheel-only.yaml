@@ -4,39 +4,33 @@ title: Only members of the wheel group can use su
 title_ko: su 명령어 사용 그룹 제한
 severity: high
 description: >-
-  Checks that the su PAM stack uses pam_wheel, which limits su to members of the wheel group
-  (or the group given with group=). Hosts without regular user accounts are not applicable.
+  Checks that the su PAM stack has a pam_wheel line that denies users outside the wheel group
+  (or the group given with group=). A line with trust or deny, a control that does not deny
+  (optional, sufficient), or a sufficient rule earlier in the stack does not restrict su.
 rationale: >-
-  Without the restriction, any local user who learns the root password can become root with su.
+  Without the restriction, any user who learns the root password can become root with su.
 remediation: >-
-  Uncomment or add `auth required pam_wheel.so use_uid` in /etc/pam.d/su and add
-  administrators to the wheel group.
-params:
-  first_user_uid: {type: int, default: 1000, stricter: lower, description: First UID of regular user accounts}
-applies: >-
-  accounts.users.exists(u, u.uid >= params.first_user_uid && u.login_shell)
-expect: >-
-  "auth pam_wheel.so" in pam.modules.su
+  Add `auth required pam_wheel.so use_uid` to /etc/pam.d/su, before the common-auth or
+  system-auth include, and add administrators to the wheel group.
+setting:
+  fact: pam.su_wheel
+  in: [restricted]
+  absent: fail
 tests:
   - name: restricted
     facts:
-      accounts: {users: [{name: alice, uid: 1000, login_shell: true}]}
-      pam: {modules: {su: ["auth pam_rootok.so", "auth pam_wheel.so", "auth pam_unix.so"]}}
+      pam: {su_wheel: {value: restricted, explicit: true, source: "/etc/pam.d/su:15"}}
     want: PASS
-  - name: open to everyone
+  - name: trust does not restrict
     facts:
-      accounts: {users: [{name: alice, uid: 1000, login_shell: true}]}
-      pam: {modules: {su: ["auth pam_rootok.so", "auth pam_unix.so"]}}
+      pam: {su_wheel: {value: "not restricted: trust (users outside the group are not denied)", explicit: true, source: "/etc/pam.d/su:19"}}
     want: FAIL
-  - name: no regular users
+  - name: no pam_wheel line
+    input: absent
     facts:
-      accounts: {users: [{name: root, uid: 0, login_shell: true}]}
-      pam: {modules: {su: []}}
-    want: NOT_APPLICABLE
-  - name: accounts incomplete
-    input: incomplete
-    incomplete: [accounts]
-    facts:
-      accounts: {users: [{name: root, uid: 0, login_shell: true}]}
-      pam: {modules: {su: []}}
+      pam: {}
+    want: FAIL
+  - name: PAM unreadable
+    input: unavailable
+    unavailable: [pam]
     want: ERROR
