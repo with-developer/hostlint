@@ -23,9 +23,13 @@ Pre-v0.1. The layout below is the target; keep this file in sync as code lands.
   pinned linter into `.tools/` on first run
 - `make fmt` — format the code
 - `make vuln` — govulncheck
+- `make snapshot` — build every release artifact into `dist/` without publishing (GoReleaser;
+  `SNAPSHOT_SKIP=sign,sbom` without syft); `scripts/check-release.sh dist` checks them.
+  Releases: [docs/RELEASING.md](docs/RELEASING.md)
 - `make e2e` — container end-to-end tests (Docker; arrives with #13)
 
-CI runs test, lint, build (linux amd64/arm64) and vuln. `ci-ok` is the required check on `main`.
+CI runs test, lint, build (linux amd64/arm64), vuln and a release snapshot. `ci-ok` is the
+required check on `main`.
 
 ## Layout (target)
 

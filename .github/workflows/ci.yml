@@ -85,11 +85,33 @@ jobs:
           go-version: stable
       - run: make vuln
 
+  # Builds every release artifact as a snapshot (unsigned, unpublished), so the
+  # release pipeline is tested before a tag needs it (docs/RELEASING.md).
+  release-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # GoReleaser derives the version from tags
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.55.0
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.18.3 # keep in step with GORELEASER_VERSION in the Makefile
+          args: release --snapshot --clean --skip=sign
+      - run: shellcheck install.sh scripts/check-release.sh
+      - run: scripts/check-release.sh dist
+
   # Single required status check for branch protection. Fails unless every
   # job above succeeded (a skipped or cancelled job counts as a failure).
   ci-ok:
     if: always()
-    needs: [test, lint, build, vuln]
+    needs: [test, lint, build, vuln, release-snapshot]
     runs-on: ubuntu-latest
     steps:
       - env:

@@ -19,9 +19,14 @@ TOOLS := $(CURDIR)/.tools
 GOLANGCI_LINT_VERSION := v2.15.0
 GOLANGCI_LINT := $(TOOLS)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 GOVULNCHECK_VERSION := v1.9.0
+GORELEASER_VERSION := v2.18.3
+GORELEASER := $(TOOLS)/goreleaser-$(GORELEASER_VERSION)
+# Steps a snapshot skips: signing needs the release workflow's identity, and
+# SBOMs need syft (CI installs it; locally use SNAPSHOT_SKIP=sign,sbom).
+SNAPSHOT_SKIP ?= sign
 
 .DEFAULT_GOAL := help
-.PHONY: help build test lint lint-guards fmt tidy vuln clean
+.PHONY: help build test lint lint-guards fmt tidy vuln snapshot clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -51,9 +56,16 @@ tidy: ## Tidy go.mod and go.sum
 vuln: ## Scan dependencies for known vulnerabilities
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
+snapshot: $(GORELEASER) ## Build the release artifacts into dist/ without publishing (docs/RELEASING.md)
+	$(GORELEASER) release --snapshot --clean --skip=$(SNAPSHOT_SKIP)
+
 clean: ## Remove build output and downloaded tools
 	rm -rf $(BINARY) dist/ $(TOOLS)
 
 $(GOLANGCI_LINT):
 	GOBIN=$(TOOLS)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	mv $(TOOLS)/bin/golangci-lint $@
+
+$(GORELEASER):
+	GOBIN=$(TOOLS)/bin go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
+	mv $(TOOLS)/bin/goreleaser $@
