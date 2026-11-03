@@ -889,6 +889,14 @@ func pwqualityArgs(s map[string]facts.Setting, lib pwqualityLib, rule PAMRule) {
 		}
 		key, value, _ := strings.Cut(arg, "=")
 		key = strings.ToLower(key)
+		// Every version enforces these flags from the module line: up to
+		// 1.4.0 pam_pwquality parses them itself (libpwquality 1.2, EL7,
+		// has no such settings), later versions as settings that are set
+		// whatever their value.
+		if key == "enforce_for_root" || key == "local_users_only" {
+			s[key] = facts.Setting{Value: "1", Explicit: true, Source: rule.Source}
+			continue
+		}
 		if v, ok := pwqualityValue(lib, key, value); ok {
 			s[key] = facts.Setting{Value: v, Explicit: true, Source: rule.Source}
 		}

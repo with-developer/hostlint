@@ -253,6 +253,22 @@ func TestPAMPwqualityAsLibpwquality(t *testing.T) {
 	}
 }
 
+// enforce_for_root and local_users_only on the module line work with every
+// libpwquality: up to 1.4.0 pam_pwquality parses them itself, so EL7's 1.2,
+// which has no such settings in pwquality.conf, still honors them there.
+func TestPAMPwqualityModuleFlags(t *testing.T) {
+	for _, lib := range []string{legacyPwquality, modernPwquality} {
+		m := pwqualityHost(t, lib).AddFile("/etc/pam.d/passwd",
+			"password requisite pam_pwquality.so try_first_pass local_users_only retry=3 authtok_type= enforce_for_root\npassword sufficient pam_unix.so use_authtok\npassword required pam_deny.so\n", 0o644, 0, 0)
+		q := pamFacts(t, m).PasswordQuality
+		for _, k := range []string{"enforce_for_root", "local_users_only"} {
+			if s := q.Settings[k]; s.Value != "1" || !s.Explicit {
+				t.Errorf("%s: %s = %+v", lib, k, s)
+			}
+		}
+	}
+}
+
 // What libpwquality does not apply is not reported as set.
 func TestPAMPwqualityReading(t *testing.T) {
 	const passwd = "password requisite pam_pwquality.so\npassword sufficient pam_unix.so\npassword required pam_deny.so\n"
