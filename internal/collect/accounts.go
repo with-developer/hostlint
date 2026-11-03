@@ -104,24 +104,30 @@ func (accountsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	return engine.Facts{Value: a, Complete: len(skipped) == 0, Skipped: skipped}, nil
 }
 
-// passwdField classifies the password field of /etc/passwd.
+// passwdField classifies the password field of /etc/passwd. A hash behind
+// a lock marker ("!$6$...") is still a hash anyone can read; short markers
+// such as "*", "!!", "NP" or "LK" are not hashes.
 func passwdField(s string) string {
-	switch {
-	case s == "x":
+	switch s {
+	case "x":
 		return "shadowed"
-	case s == "":
+	case "":
 		return "empty"
-	case strings.HasPrefix(s, "*") || strings.HasPrefix(s, "!"):
-		return "locked"
 	}
-	return "hash"
+	rest := strings.TrimLeft(s, "!*")
+	if strings.HasPrefix(rest, "$") && len(rest) > 3 || len(rest) >= 13 {
+		return "hash"
+	}
+	return "locked"
 }
 
 var errMalformed = errors.New("malformed entry")
 
-// eachRecord calls fn for every colon-separated record of path with at least
-// n fields. Malformed records are recorded in skipped (never echoed: they
-// may contain secrets) so the facts are marked incomplete.
+// eachRecord calls fn for every colon-separated record of path, padded with
+// empty fields to n, as glibc accepts records without their trailing fields.
+// Lines starting with "#" after blanks are comments. Records with fewer
+// than three fields are recorded in skipped (never echoed: they may contain
+// secrets) so the facts are marked incomplete.
 func eachRecord(fsys hostfs.FS, path string, n int, fn func(fields []string, source string) error, skipped *[]string) error {
 	data, err := fsys.ReadFile(path)
 	if err != nil {
@@ -130,15 +136,18 @@ func eachRecord(fsys hostfs.FS, path string, n int, fn func(fields []string, sou
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
 	for line := 1; sc.Scan(); line++ {
-		text := sc.Text()
-		if strings.TrimSpace(text) == "" || strings.HasPrefix(text, "#") {
+		text := strings.TrimLeft(sc.Text(), " \t")
+		if trimASCII(text) == "" || strings.HasPrefix(text, "#") {
 			continue
 		}
 		src := fmt.Sprintf("%s:%d", path, line)
 		f := strings.Split(text, ":")
-		if len(f) < n || f[0] == "" {
+		if len(f) < 3 || f[0] == "" {
 			*skipped = append(*skipped, src+": malformed entry")
 			continue
+		}
+		for len(f) < n {
+			f = append(f, "")
 		}
 		if err := fn(f, src); err != nil {
 			*skipped = append(*skipped, src+": "+err.Error())
