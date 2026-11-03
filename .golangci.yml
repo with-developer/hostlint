@@ -93,6 +93,11 @@ linters:
         linters:
           - forbidigo
         text: use of `os\.(Create|OpenFile|WriteFile)` forbidden
+      # hostlint's own configuration file, on the machine running hostlint.
+      - path: internal/config/
+        linters:
+          - forbidigo
+        text: read the host through internal/hostfs
 
 formatters:
   enable:

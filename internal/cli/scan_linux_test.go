@@ -69,3 +69,35 @@ func TestScanMountedRoot(t *testing.T) {
 		t.Errorf("--output: exit %d, err %v, stdout %q", code, err, stdout)
 	}
 }
+
+// A waiver in the configuration accepts a failing control; the exit code
+// follows.
+func TestScanWithConfig(t *testing.T) {
+	root := fakeRoot(t)
+	cfg := filepath.Join(t.TempDir(), "hostlint.yaml")
+	text := "waivers:\n  - check: accounts.uid0-only-root\n    reason: toor is a break-glass account\n    expires: 2099-12-31\n" +
+		"  - check: accounts.password-max-age\n    reason: old\n    expires: 2020-01-01\n"
+	if err := os.WriteFile(cfg, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr := run(context.Background(), t, "scan", "--root", root, "--format", "json", "--config", cfg, "--fail-on", "high")
+	var res engine.Result
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
+		t.Fatalf("exit %d, not JSON: %v\n%s%s", code, err, stdout, stderr)
+	}
+	for _, c := range res.Controls {
+		if c.ID == "U-05" && c.Status != engine.StatusWaived {
+			t.Errorf("U-05 = %s, want WAIVED", c.Status)
+		}
+	}
+	if len(res.Waivers) != 1 || res.Waivers[0].Problem != "expired" {
+		t.Errorf("waiver notes = %+v", res.Waivers)
+	}
+	// A bad configuration stops the scan.
+	if err := os.WriteFile(cfg, []byte("waivers:\n  - check: no.such\n    reason: r\n    expires: 2099-01-01\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := run(context.Background(), t, "scan", "--root", root, "--config", cfg); code == ExitOK || !strings.Contains(stderr, `unknown check "no.such"`) {
+		t.Errorf("exit %d, stderr %q", code, stderr)
+	}
+}

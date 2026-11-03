@@ -72,13 +72,19 @@ type Options struct {
 	CollectorTimeout time.Duration
 	// Now returns the current time; tests set it for stable output.
 	Now func() time.Time
+	// Params override check parameters (check ID → parameter → value);
+	// each must be at least as strict as the profile's.
+	Params map[string]map[string]any
+	// Waivers accept results for a reason, until they expire.
+	Waivers []Waiver
 }
 
 // instance is one check evaluated with one set of parameters.
 type instance struct {
-	ref    string
-	cc     *compiledCheck
-	params map[string]any
+	ref        string
+	cc         *compiledCheck
+	params     map[string]any
+	customized bool // parameters overridden by the configuration
 }
 
 // Scan evaluates the profile's checks on the host.
@@ -104,9 +110,17 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		for _, id := range ctl.Checks {
 			cc := e.compiled[id]
 			params := effectiveParams(cc.check, ctl.Params[id])
+			customized := false
+			if over := opts.Params[id]; len(over) > 0 {
+				var err error
+				if params, err = overrideParams(cc.check, params, over); err != nil {
+					return nil, err
+				}
+				customized = true
+			}
 			ref := checkRef(cc.check, params)
 			if instances[ref] == nil {
-				instances[ref] = &instance{ref: ref, cc: cc, params: params}
+				instances[ref] = &instance{ref: ref, cc: cc, params: params, customized: customized}
 			}
 			controlRefs[i] = append(controlRefs[i], ref)
 		}
@@ -169,17 +183,26 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		Checks:        []CheckResult{},
 		Collectors:    []CollectorRun{},
 	}
+	res.Host = hostInfo(hostc, env.os, opts.Labels)
+	today := now().UTC().Truncate(24 * time.Hour)
+	notes := waiveChecks(opts.Waivers, checks, res.Host.Hostname, today)
 	summary := ProfileSummary{Controls: map[Status]int{}, Checks: map[Status]int{}}
 	for i, ctl := range profile.Controls {
 		cr := aggregate(profile.ID, ctl, controlRefs[i], checks)
+		notes = append(notes, waiveControl(opts.Waivers, profile, &cr, checks, res.Host.Hostname, today)...)
+		cr.Customized = slices.ContainsFunc(cr.Checks, func(ref string) bool { return checks[ref].Customized })
 		summary.Controls[cr.Status]++
 		res.Controls = append(res.Controls, cr)
 	}
 	for _, ref := range sortedKeys(checks) {
 		summary.Checks[checks[ref].Status]++
+		if checks[ref].Customized {
+			summary.Customized++
+		}
 		res.Checks = append(res.Checks, *checks[ref])
 	}
 	res.Summary[profile.ID] = summary
+	res.Waivers = notes
 	runs := map[string]*collected{hostCollectorName: hostc}
 	for name, c := range env.collected {
 		runs[name] = c
@@ -190,7 +213,6 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 	for _, name := range sortedKeys(runs) {
 		res.Collectors = append(res.Collectors, runs[name].run)
 	}
-	res.Host = hostInfo(hostc, env.os, opts.Labels)
 	res.Scan = ScanInfo{
 		ID:         newScanID(started),
 		StartedAt:  started.UTC().Format(time.RFC3339),
@@ -225,6 +247,7 @@ func (e *Engine) checkResult(in *instance, o outcome) *CheckResult {
 	if len(in.params) > 0 {
 		cr.Params = in.params
 	}
+	cr.Customized = in.customized
 	return cr
 }
 
