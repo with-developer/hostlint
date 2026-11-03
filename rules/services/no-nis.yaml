@@ -1,0 +1,36 @@
+id: services.no-nis
+version: 1
+title: NIS is not used
+title_ko: NIS 서비스 미사용
+severity: high
+description: >-
+  Lists the ways the NIS server and client daemons (ypserv, ypbind, yppasswdd, ypxfrd) is started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  NIS hands out account data, including password hashes, with weak protection.
+remediation: >-
+  Disable the NIS daemons and use a directory service with encryption, such as LDAP over TLS.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["ypserv", "ypbind", "yppasswdd", "ypxfrd", "nis"] || s.program.matches("/(rpc\\.)?(ypserv|ypbind|yppasswdd|ypxfrd)$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: ypbind, name: ypbind.service, kind: unit, program: /usr/sbin/ypbind, source: "/etc/systemd/system/multi-user.target.wants/ypbind.service"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

@@ -1,0 +1,42 @@
+id: services.time-sync
+version: 1
+title: A time synchronization service is started
+title_ko: 시각 동기화 서비스 사용
+severity: medium
+description: >-
+  Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled, or running on a live host.
+  Which servers it uses is for services.review-time-sync.
+rationale: Logs from hosts with drifting clocks cannot be correlated, and time-based protocols fail.
+remediation: Enable a time synchronization service (`systemctl enable --now chronyd`).
+expect: >-
+  ("chronyd.service" in services.units && services.units["chronyd.service"].enabled && !services.units["chronyd.service"].masked) ||
+  ("chrony.service" in services.units && services.units["chrony.service"].enabled && !services.units["chrony.service"].masked) ||
+  ("ntpd.service" in services.units && services.units["ntpd.service"].enabled && !services.units["ntpd.service"].masked) ||
+  ("ntp.service" in services.units && services.units["ntp.service"].enabled && !services.units["ntp.service"].masked) ||
+  ("ntpsec.service" in services.units && services.units["ntpsec.service"].enabled && !services.units["ntpsec.service"].masked) ||
+  ("systemd-timesyncd.service" in services.units && services.units["systemd-timesyncd.service"].enabled && !services.units["systemd-timesyncd.service"].masked) ||
+  "chronyd.service" in services.active || "chrony.service" in services.active || "ntpd.service" in services.active ||
+  "ntp.service" in services.active || "ntpsec.service" in services.active || "systemd-timesyncd.service" in services.active
+tests:
+  - name: chronyd enabled
+    facts:
+      services: {units: {chronyd.service: {enabled: true, file: /usr/lib/systemd/system/chronyd.service}}, active: {}}
+    want: PASS
+  - name: timesyncd running
+    facts:
+      services: {units: {}, active: {systemd-timesyncd.service: running}}
+    want: PASS
+  - name: none
+    facts:
+      services: {units: {chronyd.service: {enabled: false, file: /usr/lib/systemd/system/chronyd.service}}, active: {}}
+    want: FAIL
+  - name: masked
+    facts:
+      services: {units: {chronyd.service: {enabled: true, masked: true}}, active: {}}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {units: {}, active: {}}
+    want: ERROR

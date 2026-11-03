@@ -181,3 +181,213 @@ controls:
     manual: >-
       Look for unexpected hidden files and directories (names starting with "."), especially
       unusual names such as "..." or ". ", and remove those that do not belong.
+  - id: U-34
+    title: The finger service is off
+    title_ko: finger 서비스 미사용
+    severity: high
+    checks: [services.no-finger]
+  - id: U-35
+    title: No anonymous access to shared files
+    title_ko: 공유 서비스 익명 접근 제한
+    severity: high
+    manual: >-
+      Check that file-sharing services do not allow anonymous access: anonymous FTP (vsftpd
+      `anonymous_enable=NO`), NFS exports without root squashing or open to everyone, and Samba
+      guest access.
+  - id: U-36
+    title: The r-services are off
+    title_ko: r 계열 서비스 미사용
+    severity: high
+    checks: [services.no-r-services]
+  - id: U-37
+    title: cron and at are restricted
+    title_ko: cron·at 사용 제한
+    severity: high
+    checks: [files.cron-commands, files.cron-files]
+  - id: U-38
+    title: Traffic-amplifying services are off
+    title_ko: DoS 공격에 취약한 서비스 미사용
+    severity: high
+    checks: [services.no-dos-prone]
+  - id: U-39
+    title: The NFS server is off unless needed
+    title_ko: NFS 서버 미사용
+    severity: high
+    checks: [services.no-nfs-server]
+  - id: U-40
+    title: NFS exports are restricted
+    title_ko: NFS 접근 통제
+    severity: high
+    manual: >-
+      Check /etc/exports: each export is limited to the hosts that need it, never "*", and uses
+      root_squash.
+  - id: U-41
+    title: The automounter is off
+    title_ko: automount 미사용
+    severity: high
+    checks: [services.no-automount]
+  - id: U-42
+    title: Legacy RPC services are off
+    title_ko: 불필요한 RPC 서비스 미사용
+    severity: high
+    checks: [services.no-rpc]
+  - id: U-43
+    title: NIS is not used
+    title_ko: NIS 미사용
+    severity: high
+    checks: [services.no-nis]
+  - id: U-44
+    title: tftp and talk are off
+    title_ko: tftp·talk 서비스 미사용
+    severity: high
+    checks: [services.no-tftp-talk]
+  - id: U-45
+    title: The mail server is up to date
+    title_ko: 메일 서버 버전 관리
+    severity: high
+    manual: >-
+      Check that the mail server (Postfix, Sendmail, Exim) runs a version with current security
+      fixes, or disable it if the host does not handle mail.
+  - id: U-46
+    title: Only the mail system can run the mail queue
+    title_ko: 일반 사용자의 메일 서비스 실행 제한
+    severity: high
+    manual: >-
+      For Sendmail, check that PrivacyOptions includes restrictqrun; for other mail servers, that
+      only their own accounts can run the queue.
+  - id: U-47
+    title: The mail server is not an open relay
+    title_ko: 메일 릴레이 제한
+    severity: high
+    manual: >-
+      Check that the mail server relays only for your own networks and authenticated users
+      (Postfix `smtpd_relay_restrictions`, Sendmail access rules).
+  - id: U-48
+    title: SMTP does not reveal accounts
+    title_ko: SMTP 계정 확인 명령 제한
+    severity: medium
+    manual: >-
+      Check that the mail server rejects EXPN and VRFY (Postfix `disable_vrfy_command = yes`,
+      Sendmail PrivacyOptions noexpn and novrfy).
+  - id: U-49
+    title: The DNS server is up to date
+    title_ko: DNS 서버 버전 관리
+    severity: high
+    manual: >-
+      Check that the DNS server (BIND) runs a version with current security fixes, or disable it
+      if the host does not serve DNS.
+  - id: U-50
+    title: DNS zone transfers are restricted
+    title_ko: DNS 영역 전송 제한
+    severity: high
+    manual: >-
+      Check that zone transfers are allowed only to secondary servers (BIND `allow-transfer`).
+  - id: U-51
+    title: DNS dynamic updates are restricted
+    title_ko: DNS 동적 업데이트 제한
+    severity: medium
+    manual: >-
+      Check that dynamic updates are off or allowed only with keys (BIND
+      `allow-update`/`update-policy`).
+  - id: U-52
+    title: Telnet is off
+    title_ko: 텔넷 미사용
+    severity: medium
+    checks: [services.no-telnet]
+  - id: U-53
+    title: The FTP banner hides the version
+    title_ko: FTP 배너 정보 노출 제한
+    severity: low
+    manual: >-
+      Check that the FTP server's greeting does not reveal its name and version (vsftpd
+      `ftpd_banner`, ProFTPD `ServerIdent`).
+  - id: U-54
+    title: FTP is encrypted or off
+    title_ko: 암호화되지 않은 FTP 미사용
+    severity: medium
+    manual: >-
+      Check that FTP is off, or that it requires TLS (vsftpd `ssl_enable=YES` with forced TLS for
+      logins and data); prefer SFTP.
+  - id: U-55
+    title: The ftp account cannot log in
+    title_ko: ftp 계정 셸 제한
+    severity: medium
+    checks: [services.ftp-account-shell]
+  - id: U-56
+    title: FTP access is restricted by address
+    title_ko: FTP 접근 제어
+    severity: low
+    manual: >-
+      Check that the FTP server accepts connections only from the addresses that need it (TCP
+      wrappers, firewall or the server's own rules).
+  - id: U-57
+    title: root cannot log in to FTP
+    title_ko: FTP root 접속 제한
+    severity: medium
+    manual: >-
+      Check that root is listed in the FTP server's deny list (ftpusers, user_list) or that root
+      logins are refused.
+  - id: U-58
+    title: SNMP is off unless needed
+    title_ko: SNMP 미사용
+    severity: medium
+    checks: [services.no-snmp]
+  - id: U-59
+    title: SNMP uses version 3
+    title_ko: SNMP v3 사용
+    severity: high
+    manual: >-
+      Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, not v1 or
+      v2c communities.
+  - id: U-60
+    title: SNMP communities are not guessable
+    title_ko: SNMP 커뮤니티 문자열 복잡성
+    severity: medium
+    manual: >-
+      If SNMP v1/v2c is still used, check that no community is a default such as public or
+      private, and that communities are long and random.
+  - id: U-61
+    title: SNMP access is restricted
+    title_ko: SNMP 접근 제어
+    severity: high
+    manual: >-
+      Check that the SNMP agent answers only the management hosts that need it (source
+      restrictions on each community or user).
+  - id: U-62
+    title: Login banners warn against misuse
+    title_ko: 로그인 경고 메시지
+    severity: low
+    manual: >-
+      Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your
+      organization's warning and no system details.
+  - id: U-63
+    title: sudoers files are protected
+    title_ko: sudoers 파일 권한
+    severity: medium
+    checks: [files.sudoers-perms]
+  - id: U-64
+    title: Security updates are applied
+    title_ko: 보안 패치 적용
+    severity: high
+    manual: >-
+      Check that security updates are applied regularly (for example `apt list --upgradable` or
+      `dnf updateinfo list --security`) and that the release is still supported.
+  - id: U-65
+    title: Time is synchronized
+    title_ko: 시각 동기화
+    severity: medium
+    checks: [services.time-sync, services.review-time-sync]
+  - id: U-66
+    title: Logging follows your policy
+    title_ko: 로그 정책 설정
+    severity: medium
+    manual: >-
+      Check that the syslog configuration records authentication, privileged commands and system
+      events as your policy requires, and that logs are kept long enough.
+  - id: U-67
+    title: Log files are protected
+    title_ko: 로그 파일 소유자·권한
+    severity: medium
+    manual: >-
+      Check that the files in /var/log are owned by root (or the logging service) and are not
+      writable by others.

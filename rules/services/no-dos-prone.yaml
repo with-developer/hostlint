@@ -1,0 +1,36 @@
+id: services.no-dos-prone
+version: 1
+title: Services that amplify traffic are not started
+title_ko: DoS 공격에 취약한 서비스 미사용
+severity: high
+description: >-
+  Lists the ways the echo, discard, daytime and chargen services is started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  These test services answer anyone, so attackers can bounce and amplify traffic through them.
+remediation: >-
+  Disable them in inetd/xinetd (`disable = yes`).
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["echo", "discard", "daytime", "chargen"]
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: echo, name: echo, kind: xinetd, source: "/etc/xinetd.d/echo-stream:1"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR
