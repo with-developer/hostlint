@@ -131,9 +131,7 @@ controls:
     title: Users' startup files are protected
     title_ko: 사용자 시작 파일 소유자·권한
     severity: high
-    manual: >-
-      Check that each user's shell startup files (.profile, .bashrc, .bash_profile, ...) are owned
-      by that user or root and are not writable by group or others.
+    checks: [homes.startup-files]
   - id: U-25
     title: World-writable files are known
     title_ko: 모든 사용자 쓰기 가능 파일 점검
@@ -170,15 +168,12 @@ controls:
     title: Home directories are owned by their accounts
     title_ko: 홈 디렉터리 소유자·권한
     severity: medium
-    manual: >-
-      Check that each account's home directory is owned by that account and is not writable by
-      other users.
+    checks: [homes.owner-perms]
   - id: U-32
     title: Home directories exist
     title_ko: 홈 디렉터리 존재
     severity: medium
-    manual: >-
-      Check that every account that can log in has an existing home directory.
+    checks: [homes.exists]
   - id: U-33
     title: Hidden files are reviewed
     title_ko: 숨겨진 파일·디렉터리 점검

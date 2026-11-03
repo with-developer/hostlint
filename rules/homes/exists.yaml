@@ -1,0 +1,36 @@
+id: homes.exists
+version: 1
+title: Accounts that can log in have a home directory
+title_ko: 로그인 가능 계정의 홈 디렉터리 존재
+severity: medium
+description: Lists accounts with a login shell whose home directory does not exist.
+rationale: Without a home directory a user logs in to "/", and startup files and keys end up in unexpected places.
+remediation: Create the home directory (`mkhomedir_helper <user>`), or remove or lock the account.
+violations:
+  over: homes.accounts
+  as: h
+  where: >-
+    h.login_shell && !h.exists
+  key: h.user
+  text: >-
+    h.user + ": " + (h.path != "" ? h.path : "no home directory set") + " does not exist"
+  allow_empty: true
+tests:
+  - name: present
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, login_shell: true, path: /home/alice, exists: true, owner_uid: 1000, mode: "0750"}]}
+    want: PASS
+  - name: missing
+    facts:
+      homes: {accounts: [{user: bob, uid: 1001, login_shell: true, path: /home/bob, exists: false}]}
+    want: FAIL
+  - name: system account without one
+    facts:
+      homes: {accounts: [{user: nobody, uid: 65534, login_shell: false, path: /nonexistent, exists: false}]}
+    want: PASS
+  - name: passwd incomplete
+    input: incomplete
+    incomplete: [homes]
+    facts:
+      homes: {accounts: []}
+    want: ERROR
