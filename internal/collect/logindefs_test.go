@@ -2,6 +2,7 @@ package collect
 
 import (
 	"io/fs"
+	"strings"
 	"testing"
 
 	"github.com/with-developer/hostlint/internal/facts"
@@ -72,5 +73,49 @@ func TestLoginDefsNumbers(t *testing.T) {
 		if s[k].Value != w {
 			t.Errorf("%s = %q, want %q", k, s[k].Value, w)
 		}
+	}
+}
+
+// shadow-utils keeps the last value; built with libeconf (RHEL 10) it keeps
+// the first and applies /etc/login.defs.d drop-ins.
+func TestLoginDefsEconf(t *testing.T) {
+	const defs = "PASS_MAX_DAYS 99999\nPASS_MAX_DAYS 90\nPASS_MIN_DAYS 7\n"
+	classic := hostfs.NewMemFS().AddFile("/etc/login.defs", defs, 0o644, 0, 0).
+		AddFile("/usr/sbin/useradd", "libc.so.6\n", 0o755, 0, 0)
+	econf := hostfs.NewMemFS().AddFile("/etc/login.defs", defs, 0o644, 0, 0).
+		AddFile("/usr/sbin/useradd", "libeconf.so.0\n", 0o755, 0, 0).
+		AddFile("/etc/login.defs.d/50-site.defs", "PASS_MIN_DAYS 1\n", 0o644, 0, 0)
+	tests := []struct {
+		name         string
+		fsys         *hostfs.MemFS
+		maxDays, min string
+	}{
+		{"classic", classic, "90", "7"},
+		{"libeconf", econf, "99999", "1"},
+	}
+	for _, tt := range tests {
+		f, err := collect(t, loginDefsCollector{}, tt.fsys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := f.Value.(*LoginDefs).Settings
+		if s["PASS_MAX_DAYS"].Value != tt.maxDays || s["PASS_MIN_DAYS"].Value != tt.min {
+			t.Errorf("%s: PASS_MAX_DAYS %+v, PASS_MIN_DAYS %+v", tt.name, s["PASS_MAX_DAYS"], s["PASS_MIN_DAYS"])
+		}
+	}
+}
+
+// getdef.c ignores a key without a value, ends a value at a quote, and
+// trims only ASCII whitespace.
+func TestLoginDefsParsing(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/login.defs",
+		"PASS_MAX_DAYS 90\nPASS_MAX_DAYS\nPASS_MIN_DAYS \"7\" trailing\nPASS_WARN_AGE\t14\u00a0\n", 0o644, 0, 0)
+	f, err := collect(t, loginDefsCollector{}, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := f.Value.(*LoginDefs).Settings
+	if s["PASS_MAX_DAYS"].Value != "90" || s["PASS_MIN_DAYS"].Value != "7" || !strings.HasPrefix(s["PASS_WARN_AGE"].Value, "invalid: ") {
+		t.Errorf("settings = %+v", s)
 	}
 }
