@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/with-developer/hostlint/internal/facts"
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
@@ -195,5 +196,29 @@ func TestReservedCollectorNames(t *testing.T) {
 		if _, err := New(&Content{Checks: map[string]*Check{}, Profiles: map[string]*Profile{}}, &fakeCollector{name: name}); err == nil {
 			t.Errorf("collector %q accepted", name)
 		}
+	}
+}
+
+// A Setting can be a struct field as well as a map entry.
+func TestSettingStructField(t *testing.T) {
+	set := demoSvc()
+	set.facts.Mode = facts.Setting{Value: "strict", Explicit: true, Source: "/etc/svc.conf:7"}
+	tests := []struct {
+		name string
+		svc  *fakeCollector
+		want Status
+		text string
+	}{
+		{"set", set, StatusPass, `svc.mode: "strict" (explicit); expected one of [strict]`},
+		{"unset", demoSvc(), StatusFail, "not set; expected one of [strict]"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Check{ID: "x.mode", Setting: &SettingSpec{Fact: "svc.mode", In: []string{"strict"}, Absent: "fail"}}
+			got := scanOne(t, c, tt.svc, demoHost(), time.Second)
+			if got.Status != tt.want || len(got.Evidence) != 1 || !strings.Contains(got.Evidence[0].Key+": "+got.Evidence[0].Text, tt.text) {
+				t.Errorf("status %s, evidence %+v; want %s with %q", got.Status, got.Evidence, tt.want, tt.text)
+			}
+		})
 	}
 }
