@@ -1,25 +1,32 @@
 id: accounts.session-timeout-set
 version: 1
 title: Idle shells time out
-title_ko: 세션 종료 시간(TMOUT) 설정
+title_ko: 유휴 셸이 자동으로 끝남
 severity: low
 description: >-
-  Checks that the system-wide and root startup files leave TMOUT set to a positive number of
-  seconds: assignments inside if or case blocks do not count, and a later unset removes it.
+  Checks that the system-wide startup files (/etc/environment, /etc/profile and the files it
+  reads, such as /etc/profile.d) leave TMOUT set to a positive number of seconds, so that it
+  applies to every user's login shell: a value set only in root's own files does not count,
+  assignments inside if or case blocks do not count, and a later unset removes it.
 rationale: An unattended logged-in terminal can be used by anyone who reaches it.
 remediation: Add `TMOUT=600` and `readonly TMOUT` and `export TMOUT` to a file in /etc/profile.d.
 setting:
-  fact: shell_env.effective.TMOUT
+  fact: shell_env.system_effective.TMOUT
   matches: "[1-9][0-9]*"
   absent: fail
 tests:
   - name: set
     facts:
-      shell_env: {effective: {TMOUT: {value: "600", explicit: true, source: "/etc/profile.d/timeout.sh:1"}}}
+      shell_env: {system_effective: {TMOUT: {value: "600", explicit: true, source: "/etc/profile.d/timeout.sh:1"}}}
     want: PASS
+  - name: only in root's own files
+    input: absent
+    facts:
+      shell_env: {effective: {TMOUT: {value: "600", explicit: true, source: "/root/.bashrc:1"}}, system_effective: {}}
+    want: FAIL
   - name: disabled
     facts:
-      shell_env: {effective: {TMOUT: {value: "0", explicit: true, source: "/root/.bashrc:3"}}}
+      shell_env: {system_effective: {TMOUT: {value: "0", explicit: true, source: "/etc/profile:30"}}}
     want: FAIL
   - name: not set, or only conditionally
     input: absent
