@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/with-developer/hostlint/internal/hostfs"
@@ -44,6 +45,10 @@ type Facts struct {
 	// unreadable directory, a walk limit); Skipped says what was missed.
 	Complete bool
 	Skipped  []string
+	// Unknown lists fields (json names, dot-separated) whose values could not
+	// be determined, while the rest is complete: rules reading them cannot
+	// decide. Skipped says why.
+	Unknown []string
 }
 
 // collected is the outcome of one collector run.
@@ -59,8 +64,13 @@ func (c *collected) ok() bool { return c.err == nil }
 // errCollectorUnavailable marks live collectors on a mounted root.
 var errCollectorUnavailable = errors.New("needs a live host; not available when scanning a mounted root")
 
-// defaultCollectorTimeout bounds each collector (ADR 0006 §12).
-const defaultCollectorTimeout = 30 * time.Second
+const (
+	// defaultCollectorTimeout bounds each collector (ADR 0006 §12).
+	defaultCollectorTimeout = 30 * time.Second
+	// collectorGrace is how long a collector that honors its context has,
+	// after the timeout, to return what it observed.
+	collectorGrace = time.Second
+)
 
 // runCollector runs c once, converting panics, timeouts and wrong result
 // types into errors.
@@ -95,12 +105,24 @@ func runCollector(ctx context.Context, c Collector, h *hostfs.Host, timeout time
 	select {
 	case r = <-done:
 	case <-ctx.Done():
-		r.err = fmt.Errorf("collector did not finish: %w", ctx.Err())
+		select {
+		case r = <-done:
+		case <-time.After(collectorGrace):
+			r.err = ctx.Err()
+		}
 	}
 	out.run.DurationMs = time.Since(start).Milliseconds()
-	if r.err == nil {
-		if v := reflect.ValueOf(r.facts.Value); !v.IsValid() || v.Kind() != reflect.Pointer || v.IsNil() || v.Elem().Type() != c.Type() {
-			r.err = fmt.Errorf("collector returned %T, want *%s", r.facts.Value, c.Type())
+	switch {
+	case r.err != nil && ctx.Err() != nil:
+		r.err = fmt.Errorf("collector did not finish: %w", r.err)
+	case r.err != nil:
+	case !isFacts(r.facts.Value, c.Type()):
+		r.err = fmt.Errorf("collector returned %T, want *%s", r.facts.Value, c.Type())
+	default:
+		for _, f := range r.facts.Unknown {
+			if !hasField(c.Type(), f) {
+				r.err = fmt.Errorf("collector marked %q unknown, which is not a field of %s", f, c.Type())
+			}
 		}
 	}
 	if r.err != nil {
@@ -111,7 +133,33 @@ func runCollector(ctx context.Context, c Collector, h *hostfs.Host, timeout time
 	}
 	out.facts = r.facts
 	out.run.Status = "ok"
-	out.run.Complete = r.facts.Complete
+	out.run.Complete = r.facts.Complete && len(r.facts.Unknown) == 0
 	out.run.Skipped = r.facts.Skipped
 	return out
+}
+
+func isFacts(v any, t reflect.Type) bool {
+	rv := reflect.ValueOf(v)
+	return rv.IsValid() && rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Type() == t
+}
+
+// hasField reports whether the dot-separated json field path names a field
+// of the struct type t.
+func hasField(t reflect.Type, path string) bool {
+	for name := range strings.SplitSeq(path, ".") {
+		if t.Kind() != reflect.Struct {
+			return false
+		}
+		found := false
+		for i := range t.NumField() {
+			if f := t.Field(i); f.IsExported() && f.Tag.Get("json") == name {
+				t, found = f.Type, true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }

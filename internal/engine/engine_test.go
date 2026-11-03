@@ -24,7 +24,6 @@ type svcFacts struct {
 	Present bool                     `json:"present"`
 	Config  map[string]facts.Setting `json:"config"`
 	Users   []svcUser                `json:"users"`
-	Mode    facts.Setting            `json:"mode"`
 }
 
 type svcUser struct {
@@ -334,7 +333,31 @@ func TestFactTypesAreChecked(t *testing.T) {
 	type untagged struct {
 		N int64
 	}
-	for _, typ := range []reflect.Type{reflect.TypeFor[withPointer](), reflect.TypeFor[withUint](), reflect.TypeFor[withTime](), reflect.TypeFor[untagged]()} {
+	// A Setting field is never absent, so an unknown one would read as "".
+	type settingField struct {
+		S facts.Setting `json:"s"`
+	}
+	type settingList struct {
+		S []facts.Setting `json:"s"`
+	}
+	// CEL sees the promoted fields of an unexported embedded struct.
+	type common struct {
+		N *int64 `json:"n"`
+	}
+	type embedded struct {
+		common
+		Name string `json:"name"`
+	}
+	// cel-go gives every anonymous struct type the same name.
+	type anonymous struct {
+		A []struct {
+			Name string `json:"name"`
+		} `json:"a"`
+	}
+	for _, typ := range []reflect.Type{
+		reflect.TypeFor[withPointer](), reflect.TypeFor[withUint](), reflect.TypeFor[withTime](), reflect.TypeFor[untagged](),
+		reflect.TypeFor[settingField](), reflect.TypeFor[settingList](), reflect.TypeFor[embedded](), reflect.TypeFor[anonymous](),
+	} {
 		if err := facts.CheckType(typ); err == nil {
 			t.Errorf("CheckType(%s) accepted a forbidden field type", typ)
 		}

@@ -1,5 +1,10 @@
 package hostfs
 
+import (
+	"os"
+	"strings"
+)
+
 // Host is everything hostlint may use to observe one scan target.
 type Host struct {
 	// FS reads the target's files.
@@ -15,6 +20,27 @@ type Host struct {
 	Live bool
 
 	close func() error
+}
+
+// Hostname returns the target's hostname: the kernel's for the running
+// system, otherwise the first name in /etc/hostname (hostname(5): lines
+// starting with "#" are comments). It is "" when neither is available.
+func (h *Host) Hostname() string {
+	if h.Live {
+		if name, err := os.Hostname(); err == nil {
+			return name
+		}
+	}
+	data, err := h.FS.ReadFile("/etc/hostname")
+	if err != nil {
+		return ""
+	}
+	for line := range strings.Lines(string(data)) {
+		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
+			return line
+		}
+	}
+	return ""
 }
 
 // Close releases the host's resources.

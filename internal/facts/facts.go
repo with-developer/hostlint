@@ -27,27 +27,41 @@ type Setting struct {
 
 // CheckType reports whether t (a struct type) only uses field types that CEL
 // handles unambiguously: string, int64, bool, slices, string-keyed maps and
-// nested structs. Pointers, unsigned integers and time.Time are rejected: CEL
-// reads a nil pointer as a zero value and treats zero as "unset", and a uint
-// does not compare with int literals. Every fact field needs a json tag.
+// named nested structs. Rejected:
+//   - pointers, unsigned integers and time.Time: CEL reads a nil pointer as
+//     a zero value, which reads as "unset", and a uint does not compare with
+//     int literals;
+//   - a Setting outside a map: only a map can leave an unknown setting out
+//     (see Setting), while a field always holds a value;
+//   - embedded fields and anonymous struct types, whose fields CEL resolves
+//     differently from Go.
+//
+// Every fact field needs a json tag.
 func CheckType(t reflect.Type) error {
-	return checkType(t, t.Name(), map[reflect.Type]bool{})
+	return checkType(t, t.Name(), false, map[reflect.Type]bool{})
 }
 
-func checkType(t reflect.Type, where string, seen map[reflect.Type]bool) error {
+var settingType = reflect.TypeFor[Setting]()
+
+func checkType(t reflect.Type, where string, mapValue bool, seen map[reflect.Type]bool) error {
 	switch t.Kind() {
 	case reflect.String, reflect.Int64, reflect.Bool:
 		return nil
 	case reflect.Slice:
-		return checkType(t.Elem(), where+"[]", seen)
+		return checkType(t.Elem(), where+"[]", false, seen)
 	case reflect.Map:
 		if t.Key().Kind() != reflect.String {
 			return fmt.Errorf("%s: map keys must be strings", where)
 		}
-		return checkType(t.Elem(), where+"[]", seen)
+		return checkType(t.Elem(), where+"[]", true, seen)
 	case reflect.Struct:
-		if t.PkgPath() == "time" {
+		switch {
+		case t.PkgPath() == "time":
 			return fmt.Errorf("%s: time.Time is not allowed; use an int64 or a string", where)
+		case t == settingType && !mapValue:
+			return fmt.Errorf("%s: a Setting must be a map value, so that an unknown setting can be absent", where)
+		case t.Name() == "":
+			return fmt.Errorf("%s: anonymous struct types are not allowed; declare a named type", where)
 		}
 		if seen[t] {
 			return nil
@@ -55,6 +69,9 @@ func checkType(t reflect.Type, where string, seen map[reflect.Type]bool) error {
 		seen[t] = true
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
+			if f.Anonymous {
+				return fmt.Errorf("%s: embedded field %s is not allowed", where, f.Name)
+			}
 			if !f.IsExported() {
 				continue
 			}
@@ -62,7 +79,7 @@ func checkType(t reflect.Type, where string, seen map[reflect.Type]bool) error {
 			if name == "" || name == "-" {
 				return fmt.Errorf("%s.%s: exported fact fields need a json tag", where, f.Name)
 			}
-			if err := checkType(f.Type, where+"."+name, seen); err != nil {
+			if err := checkType(f.Type, where+"."+name, false, seen); err != nil {
 				return err
 			}
 		}

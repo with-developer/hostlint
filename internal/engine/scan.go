@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,10 +32,16 @@ func New(content *Content, collectors ...Collector) (*Engine, error) {
 	e := &Engine{content: content, collectors: map[string]Collector{}, compiled: map[string]*compiledCheck{}}
 	for _, c := range append([]Collector{osCollector{}}, collectors...) {
 		switch name := c.Name(); {
+		case !identRe.MatchString(name) || name == "params":
+			return nil, fmt.Errorf("collector name %q must be an identifier other than params", name)
 		case name == fileCollectorName || name == hostCollectorName:
 			return nil, fmt.Errorf("collector name %s is reserved for the engine", name)
 		case e.collectors[name] != nil:
 			return nil, fmt.Errorf("two collectors named %s", name)
+		case c.Version() < 1:
+			return nil, fmt.Errorf("collector %s: version must be 1 or more", name)
+		case c.Access() != AccessFilesystem && c.Access() != AccessLive:
+			return nil, fmt.Errorf("collector %s: access must be %s or %s, not %q", name, AccessFilesystem, AccessLive, c.Access())
 		}
 		e.collectors[c.Name()] = c
 	}
@@ -107,11 +114,24 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 
 	// Collect: only what the planned checks need, each collector once. All
 	// I/O happens here, bounded per collector; evaluation below does none.
-	needed := map[string]bool{"os": true}
+	// The OS comes first: checks for other platforms need nothing else.
+	env := &evalEnv{ctx: ctx, collected: map[string]*collected{}}
+	osc := runCollector(ctx, e.collectors["os"], h, timeout)
+	env.collected["os"] = osc
+	env.os = hostfs.OS{ID: hostfs.FamilyUnknown, Family: hostfs.FamilyUnknown}
+	if osc.ok() {
+		env.os = osFromFacts(osc.facts.Value)
+	}
+	needed := map[string]bool{}
 	patterns := map[string]bool{}
 	for _, in := range instances {
+		if c := in.cc.check; len(c.Platforms) > 0 && !slices.Contains(c.Platforms, env.os.Family) {
+			continue // not applicable, or an error if the OS is unknown
+		}
 		for _, v := range in.cc.vars {
-			needed[v] = true
+			if v != "os" {
+				needed[v] = true
+			}
 		}
 		if f := in.cc.check.File; f != nil {
 			for _, p := range f.Paths {
@@ -119,7 +139,6 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 			}
 		}
 	}
-	env := &evalEnv{ctx: ctx, collected: map[string]*collected{}}
 	for _, name := range sortedKeys(needed) {
 		env.collected[name] = runCollector(ctx, e.collectors[name], h, timeout)
 	}
@@ -127,11 +146,6 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		env.files = runCollector(ctx, &fileCollector{patterns: sortedKeys(patterns)}, h, timeout)
 	}
 	hostc := runCollector(ctx, hostCollector{}, h, timeout)
-	if c := env.collected["os"]; c.ok() {
-		env.os = osFromFacts(c.facts.Value)
-	} else {
-		env.os = hostfs.OS{ID: hostfs.FamilyUnknown, Family: hostfs.FamilyUnknown}
-	}
 
 	// Evaluate.
 	checks := map[string]*CheckResult{}
@@ -201,7 +215,7 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 // checkResult turns an outcome into the result entry for an instance.
 func (e *Engine) checkResult(in *instance, o outcome) *CheckResult {
 	c := in.cc.check
-	ev, omitted := limitEvidence(o.evidence)
+	ev, omitted := limitEvidence(o.evidence, o.omitted)
 	cr := &CheckResult{
 		Ref: in.ref, ID: c.ID, Version: c.Version, Digest: checkDigest(c),
 		Title: c.Title, TitleKo: c.TitleKo, Severity: c.Severity,
@@ -271,19 +285,28 @@ func checkRef(c *Check, params map[string]any) string {
 	return c.ID + "#" + digestHex(params)[:8]
 }
 
-// checkDigest covers a check's logic, not its prose.
+// checkDigest covers a check's logic, not its prose (ADR 0006 §10).
 func checkDigest(c *Check) string {
+	type param struct {
+		Type     string
+		Default  any
+		Stricter string
+	}
+	params := map[string]param{}
+	for name, p := range c.Params {
+		params[name] = param{p.Type, p.Default, p.Stricter}
+	}
 	return "sha256:" + digestHex(struct {
 		Version    int
 		Platforms  []string
 		Applies    string
-		Params     map[string]ParamSpec
+		Params     map[string]param
 		Setting    *SettingSpec
 		File       *FileSpec
 		Violations *ViolationsSpec
 		Expect     string
 		Manual     string
-	}{c.Version, c.Platforms, c.Applies, c.Params, c.Setting, c.File, c.Violations, c.Expect, manualShow(c)})
+	}{c.Version, c.Platforms, c.Applies, params, c.Setting, c.File, c.Violations, c.Expect, manualShow(c)})
 }
 
 func manualShow(c *Check) string {

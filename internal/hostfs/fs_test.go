@@ -3,6 +3,7 @@ package hostfs
 import (
 	"errors"
 	"io/fs"
+	"strings"
 	"testing"
 )
 
@@ -183,6 +184,31 @@ func testConformance(t *testing.T, newFixture func(t *testing.T) fixture) {
 		}
 		_, err = fsys.ReadDir("/etc/target")
 		checkErr(t, err, fs.ErrNotExist)
+	})
+
+	// A link to a missing target is not an empty directory or a missing
+	// file (on Linux, through the real path resolution).
+	t.Run("DanglingLink", func(t *testing.T) {
+		g := newFixture(t)
+		g.dir("/etc", 0o755)
+		g.dir("/etc/real.d", 0o755)
+		g.symlink("/etc/cron.daily", "/nowhere")
+		fsys := g.fs()
+		if target, ok := DanglingLink(fsys, "/etc/cron.daily"); !ok || target != "/nowhere" {
+			t.Errorf("DanglingLink = %q, %v", target, ok)
+		}
+		if _, ok := DanglingLink(fsys, "/etc/real.d"); ok {
+			t.Error("a directory is reported as a dangling link")
+		}
+		for _, pattern := range []string{"/etc/cron.daily/*", "/etc/cron.daily/job"} {
+			_, problems, err := Glob(fsys, pattern)
+			if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "/etc/cron.daily: symbolic link to /nowhere") {
+				t.Errorf("Glob(%s): problems %q, err %v", pattern, problems, err)
+			}
+		}
+		if _, err := fsys.Lstat("/etc/cron.daily/job"); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("Lstat through the link: %v", err)
+		}
 	})
 }
 
