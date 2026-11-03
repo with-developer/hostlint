@@ -34,3 +34,7 @@ tests:
       /etc: {type: dir, mode: "0755", error: permission}
       /etc/demo.conf: {mode: "0644"}
     want: ERROR
+  - name: dangling symlink is not a missing file
+    files:
+      /etc/demo.conf: {type: symlink, target: /tmp/demo.conf}
+    want: ERROR

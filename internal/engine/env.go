@@ -67,9 +67,15 @@ type compiledCheck struct {
 	text    *program
 	show    *program
 	// evidencePaths are the fact paths an expect expression reads.
-	evidencePaths []*program
+	evidencePaths []evidencePath
 	// vars are the collector variables any expression references.
 	vars []string
+}
+
+// evidencePath is a fact path compiled for evidence.
+type evidencePath struct {
+	factPath
+	prog *program
 }
 
 // program is one compiled expression.
@@ -113,12 +119,12 @@ func compileCheck(base *cel.Env, known map[string]Collector, c *Check) (*compile
 		if hasComprehension(cc.expect) {
 			return nil, fmt.Errorf("expect: comprehensions (all, exists, filter, map) belong in a violations check")
 		}
-		for _, p := range factPaths(cc.expect, known) {
-			pp, err := compile(env, "evidence", p, nil)
+		for _, fp := range factPaths(cc.expect, known) {
+			pp, err := compile(env, "evidence", fp.path, nil)
 			if err != nil {
 				return nil, err
 			}
-			cc.evidencePaths = append(cc.evidencePaths, pp)
+			cc.evidencePaths = append(cc.evidencePaths, evidencePath{fp, pp})
 		}
 	case c.Setting != nil:
 		src, err := optionalLast(c.Setting.Fact)
@@ -212,53 +218,63 @@ func hasComprehension(p *program) bool {
 	return found
 }
 
-// factPaths returns the distinct fact paths (e.g. sshd.config.permitrootlogin)
-// an expression reads, longest first, without paths contained in others.
-func factPaths(p *program, known map[string]Collector) []string {
-	var paths []string
-	var walk func(e celast.Expr) (string, bool)
-	walk = func(e celast.Expr) (string, bool) {
+// factPath is a fact path an expression reads, e.g. sshd.config.permitrootlogin.
+type factPath struct {
+	path string
+	// mapKey is true when a step selects a map key, which the host may not
+	// have; selecting the path then fails.
+	mapKey bool
+}
+
+// factPaths returns the distinct fact paths an expression reads, sorted,
+// without paths contained in others.
+func factPaths(p *program, known map[string]Collector) []factPath {
+	ast := p.ast.NativeRep()
+	isMap := func(e celast.Expr) bool { return ast.GetType(e.ID()).Kind() == types.MapKind }
+	var walk func(e celast.Expr) (factPath, bool)
+	walk = func(e celast.Expr) (factPath, bool) {
 		switch e.Kind() {
 		case celast.IdentKind:
 			name := e.AsIdent()
 			_, ok := known[name]
-			return name, ok
+			return factPath{path: name}, ok
 		case celast.SelectKind:
 			sel := e.AsSelect()
 			if sel.IsTestOnly() {
-				return "", false
+				return factPath{}, false
 			}
 			base, ok := walk(sel.Operand())
-			return base + "." + sel.FieldName(), ok
+			return factPath{base.path + "." + sel.FieldName(), base.mapKey || isMap(sel.Operand())}, ok
 		case celast.CallKind:
 			call := e.AsCall()
 			if call.FunctionName() == "_[_]" && len(call.Args()) == 2 && call.Args()[1].Kind() == celast.LiteralKind {
 				if s, isStr := call.Args()[1].AsLiteral().Value().(string); isStr {
 					base, ok := walk(call.Args()[0])
-					return base + "[" + strconv.Quote(s) + "]", ok
+					return factPath{base.path + "[" + strconv.Quote(s) + "]", base.mapKey || isMap(call.Args()[0])}, ok
 				}
 			}
 		default:
 		}
-		return "", false
+		return factPath{}, false
 	}
+	var paths []factPath
 	seen := map[string]bool{}
-	celast.PreOrderVisit(p.ast.NativeRep().Expr(), celast.NewExprVisitor(func(e celast.Expr) {
+	celast.PreOrderVisit(ast.Expr(), celast.NewExprVisitor(func(e celast.Expr) {
 		if e.Kind() != celast.SelectKind && e.Kind() != celast.CallKind {
 			return
 		}
-		if path, ok := walk(e); ok && strings.ContainsAny(path, ".[") && !seen[path] {
-			seen[path] = true
-			paths = append(paths, path)
+		if fp, ok := walk(e); ok && strings.ContainsAny(fp.path, ".[") && !seen[fp.path] {
+			seen[fp.path] = true
+			paths = append(paths, fp)
 		}
 	}))
 	// Keep only maximal paths: drop "a.b" when "a.b.c" is also read.
-	sort.Slice(paths, func(i, j int) bool { return len(paths[i]) > len(paths[j]) })
-	var out []string
+	sort.Slice(paths, func(i, j int) bool { return len(paths[i].path) > len(paths[j].path) })
+	var out []factPath
 	for _, p := range paths {
 		contained := false
 		for _, q := range out {
-			if strings.HasPrefix(q, p+".") || strings.HasPrefix(q, p+"[") {
+			if strings.HasPrefix(q.path, p.path+".") || strings.HasPrefix(q.path, p.path+"[") {
 				contained = true
 				break
 			}
@@ -267,7 +283,7 @@ func factPaths(p *program, known map[string]Collector) []string {
 			out = append(out, p)
 		}
 	}
-	sort.Strings(out)
+	sort.Slice(out, func(i, j int) bool { return out[i].path < out[j].path })
 	return out
 }
 
