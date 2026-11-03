@@ -133,21 +133,33 @@ type sshdParser struct {
 	global  map[string]facts.Setting
 	matches []SSHDMatch
 	current *SSHDMatch // nil outside a Match block
+	reads   int
 	skipped []string
 }
 
-const maxIncludeDepth = 16
+const (
+	maxIncludeDepth = 16
+	maxSSHDReads    = 200 // included files, counting repeats
+)
 
 func (p *sshdParser) parseFile(name string, depth int) error {
-	if depth > maxIncludeDepth {
+	switch {
+	case depth > maxIncludeDepth:
 		p.skipped = append(p.skipped, name+": Include nested too deeply")
 		return nil
+	case p.reads >= maxSSHDReads:
+		if len(p.skipped) == 0 || p.skipped[len(p.skipped)-1] != "too many included files" {
+			p.skipped = append(p.skipped, "too many included files")
+		}
+		return nil
 	}
+	p.reads++
 	data, err := p.fsys.ReadFile(name)
 	if err != nil {
 		return err
 	}
 	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
 	for line := 1; sc.Scan(); line++ {
 		text := strings.TrimSpace(sc.Text())
 		if text == "" || strings.HasPrefix(text, "#") {
@@ -194,9 +206,16 @@ func (p *sshdParser) include(pattern string, depth int) {
 	}
 	p.skipped = append(p.skipped, problems...)
 	for _, m := range matches {
+		if strings.HasPrefix(path.Base(m), ".") {
+			continue // sshd's glob(3) skips hidden files
+		}
+		// sshd restores the Match state after each included file: a Match
+		// block opened in a drop-in ends with it.
+		saved := p.current
 		if err := p.parseFile(m, depth+1); err != nil {
 			p.skipped = append(p.skipped, err.Error())
 		}
+		p.current = saved
 	}
 }
 

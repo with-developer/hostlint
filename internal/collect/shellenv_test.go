@@ -42,18 +42,26 @@ func TestShellEnvStockDebian12(t *testing.T) {
 	}
 }
 
+// profileLoop is how stock /etc/profile files source /etc/profile.d.
+const profileLoop = "if [ -d /etc/profile.d ]; then\n  for i in /etc/profile.d/*.sh; do\n    if [ -r $i ]; then\n      . $i\n    fi\n  done\nfi\n"
+
 func TestShellEnvHardened(t *testing.T) {
 	m := hostfs.NewMemFS().
-		AddFile("/etc/profile", "umask 027\nif [ \"$(id -u)\" -ne 0 ]; then\n  umask 002\nfi\nexport PATH=.:/usr/bin\n", 0o644, 0, 0).
+		AddFile("/etc/profile", "umask 027\nif [ \"$(id -u)\" -ne 0 ]; then\n  umask 002\nfi\nexport PATH=.:/usr/bin\n"+profileLoop, 0o644, 0, 0).
 		AddFile("/etc/profile.d/autologout.sh", "TMOUT=600\nreadonly TMOUT\nexport TMOUT\n", 0o644, 0, 0).
+		AddFile("/root/.bash_profile", "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi\n", 0o644, 0, 0).
 		AddFile("/root/.bashrc", "declare -r TMOUT=300\nPATH=$PATH:/root/bin\n", 0o644, 0, 0)
 	env := shellEnv(t, m)
 	if len(env.Umask) != 2 || env.Umask[0].Conditional || !env.Umask[1].Conditional || env.Umask[1].Value != "002" {
 		t.Errorf("umask = %+v", env.Umask)
 	}
-	if len(env.TMOUT) != 2 || env.TMOUT[0].Value != "600" || !env.TMOUT[0].Readonly ||
+	if len(env.TMOUT) != 2 || env.TMOUT[0].Value != "600" ||
 		env.TMOUT[1].Value != "300" || !env.TMOUT[1].Readonly || env.TMOUT[1].Source != "/root/.bashrc:1" {
 		t.Errorf("tmout = %+v", env.TMOUT)
+	}
+	// readonly TMOUT makes the later declare -r fail.
+	if e := env.Effective["TMOUT"]; e.Value != "600" {
+		t.Errorf("effective = %+v", e)
 	}
 	if len(env.Path) != 2 || env.Path[0].Value != ".:/usr/bin" || env.Path[1].Value != "$PATH:/root/bin" {
 		t.Errorf("path = %+v", env.Path)
@@ -61,7 +69,7 @@ func TestShellEnvHardened(t *testing.T) {
 }
 
 func TestShellEnvUnreadable(t *testing.T) {
-	m := hostfs.NewMemFS().AddFile("/etc/profile", "umask 022\n", 0o644, 0, 0).SetError("/etc/profile.d", fsErrPermission)
+	m := hostfs.NewMemFS().AddFile("/etc/profile", "umask 022\n"+profileLoop, 0o644, 0, 0).AddDir("/etc/profile.d", 0o755, 0, 0).SetError("/etc/profile.d", fsErrPermission)
 	f, err := collect(t, shellEnvCollector{}, m)
 	if err != nil || f.Complete {
 		t.Errorf("an unreadable profile.d must make the facts incomplete: %v, complete %v", err, f.Complete)
@@ -69,7 +77,7 @@ func TestShellEnvUnreadable(t *testing.T) {
 }
 
 func TestShellEnvBlocksAndUnset(t *testing.T) {
-	m := hostfs.NewMemFS().AddFile("/etc/profile.d/tmout.sh",
+	m := hostfs.NewMemFS().AddFile("/etc/profile", profileLoop, 0o644, 0, 0).AddFile("/etc/profile.d/tmout.sh",
 		"[ -n \"$SSH_TTY\" ] && echo ssh # TMOUT=1 in a comment\n"+
 			"if [ \"$USER\" = root ]; then TMOUT=300;fi\n"+
 			"TMOUT=600\n"+
@@ -84,7 +92,7 @@ func TestShellEnvBlocksAndUnset(t *testing.T) {
 		t.Errorf("one-line if: %+v, want conditional", v)
 	}
 	if v := env.TMOUT[1]; v.Value != "600" || v.Conditional {
-		t.Errorf("after ;fi: %+v, want unconditional", v)
+		t.Errorf("after the block: %+v, want unconditional", v)
 	}
 	if v := env.TMOUT[2]; !v.Unset || v.Value != "" || v.Source != "/etc/profile.d/tmout.sh:6" {
 		t.Errorf("unset: %+v", v)
@@ -102,7 +110,12 @@ func TestShellEnvEffectiveTMOUT(t *testing.T) {
 		{"none", "umask 022\n", ""},
 		{"set", "TMOUT=600\nexport TMOUT\n", "600"},
 		{"conditional only", "if [ \"$USER\" = root ]; then\n  TMOUT=300\nfi\n", ""},
-		{"later conditional does not count", "TMOUT=600\n[ -n \"$X\" ] && if true; then TMOUT=0; fi\n", "600"},
+		{"later conditional positive keeps it", "TMOUT=600\n[ -n \"$X\" ] && TMOUT=300\n", "600"},
+		{"later conditional zero breaks it", "TMOUT=600\n[ -n \"$X\" ] && if true; then TMOUT=0; fi\n", ""},
+		{"later conditional unset breaks it", "TMOUT=600\nif [ -n \"$X\" ]; then unset TMOUT; fi\n", ""},
+		{"only after &&", "[ -n \"$SSH_TTY\" ] && TMOUT=600\n", ""},
+		{"set then unset on one line", "TMOUT=600; unset TMOUT\n", ""},
+		{"quoted hash is not a comment", "PS1='\\h # '; TMOUT=0\n", "0"},
 		{"unset afterwards", "TMOUT=600\nunset TMOUT\n", ""},
 		{"read-only survives unset", "readonly TMOUT=600\nunset TMOUT\nTMOUT=0\n", "600"},
 		{"last wins", "TMOUT=600\nTMOUT=1800\n", "1800"},
@@ -114,5 +127,67 @@ func TestShellEnvEffectiveTMOUT(t *testing.T) {
 				t.Errorf("effective = %+v (present %v), want %q", got, ok, tt.want)
 			}
 		})
+	}
+}
+
+// The files are read in bash's order, following what they source.
+func TestShellEnvReadingOrder(t *testing.T) {
+	tests := []struct {
+		name  string
+		files map[string]string
+		want  string
+	}{
+		// RHEL sources sh.local after profile.d/*.sh.
+		{"sh.local", map[string]string{
+			"/etc/profile":            "for i in /etc/profile.d/*.sh /etc/profile.d/sh.local ; do\n  . \"$i\"\ndone\n",
+			"/etc/profile.d/tmout.sh": "TMOUT=600\n",
+			"/etc/profile.d/sh.local": "unset TMOUT\n",
+		}, ""},
+		// Debian's /etc/profile sources bash.bashrc before profile.d.
+		{"bash.bashrc first", map[string]string{
+			"/etc/profile":         "if [ \"${PS1-}\" ]; then\n  if [ -f /etc/bash.bashrc ]; then\n    . /etc/bash.bashrc\n  fi\nfi\n" + profileLoop,
+			"/etc/bash.bashrc":     "TMOUT=600\n",
+			"/etc/profile.d/zz.sh": "unset TMOUT\n",
+		}, ""},
+		// bash reads only the first of .bash_profile, .bash_login, .profile.
+		{"first login file", map[string]string{
+			"/etc/profile":        "",
+			"/root/.bash_profile": "# nothing\n",
+			"/root/.profile":      "TMOUT=600\n",
+		}, ""},
+		// Hidden files in profile.d are not sourced.
+		{"hidden profile.d file", map[string]string{
+			"/etc/profile":             profileLoop,
+			"/etc/profile.d/.tmout.sh": "TMOUT=600\nreadonly TMOUT\n",
+		}, ""},
+		{"sourced from bashrc", map[string]string{
+			"/etc/profile":        "",
+			"/root/.bash_profile": "if [ -f ~/.bashrc ]; then\n  . ~/.bashrc\nfi\n",
+			"/root/.bashrc":       "if [ -f /etc/bashrc ]; then . /etc/bashrc; fi\n",
+			"/etc/bashrc":         "TMOUT=900\n",
+		}, "900"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := hostfs.NewMemFS()
+			for name, content := range tt.files {
+				m.AddFile(name, content, 0o644, 0, 0)
+			}
+			env := shellEnv(t, m)
+			if got, ok := env.Effective["TMOUT"]; got.Value != tt.want || ok != (tt.want != "") {
+				t.Errorf("effective = %+v (present %v), want %q; tmout %+v", got, ok, tt.want, env.TMOUT)
+			}
+		})
+	}
+}
+
+// A conditional readonly may block a later change: the result is unknown.
+func TestShellEnvUncertainReadonly(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "TMOUT=600\nif [ \"$(id -u)\" -ne 0 ]; then readonly TMOUT; fi\n", 0o644, 0, 0).
+		AddFile("/root/.profile", "TMOUT=0\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || len(f.Unknown) != 1 || f.Unknown[0] != "effective" {
+		t.Errorf("unknown %v, err %v", f.Unknown, err)
 	}
 }

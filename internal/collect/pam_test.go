@@ -1,6 +1,9 @@
 package collect
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -44,7 +47,7 @@ func TestPAMDebian12(t *testing.T) {
 		t.Errorf("retry = %+v", s)
 	}
 	// No pwquality.conf on stock Debian: the documented default applies.
-	if s := q.Settings["minlen"]; s != (facts.Setting{Value: "8", Source: "default (pwquality.conf(5))"}) {
+	if s := q.Settings["minlen"]; s != (facts.Setting{Value: "8", Source: "default (pwquality.conf(5), libpwquality 1.3 and later)"}) {
 		t.Errorf("minlen = %+v", s)
 	}
 	if s := q.Settings["enforcing"]; s.Value != "1" || s.Explicit {
@@ -75,8 +78,8 @@ func TestPAMRocky9(t *testing.T) {
 
 	// authselect's with-faillock feature, plus a faillock.conf.
 	sysAuth, _ := m.ReadFile("/etc/pam.d/system-auth")
-	withFaillock := strings.Replace(string(sysAuth), "auth        required      pam_env.so",
-		"auth        required      pam_env.so\nauth        required      pam_faillock.so preauth silent\nauth        [default=die] pam_faillock.so authfail", 1)
+	withFaillock := strings.Replace(string(sysAuth), "auth        sufficient    pam_unix.so try_first_pass nullok",
+		"auth        required      pam_faillock.so preauth silent\nauth        sufficient    pam_unix.so try_first_pass nullok\nauth        [default=die] pam_faillock.so authfail", 1)
 	m.AddFile("/etc/pam.d/system-auth", withFaillock, 0o644, 0, 0).
 		AddFile("/etc/security/faillock.conf", "# deny = 3\ndeny = 5\neven_deny_root\n", 0o644, 0, 0)
 	l := pamFacts(t, m).Lockout["login"]
@@ -124,25 +127,40 @@ func TestPAMUnreadableInclude(t *testing.T) {
 	}
 }
 
+// su is restricted when the su stack, evaluated as libpam does, denies a
+// user outside the group who knows root's password.
 func TestPAMSuWheel(t *testing.T) {
+	const tail = "auth required pam_unix.so\n"
 	tests := []struct {
 		name, su string
 		want     string // "" when unset
 	}{
-		{"none", "auth sufficient pam_rootok.so\nauth required pam_unix.so\n", ""},
-		{"required", "auth sufficient pam_rootok.so\nauth required pam_wheel.so use_uid\n", "restricted"},
-		{"requisite with group", "auth requisite pam_wheel.so group=admins\n", "restricted"},
-		{"bracketed die", "auth [default=die] pam_wheel.so\n", "restricted"},
-		{"trust only", "auth sufficient pam_wheel.so trust use_uid\n", "not restricted: trust (users outside the group are not denied)"},
-		{"trust then required", "auth sufficient pam_wheel.so trust use_uid\nauth required pam_wheel.so use_uid\n", "restricted"},
-		{"deny", "auth required pam_wheel.so deny group=nosu\n", "not restricted: deny (the check is reversed)"},
-		{"optional", "auth optional pam_wheel.so\n", "not restricted: control optional does not deny"},
-		{"bracketed ignore", "auth [success=ok default=ignore] pam_wheel.so\n", "not restricted: control [success=ok default=ignore] does not deny"},
-		{"after sufficient", "auth sufficient pam_unix.so\nauth required pam_wheel.so\n", "not restricted: sufficient pam_unix.so comes first"},
+		{"none", "auth sufficient pam_rootok.so\n" + tail, ""},
+		{"required", "auth sufficient pam_rootok.so\nauth required pam_wheel.so use_uid\n" + tail, "restricted"},
+		{"requisite with group", "auth requisite pam_wheel.so group=admins\n" + tail, "restricted"},
+		{"bracketed die", "auth [default=die] pam_wheel.so\n" + tail, "restricted"},
+		{"keywords ignore case", "auth Required pam_wheel.so use_uid\n" + tail, "restricted"},
+		// trust only makes members succeed at once; others are still denied.
+		{"required trust", "auth required pam_wheel.so trust use_uid\n" + tail, "restricted"},
+		{"sufficient trust only", "auth sufficient pam_wheel.so trust use_uid\n" + tail, "not restricted: pam_wheel.so does not deny users outside the group"},
+		{"trust then required", "auth sufficient pam_wheel.so trust use_uid\nauth required pam_wheel.so use_uid\n" + tail, "restricted"},
+		{"deny", "auth required pam_wheel.so deny group=nosu\n" + tail, "not restricted: pam_wheel.so does not deny users outside the group"},
+		{"optional", "auth optional pam_wheel.so\n" + tail, "not restricted: pam_wheel.so does not deny users outside the group"},
+		{"bracketed ignore", "auth [success=ok default=ignore] pam_wheel.so\n" + tail, "not restricted: pam_wheel.so does not deny users outside the group"},
+		{"after sufficient", "auth sufficient pam_unix.so\nauth required pam_wheel.so\n", "not restricted: pam_wheel.so is not reached: a rule before it ends the stack"},
+		{"after Sufficient", "auth Sufficient pam_unix.so\nauth required pam_wheel.so\n", "not restricted: pam_wheel.so is not reached: a rule before it ends the stack"},
+		{"after success=done", "auth [success=done new_authtok_reqd=done default=ignore] pam_unix.so\nauth required pam_wheel.so\n", "not restricted: pam_wheel.so is not reached: a rule before it ends the stack"},
+		{"after Include", "auth sufficient pam_rootok.so\nauth Include system-auth\nauth required pam_wheel.so use_uid\n", "not restricted: pam_wheel.so is not reached: a rule before it ends the stack"},
+		// A substack's sufficient only ends the substack.
+		{"after substack", "auth sufficient pam_rootok.so\nauth substack system-auth\nauth required pam_wheel.so use_uid\n", "restricted"},
+		// A comment ending in a backslash does not swallow the next rule.
+		{"comment with backslash", "auth sufficient pam_rootok.so\n# old rule \\\nauth sufficient pam_unix.so\nauth required pam_wheel.so\n", "not restricted: pam_wheel.so is not reached: a rule before it ends the stack"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := pamFacts(t, hostfs.NewMemFS().AddFile("/etc/pam.d/su", tt.su, 0o644, 0, 0))
+			m := hostfs.NewMemFS().AddFile("/etc/pam.d/su", tt.su, 0o644, 0, 0).
+				AddFile("/etc/pam.d/system-auth", "auth required pam_env.so\nauth sufficient pam_unix.so\nauth required pam_deny.so\n", 0o644, 0, 0)
+			p := pamFacts(t, m)
 			s, ok := p.Effective["su_wheel"]
 			if s.Value != tt.want || ok != (tt.want != "") || ok != s.Explicit {
 				t.Errorf("su_wheel = %+v (present %v), want %q", s, ok, tt.want)
@@ -160,12 +178,27 @@ func TestPAMSuWheel(t *testing.T) {
 	}
 }
 
-// libpwquality reads pwquality.conf.d first and pwquality.conf last; option
-// names are case-insensitive and "#" starts a comment anywhere.
+// pwqualityHost is a host with a libpwquality captured from a distribution.
+func pwqualityHost(t *testing.T, lib string) *hostfs.MemFS {
+	t.Helper()
+	data, err := os.ReadFile("testdata/" + lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return hostfs.NewMemFS().AddFile("/usr/lib64/libpwquality.so.1", string(data), 0o755, 0, 0)
+}
+
+const (
+	modernPwquality = "rocky-9/usr/lib64/libpwquality.so.1"
+	legacyPwquality = "centos-7/usr/lib64/libpwquality.so.1"
+)
+
+// libpwquality reads pwquality.conf.d first and pwquality.conf last; names
+// are case-insensitive, "#" starts a comment anywhere, and "=" is optional.
 func TestPAMPwqualityConfig(t *testing.T) {
-	m := hostfs.NewMemFS().
-		AddFile("/etc/pam.d/passwd", "password requisite pam_pwquality.so retry=3 DCREDIT=-1\n", 0o644, 0, 0).
-		AddFile("/etc/security/pwquality.conf.d/10-site.conf", "minlen = 10\nMinClass = 3\n", 0o644, 0, 0).
+	m := pwqualityHost(t, modernPwquality).
+		AddFile("/etc/pam.d/passwd", "password requisite pam_pwquality.so retry=3 DCREDIT=-1\npassword sufficient pam_unix.so\npassword required pam_deny.so\n", 0o644, 0, 0).
+		AddFile("/etc/security/pwquality.conf.d/10-site.conf", "minlen = 10\nMinClass 3\n", 0o644, 0, 0).
 		AddFile("/etc/security/pwquality.conf", "minlen = 14 # site policy\nenforcing = 0\n", 0o644, 0, 0)
 	q := pamFacts(t, m).PasswordQuality
 	want := map[string]facts.Setting{
@@ -181,6 +214,88 @@ func TestPAMPwqualityConfig(t *testing.T) {
 	}
 }
 
+// What libpwquality does not apply is not reported as set.
+func TestPAMPwqualityReading(t *testing.T) {
+	const passwd = "password requisite pam_pwquality.so\npassword sufficient pam_unix.so\npassword required pam_deny.so\n"
+	tests := []struct {
+		name, lib, dropIn, main string
+		minlen, source          string
+	}{
+		// An unknown setting stops the reading, so pwquality.conf is unread.
+		{"unknown setting", modernPwquality, "difignore = 23\n", "minlen = 14\n", "8", "default"},
+		// A non-breaking space makes the value invalid to libpwquality.
+		{"non-breaking space", modernPwquality, "", "minlen = 14\u00a0\n", "8", "default"},
+		// 1.2 (EL7) reads no drop-ins, does not know enforce_for_root and
+		// has other defaults.
+		{"legacy drop-in", legacyPwquality, "minlen = 14\n", "", "9", "default (libpwquality 1.2)"},
+		{"legacy unknown setting", legacyPwquality, "", "enforce_for_root\nminlen = 14\n", "9", "default (libpwquality 1.2)"},
+		{"legacy", legacyPwquality, "", "minlen = 12\n", "12", "/etc/security/pwquality.conf:1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := pwqualityHost(t, tt.lib).AddFile("/etc/pam.d/passwd", passwd, 0o644, 0, 0)
+			if tt.dropIn != "" {
+				m.AddFile("/etc/security/pwquality.conf.d/50-site.conf", tt.dropIn, 0o644, 0, 0)
+			}
+			if tt.main != "" {
+				m.AddFile("/etc/security/pwquality.conf", tt.main, 0o644, 0, 0)
+			}
+			s := pamFacts(t, m).PasswordQuality.Settings["minlen"]
+			if s.Value != tt.minlen || !strings.HasPrefix(s.Source, tt.source) {
+				t.Errorf("minlen = %+v, want %s from %s", s, tt.minlen, tt.source)
+			}
+		})
+	}
+	m := pwqualityHost(t, legacyPwquality).AddFile("/etc/pam.d/passwd", passwd, 0o644, 0, 0)
+	if c := pamFacts(t, m).PasswordQuality.Settings["dcredit"]; c.Value != "1" {
+		t.Errorf("legacy dcredit = %+v, want the 1.2 default 1", c)
+	}
+	// Without the library, its version and defaults are unknown.
+	f, err := collect(t, pamCollector{}, hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", passwd, 0o644, 0, 0))
+	if err != nil || strings.Join(f.Unknown, ",") != "password_quality" {
+		t.Errorf("unknown %v, err %v", f.Unknown, err)
+	}
+}
+
+// A policy module that a rule before it skips, or whose failure is ignored,
+// enforces nothing.
+func TestPAMPolicyReach(t *testing.T) {
+	tests := []struct {
+		name, passwd, quality, history string
+	}{
+		{"stock order", "password requisite pam_pwquality.so\npassword requisite pam_pwhistory.so remember=5\npassword sufficient pam_unix.so use_authtok\npassword required pam_deny.so\n", "pam_pwquality.so", "pam_pwhistory.so"},
+		{"history after sufficient pam_unix", "password requisite pam_pwquality.so retry=3\npassword sufficient pam_unix.so sha512 shadow use_authtok\npassword required pam_pwhistory.so remember=5 use_authtok\n", "pam_pwquality.so", ""},
+		{"history skipped by a jump", "password [success=1 default=ignore] pam_unix.so\npassword required pam_pwhistory.so remember=5\npassword required pam_permit.so\n", "", ""},
+		{"optional quality", "password optional pam_pwquality.so\npassword sufficient pam_unix.so\npassword required pam_deny.so\n", "", ""},
+		{"pam_unix remember", "password requisite pam_pwquality.so\npassword sufficient pam_unix.so remember=4\npassword required pam_deny.so\n", "pam_pwquality.so", "pam_unix.so"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := pwqualityHost(t, modernPwquality).AddFile("/etc/pam.d/passwd", tt.passwd, 0o644, 0, 0).
+				AddFile("/usr/lib64/security/pam_pwhistory.so", "/etc/security/pwhistory.conf\n", 0o755, 0, 0)
+			p := pamFacts(t, m)
+			if p.PasswordQuality.Module != tt.quality || p.PasswordHistory.Module != tt.history {
+				t.Errorf("quality %q (ignored %v), history %q (ignored %v); want %q, %q",
+					p.PasswordQuality.Module, p.PasswordQuality.Ignored, p.PasswordHistory.Module, p.PasswordHistory.Ignored, tt.quality, tt.history)
+			}
+		})
+	}
+}
+
+// pwhistory.conf is read as pam_modutil_search_key does: the first value of
+// a key counts, whatever its case.
+func TestPAMPwhistoryConf(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/pam.d/passwd", "password requisite pam_pwhistory.so\npassword sufficient pam_unix.so\npassword required pam_deny.so\n", 0o644, 0, 0).
+		AddFile("/usr/lib64/security/pam_pwhistory.so", "/etc/security/pwhistory.conf\n", 0o755, 0, 0).
+		AddFile("/etc/security/pwhistory.conf", "REMEMBER = 2\nremember = 24\n", 0o644, 0, 0)
+	if s := pamFacts(t, m).PasswordHistory.Settings["remember"]; s.Value != "2" {
+		t.Errorf("remember = %+v, want the first value", s)
+	}
+}
+
+// A lockout is enforced when a wrong password is counted and a locked
+// account is denied even with the right password (pam_faillock(8)).
 func TestPAMLockoutEnforcement(t *testing.T) {
 	module := "/usr/lib64/security/pam_faillock.so"
 	tests := []struct {
@@ -188,10 +303,17 @@ func TestPAMLockoutEnforcement(t *testing.T) {
 		actions     string
 		enforced    bool
 	}{
-		{"preauth only never counts", "auth required pam_faillock.so preauth\nauth sufficient pam_unix.so\n", "preauth", false},
-		{"authfail without a check", "auth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\n", "authfail", false},
-		{"preauth and authfail", "auth required pam_faillock.so preauth\nauth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\n", "preauth,authfail", true},
-		{"authfail and account", "auth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\naccount required pam_faillock.so\n", "authfail,account", true},
+		{"preauth only never counts", "auth required pam_faillock.so preauth\nauth sufficient pam_unix.so\nauth required pam_deny.so\n", "preauth", false},
+		{"authfail without a check", "auth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\nauth required pam_deny.so\n", "authfail", false},
+		{"preauth and authfail", "auth required pam_faillock.so preauth\nauth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\nauth required pam_deny.so\n", "preauth,authfail", true},
+		// The account phase only audits and resets: it never denies.
+		{"authfail and account", "auth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\nauth required pam_deny.so\naccount required pam_faillock.so\n", "authfail,account", false},
+		// pam_faillock(8)'s first example: authsucc instead of preauth.
+		{"authfail and authsucc", "auth [success=1 default=bad] pam_unix.so\nauth [default=die] pam_faillock.so authfail\nauth sufficient pam_faillock.so authsucc\nauth required pam_deny.so\n", "authfail,authsucc", true},
+		{"preauth after sufficient pam_unix", "auth sufficient pam_unix.so\nauth required pam_faillock.so preauth\nauth [default=die] pam_faillock.so authfail\nauth required pam_deny.so\n", "preauth,authfail", false},
+		{"authfail after requisite pam_unix", "auth required pam_faillock.so preauth\nauth requisite pam_unix.so\nauth [default=die] pam_faillock.so authfail\n", "preauth,authfail", false},
+		// A non-breaking space hides the mode, so pam_faillock runs it as preauth.
+		{"non-breaking space", "auth required pam_faillock.so preauth\nauth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail\u00a0\nauth required pam_deny.so\n", "preauth", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -204,13 +326,63 @@ func TestPAMLockoutEnforcement(t *testing.T) {
 			}
 		})
 	}
+	t.Run("tally2 after sufficient pam_unix", func(t *testing.T) {
+		m := hostfs.NewMemFS().AddFile("/etc/pam.d/login", "auth sufficient pam_unix.so\nauth required pam_tally2.so deny=5\n", 0o644, 0, 0)
+		if l := pamFacts(t, m).Lockout["login"]; l.Enforced {
+			t.Errorf("lockout = %+v", l)
+		}
+	})
 	t.Run("module not found", func(t *testing.T) {
 		m := hostfs.NewMemFS().AddFile("/etc/pam.d/login", "auth required pam_faillock.so preauth\n", 0o644, 0, 0)
 		f, err := collect(t, pamCollector{}, m)
-		if err != nil || f.Complete || !strings.Contains(strings.Join(f.Skipped, ";"), "faillock.conf") {
-			t.Errorf("complete %v, skipped %v, err %v", f.Complete, f.Skipped, err)
+		if err != nil || strings.Join(f.Unknown, ",") != "lockout" || !strings.Contains(strings.Join(f.Skipped, ";"), "faillock.conf") {
+			t.Errorf("unknown %v, skipped %v, err %v", f.Unknown, f.Skipped, err)
 		}
 	})
+}
+
+// faillock.conf is read as pam_faillock does: the key ends at whitespace
+// or "="; conf= names another file; the checking line's arguments count.
+func TestPAMFaillockConf(t *testing.T) {
+	const stack = "auth required pam_faillock.so preauth%s\nauth sufficient pam_unix.so\nauth [default=die] pam_faillock.so authfail deny=5\nauth required pam_deny.so\n"
+	tests := []struct {
+		name, args, conf, deny string
+	}{
+		{"space separated", "", "deny 0\n", "0"},
+		{"conf argument", " conf=/etc/security/faillock-off.conf", "deny = 4\n", "0"},
+		{"preauth argument", " deny=100", "deny = 4\n", "100"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := hostfs.NewMemFS().
+				AddFile("/etc/pam.d/login", fmt.Sprintf(stack, tt.args), 0o644, 0, 0).
+				AddFile("/usr/lib64/security/pam_faillock.so", "/etc/security/faillock.conf\n", 0o755, 0, 0).
+				AddFile("/etc/security/faillock.conf", tt.conf, 0o644, 0, 0).
+				AddFile("/etc/security/faillock-off.conf", "deny = 0\n", 0o644, 0, 0)
+			if s := pamFacts(t, m).Lockout["login"].Settings["deny"]; s.Value != tt.deny {
+				t.Errorf("deny = %+v, want %s", s, tt.deny)
+			}
+		})
+	}
+}
+
+// Credentials in module arguments never become facts.
+func TestPAMRedactsSecrets(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/pam.d/sshd",
+		"auth sufficient pam_tacplus.so server=10.0.0.5 secret=S3cretTacKey\nauth required pam_yubico.so id=16 key=abcdef\n"+
+			"auth optional pam_exec.so expose_authtok /usr/local/bin/check --token xyz\nauth required pam_mysql.so user=pam passwd=hunter2\n", 0o644, 0, 0)
+	data, err := json.Marshal(pamFacts(t, m).Stacks["sshd"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"S3cretTacKey", "abcdef", "xyz", "/usr/local/bin/check", "hunter2"} {
+		if strings.Contains(string(data), secret) {
+			t.Errorf("%q leaked into the facts: %s", secret, data)
+		}
+	}
+	if !strings.Contains(string(data), "server=10.0.0.5") {
+		t.Errorf("ordinary arguments were dropped: %s", data)
+	}
 }
 
 // pwhistory.conf only applies where pam_pwhistory reads it: Rocky 9's PAM
@@ -251,5 +423,21 @@ func TestPAMPasswordHash(t *testing.T) {
 	none := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", "password required pam_unix.so use_authtok\n", 0o644, 0, 0)
 	if h, ok := pamFacts(t, none).Effective["password_hash"]; ok {
 		t.Errorf("no hash option = %+v", h)
+	}
+	tests := []struct{ name, line, defs, want string }{
+		// pam_unix applies its options in order: the last hash wins.
+		{"last option wins", "password sufficient pam_unix.so obscure sha512 md5 shadow use_authtok", "", "md5"},
+		{"des", "password sufficient pam_unix.so des", "", "des"},
+		// Without an option, pam_unix reads the first ENCRYPT_METHOD.
+		{"first ENCRYPT_METHOD", "password sufficient pam_unix.so shadow", "ENCRYPT_METHOD MD5\nENCRYPT_METHOD SHA512\n", "md5"},
+	}
+	for _, tt := range tests {
+		m := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", tt.line+"\npassword required pam_deny.so\n", 0o644, 0, 0)
+		if tt.defs != "" {
+			m.AddFile("/etc/login.defs", tt.defs, 0o644, 0, 0)
+		}
+		if h := pamFacts(t, m).Effective["password_hash"]; h.Value != tt.want {
+			t.Errorf("%s: password_hash = %+v, want %s", tt.name, h, tt.want)
+		}
 	}
 }
