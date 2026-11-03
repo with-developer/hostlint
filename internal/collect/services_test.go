@@ -194,3 +194,55 @@ func TestServicesInetdDir(t *testing.T) {
 		t.Errorf("inetd = %+v", s.Inetd)
 	}
 }
+
+func startedNames(s *Services) string {
+	var out []string
+	for _, st := range s.Started {
+		out = append(out, st.Kind+":"+st.Service+":"+st.Program)
+	}
+	return strings.Join(out, " ")
+}
+
+// Started gathers every way a service starts, with its program, so a check
+// can find a service under any name.
+func TestServicesStarted(t *testing.T) {
+	s, _, _ := servicesFacts(t, fixtureFS(t, "debian-12"))
+	got := startedNames(s)
+	for _, want := range []string{
+		"unit:ssh:/usr/sbin/sshd",
+		"sysv:tftpd-hpa:",
+		"inetd:telnet:/usr/sbin/telnetd",
+		"inetd:shell:/usr/sbin/in.rshd",
+		"inetd:finger:/usr/sbin/in.fingerd",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("started lacks %s:\n%s", want, got)
+		}
+	}
+	// ssh has a unit, so its init script does not count on its own.
+	if strings.Contains(got, "sysv:ssh:") {
+		t.Errorf("an init script shadowed by a unit is listed:\n%s", got)
+	}
+
+	out, err := os.ReadFile("testdata/rocky-9-systemctl-list-units.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	running := fixtureFS(t, "rocky-9").AddDir("/run/systemd/system", 0o755, 0, 0)
+	f := servicesCollect(t, hostfs.NewTestHost(running, hostfs.RecordedRunner{"systemctl list-units": {Stdout: string(out)}}, true))
+	got = startedNames(f.Value.(*Services))
+	for _, want := range []string{"unit:telnet:/usr/sbin/in.telnetd", "active:telnet:/usr/sbin/in.telnetd", "unit:tftp:/usr/sbin/in.tftpd"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("started lacks %s:\n%s", want, got)
+		}
+	}
+	if len(f.Partial) != 0 {
+		t.Errorf("partial %v", f.Partial)
+	}
+
+	// Without the active units, the list is partial.
+	f = servicesCollect(t, hostfs.NewTestHost(running, hostfs.RecordedRunner{"systemctl list-units": {ExitCode: 1}}, true))
+	if strings.Join(f.Partial, " ") != "started" {
+		t.Errorf("partial %v", f.Partial)
+	}
+}
