@@ -1,0 +1,6 @@
+/etc/security/opasswd
+/etc/security/opasswd.old
+/etc/security/opasswd.tmpXXXXXX
+/group
+/sbin/pwhistory_helper
+/usr/lib/debug/.dwz/aarch64-linux-gnu/libpam-modules.debug
