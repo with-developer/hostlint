@@ -227,7 +227,48 @@ func splitSSHDLine(text string) (string, string) {
 	}
 	key, rest := text[:i], strings.TrimLeft(text[i:], " \t")
 	rest = strings.TrimPrefix(rest, "=")
-	return key, strings.Trim(strings.TrimSpace(rest), `"`)
+	return key, strings.Join(sshdArgs(rest), " ")
+}
+
+// sshdArgs splits a value as OpenSSH's argv_split does (8.7 and later):
+// single or double quotes group words, a backslash escapes a quote, a
+// backslash or (unquoted) a space, and a word starting with # begins a
+// comment. Older versions reject a trailing comment, so sshd does not start
+// with it at all.
+func sshdArgs(s string) []string {
+	var args []string
+	for i := 0; i < len(s); {
+		for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+			i++
+		}
+		if i == len(s) || s[i] == '#' {
+			break
+		}
+		var arg strings.Builder
+		var quote byte
+		for ; i < len(s); i++ {
+			c := s[i]
+			switch {
+			case c == '\\' && i+1 < len(s) && (s[i+1] == '\'' || s[i+1] == '"' || s[i+1] == '\\' || quote == 0 && s[i+1] == ' '):
+				i++
+				arg.WriteByte(s[i])
+				continue
+			case quote == 0 && (c == ' ' || c == '\t'):
+			case quote == 0 && (c == '"' || c == '\''):
+				quote = c
+				continue
+			case quote != 0 && c == quote:
+				quote = 0
+				continue
+			default:
+				arg.WriteByte(c)
+				continue
+			}
+			break
+		}
+		args = append(args, arg.String())
+	}
+	return args
 }
 
 // normalizeSSHDValue lowercases the yes/no style values sshd compares

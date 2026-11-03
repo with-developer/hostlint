@@ -1,11 +1,11 @@
 id: accounts.system-account-shells
 version: 1
 title: System accounts cannot log in
-title_ko: 로그인이 필요 없는 계정의 쉘 제한
+title_ko: 시스템 계정은 로그인할 수 없음
 severity: low
 description: >-
-  Lists system accounts (UID 1 to `system_uid_max`) that have a login shell instead of
-  nologin or false.
+  Lists system accounts (UID 1 to `system_uid_max`, and the overflow accounts such as nobody,
+  UID 65534 or 4294967294) that have a login shell instead of nologin or false.
 rationale: A service account with a shell gives an attacker who reaches it an interactive foothold.
 remediation: Set the shell to /usr/sbin/nologin (usermod -s /usr/sbin/nologin account).
 params:
@@ -13,7 +13,7 @@ params:
 violations:
   over: accounts.users
   as: u
-  where: u.uid >= 1 && u.uid <= params.system_uid_max && u.login_shell
+  where: (u.uid >= 1 && u.uid <= params.system_uid_max || u.uid == 65534 || u.uid == 4294967294) && u.login_shell
   key: u.name
   text: >-
     u.name + " (uid " + string(u.uid) + ") has the login shell " + (u.shell == "" ? "/bin/sh (empty field)" : u.shell)
@@ -25,6 +25,10 @@ tests:
   - name: service with a shell
     facts:
       accounts: {users: [{name: root, uid: 0, shell: /bin/bash, login_shell: true}, {name: postgres, uid: 26, shell: /bin/bash, login_shell: true}]}
+    want: FAIL
+  - name: nobody with a shell
+    facts:
+      accounts: {users: [{name: root, uid: 0, shell: /bin/bash, login_shell: true}, {name: nobody, uid: 65534, shell: /bin/bash, login_shell: true}, {name: alice, uid: 1000, shell: /bin/bash, login_shell: true}]}
     want: FAIL
   - name: partial list cannot pass
     input: incomplete
