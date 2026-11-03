@@ -1,7 +1,7 @@
 id: accounts.unique-uids
 version: 1
 title: Every account has its own UID
-title_ko: 동일한 UID 금지
+title_ko: 계정마다 UID가 다름
 severity: medium
 description: Lists accounts that share a UID with another account.
 rationale: Accounts sharing a UID are the same user to the kernel, so access and audit trails cannot tell them apart.
