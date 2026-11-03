@@ -16,9 +16,12 @@ import (
 	"github.com/with-developer/hostlint/internal/facts"
 )
 
-// Evaluation limits for every CEL program (ADR 0006 §3).
+// Evaluation limits for every CEL program (ADR 0006 §3). A violations check
+// runs where, key and text once per element; together they may cost at most
+// celCheckBudget.
 const (
 	celCostLimit      = 1_000_000
+	celCheckBudget    = 10 * celCostLimit
 	celInterruptEvery = 100
 )
 
@@ -66,8 +69,9 @@ type compiledCheck struct {
 	key     *program
 	text    *program
 	show    *program
-	// evidencePaths are the fact paths an expect expression reads.
-	evidencePaths []evidencePath
+	// evidencePaths are the fact paths an expect expression reads, and
+	// appliesPaths those applies reads.
+	evidencePaths, appliesPaths []evidencePath
 	// vars are the collector variables any expression references.
 	vars []string
 }
@@ -110,6 +114,9 @@ func compileCheck(base *cel.Env, known map[string]Collector, c *Check) (*compile
 		if cc.applies, err = compile(env, "applies", c.Applies, cel.BoolType); err != nil {
 			return nil, err
 		}
+		if cc.appliesPaths, err = compilePaths(env, known, cc.applies); err != nil {
+			return nil, err
+		}
 	}
 	switch {
 	case c.Expect != "":
@@ -119,12 +126,8 @@ func compileCheck(base *cel.Env, known map[string]Collector, c *Check) (*compile
 		if hasComprehension(cc.expect) {
 			return nil, fmt.Errorf("expect: comprehensions (all, exists, filter, map) belong in a violations check")
 		}
-		for _, fp := range factPaths(cc.expect, known) {
-			pp, err := compile(env, "evidence", fp.path, nil)
-			if err != nil {
-				return nil, err
-			}
-			cc.evidencePaths = append(cc.evidencePaths, evidencePath{fp, pp})
+		if cc.evidencePaths, err = compilePaths(env, known, cc.expect); err != nil {
+			return nil, err
 		}
 	case c.Setting != nil:
 		src, err := optionalLast(c.Setting.Fact)
@@ -175,6 +178,19 @@ func compileCheck(base *cel.Env, known map[string]Collector, c *Check) (*compile
 	}
 	cc.vars = sortedKeys(seen)
 	return cc, nil
+}
+
+// compilePaths compiles the fact paths p reads, for evidence.
+func compilePaths(env *cel.Env, known map[string]Collector, p *program) ([]evidencePath, error) {
+	var out []evidencePath
+	for _, fp := range factPaths(p, known) {
+		pp, err := compileExpr(env, known, "evidence", fp.path, nil)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, evidencePath{fp, pp})
+	}
+	return out, nil
 }
 
 // compileExpr type-checks src and builds a cost-limited program that supports

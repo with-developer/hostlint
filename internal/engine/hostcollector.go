@@ -5,8 +5,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"os"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -35,19 +35,17 @@ func (hostCollector) Version() int       { return 1 }
 func (hostCollector) Access() Access     { return AccessFilesystem }
 func (hostCollector) Type() reflect.Type { return reflect.TypeFor[hostFacts]() }
 
+// machineIDRe is a valid machine ID (machine-id(5)); anything else, such
+// as "uninitialized" in an image, identifies nothing.
+var machineIDRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
 func (hostCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
-	hf := &hostFacts{}
-	if data, err := h.FS.ReadFile("/etc/hostname"); err == nil {
-		hf.Hostname = strings.TrimSpace(string(data))
-	}
+	hf := &hostFacts{Hostname: h.Hostname()}
 	if h.Live {
-		if name, err := os.Hostname(); err == nil {
-			hf.Hostname = name
-		}
 		hf.Arch = runtime.GOARCH
 	}
 	if data, err := h.FS.ReadFile("/etc/machine-id"); err == nil {
-		if id := strings.TrimSpace(string(data)); id != "" {
+		if id := strings.TrimSpace(string(data)); machineIDRe.MatchString(id) {
 			mac := hmac.New(sha256.New, hostIDKey)
 			mac.Write([]byte(id))
 			hf.HostID = hex.EncodeToString(mac.Sum(nil))[:32]

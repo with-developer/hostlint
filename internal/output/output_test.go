@@ -161,3 +161,19 @@ func TestWriteFile(t *testing.T) {
 		t.Errorf("report file: %v, valid JSON %v", err, json.Valid(data))
 	}
 }
+
+// Text from the host cannot drive the terminal.
+func TestTableEscapesHostText(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"  a\tb\n c ", "a b c"},
+		{"evil\x1b[2J", `evil\x1b[2J`},
+		{"file\u202egpj.exe", `file\u202egpj.exe`},
+		{"계정 이름", "계정 이름"},
+		{"bad\xffbyte", "bad\ufffdbyte"},
+	}
+	for _, tt := range tests {
+		if got := oneLine(tt.in); got != tt.want {
+			t.Errorf("oneLine(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

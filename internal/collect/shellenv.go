@@ -24,11 +24,12 @@ type ShellEnv struct {
 	TMOUT []ShellValue `json:"tmout"` // TMOUT assignments and unsets
 	Umask []ShellValue `json:"umask"` // umask commands
 	Path  []ShellValue `json:"path"`  // PATH assignments
-	// EffectiveTMOUT is what the unconditional TMOUT assignments and unsets
-	// leave, in reading order; once TMOUT is read-only, later changes fail.
-	// It is unset when none survives. Conditional occurrences are only in
-	// TMOUT, for rules to judge.
-	EffectiveTMOUT facts.Setting `json:"effective_tmout"`
+	// Effective maps a variable to what its unconditional assignments and
+	// unsets leave, in reading order (once it is read-only, later changes
+	// fail). A variable is absent when no value survives. Conditional
+	// occurrences are only in the lists above, for rules to judge. Only
+	// TMOUT is tracked.
+	Effective map[string]facts.Setting `json:"effective"`
 }
 
 // ShellValue is one occurrence in a startup file.
@@ -87,7 +88,10 @@ func (shellEnvCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 			scanShellFile(env, file, data)
 		}
 	}
-	env.EffectiveTMOUT = effectiveTMOUT(env.TMOUT)
+	env.Effective = map[string]facts.Setting{}
+	if s := effectiveTMOUT(env.TMOUT); s.Explicit {
+		env.Effective["TMOUT"] = s
+	}
 	return engine.Facts{Value: env, Complete: len(skipped) == 0, Skipped: skipped}, nil
 }
 

@@ -2,7 +2,7 @@
 
 [31m✗[0m [31mFAIL[0m U-01   Restrict direct remote root login [2m[high][0m
     [31m✗[0m ssh.permit-root-login [2m— SSH does not allow direct root login[0m
-        "yes" (explicit); expected one of [no] [2m/etc/ssh/sshd_config:32[0m
+        "yes" (explicit); expected one of [no]  [2m/etc/ssh/sshd_config:32[0m
 [35m![0m [35mERROR[0m U-04   Protect password hashes [2m[high][0m
     [35m![0m accounts.shadow-file [2m— Password hashes are kept in /etc/shadow[0m
         shadow: permission denied (run hostlint as root)

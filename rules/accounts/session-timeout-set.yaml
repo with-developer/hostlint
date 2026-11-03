@@ -9,17 +9,17 @@ description: >-
 rationale: An unattended logged-in terminal can be used by anyone who reaches it.
 remediation: Add `TMOUT=600` and `readonly TMOUT` and `export TMOUT` to a file in /etc/profile.d.
 setting:
-  fact: shell_env.effective_tmout
+  fact: shell_env.effective.TMOUT
   matches: "[1-9][0-9]*"
   absent: fail
 tests:
   - name: set
     facts:
-      shell_env: {effective_tmout: {value: "600", explicit: true, source: "/etc/profile.d/timeout.sh:1"}}
+      shell_env: {effective: {TMOUT: {value: "600", explicit: true, source: "/etc/profile.d/timeout.sh:1"}}}
     want: PASS
   - name: disabled
     facts:
-      shell_env: {effective_tmout: {value: "0", explicit: true, source: "/root/.bashrc:3"}}
+      shell_env: {effective: {TMOUT: {value: "0", explicit: true, source: "/root/.bashrc:3"}}}
     want: FAIL
   - name: not set, or only conditionally
     input: absent
@@ -30,5 +30,5 @@ tests:
     input: incomplete
     incomplete: [shell_env]
     facts:
-      shell_env: {effective_tmout: {value: "600", explicit: true}}
+      shell_env: {effective: {TMOUT: {value: "600", explicit: true}}}
     want: ERROR

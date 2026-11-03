@@ -3,7 +3,9 @@ package output
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/with-developer/hostlint/internal/engine"
 )
@@ -49,9 +51,9 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 		checks[c.Ref] = c
 	}
 
-	host := res.Host.Hostname
-	if res.Host.OS.Name != "" {
-		host += " (" + res.Host.OS.Name + ")"
+	host := oneLine(res.Host.Hostname)
+	if name := oneLine(res.Host.OS.Name); name != "" {
+		host += " (" + name + ")"
 	}
 	profiles := make([]string, 0, len(res.Profiles))
 	for _, pr := range res.Profiles {
@@ -94,7 +96,7 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 		sum := res.Summary[pr.ID]
 		var parts []string
 		total := 0
-		for _, st := range engine.AllStatuses {
+		for _, st := range engine.Statuses() {
 			if n := sum.Controls[st]; n > 0 {
 				total += n
 				parts = append(parts, p.paint(statusStyle[st].color, fmt.Sprintf("%d %s", n, st)))
@@ -123,15 +125,36 @@ func writeCheck(b *strings.Builder, p painter, c engine.CheckResult) {
 			fmt.Fprintf(b, "        %s\n", p.paint(dim, fmt.Sprintf("… and %d more", len(c.Evidence)-i+c.EvidenceOmitted)))
 			break
 		}
-		line := ev.Text
-		if ev.Source != "" && !strings.Contains(line, ev.Source) {
-			line += "  " + p.paint(dim, ev.Source)
+		line := oneLine(ev.Text)
+		if src := oneLine(ev.Source); src != "" && !strings.Contains(line, src) {
+			line += "  " + p.paint(dim, src)
 		}
-		fmt.Fprintf(b, "        %s\n", oneLine(line))
+		fmt.Fprintf(b, "        %s\n", line)
 	}
 }
 
-// oneLine keeps evidence on a single terminal line.
+// oneLine makes text from the host safe for one terminal line: runs of
+// whitespace become one space, and characters that are not printable are
+// escaped, so a file or account name cannot move the cursor, change colors
+// or reorder the line.
 func oneLine(s string) string {
-	return strings.Join(strings.Fields(s), " ")
+	var b strings.Builder
+	space := false
+	for _, r := range s {
+		switch {
+		case unicode.IsSpace(r):
+			space = b.Len() > 0
+			continue
+		case space:
+			b.WriteByte(' ')
+			space = false
+		}
+		if unicode.IsGraphic(r) {
+			b.WriteRune(r)
+			continue
+		}
+		q := strconv.QuoteRuneToGraphic(r)
+		b.WriteString(q[1 : len(q)-1])
+	}
+	return b.String()
 }

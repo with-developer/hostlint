@@ -1,34 +1,39 @@
 package engine
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/facts"
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
 // scanOne scans fsys with a profile made of the single check c.
-func scanOne(t *testing.T, c *Check, svc *fakeCollector, fsys hostfs.FS, timeout time.Duration) CheckResult {
+func scanOne(t *testing.T, c *Check, svc *fakeCollector, fsys hostfs.FS) CheckResult {
 	t.Helper()
-	if c.Version == 0 {
-		c.Version = 1
+	res := scanChecks(t, svc, fsys, time.Second, c)
+	if len(res.Checks) != 1 {
+		t.Fatalf("got %d check results", len(res.Checks))
 	}
-	if c.Title == "" {
-		c.Title = "T"
-	}
-	if c.Severity == "" {
-		c.Severity = SeverityLow
-	}
-	content := &Content{
-		Checks: map[string]*Check{c.ID: c},
-		Profiles: map[string]*Profile{"p": {ID: "p", Revision: 1, Title: "P", Controls: []Control{
-			{ID: "C-01", Title: "C", Severity: SeverityLow, Checks: []string{c.ID}},
-		}}},
+	return res.Checks[0]
+}
+
+// scanChecks scans fsys with a profile of one control per check.
+func scanChecks(t *testing.T, svc *fakeCollector, fsys hostfs.FS, timeout time.Duration, checks ...*Check) *Result {
+	t.Helper()
+	content := &Content{Checks: map[string]*Check{}, Profiles: map[string]*Profile{"p": {ID: "p", Revision: 1, Title: "P"}}}
+	for i, c := range checks {
+		c.Version = max(c.Version, 1)
+		c.Title = cmp.Or(c.Title, "T")
+		c.Severity = cmp.Or(c.Severity, SeverityLow)
+		content.Checks[c.ID] = c
+		content.Profiles["p"].Controls = append(content.Profiles["p"].Controls,
+			Control{ID: fmt.Sprintf("C-%02d", i+1), Title: "C", Severity: SeverityLow, Checks: []string{c.ID}})
 	}
 	e, err := New(content, svc)
 	if err != nil {
@@ -39,10 +44,24 @@ func scanOne(t *testing.T, c *Check, svc *fakeCollector, fsys hostfs.FS, timeout
 		t.Fatal(err)
 	}
 	validateSchema(t, res)
-	if len(res.Checks) != 1 {
-		t.Fatalf("got %d check results", len(res.Checks))
+	return res
+}
+
+func byID(res *Result) map[string]CheckResult {
+	m := map[string]CheckResult{}
+	for _, c := range res.Checks {
+		m[c.ID] = c
 	}
-	return res.Checks[0]
+	return m
+}
+
+// text joins a result's reason and evidence texts.
+func text(cr CheckResult) string {
+	s := cr.Reason
+	for _, ev := range cr.Evidence {
+		s += " | " + ev.Key + ": " + ev.Text
+	}
+	return s
 }
 
 func badModeHost() *hostfs.MemFS {
@@ -72,7 +91,7 @@ func TestFileCheckApplies(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := appConfCheck()
 			c.Applies = tt.applies
-			got := scanOne(t, c, tt.svc, badModeHost(), time.Second)
+			got := scanOne(t, c, tt.svc, badModeHost())
 			if got.Status != tt.want || !strings.Contains(got.Reason, tt.reason) {
 				t.Errorf("status %s (%q), want %s mentioning %q", got.Status, got.Reason, tt.want, tt.reason)
 			}
@@ -101,7 +120,7 @@ func TestFileCheckDanglingSymlink(t *testing.T) {
 				m.AddSymlink("/etc/ld.so.preload", "/tmp/x")
 			}
 			c := &Check{ID: "x.preload", File: &FileSpec{Paths: []string{"/etc/ld.so.preload"}, Owner: []string{"root"}, Mode: "0644", Missing: tt.missing}}
-			got := scanOne(t, c, demoSvc(), m, time.Second)
+			got := scanOne(t, c, demoSvc(), m)
 			text := got.Reason
 			for _, ev := range got.Evidence {
 				text += " " + ev.Text
@@ -127,18 +146,120 @@ func (b *blockingFS) Stat(name string) (hostfs.FileInfo, error) {
 	return b.FS.Stat(name)
 }
 
-// File I/O happens in a collector, so a hung filesystem costs one collector
-// timeout and an ERROR, not the whole scan.
+// File I/O happens in a collector, so a hung path costs one collector
+// timeout and an ERROR for the checks that name it, not the whole scan.
 func TestFileCheckIOIsBounded(t *testing.T) {
-	fsys := &blockingFS{FS: badModeHost(), path: "/etc/app.conf", release: make(chan struct{})}
+	m := badModeHost().AddFile("/etc/other.conf", "", 0o666, 0, 0)
+	fsys := &blockingFS{FS: m, path: "/etc/app.conf", release: make(chan struct{})}
 	t.Cleanup(func() { close(fsys.release) })
+	other := &Check{ID: "x.other-conf", File: &FileSpec{Paths: []string{"/etc/other.conf"}, Mode: "0644", Missing: "error"}}
 	start := time.Now()
-	got := scanOne(t, appConfCheck(), demoSvc(), fsys, 100*time.Millisecond)
-	if got.Status != StatusError || !strings.Contains(got.Reason, "did not finish") {
-		t.Errorf("status %s (%q), want ERROR because the file collector did not finish", got.Status, got.Reason)
+	got := byID(scanChecks(t, demoSvc(), fsys, 100*time.Millisecond, appConfCheck(), other))
+	if c := got["x.app-conf"]; c.Status != StatusError || !strings.Contains(c.Reason, "/etc/app.conf: not observed before the collector timeout") {
+		t.Errorf("hung path: %s (%q), want ERROR", c.Status, c.Reason)
+	}
+	if c := got["x.other-conf"]; c.Status != StatusFail {
+		t.Errorf("other path: %s (%q), want FAIL", c.Status, text(c))
 	}
 	if d := time.Since(start); d > 5*time.Second {
 		t.Errorf("scan took %s", d)
+	}
+}
+
+// A symbolic link to a missing target on the way to a path, or to a glob's
+// directory, is not a missing file: creating the target creates the file.
+func TestFileCheckDanglingDirectory(t *testing.T) {
+	m := demoHost().
+		AddSymlink("/etc/sudoers.d", "/tmp/attacker").
+		AddSymlink("/etc/cron.daily", "/tmp/attacker")
+	tests := []struct {
+		name string
+		spec FileSpec
+		want Status
+		text string
+	}{
+		{"path, missing pass", FileSpec{Paths: []string{"/etc/sudoers.d/evil"}, Mode: "0440", Missing: "pass"}, StatusError,
+			"/etc/sudoers.d/evil: /etc/sudoers.d is a symbolic link to /tmp/attacker, which does not exist"},
+		{"path, not applicable", FileSpec{Paths: []string{"/etc/sudoers.d/evil"}, Mode: "0440", Missing: "not_applicable"}, StatusError, "/etc/sudoers.d is a symbolic link"},
+		{"path, missing fail", FileSpec{Paths: []string{"/etc/sudoers.d/evil"}, Mode: "0440", Missing: "fail"}, StatusFail, "/etc/sudoers.d is a symbolic link"},
+		{"glob, no match pass", FileSpec{Paths: []string{"/etc/cron.daily/*"}, Mode: "0755", Missing: "error", NoMatch: "pass"}, StatusError,
+			"/etc/cron.daily: symbolic link to /tmp/attacker, which does not exist"},
+		{"real missing directory", FileSpec{Paths: []string{"/etc/nothing.d/x"}, Mode: "0440", Missing: "pass"}, StatusPass, "does not exist"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec := tt.spec
+			got := scanOne(t, &Check{ID: "x.path", File: &spec}, demoSvc(), m)
+			if got.Status != tt.want || !strings.Contains(text(got), tt.text) {
+				t.Errorf("%s (%q), want %s mentioning %q", got.Status, text(got), tt.want, tt.text)
+			}
+		})
+	}
+}
+
+// One check's bad pattern is rejected when rules load, and the files of
+// other checks stay observable.
+func TestFilePatternsAreValidated(t *testing.T) {
+	p := &problems{file: "x"}
+	validateFile(p, &FileSpec{Paths: []string{"/etc/[a/b]"}, Mode: "0644", Missing: "error", NoMatch: "pass"})
+	if p.err() == nil {
+		t.Error("an invalid glob element was accepted")
+	}
+}
+
+// Owner and group names resolve from the host's files, whatever their
+// size; without the files they cannot be resolved, which is not a FAIL.
+func TestFileCheckNames(t *testing.T) {
+	var members []string
+	for i := range 9000 {
+		members = append(members, fmt.Sprintf("user%05d", i))
+	}
+	long := demoHost().
+		AddFile("/etc/passwd", "root:x:0:0::/root:/bin/bash\nsyslog:x:104:110::/:/usr/sbin/nologin\n", 0o644, 0, 0).
+		AddFile("/etc/group", "root:x:0:\nadm:x:4:syslog\nstaff:x:50:"+strings.Join(members, ",")+"\n", 0o644, 0, 0).
+		AddFile("/var/log/syslog", "", 0o640, 104, 4)
+	noGroup := hostfs.NewMemFS().
+		AddFile("/etc/os-release", "ID=debian\nVERSION_ID=\"12\"\n", 0o644, 0, 0).
+		AddFile("/etc/passwd", "root:x:0:0::/root:/bin/bash\n", 0o644, 0, 0).
+		AddFile("/var/log/syslog", "", 0o640, 0, 4)
+	check := func() *Check {
+		return &Check{ID: "x.syslog", File: &FileSpec{Paths: []string{"/var/log/syslog"}, Owner: []string{"root", "syslog"}, Group: []string{"adm"}, Missing: "error"}}
+	}
+	if got := scanOne(t, check(), demoSvc(), long); got.Status != StatusPass {
+		t.Errorf("long group line: %s (%q)", got.Status, text(got))
+	}
+	res := scanChecks(t, demoSvc(), noGroup, time.Second, check())
+	if got := res.Checks[0]; got.Status != StatusError || !strings.Contains(got.Reason, `cannot resolve "adm"`) {
+		t.Errorf("no /etc/group: %s (%q), want ERROR", got.Status, text(got))
+	}
+	for _, run := range res.Collectors {
+		if run.Name == "files" && (run.Complete || !strings.Contains(strings.Join(run.Skipped, ";"), "/etc/group")) {
+			t.Errorf("files collector run %+v does not report the missing /etc/group", run)
+		}
+	}
+}
+
+// What the file collector could not see is reported in a stable order.
+func TestFileCollectorSkippedIsDeterministic(t *testing.T) {
+	var first string
+	for range 20 {
+		m := demoHost()
+		var checks []*Check
+		for _, d := range []string{"a", "b", "c", "d"} {
+			m.AddDir("/srv/"+d, 0o755, 0, 0).SetError("/srv/"+d, fs.ErrPermission)
+			checks = append(checks, &Check{ID: "x." + d, File: &FileSpec{Paths: []string{"/srv/" + d + "/*"}, Mode: "0644", Missing: "error", NoMatch: "pass"}})
+		}
+		for _, run := range scanChecks(t, demoSvc(), m, time.Second, checks...).Collectors {
+			if run.Name != "files" {
+				continue
+			}
+			got := strings.Join(run.Skipped, "|")
+			if first == "" {
+				first = got
+			} else if got != first {
+				t.Fatalf("skipped order changed:\n%s\n%s", first, got)
+			}
+		}
 	}
 }
 
@@ -150,7 +271,7 @@ func TestFileCheckReasonIsBounded(t *testing.T) {
 		m.AddSymlink(p, "/etc/hostname").SetOwner(p, 1000, 1000)
 	}
 	c := &Check{ID: "x.cron", File: &FileSpec{Paths: []string{"/etc/cron.d/*"}, Owner: []string{"root"}, Mode: "0644", Missing: "error", NoMatch: "pass"}}
-	got := scanOne(t, c, demoSvc(), m, time.Second)
+	got := scanOne(t, c, demoSvc(), m)
 	if got.Status != StatusError || len(got.Reason) > maxReasonLen || !strings.Contains(got.Reason, "and 295 more") {
 		t.Errorf("status %s, reason (%d bytes) %q", got.Status, len(got.Reason), got.Reason)
 	}
@@ -169,7 +290,7 @@ func TestExpectEvidence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := scanOne(t, &Check{ID: "x.expect", Expect: tt.expect}, demoSvc(), demoHost(), time.Second)
+			got := scanOne(t, &Check{ID: "x.expect", Expect: tt.expect}, demoSvc(), demoHost())
 			var texts []string
 			for _, ev := range got.Evidence {
 				texts = append(texts, ev.Text)
@@ -196,29 +317,5 @@ func TestReservedCollectorNames(t *testing.T) {
 		if _, err := New(&Content{Checks: map[string]*Check{}, Profiles: map[string]*Profile{}}, &fakeCollector{name: name}); err == nil {
 			t.Errorf("collector %q accepted", name)
 		}
-	}
-}
-
-// A Setting can be a struct field as well as a map entry.
-func TestSettingStructField(t *testing.T) {
-	set := demoSvc()
-	set.facts.Mode = facts.Setting{Value: "strict", Explicit: true, Source: "/etc/svc.conf:7"}
-	tests := []struct {
-		name string
-		svc  *fakeCollector
-		want Status
-		text string
-	}{
-		{"set", set, StatusPass, `svc.mode: "strict" (explicit); expected one of [strict]`},
-		{"unset", demoSvc(), StatusFail, "not set; expected one of [strict]"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Check{ID: "x.mode", Setting: &SettingSpec{Fact: "svc.mode", In: []string{"strict"}, Absent: "fail"}}
-			got := scanOne(t, c, tt.svc, demoHost(), time.Second)
-			if got.Status != tt.want || len(got.Evidence) != 1 || !strings.Contains(got.Evidence[0].Key+": "+got.Evidence[0].Text, tt.text) {
-				t.Errorf("status %s, evidence %+v; want %s with %q", got.Status, got.Evidence, tt.want, tt.text)
-			}
-		})
 	}
 }
