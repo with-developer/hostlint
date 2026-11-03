@@ -36,6 +36,10 @@ type ShellEnv struct {
 	// when a conditional change could alter the result. Only TMOUT is
 	// tracked.
 	Effective map[string]facts.Setting `json:"effective"`
+	// SystemEffective is the same for the system-wide files only
+	// (/etc/environment, /etc/profile and what it sources): what every
+	// user's login shell gets, before their own startup files.
+	SystemEffective map[string]facts.Setting `json:"system_effective"`
 }
 
 // ShellValue is one occurrence in a startup file.
@@ -84,24 +88,46 @@ func (shellEnvCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Fa
 	s := &shellScanner{ctx: ctx, fsys: h.FS, env: &ShellEnv{TMOUT: []ShellValue{}, Umask: []ShellValue{}, Path: []ShellValue{}}, read: map[string]bool{}}
 	s.file(envFile, false, 0)
 	s.file("/etc/profile", false, 0)
+	system := len(s.events)
+	// bash reads the first of these that exists; one that cannot be looked
+	// at leaves unknown which it reads.
 	for _, f := range loginFiles {
-		if s.exists(f) {
-			s.file(f, false, 0)
-			break
+		_, err := s.fsys.Stat(f)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
 		}
+		if err != nil {
+			s.skip(err.Error())
+		} else {
+			s.file(f, false, 0)
+		}
+		break
 	}
 	if err := ctx.Err(); err != nil {
 		return engine.Facts{}, err
 	}
 	f := engine.Facts{Value: s.env, Complete: len(s.skipped) == 0, Skipped: s.skipped}
-	effective, certain := effectiveTMOUT(s.events)
-	s.env.Effective = map[string]facts.Setting{}
-	switch {
-	case !certain:
-		f.Unknown = []string{"effective"}
+	s.env.Effective, s.env.SystemEffective = map[string]facts.Setting{}, map[string]facts.Setting{}
+	uncertain := false
+	for _, part := range []struct {
+		field  string
+		events []shellEvent
+		into   map[string]facts.Setting
+	}{
+		{"effective", s.events, s.env.Effective},
+		{"system_effective", s.events[:system], s.env.SystemEffective},
+	} {
+		effective, certain := effectiveTMOUT(part.events)
+		switch {
+		case !certain:
+			f.Unknown = append(f.Unknown, part.field)
+			uncertain = true
+		case effective.Explicit:
+			part.into["TMOUT"] = effective
+		}
+	}
+	if uncertain {
 		f.Skipped = append(f.Skipped, "a conditional readonly TMOUT may block a later change, so the effective value is unknown")
-	case effective.Explicit:
-		s.env.Effective["TMOUT"] = effective
 	}
 	return f, nil
 }
@@ -123,11 +149,6 @@ type shellScanner struct {
 	read    map[string]bool
 	files   int
 	skipped []string
-}
-
-func (s *shellScanner) exists(file string) bool {
-	_, err := s.fsys.Stat(file)
-	return err == nil
 }
 
 // file scans one file; cond is true when the line that sourced it may not
