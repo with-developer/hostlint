@@ -134,7 +134,7 @@ func TestFileCheckDanglingSymlink(t *testing.T) {
 
 // A link to /dev/null masks a file (systemd units, blanked configuration):
 // it is absent in effect, and /dev/null's mode (0666) is not the file's. The
-// link is recognised without /dev existing, as in a mounted image.
+// link is recognized without /dev existing, as in a mounted image.
 func TestFileCheckMasked(t *testing.T) {
 	tests := []struct {
 		name, path, target, missing string
