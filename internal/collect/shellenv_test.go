@@ -93,3 +93,26 @@ func TestShellEnvBlocksAndUnset(t *testing.T) {
 		t.Errorf("umask = %+v", env.Umask)
 	}
 }
+
+func TestShellEnvEffectiveTMOUT(t *testing.T) {
+	tests := []struct {
+		name, profile string
+		want          string // "" when unset
+	}{
+		{"none", "umask 022\n", ""},
+		{"set", "TMOUT=600\nexport TMOUT\n", "600"},
+		{"conditional only", "if [ \"$USER\" = root ]; then\n  TMOUT=300\nfi\n", ""},
+		{"later conditional does not count", "TMOUT=600\n[ -n \"$X\" ] && if true; then TMOUT=0; fi\n", "600"},
+		{"unset afterwards", "TMOUT=600\nunset TMOUT\n", ""},
+		{"read-only survives unset", "readonly TMOUT=600\nunset TMOUT\nTMOUT=0\n", "600"},
+		{"last wins", "TMOUT=600\nTMOUT=1800\n", "1800"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := shellEnv(t, hostfs.NewMemFS().AddFile("/etc/profile", tt.profile, 0o644, 0, 0))
+			if got := env.EffectiveTMOUT; got.Value != tt.want || got.Explicit != (tt.want != "") {
+				t.Errorf("effective = %+v, want %q", got, tt.want)
+			}
+		})
+	}
+}

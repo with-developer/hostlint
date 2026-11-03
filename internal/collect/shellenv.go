@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/internal/facts"
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
@@ -20,9 +21,14 @@ import (
 // occurrence is listed, in the order the files are read, with a flag for
 // occurrences inside if/case blocks; rules decide what to accept.
 type ShellEnv struct {
-	TMOUT []ShellValue `json:"tmout"` // TMOUT assignments
+	TMOUT []ShellValue `json:"tmout"` // TMOUT assignments and unsets
 	Umask []ShellValue `json:"umask"` // umask commands
 	Path  []ShellValue `json:"path"`  // PATH assignments
+	// EffectiveTMOUT is what the unconditional TMOUT assignments and unsets
+	// leave, in reading order; once TMOUT is read-only, later changes fail.
+	// It is unset when none survives. Conditional occurrences are only in
+	// TMOUT, for rules to judge.
+	EffectiveTMOUT facts.Setting `json:"effective_tmout"`
 }
 
 // ShellValue is one occurrence in a startup file.
@@ -81,7 +87,25 @@ func (shellEnvCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 			scanShellFile(env, file, data)
 		}
 	}
+	env.EffectiveTMOUT = effectiveTMOUT(env.TMOUT)
 	return engine.Facts{Value: env, Complete: len(skipped) == 0, Skipped: skipped}, nil
+}
+
+// effectiveTMOUT replays the unconditional TMOUT occurrences in order.
+func effectiveTMOUT(occurrences []ShellValue) facts.Setting {
+	var cur facts.Setting
+	readonly := false
+	for _, v := range occurrences {
+		switch {
+		case v.Conditional || readonly:
+		case v.Unset:
+			cur = facts.Setting{}
+		default:
+			cur = facts.Setting{Value: v.Value, Explicit: true, Source: v.Source}
+			readonly = v.Readonly
+		}
+	}
+	return cur
 }
 
 func scanShellFile(env *ShellEnv, file string, data []byte) {
