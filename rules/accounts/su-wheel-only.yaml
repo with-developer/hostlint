@@ -13,17 +13,17 @@ remediation: >-
   Add `auth required pam_wheel.so use_uid` to /etc/pam.d/su, before the common-auth or
   system-auth include, and add administrators to the wheel group.
 setting:
-  fact: pam.su_wheel
+  fact: pam.effective.su_wheel
   in: [restricted]
   absent: fail
 tests:
   - name: restricted
     facts:
-      pam: {su_wheel: {value: restricted, explicit: true, source: "/etc/pam.d/su:15"}}
+      pam: {effective: {su_wheel: {value: restricted, explicit: true, source: "/etc/pam.d/su:15"}}}
     want: PASS
   - name: trust does not restrict
     facts:
-      pam: {su_wheel: {value: "not restricted: trust (users outside the group are not denied)", explicit: true, source: "/etc/pam.d/su:19"}}
+      pam: {effective: {su_wheel: {value: "not restricted: trust (users outside the group are not denied)", explicit: true, source: "/etc/pam.d/su:19"}}}
     want: FAIL
   - name: no pam_wheel line
     input: absent
