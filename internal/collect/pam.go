@@ -39,7 +39,14 @@ type PAM struct {
 	// deny, a control that does not deny, an earlier sufficient rule). It
 	// is unset when the su stack has no pam_wheel.so line.
 	SuWheel facts.Setting `json:"su_wheel"`
+	// PasswordHash is the hash that pam_unix in the passwd stack is told
+	// to use (md5, sha256, sha512, yescrypt, ...). It is unset when no
+	// argument names one and pam_unix follows ENCRYPT_METHOD in login.defs.
+	PasswordHash facts.Setting `json:"password_hash"`
 }
+
+// pamUnixHashes are pam_unix's hashing options (pam_unix(8)).
+var pamUnixHashes = []string{"md5", "bigcrypt", "sha256", "sha512", "blowfish", "gost_yescrypt", "yescrypt"}
 
 // PAMRule is one line of a PAM stack.
 type PAMRule struct {
@@ -112,7 +119,25 @@ func (pamCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 	p.PasswordQuality = r.quality(p.Stacks["passwd"])
 	p.PasswordHistory = r.history(p.Stacks["passwd"])
 	p.SuWheel = suWheel(p.Stacks["su"])
+	p.PasswordHash = passwordHash(p.Stacks["passwd"])
 	return engine.Facts{Value: p, Complete: len(r.skipped) == 0, Skipped: r.skipped}, nil
+}
+
+// passwordHash returns the hashing option of the first pam_unix password
+// rule, if it has one.
+func passwordHash(rules []PAMRule) facts.Setting {
+	for _, rule := range rules {
+		if rule.Type != "password" || rule.Module != "pam_unix.so" {
+			continue
+		}
+		for _, a := range rule.Args {
+			if slices.Contains(pamUnixHashes, a) {
+				return facts.Setting{Value: a, Explicit: true, Source: rule.Source}
+			}
+		}
+		return facts.Setting{}
+	}
+	return facts.Setting{}
 }
 
 type pamReader struct {

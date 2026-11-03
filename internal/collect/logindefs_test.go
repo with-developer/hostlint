@@ -53,3 +53,24 @@ func TestLoginDefsMissingAndUnreadable(t *testing.T) {
 		t.Error("an unreadable login.defs must be an error")
 	}
 }
+
+// shadow-utils parses numbers with strtol base 0 and rejects partial numbers.
+func TestLoginDefsNumbers(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/login.defs",
+		"PASS_MAX_DAYS 090\nPASS_MIN_DAYS 010\nPASS_WARN_AGE 0x7\nPASS_MIN_LEN 8 # chars\nUID_MIN -1\nUMASK 027\n", 0o644, 0, 0)
+	f, err := collect(t, loginDefsCollector{}, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := f.Value.(*LoginDefs).Settings
+	want := map[string]string{
+		"PASS_MAX_DAYS": "invalid: 090", "PASS_MIN_DAYS": "8", "PASS_WARN_AGE": "7",
+		"PASS_MIN_LEN": "invalid: 8 # chars", "UID_MIN": "-1",
+		"UMASK": "027", // not a number key: kept as written
+	}
+	for k, w := range want {
+		if s[k].Value != w {
+			t.Errorf("%s = %q, want %q", k, s[k].Value, w)
+		}
+	}
+}

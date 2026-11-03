@@ -238,3 +238,17 @@ func TestPAMHistoryConfByVersion(t *testing.T) {
 		t.Errorf("pam_unix remember = %+v", h)
 	}
 }
+
+func TestPAMPasswordHash(t *testing.T) {
+	deb := pamFacts(t, fixtureFS(t, "debian-12")).PasswordHash
+	if deb.Value != "yescrypt" || !strings.HasPrefix(deb.Source, "/etc/pam.d/common-password:") {
+		t.Errorf("debian 12 = %+v", deb)
+	}
+	if rocky := pamFacts(t, fixtureFS(t, "rocky-9")).PasswordHash; rocky.Value != "sha512" {
+		t.Errorf("rocky 9 = %+v", rocky)
+	}
+	none := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", "password required pam_unix.so use_authtok\n", 0o644, 0, 0)
+	if h := pamFacts(t, none).PasswordHash; h != (facts.Setting{}) {
+		t.Errorf("no hash option = %+v", h)
+	}
+}
