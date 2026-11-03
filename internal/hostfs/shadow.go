@@ -117,8 +117,9 @@ func classifyHash(field string) (state, algorithm string) {
 	default:
 		algorithm = "unknown"
 	}
-	if state == "set" && algorithm == "unknown" && len(field) < 13 {
-		// Not a hash any crypt(3) produces, e.g. "x" or "NP": no usable password.
+	if algorithm == "unknown" && len(field) < 13 {
+		// Not a hash any crypt(3) produces, e.g. "x", "NP", or the "locked"
+		// of "!locked" in container images: no usable password, no hash.
 		state, algorithm = "locked", ""
 	}
 	return state, algorithm

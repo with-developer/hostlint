@@ -14,6 +14,8 @@ bob::19702::::::
 carol:!$5$salt$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQR:19703:0:99999:7:::
 dave:abCDefGHijKLm:19704:0:99999:7:::
 erin:!!:19705:0:99999:7:::
+frank:!locked:19706:0:99999:7:::
+grace:NP:19707:0:99999:7:::
 `
 
 func TestReadShadow(t *testing.T) {
@@ -35,6 +37,8 @@ func TestReadShadow(t *testing.T) {
 		"carol locked sha256 19703 0 99999 7 -1 -1",
 		"dave set des 19704 0 99999 7 -1 -1",
 		"erin locked  19705 0 99999 7 -1 -1",
+		"frank locked  19706 0 99999 7 -1 -1",
+		"grace locked  19707 0 99999 7 -1 -1",
 	}
 	if !equal(got, want) {
 		t.Errorf("entries:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
