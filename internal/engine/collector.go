@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -49,6 +50,17 @@ type Facts struct {
 	// be determined, while the rest is complete: rules reading them cannot
 	// decide. Skipped says why.
 	Unknown []string
+	// Partial lists fields that hold only part of what exists (a list cut
+	// short by a walk limit), while the rest is complete: like an incomplete
+	// collector, but only for these fields. What they hold can fail a
+	// check; it can never make one pass. Skipped says why.
+	Partial []string
+}
+
+// timeoutCollector is a collector that needs longer than the scan's
+// collector timeout, such as a filesystem walk.
+type timeoutCollector interface {
+	Timeout() time.Duration
 }
 
 // collected is the outcome of one collector run.
@@ -81,6 +93,9 @@ func runCollector(ctx context.Context, c Collector, h *hostfs.Host, timeout time
 		out.run.Status = "unavailable"
 		out.run.Error = out.err.Error()
 		return out
+	}
+	if tc, ok := c.(timeoutCollector); ok {
+		timeout = max(timeout, tc.Timeout())
 	}
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -119,9 +134,9 @@ func runCollector(ctx context.Context, c Collector, h *hostfs.Host, timeout time
 	case !isFacts(r.facts.Value, c.Type()):
 		r.err = fmt.Errorf("collector returned %T, want *%s", r.facts.Value, c.Type())
 	default:
-		for _, f := range r.facts.Unknown {
+		for _, f := range slices.Concat(r.facts.Unknown, r.facts.Partial) {
 			if !hasField(c.Type(), f) {
-				r.err = fmt.Errorf("collector marked %q unknown, which is not a field of %s", f, c.Type())
+				r.err = fmt.Errorf("collector marked %q unknown or partial, which is not a field of %s", f, c.Type())
 			}
 		}
 	}
@@ -133,7 +148,7 @@ func runCollector(ctx context.Context, c Collector, h *hostfs.Host, timeout time
 	}
 	out.facts = r.facts
 	out.run.Status = "ok"
-	out.run.Complete = r.facts.Complete && len(r.facts.Unknown) == 0
+	out.run.Complete = r.facts.Complete && len(r.facts.Unknown) == 0 && len(r.facts.Partial) == 0
 	out.run.Skipped = r.facts.Skipped
 	return out
 }

@@ -372,14 +372,14 @@ func reopen(fd int, want *unix.Stat_t, flags int) (int, error) {
 }
 
 func (o *osFS) ReadDir(name string) ([]FileInfo, error) {
-	entries, _, err := o.readDirN(name, -1)
+	entries, _, err := o.readDirN(name, -1, nil)
 	return entries, err
 }
 
 // readDirN lists at most n entries (all if n < 0); truncated reports whether
 // more were left. Automount points are not entered: reading one would mount
 // a filesystem on the scanned host.
-func (o *osFS) readDirN(name string, n int) (entries []FileInfo, truncated bool, err error) {
+func (o *osFS) readDirN(name string, n int, skip func(string) bool) (entries []FileInfo, truncated bool, err error) {
 	if err := checkPath("readdir", name); err != nil {
 		return nil, false, err
 	}
@@ -422,6 +422,9 @@ func (o *osFS) readDirN(name string, n int) (entries []FileInfo, truncated bool,
 	sort.Strings(names)
 	entries = make([]FileInfo, 0, len(names))
 	for _, child := range names {
+		if skip != nil && skip(path.Join(name, child)) {
+			continue // never stat it: a dead network mount would hang
+		}
 		_, err := retry(func() (struct{}, error) {
 			return struct{}{}, unix.Fstatat(dfd, child, &st, unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT)
 		})

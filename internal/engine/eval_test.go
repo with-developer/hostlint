@@ -242,3 +242,60 @@ func TestTargetLive(t *testing.T) {
 		}
 	}
 }
+
+// A partial field can fail a check through what it holds, never pass one;
+// the collector's other fields stay decidable.
+func TestPartialFields(t *testing.T) {
+	tests := []struct {
+		users []svcUser
+		check *Check
+		want  Status
+	}{
+		{[]svcUser{{"root", 0}, {"toor", 0}}, uid0Check(), StatusFail},
+		{[]svcUser{{"root", 0}}, uid0Check(), StatusError},
+		{[]svcUser{{"root", 0}}, &Check{ID: "x.present", Expect: "svc.present"}, StatusPass},
+		{[]svcUser{{"root", 0}}, &Check{ID: "x.count", Expect: "svc.users.size() == 1"}, StatusError},
+	}
+	for _, tt := range tests {
+		svc := demoSvc()
+		svc.facts.Users, svc.partial = tt.users, []string{"users"}
+		got := scanOne(t, tt.check, svc, demoHost())
+		if got.Status != tt.want {
+			t.Errorf("%s with %v: %s (%q), want %s", tt.check.ID, tt.users, got.Status, got.Reason, tt.want)
+		}
+		if tt.want == StatusError && !strings.Contains(got.Reason, "svc.users: incomplete observation") {
+			t.Errorf("%s: reason %q", tt.check.ID, got.Reason)
+		}
+	}
+}
+
+func uid0Check() *Check {
+	return &Check{ID: "x.uid0", Violations: &ViolationsSpec{Over: "svc.users", As: "u", Where: `u.uid == 0 && u.name != "root"`, Key: "u.name", Text: "u.name"}}
+}
+
+// A collector can ask for more time than the scan's collector timeout.
+func TestCollectorTimeout(t *testing.T) {
+	h := hostfs.NewTestHost(hostfs.NewMemFS(), nil, false)
+	if c := runCollector(t.Context(), slowCollector{need: 300 * time.Millisecond, takes: 100 * time.Millisecond}, h, 20*time.Millisecond); !c.ok() {
+		t.Errorf("slow collector with its own timeout: %v", c.err)
+	}
+	if c := runCollector(t.Context(), slowCollector{takes: 300 * time.Millisecond}, h, 20*time.Millisecond); c.ok() {
+		t.Error("slow collector without its own timeout finished")
+	}
+}
+
+type slowCollector struct{ need, takes time.Duration }
+
+func (slowCollector) Name() string             { return "svc" }
+func (slowCollector) Version() int             { return 1 }
+func (slowCollector) Access() Access           { return AccessFilesystem }
+func (slowCollector) Type() reflect.Type       { return reflect.TypeFor[svcFacts]() }
+func (s slowCollector) Timeout() time.Duration { return s.need }
+func (s slowCollector) Collect(ctx context.Context, _ *hostfs.Host) (Facts, error) {
+	select {
+	case <-time.After(s.takes):
+		return Facts{Value: &svcFacts{}, Complete: true}, nil
+	case <-ctx.Done():
+		return Facts{}, ctx.Err()
+	}
+}
