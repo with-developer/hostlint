@@ -178,6 +178,11 @@ func useColor(mode, outputPath string, w io.Writer) bool {
 	case mode == "never", outputPath != "", os.Getenv("NO_COLOR") != "", os.Getenv("TERM") == "dumb":
 		return false
 	}
+	return isTerminal(w)
+}
+
+// isTerminal reports whether w is a terminal.
+func isTerminal(w io.Writer) bool {
 	f, ok := w.(*os.File)
 	if !ok {
 		return false

@@ -1,0 +1,369 @@
+{
+  "title": "hostlint report",
+  "tool": "v0.1.0",
+  "generated": "2026-11-03T09:00:00Z",
+  "files": 3,
+  "notes": [
+    "web-01 was scanned more than once; showing web-01.json (2026-11-02T12:00:00Z), not web-01-old.json (2026-10-01T09:00:00Z)"
+  ],
+  "profiles": [
+    {
+      "id": "kisa-2026",
+      "revisions": [
+        1,
+        2
+      ],
+      "controls": [
+        {
+          "id": "U-01",
+          "title": "Restrict direct remote root login",
+          "severity": "high"
+        },
+        {
+          "id": "U-02",
+          "title": "Password policy",
+          "severity": "high"
+        },
+        {
+          "id": "U-04",
+          "title": "Protect password hashes",
+          "severity": "high"
+        },
+        {
+          "id": "U-06",
+          "title": "Restrict su to a group",
+          "severity": "high"
+        },
+        {
+          "id": "U-07",
+          "title": "Remove unneeded accounts",
+          "severity": "low"
+        },
+        {
+          "id": "U-08",
+          "title": "Protect the password file",
+          "severity": "high"
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "ref": "accounts.password-max-age#3f9a1c2e",
+      "id": "accounts.password-max-age",
+      "version": 1,
+      "title": "Passwords expire",
+      "severity": "medium",
+      "params": {
+        "max_days": 60
+      }
+    },
+    {
+      "ref": "accounts.review-login-accounts",
+      "id": "accounts.review-login-accounts",
+      "version": 1,
+      "title": "Review accounts that can log in",
+      "severity": "low"
+    },
+    {
+      "ref": "accounts.shadow-file",
+      "id": "accounts.shadow-file",
+      "version": 1,
+      "title": "Password hashes are kept in /etc/shadow",
+      "severity": "high"
+    },
+    {
+      "ref": "accounts.su-wheel-only",
+      "id": "accounts.su-wheel-only",
+      "version": 1,
+      "title": "Only members of the wheel group can use su",
+      "severity": "high"
+    },
+    {
+      "ref": "ssh.permit-root-login",
+      "id": "ssh.permit-root-login",
+      "version": 1,
+      "title": "SSH does not allow direct root login",
+      "severity": "high"
+    },
+    {
+      "ref": "accounts.passwd-perms",
+      "id": "accounts.passwd-perms",
+      "version": 1,
+      "title": "/etc/passwd is owned by root and not writable by others",
+      "severity": "high"
+    }
+  ],
+  "hosts": [
+    {
+      "name": "db-01",
+      "file": "db-01.json",
+      "os": "Rocky Linux 9.4 (Blue Onyx)",
+      "supported": true,
+      "kernel": "5.14.0-427.13.1.el9_4.x86_64",
+      "arch": "x86_64",
+      "labels": {
+        "env": "prod",
+        "role": "db"
+      },
+      "scanned": "2026-11-02T12:05:00Z",
+      "target": "running host",
+      "root": false,
+      "tool": "v0.1.0",
+      "controls": [
+        {
+          "p": 0,
+          "c": 0,
+          "s": "PASS",
+          "k": [
+            4
+          ]
+        },
+        {
+          "p": 0,
+          "c": 1,
+          "s": "PASS",
+          "k": [
+            0
+          ]
+        },
+        {
+          "p": 0,
+          "c": 2,
+          "s": "WAIVED",
+          "r": 14,
+          "k": [
+            2
+          ],
+          "w": {
+            "reason": "accepted until the database moves (SEC-7)",
+            "expires": "2027-03-31",
+            "scope": "control"
+          }
+        },
+        {
+          "p": 0,
+          "c": 3,
+          "s": "NOT_APPLICABLE",
+          "r": 15,
+          "k": [
+            3
+          ]
+        },
+        {
+          "p": 0,
+          "c": 4,
+          "s": "MANUAL",
+          "r": 3,
+          "k": [
+            1
+          ]
+        },
+        {
+          "p": 0,
+          "c": 5,
+          "s": "FAIL",
+          "k": [
+            5
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "c": 0,
+          "s": "PASS",
+          "e": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        {
+          "c": 1,
+          "s": "MANUAL",
+          "r": 3,
+          "e": [
+            [
+              4,
+              5
+            ],
+            [
+              6,
+              7
+            ]
+          ],
+          "m": 3
+        },
+        {
+          "c": 2,
+          "s": "ERROR",
+          "r": 8
+        },
+        {
+          "c": 3,
+          "s": "NOT_APPLICABLE",
+          "r": 9
+        },
+        {
+          "c": 4,
+          "s": "PASS",
+          "e": [
+            [
+              10,
+              11
+            ]
+          ]
+        },
+        {
+          "c": 5,
+          "s": "FAIL",
+          "e": [
+            [
+              12,
+              13
+            ]
+          ]
+        }
+      ],
+      "waivers": [
+        {
+          "scope": "check",
+          "id": "files.shadow-perms",
+          "reason": "unix_chkpwd reads it",
+          "expires": "2026-10-31",
+          "problem": "expired"
+        }
+      ],
+      "collectors": [
+        {
+          "name": "shadow",
+          "status": "error",
+          "error": "open /etc/shadow: permission denied"
+        }
+      ]
+    },
+    {
+      "name": "web-01",
+      "file": "web-01.json",
+      "os": "Ubuntu 24.04.1 LTS",
+      "supported": true,
+      "scanned": "2026-11-02T12:00:00Z",
+      "target": "running host",
+      "root": true,
+      "tool": "v0.1.0",
+      "controls": [
+        {
+          "p": 0,
+          "c": 0,
+          "s": "FAIL",
+          "k": [
+            4
+          ]
+        },
+        {
+          "p": 0,
+          "c": 1,
+          "s": "PASS",
+          "k": [
+            0
+          ]
+        },
+        {
+          "p": 0,
+          "c": 2,
+          "s": "ERROR",
+          "r": 17,
+          "k": [
+            2
+          ]
+        },
+        {
+          "p": 0,
+          "c": 3,
+          "s": "NOT_APPLICABLE",
+          "r": 15,
+          "k": [
+            3
+          ]
+        },
+        {
+          "p": 0,
+          "c": 4,
+          "s": "MANUAL",
+          "r": 3,
+          "k": [
+            1
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "c": 0,
+          "s": "PASS",
+          "e": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        {
+          "c": 1,
+          "s": "MANUAL",
+          "r": 3,
+          "e": [
+            [
+              4,
+              0
+            ],
+            [
+              16,
+              0
+            ]
+          ]
+        },
+        {
+          "c": 2,
+          "s": "ERROR",
+          "r": 8
+        },
+        {
+          "c": 3,
+          "s": "NOT_APPLICABLE",
+          "r": 9
+        },
+        {
+          "c": 4,
+          "s": "FAIL",
+          "e": [
+            [
+              10,
+              11
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "strings": [
+    "",
+    "\"60\" (explicit); expected 1–60",
+    "/etc/login.defs:165",
+    "Review the listed accounts.",
+    "root (uid 0, /bin/bash)",
+    "/etc/passwd:1",
+    "x\u003c/script\u003e\u003cscript\u003ealert(1)\u003c/script\u003e\u003c!-- \u0026 \"quoted\" \u2028",
+    "/etc/passwd:9",
+    "shadow: permission denied (run hostlint as root)",
+    "applies is false",
+    "\"yes\" (explicit); expected one of [no]",
+    "/etc/ssh/sshd_config:32",
+    "/etc/passwd: root:root 0666 — mode 0666 exceeds 0644",
+    "/etc/passwd",
+    "waived: accepted until the database moves (SEC-7)",
+    "accounts.su-wheel-only: applies is false",
+    "alice (uid 1000, /bin/bash)",
+    "accounts.shadow-file: shadow: permission denied (run hostlint as root)"
+  ]
+}
