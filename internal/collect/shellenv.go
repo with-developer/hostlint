@@ -56,6 +56,12 @@ var (
 	pathRe          = regexp.MustCompile(`(?:^|[;&|\s(])(?:export\s+)?PATH=("[^"]*"|'[^']*'|\S*)`)
 	sourceRe        = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:\.|source)\s+("[^"]+"|'[^']+'|[^\s;&|)]+)`)
 	shellWordRe     = regexp.MustCompile(`[^\s;&|()]+`)
+	forRe           = regexp.MustCompile(`^\s*for\s`)
+	// The profile.d loop of /etc/profile on Debian 13 and Ubuntu 26.04:
+	// for i in $(run-parts --list --regex '<names>' /etc/profile.d); do
+	runPartsLoopRe = regexp.MustCompile(`^\s*for\s+\w+\s+in\s+\$\(\s*run-parts\s+--list(?:\s+--regex(?:\s+|=)(?:'([^']*)'|"([^"]*)"))?\s+/etc/profile\.d/?\s*\)`)
+	// The names run-parts accepts when no --regex is given.
+	runPartsNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
 
 // Bash reads these, in order, for root's login shell.
@@ -217,29 +223,12 @@ func (s *shellScanner) scanLine(code, src string, cond bool) {
 // follow scans the files a line sources: ". file" and "source file", and
 // the /etc/profile.d loop of /etc/profile.
 func (s *shellScanner) follow(code string, cond bool, depth int) {
-	if strings.Contains(code, "/etc/profile.d/") && regexp.MustCompile(`^\s*for\s`).MatchString(code) {
-		for _, word := range shellWordRe.FindAllString(code, -1) {
-			word = strings.Trim(word, `"'`)
-			if !strings.HasPrefix(word, "/etc/profile.d/") {
-				continue
-			}
-			files := []string{word}
-			if hostfs.HasMeta(word) {
-				matches, problems, err := hostfs.Glob(s.fsys, word)
-				if err != nil {
-					s.skip(err.Error())
-					continue
-				}
-				for _, p := range problems {
-					s.skip(p)
-				}
-				// bash's globs skip hidden files.
-				files = slices.DeleteFunc(matches, func(m string) bool { return strings.HasPrefix(path.Base(m), ".") })
-			}
-			for _, f := range files {
-				s.file(f, false, depth+1) // the stock loop sources every readable file
-			}
-		}
+	if m := runPartsLoopRe.FindStringSubmatch(code); m != nil {
+		s.runParts(m[1]+m[2], depth)
+		return
+	}
+	if forRe.MatchString(code) && strings.Contains(code, "/etc/profile.d") {
+		s.profileLoop(code, depth)
 		return
 	}
 	for _, m := range sourceRe.FindAllStringSubmatch(code, -1) {
@@ -253,6 +242,90 @@ func (s *shellScanner) follow(code string, cond bool, depth int) {
 		}
 		target = path.Clean(target)
 		s.file(target, cond && !slices.Contains(standardSources, target), depth+1)
+	}
+}
+
+// profileLoop scans the files of a for loop over /etc/profile.d, such as
+// "for i in /etc/profile.d/*.sh /etc/profile.d/sh.local; do". The stock loops
+// source every readable file they list. A loop whose list is not literal
+// paths and globs leaves the facts incomplete: what it sources is unknown,
+// not absent.
+func (s *shellScanner) profileLoop(code string, depth int) {
+	var files []string
+	listed := false // the loop lists literal paths or globs
+	for _, word := range shellWordRe.FindAllString(code, -1) {
+		word = strings.Trim(word, `"'`)
+		if !strings.HasPrefix(word, "/etc/profile.d/") {
+			continue
+		}
+		if strings.ContainsAny(word, "$`") {
+			listed = false
+			break
+		}
+		listed = true
+		if !hostfs.HasMeta(word) {
+			files = append(files, word)
+			continue
+		}
+		matches, problems, err := hostfs.Glob(s.fsys, word)
+		if err != nil {
+			s.skip(err.Error())
+			continue
+		}
+		for _, p := range problems {
+			s.skip(p)
+		}
+		// bash's globs skip hidden files.
+		files = append(files, slices.DeleteFunc(matches, func(m string) bool { return strings.HasPrefix(path.Base(m), ".") })...)
+	}
+	if !listed {
+		s.skip("cannot tell which files this loop sources: " + strings.TrimSpace(code))
+		return
+	}
+	for _, f := range files {
+		s.file(f, false, depth+1)
+	}
+}
+
+// runParts scans what `run-parts --list [--regex expr] /etc/profile.d`
+// prints, as debianutils' run-parts does: the regular files, or links to
+// them, whose names match, in C-locale order. Root's `[ -r $i ]` always
+// holds, so each is sourced.
+func (s *shellScanner) runParts(expr string, depth int) {
+	re := runPartsNameRe
+	if expr != "" {
+		var err error
+		if re, err = regexp.Compile(expr); err != nil {
+			s.skip(fmt.Sprintf("/etc/profile: run-parts --regex %q: %v", expr, err))
+			return
+		}
+	}
+	entries, err := s.fsys.ReadDir("/etc/profile.d")
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return
+	case err != nil:
+		s.skip(err.Error())
+		return
+	}
+	var names []string
+	for _, e := range entries {
+		if name := path.Base(e.Path); re.MatchString(name) {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		p := path.Join("/etc/profile.d", name)
+		fi, err := s.fsys.Stat(p)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			continue // a dangling link is not listed
+		case err != nil:
+			s.skip(err.Error())
+		case fi.Mode.IsRegular():
+			s.file(p, false, depth+1)
+		}
 	}
 }
 

@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/with-developer/hostlint/internal/hostfs"
@@ -65,6 +66,72 @@ func TestShellEnvHardened(t *testing.T) {
 	}
 	if len(env.Path) != 2 || env.Path[0].Value != ".:/usr/bin" || env.Path[1].Value != "$PATH:/root/bin" {
 		t.Errorf("path = %+v", env.Path)
+	}
+}
+
+// Debian 13 and Ubuntu 26.04 source /etc/profile.d through run-parts.
+func TestShellEnvRunParts(t *testing.T) {
+	for _, distro := range []string{"debian-13", "ubuntu-26.04"} {
+		t.Run(distro, func(t *testing.T) {
+			if env := shellEnv(t, fixtureFS(t, distro)); len(env.TMOUT) != 0 {
+				t.Errorf("stock: tmout %+v", env.TMOUT)
+			}
+			m := fixtureFS(t, distro).
+				AddFile("/etc/profile.d/autologout.sh", "TMOUT=600\nreadonly TMOUT\nexport TMOUT\n", 0o644, 0, 0)
+			env := shellEnv(t, m)
+			if len(env.TMOUT) != 1 || env.TMOUT[0].Source != "/etc/profile.d/autologout.sh:1" || env.Effective["TMOUT"].Value != "600" {
+				t.Errorf("hardened: tmout %+v, effective %+v", env.TMOUT, env.Effective)
+			}
+		})
+	}
+}
+
+// The files run-parts --list prints, measured on Debian 13: names matching
+// the regex, regular files or links to them, in C-locale order.
+func TestShellEnvRunPartsSelection(t *testing.T) {
+	profile := "for i in $(run-parts --list --regex '^[a-zA-Z0-9_][a-zA-Z0-9._-]*\\.sh$' /etc/profile.d); do\n  if [ -r $i ]; then\n    . $i\n  fi\ndone\n"
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", profile, 0o644, 0, 0).
+		AddFile("/etc/profile.d/a.sh", "TMOUT=900\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/B.sh", "TMOUT=300\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/.hidden.sh", "TMOUT=1\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/noext", "TMOUT=2\n", 0o644, 0, 0).
+		AddDir("/etc/profile.d/dir.sh", 0o755, 0, 0).
+		AddFile("/srv/timeout", "TMOUT=700\n", 0o644, 0, 0).
+		AddSymlink("/etc/profile.d/c.sh", "/srv/timeout").
+		AddSymlink("/etc/profile.d/gone.sh", "/nonexistent")
+	env := shellEnv(t, m)
+	var got []string
+	for _, v := range env.TMOUT {
+		got = append(got, v.Value+"@"+v.Source)
+	}
+	want := []string{"300@/etc/profile.d/B.sh:1", "900@/etc/profile.d/a.sh:1", "700@/etc/profile.d/c.sh:1"}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("tmout = %v, want %v", got, want)
+	}
+
+	// Without --regex, run-parts takes names of letters, digits, _ and -.
+	m = hostfs.NewMemFS().
+		AddFile("/etc/profile", "for i in $(run-parts --list /etc/profile.d); do . $i; done\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/autologout", "TMOUT=600\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/autologout.sh", "TMOUT=1\n", 0o644, 0, 0)
+	if env := shellEnv(t, m); len(env.TMOUT) != 1 || env.TMOUT[0].Value != "600" {
+		t.Errorf("default names: tmout %+v", env.TMOUT)
+	}
+}
+
+// A loop over /etc/profile.d that is not understood leaves the facts
+// incomplete: what it sources is unknown, not absent.
+func TestShellEnvUnknownProfileLoop(t *testing.T) {
+	for _, profile := range []string{
+		"for i in $(ls /etc/profile.d); do . /etc/profile.d/$i; done\n",
+		"for i in $(run-parts --list --regex '(' /etc/profile.d); do . $i; done\n",
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/profile.d/x.sh", "umask 000\n", 0o644, 0, 0)
+		f, err := collect(t, shellEnvCollector{}, m)
+		if err != nil || f.Complete {
+			t.Errorf("%q: complete %v, %v; want incomplete", profile, f.Complete, err)
+		}
 	}
 }
 
