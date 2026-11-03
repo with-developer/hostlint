@@ -1,7 +1,7 @@
 id: accounts.review-empty-groups
 version: 1
 title: Review groups without accounts
-title_ko: 계정이 없는 그룹 검토
+title_ko: 계정이 속하지 않은 그룹 검토
 severity: low
 description: Lists groups that have no members and are no account's primary group.
 rationale: Unused groups can still own files and be reused by a new account by mistake.
