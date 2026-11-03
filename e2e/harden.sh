@@ -31,7 +31,8 @@ rhel)
 		# CentOS 7 is end of life; its packages are in the vault.
 		# shellcheck disable=SC2016 # $releasever is the repository file's
 		sed -i -e 's/^mirrorlist=/#mirrorlist=/' \
-			-e 's|^#\{0,1\}baseurl=http://mirror.centos.org/\(altarch/\)\{0,1\}$releasever|baseurl=https://vault.centos.org/\17.9.2009|' \
+			-e 's|^#\{0,1\}baseurl=http://mirror.centos.org/centos/$releasever|baseurl=https://vault.centos.org/7.9.2009|' \
+			-e 's|^#\{0,1\}baseurl=http://mirror.centos.org/altarch/$releasever|baseurl=https://vault.centos.org/altarch/7.9.2009|' \
 			/etc/yum.repos.d/CentOS-*.repo
 		yum -q -y install chrony openssh-server >/dev/null
 		yum clean all >/dev/null
@@ -72,7 +73,7 @@ auth	requisite			pam_deny.so
 auth	required			pam_permit.so
 EOF
 	sed -i '1i account\trequired\t\t\tpam_faillock.so' /etc/pam.d/common-account
-	sed -i '/pam_pwquality.so/a password\trequired\t\t\tpam_pwhistory.so remember=4 use_authtok' /etc/pam.d/common-password
+	sed -i '/pam_pwquality.so/a password\trequired\t\t\tpam_pwhistory.so remember=4 enforce_for_root use_authtok' /etc/pam.d/common-password
 	printf 'deny = 5\nunlock_time = 900\n' >/etc/security/faillock.conf
 	;;
 rhel)
@@ -83,7 +84,7 @@ rhel)
 				-e '/^auth.*pam_unix.so/a auth        [default=die] pam_faillock.so authfail deny=5 unlock_time=900' \
 				-e '0,/^account/s//account     required      pam_faillock.so\naccount/' \
 				-e '/^password.*pam_pwquality.so/s/$/ enforce_for_root/' \
-				-e '/^password.*pam_pwquality.so/a password    requisite     pam_pwhistory.so remember=4 use_authtok' \
+				-e '/^password.*pam_pwquality.so/a password    requisite     pam_pwhistory.so remember=4 enforce_for_root use_authtok' \
 				"$f"
 		done
 	else

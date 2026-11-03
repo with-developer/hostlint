@@ -56,13 +56,13 @@ U-06 PASS
     - "restricted" (explicit); expected one of [restricted]  [/etc/pam.d/su:7]
 
 U-07 MANUAL
-  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially default accounts such as lp, uucp or games, and accounts of people who have left.
+  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
     - root (uid 0, /bin/bash)
 
 U-08 MANUAL
   accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
-    - root: (no supplementary members)
-    - wheel: (no supplementary members)
+    - root: root (primary group), sync (primary group), shutdown (primary group), halt (primary group), operator (primary group)
+    - wheel: (no members)
 
 U-09 MANUAL
   accounts.review-empty-groups MANUAL: Confirm whether each listed group is still needed; many belong to installed software and own files or devices.
@@ -104,10 +104,12 @@ U-12 PASS
 U-13 PASS
   accounts.password-hash-method PASS
     - login_defs.settings.ENCRYPT_METHOD.value = "SHA512"
+    - os.family = "rhel"
     - os.id = "almalinux"
     - os.version_major = 9
     - pam.effective.password_hash.value = "sha512"
   accounts.password-hash-strength PASS
+  accounts.passwd-no-hashes PASS
 
 U-14 PASS
   env.path-current-dir PASS

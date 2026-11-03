@@ -1,12 +1,12 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 1: MANUAL 11 PASS 38 NOT_APPLICABLE 18
+profile kisa-2026 revision 1: FAIL 1 MANUAL 11 PASS 37 NOT_APPLICABLE 18
 
 U-01 PASS
   ssh.permit-root-login PASS
     - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:1]
   ssh.match-permit-root-login PASS
 
-U-02 PASS
+U-02 FAIL
   accounts.password-min-length PASS
     - pam.password_quality.module = "pam_pwquality.so"
     - pam.password_quality.settings.dcredit.value = "-1"
@@ -23,7 +23,7 @@ U-02 PASS
     - pam.password_quality.settings.minclass.value = "0"
     - pam.password_quality.settings.ocredit.value = "-1"
     - pam.password_quality.settings.ucredit.value = "-1"
-  accounts.password-quality-root PASS
+  accounts.password-quality-root FAIL
     - pam.password_quality.module = "pam_pwquality.so"
     - pam.password_quality.settings.enforcing.value = "1"
   accounts.password-max-age PASS
@@ -56,13 +56,13 @@ U-06 PASS
     - "restricted" (explicit); expected one of [restricted]  [/etc/pam.d/su:6]
 
 U-07 MANUAL
-  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially default accounts such as lp, uucp or games, and accounts of people who have left.
+  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
     - root (uid 0, /bin/bash)
 
 U-08 MANUAL
   accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
-    - root: (no supplementary members)
-    - wheel: (no supplementary members)
+    - root: root (primary group), sync (primary group), shutdown (primary group), halt (primary group), operator (primary group)
+    - wheel: (no members)
 
 U-09 MANUAL
   accounts.review-empty-groups MANUAL: Confirm whether each listed group is still needed; many belong to installed software and own files or devices.
@@ -101,10 +101,12 @@ U-12 PASS
 U-13 PASS
   accounts.password-hash-method PASS
     - login_defs.settings.ENCRYPT_METHOD.value = "SHA512"
+    - os.family = "rhel"
     - os.id = "centos"
     - os.version_major = 7
     - pam.effective.password_hash.value = "sha512"
   accounts.password-hash-strength PASS
+  accounts.passwd-no-hashes PASS
 
 U-14 PASS
   env.path-current-dir PASS
