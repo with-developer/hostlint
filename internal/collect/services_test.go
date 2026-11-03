@@ -138,6 +138,25 @@ func TestServicesMasked(t *testing.T) {
 	}
 }
 
+// CentOS 7 links dracut's units with targets relative to the link's
+// directory (captured from centos:7).
+func TestServicesRelativeLink(t *testing.T) {
+	m := fixtureFS(t, "rocky-9").
+		AddFile("/usr/lib/dracut/modules.d/98systemd/dracut-cmdline.service", "[Unit]\nDescription=dracut cmdline hook\n\n[Service]\nType=oneshot\nExecStart=-/bin/dracut-cmdline\n", 0o644, 0, 0).
+		AddSymlink("/usr/lib/systemd/system/dracut-cmdline.service", "../../dracut/modules.d/98systemd/dracut-cmdline.service").
+		AddSymlink("/usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service", "systemd-hostnamed.service")
+	s, complete, skipped := servicesFacts(t, m)
+	if !complete {
+		t.Fatalf("incomplete: %v", skipped)
+	}
+	if u := s.Units["dracut-cmdline.service"]; u.File != "/usr/lib/dracut/modules.d/98systemd/dracut-cmdline.service" || u.Exec != "/bin/dracut-cmdline" {
+		t.Errorf("dracut-cmdline.service = %+v", u)
+	}
+	if u := s.Units["dbus-org.freedesktop.hostname1.service"]; u.AliasOf != "systemd-hostnamed.service" || u.File != "" {
+		t.Errorf("alias = %+v", u)
+	}
+}
+
 // What cannot be read makes the facts incomplete, never silently empty.
 func TestServicesUnreadable(t *testing.T) {
 	m := fixtureFS(t, "rocky-9").SetError("/etc/systemd/system/multi-user.target.wants", fs.ErrPermission)
