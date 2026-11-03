@@ -1,0 +1,79 @@
+# KISA CII technical vulnerability assessment guide, 2026 edition: Unix servers
+# (ADR 0007). Control titles are hostlint's own short wording; only the control
+# IDs and importance levels come from the guide.
+id: kisa-2026
+revision: 1
+title: KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
+title_ko: 주요정보통신기반시설 기술적 취약점 분석·평가 상세가이드 (2026) — Unix 서버
+controls:
+  - id: U-01
+    title: Restrict direct remote root login
+    title_ko: root 계정 원격 접속 제한
+    severity: high
+    checks: [ssh.permit-root-login, ssh.match-permit-root-login]
+  - id: U-02
+    title: Password policy
+    title_ko: 비밀번호 관리 정책 설정
+    severity: high
+    checks:
+      - accounts.password-min-length
+      - accounts.password-complexity
+      - accounts.password-quality-root
+      - accounts.password-max-age
+      - accounts.password-min-age
+      - accounts.password-history
+  - id: U-03
+    title: Account lockout threshold
+    title_ko: 계정 잠금 임계값 설정
+    severity: high
+    checks: [accounts.lockout-threshold]
+  - id: U-04
+    title: Protect password hashes
+    title_ko: 비밀번호 파일 보호
+    severity: high
+    checks: [accounts.passwd-no-hashes, accounts.shadow-file]
+  - id: U-05
+    title: No UID 0 accounts besides root
+    title_ko: root 이외 UID 0 금지
+    severity: high
+    checks: [accounts.uid0-only-root]
+  - id: U-06
+    title: Restrict su to a group
+    title_ko: su 사용 제한
+    severity: high
+    checks: [accounts.su-wheel-only]
+  - id: U-07
+    title: Remove unneeded accounts
+    title_ko: 불필요한 계정 제거
+    severity: low
+    checks: [accounts.review-login-accounts]
+  - id: U-08
+    title: Minimal membership of administrative groups
+    title_ko: 관리자 그룹 최소 구성
+    severity: medium
+    checks: [accounts.review-admin-groups]
+  - id: U-09
+    title: Remove groups without accounts
+    title_ko: 계정이 없는 그룹 정리
+    severity: low
+    checks: [accounts.review-empty-groups]
+  - id: U-10
+    title: Unique UIDs
+    title_ko: 동일 UID 금지
+    severity: medium
+    checks: [accounts.unique-uids]
+  - id: U-11
+    title: No login shells for system accounts
+    title_ko: 사용자 쉘 점검
+    severity: low
+    checks: [accounts.system-account-shells]
+  - id: U-12
+    title: Session timeout
+    title_ko: 세션 종료 시간 설정
+    severity: low
+    checks: [accounts.session-timeout-set, accounts.session-timeout-value]
+  - id: U-13
+    title: Strong password hashing
+    title_ko: 안전한 비밀번호 암호화 알고리즘 사용
+    severity: medium
+    checks: [accounts.password-hash-method, accounts.password-hash-strength]

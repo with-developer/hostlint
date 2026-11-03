@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "hostlint",
+          "version": "v0.1.0",
+          "informationUri": "https://github.com/with-developer/hostlint",
+          "rules": [
+            {
+              "id": "accounts.password-max-age#3f9a1c2e",
+              "name": "accounts.password-max-age",
+              "shortDescription": {
+                "text": "Passwords expire"
+              },
+              "properties": {
+                "controls": [
+                  "kisa-2026:U-02"
+                ],
+                "severity": "medium"
+              }
+            },
+            {
+              "id": "accounts.review-login-accounts",
+              "name": "accounts.review-login-accounts",
+              "shortDescription": {
+                "text": "Review accounts that can log in"
+              },
+              "properties": {
+                "controls": [
+                  "kisa-2026:U-07"
+                ],
+                "severity": "low"
+              }
+            },
+            {
+              "id": "accounts.shadow-file",
+              "name": "accounts.shadow-file",
+              "shortDescription": {
+                "text": "Password hashes are kept in /etc/shadow"
+              },
+              "properties": {
+                "controls": [
+                  "kisa-2026:U-04"
+                ],
+                "severity": "high"
+              }
+            },
+            {
+              "id": "accounts.su-wheel-only",
+              "name": "accounts.su-wheel-only",
+              "shortDescription": {
+                "text": "Only members of the wheel group can use su"
+              },
+              "properties": {
+                "controls": [
+                  "kisa-2026:U-06"
+                ],
+                "severity": "high"
+              }
+            },
+            {
+              "id": "ssh.permit-root-login",
+              "name": "ssh.permit-root-login",
+              "shortDescription": {
+                "text": "SSH does not allow direct root login"
+              },
+              "properties": {
+                "controls": [
+                  "kisa-2026:U-01"
+                ],
+                "severity": "high"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "accounts.shadow-file",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Could not check: shadow: permission denied (run hostlint as root)"
+          }
+        },
+        {
+          "ruleId": "ssh.permit-root-login",
+          "ruleIndex": 4,
+          "level": "error",
+          "message": {
+            "text": "SSH does not allow direct root login: \"yes\" (explicit); expected one of [no]"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///etc/ssh/sshd_config"
+                },
+                "region": {
+                  "startLine": 32
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+id: accounts.review-login-accounts
+version: 1
+title: Review accounts that can log in
+title_ko: 로그인 가능한 계정 검토
+severity: low
+description: Lists every account with a login shell, for a reviewer to confirm each is still needed.
+rationale: Accounts left behind by departed users or old services are easy targets.
+remediation: Remove accounts that are no longer needed (userdel), or give them a nologin shell.
+manual:
+  guidance: >-
+    Confirm that every listed account is still needed, especially default accounts such as lp,
+    uucp or games, and accounts of people who have left.
+  show: >-
+    accounts.users.filter(u, u.login_shell).map(u, u.name + " (uid " + string(u.uid) + ", " + u.shell + ")")

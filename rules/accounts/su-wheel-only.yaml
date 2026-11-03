@@ -1,0 +1,36 @@
+id: accounts.su-wheel-only
+version: 1
+title: Only members of the wheel group can use su
+title_ko: su 명령어 사용 그룹 제한
+severity: high
+description: >-
+  Checks that the su PAM stack has a pam_wheel line that denies users outside the wheel group
+  (or the group given with group=). A line with trust or deny, a control that does not deny
+  (optional, sufficient), or a sufficient rule earlier in the stack does not restrict su.
+rationale: >-
+  Without the restriction, any user who learns the root password can become root with su.
+remediation: >-
+  Add `auth required pam_wheel.so use_uid` to /etc/pam.d/su, before the common-auth or
+  system-auth include, and add administrators to the wheel group.
+setting:
+  fact: pam.effective.su_wheel
+  in: [restricted]
+  absent: fail
+tests:
+  - name: restricted
+    facts:
+      pam: {effective: {su_wheel: {value: restricted, explicit: true, source: "/etc/pam.d/su:15"}}}
+    want: PASS
+  - name: trust does not restrict
+    facts:
+      pam: {effective: {su_wheel: {value: "not restricted: trust (users outside the group are not denied)", explicit: true, source: "/etc/pam.d/su:19"}}}
+    want: FAIL
+  - name: no pam_wheel line
+    input: absent
+    facts:
+      pam: {}
+    want: FAIL
+  - name: PAM unreadable
+    input: unavailable
+    unavailable: [pam]
+    want: ERROR

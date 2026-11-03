@@ -1,0 +1,23 @@
+id: accounts.shadow-file
+version: 1
+title: Password hashes are kept in /etc/shadow
+title_ko: 쉐도우 비밀번호 사용
+severity: high
+description: Checks that /etc/shadow exists, so hashes are kept out of the world-readable /etc/passwd.
+rationale: Without /etc/shadow, password hashes have to live in /etc/passwd where anyone can read them.
+remediation: Run `pwconv` (and `grpconv` for groups).
+expect: >-
+  shadow.present
+tests:
+  - name: present
+    facts:
+      shadow: {present: true, entries: []}
+    want: PASS
+  - name: missing
+    facts:
+      shadow: {present: false, entries: []}
+    want: FAIL
+  - name: unreadable without root
+    input: unavailable
+    unavailable: [shadow]
+    want: ERROR
