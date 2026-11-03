@@ -1,0 +1,28 @@
+id: services.review-mail-server
+version: 1
+title: Review the mail server
+title_ko: 메일 서버 설정 검토
+severity: high
+description: >-
+  Applies when a mail server is started; then shows how, for a review of its configuration. Not
+  applicable otherwise.
+rationale: >-
+  An outdated or open mail server is used to send spam and to probe for accounts.
+remediation: >-
+  Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
+applies: >-
+  services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+manual:
+  guidance: >-
+    Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
+  show: >-
+    services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+    want: NOT_APPLICABLE
+  - name: started
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+    want: MANUAL

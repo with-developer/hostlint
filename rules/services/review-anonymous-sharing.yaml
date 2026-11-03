@@ -1,0 +1,28 @@
+id: services.review-anonymous-sharing
+version: 1
+title: Review anonymous access to file-sharing services
+title_ko: 파일 공유 서비스 익명 접근 검토
+severity: high
+description: >-
+  Applies when a file-sharing service (FTP, NFS or Samba) is started; then shows how, for a review of its configuration. Not
+  applicable otherwise.
+rationale: >-
+  Anonymous access to shared files lets anyone read, and sometimes write, them.
+remediation: >-
+  Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
+applies: >-
+  services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "smb", "smbd", "samba"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd|smbd)$"))
+manual:
+  guidance: >-
+    Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
+  show: >-
+    services.started.filter(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "smb", "smbd", "samba"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd|smbd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+    want: NOT_APPLICABLE
+  - name: started
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+    want: MANUAL

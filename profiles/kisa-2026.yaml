@@ -190,10 +190,7 @@ controls:
     title: No anonymous access to shared files
     title_ko: 공유 서비스 익명 접근 제한
     severity: high
-    manual: >-
-      Check that file-sharing services do not allow anonymous access: anonymous FTP (vsftpd
-      `anonymous_enable=NO`), NFS exports without root squashing or open to everyone, and Samba
-      guest access.
+    checks: [services.review-anonymous-sharing]
   - id: U-36
     title: The r-services are off
     title_ko: r 계열 서비스 미사용
@@ -218,9 +215,7 @@ controls:
     title: NFS exports are restricted
     title_ko: NFS 접근 통제
     severity: high
-    manual: >-
-      Check /etc/exports: each export is limited to the hosts that need it, never "*", and uses
-      root_squash.
+    checks: [services.review-nfs-exports]
   - id: U-41
     title: The automounter is off
     title_ko: automount 미사용
@@ -245,50 +240,37 @@ controls:
     title: The mail server is up to date
     title_ko: 메일 서버 버전 관리
     severity: high
-    manual: >-
-      Check that the mail server (Postfix, Sendmail, Exim) runs a version with current security
-      fixes, or disable it if the host does not handle mail.
+    checks: [services.review-mail-server]
   - id: U-46
     title: Only the mail system can run the mail queue
     title_ko: 일반 사용자의 메일 서비스 실행 제한
     severity: high
-    manual: >-
-      For Sendmail, check that PrivacyOptions includes restrictqrun; for other mail servers, that
-      only their own accounts can run the queue.
+    checks: [services.review-mail-server]
   - id: U-47
     title: The mail server is not an open relay
     title_ko: 메일 릴레이 제한
     severity: high
-    manual: >-
-      Check that the mail server relays only for your own networks and authenticated users
-      (Postfix `smtpd_relay_restrictions`, Sendmail access rules).
+    checks: [services.review-mail-server]
   - id: U-48
     title: SMTP does not reveal accounts
     title_ko: SMTP 계정 확인 명령 제한
     severity: medium
-    manual: >-
-      Check that the mail server rejects EXPN and VRFY (Postfix `disable_vrfy_command = yes`,
-      Sendmail PrivacyOptions noexpn and novrfy).
+    checks: [services.review-mail-server]
   - id: U-49
     title: The DNS server is up to date
     title_ko: DNS 서버 버전 관리
     severity: high
-    manual: >-
-      Check that the DNS server (BIND) runs a version with current security fixes, or disable it
-      if the host does not serve DNS.
+    checks: [services.review-dns-server]
   - id: U-50
     title: DNS zone transfers are restricted
     title_ko: DNS 영역 전송 제한
     severity: high
-    manual: >-
-      Check that zone transfers are allowed only to secondary servers (BIND `allow-transfer`).
+    checks: [services.review-dns-server]
   - id: U-51
     title: DNS dynamic updates are restricted
     title_ko: DNS 동적 업데이트 제한
     severity: medium
-    manual: >-
-      Check that dynamic updates are off or allowed only with keys (BIND
-      `allow-update`/`update-policy`).
+    checks: [services.review-dns-server]
   - id: U-52
     title: Telnet is off
     title_ko: 텔넷 미사용
@@ -298,16 +280,12 @@ controls:
     title: The FTP banner hides the version
     title_ko: FTP 배너 정보 노출 제한
     severity: low
-    manual: >-
-      Check that the FTP server's greeting does not reveal its name and version (vsftpd
-      `ftpd_banner`, ProFTPD `ServerIdent`).
+    checks: [services.review-ftp-server]
   - id: U-54
     title: FTP is encrypted or off
     title_ko: 암호화되지 않은 FTP 미사용
     severity: medium
-    manual: >-
-      Check that FTP is off, or that it requires TLS (vsftpd `ssl_enable=YES` with forced TLS for
-      logins and data); prefer SFTP.
+    checks: [services.review-ftp-server]
   - id: U-55
     title: The ftp account cannot log in
     title_ko: ftp 계정 셸 제한
@@ -317,16 +295,12 @@ controls:
     title: FTP access is restricted by address
     title_ko: FTP 접근 제어
     severity: low
-    manual: >-
-      Check that the FTP server accepts connections only from the addresses that need it (TCP
-      wrappers, firewall or the server's own rules).
+    checks: [services.review-ftp-server]
   - id: U-57
     title: root cannot log in to FTP
     title_ko: FTP root 접속 제한
     severity: medium
-    manual: >-
-      Check that root is listed in the FTP server's deny list (ftpusers, user_list) or that root
-      logins are refused.
+    checks: [services.review-ftp-server]
   - id: U-58
     title: SNMP is off unless needed
     title_ko: SNMP 미사용
@@ -336,23 +310,17 @@ controls:
     title: SNMP uses version 3
     title_ko: SNMP v3 사용
     severity: high
-    manual: >-
-      Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, not v1 or
-      v2c communities.
+    checks: [services.review-snmp-agent]
   - id: U-60
     title: SNMP communities are not guessable
     title_ko: SNMP 커뮤니티 문자열 복잡성
     severity: medium
-    manual: >-
-      If SNMP v1/v2c is still used, check that no community is a default such as public or
-      private, and that communities are long and random.
+    checks: [services.review-snmp-agent]
   - id: U-61
     title: SNMP access is restricted
     title_ko: SNMP 접근 제어
     severity: high
-    manual: >-
-      Check that the SNMP agent answers only the management hosts that need it (source
-      restrictions on each community or user).
+    checks: [services.review-snmp-agent]
   - id: U-62
     title: Login banners warn against misuse
     title_ko: 로그인 경고 메시지
