@@ -18,7 +18,7 @@ import (
 
 // Packages are the `packages` facts: what the package manager has installed.
 type Packages struct {
-	// Manager is the package database the list comes from: "dpkg".
+	// Manager is the package database the list comes from: "dpkg" or "rpm".
 	Manager string `json:"manager"`
 	// Installed maps a package name to its installed instances, in
 	// architecture order; a name has several on multi-arch systems. A
@@ -29,11 +29,12 @@ type Packages struct {
 
 // Package is one installed package.
 type Package struct {
-	// Version is the full version, [epoch:]upstream[-revision].
+	// Version is the full version: [epoch:]upstream[-revision] for dpkg,
+	// [epoch:]version-release for rpm.
 	Version string `json:"version"`
 	Arch    string `json:"arch"`
 	// State is the dpkg status: "installed", or a partly installed state
-	// such as "unpacked" or "half-configured".
+	// such as "unpacked" or "half-configured"; "installed" for rpm.
 	State  string `json:"state"`
 	Source string `json:"source"`
 }
@@ -43,9 +44,15 @@ const (
 	dpkgUpdates = "/var/lib/dpkg/updates"
 )
 
-// rpmDatabases are where an rpm database is found (SQLite since EL9, Berkeley
-// DB before; SUSE uses ndb).
-var rpmDatabases = []string{"/var/lib/rpm/rpmdb.sqlite", "/var/lib/rpm/Packages", "/usr/lib/sysimage/rpm/rpmdb.sqlite", "/usr/lib/sysimage/rpm/Packages.db"}
+// rpmSQLite are where rpm keeps its SQLite database (EL9 and later); the
+// Berkeley DB of EL7 and EL8 (rpmBDB) is not read yet.
+var (
+	rpmSQLite = []string{"/var/lib/rpm/rpmdb.sqlite", "/usr/lib/sysimage/rpm/rpmdb.sqlite"}
+	rpmBDB    = []string{"/var/lib/rpm/Packages", "/usr/lib/sysimage/rpm/Packages.db"}
+)
+
+// maxRPMDB bounds how much of an rpm database is read into memory.
+const maxRPMDB = 512 << 20
 
 type packagesCollector struct{}
 
@@ -54,10 +61,11 @@ func (packagesCollector) Version() int          { return 1 }
 func (packagesCollector) Access() engine.Access { return engine.AccessFilesystem }
 func (packagesCollector) Type() reflect.Type    { return reflect.TypeFor[Packages]() }
 
-// Collect reads the dpkg database. The rpm database is not read yet: running
-// rpm would write to it (SQLite and Berkeley DB readers update their shared
-// files), so rpm targets have no package facts and checks that read them are
-// ERROR, never shown an empty list.
+// Collect reads the package database files directly: running rpm would write
+// to its database (SQLite and Berkeley DB readers update their shared files).
+// The Berkeley DB of EL7 and EL8 is not read yet, so those targets have no
+// package facts and checks that read them are ERROR, never shown an empty
+// list.
 func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	data, err := h.FS.ReadFile(dpkgStatus)
 	switch {
@@ -66,12 +74,45 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	case !errors.Is(err, fs.ErrNotExist):
 		return engine.Facts{}, err
 	}
-	for _, db := range rpmDatabases {
+	for _, db := range rpmSQLite {
 		if _, err := h.FS.Stat(db); err == nil {
-			return engine.Facts{}, fmt.Errorf("%s: reading the rpm database is not supported yet", db)
+			return readRPM(h.FS, db)
+		}
+	}
+	for _, db := range rpmBDB {
+		if _, err := h.FS.Stat(db); err == nil {
+			return engine.Facts{}, fmt.Errorf("%s: reading the Berkeley DB rpm database (EL7, EL8) is not supported yet", db)
 		}
 	}
 	return engine.Facts{}, errors.New("no dpkg or rpm package database found")
+}
+
+// readRPM reads an rpm SQLite database. Changes still in its write-ahead log
+// or a rollback journal are not in the file yet: the list may be outdated.
+func readRPM(fsys hostfs.FS, db string) (engine.Facts, error) {
+	data, err := hostfs.ReadLargeFile(fsys, db, maxRPMDB)
+	if err != nil {
+		return engine.Facts{}, err
+	}
+	pkgs, err := readRPMSQLite(data)
+	if err != nil {
+		return engine.Facts{}, fmt.Errorf("%s: %w", db, err)
+	}
+	p := &Packages{Manager: "rpm", Installed: map[string][]Package{}}
+	for _, pkg := range pkgs {
+		p.Installed[pkg.name] = append(p.Installed[pkg.name], Package{Version: pkg.fullVersion(), Arch: pkg.arch, State: "installed", Source: db})
+	}
+	for _, instances := range p.Installed {
+		slices.SortFunc(instances, func(a, b Package) int { return strings.Compare(a.Arch+" "+a.Version, b.Arch+" "+b.Version) })
+	}
+	f := engine.Facts{Value: p, Complete: true}
+	for _, side := range []string{db + "-wal", db + "-journal"} {
+		if fi, err := fsys.Stat(side); err == nil && fi.Size > 0 {
+			f.Complete = false
+			f.Skipped = append(f.Skipped, side+": the rpm database has changes not yet written to "+path.Base(db))
+		}
+	}
+	return f, nil
 }
 
 // dpkgEntry is one stanza of the dpkg database.

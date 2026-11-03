@@ -271,12 +271,15 @@ func (o *osFS) ReadLink(name string) (string, error) {
 	return target, nil
 }
 
-func (o *osFS) ReadFile(name string) ([]byte, error) { return o.read(name, true) }
+func (o *osFS) ReadFile(name string) ([]byte, error) { return o.read(name, true, MaxReadSize) }
 
 // readSensitive reads a denylisted file for a parser in this package.
-func (o *osFS) readSensitive(name string) ([]byte, error) { return o.read(name, false) }
+func (o *osFS) readSensitive(name string) ([]byte, error) { return o.read(name, false, MaxReadSize) }
 
-func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
+// readLarge reads a file that may be larger than MaxReadSize, up to limit.
+func (o *osFS) readLarge(name string, limit int64) ([]byte, error) { return o.read(name, true, limit) }
+
+func (o *osFS) read(name string, enforceDenylist bool, limit int64) ([]byte, error) {
 	if err := checkPath("read", name); err != nil {
 		return nil, err
 	}
@@ -305,7 +308,7 @@ func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 			return nil, &fs.PathError{Op: "read", Path: name, Err: fmt.Errorf("hard link to a file owned by uid %d: %w", st.Uid, ErrDenied)}
 		}
 	}
-	if st.Size > MaxReadSize {
+	if st.Size > limit {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: ErrTooLarge}
 	}
 	rfd, err := reopen(r.fd, &st, unix.O_RDONLY|unix.O_NONBLOCK|unix.O_NOCTTY)
@@ -313,7 +316,7 @@ func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 		return nil, pathErr("read", name, err)
 	}
 	defer unix.Close(rfd)
-	data, err := readAll(rfd, st.Size)
+	data, err := readAll(rfd, st.Size, limit)
 	if err != nil {
 		return nil, pathErr("read", name, err)
 	}
@@ -323,8 +326,8 @@ func (o *osFS) read(name string, enforceDenylist bool) ([]byte, error) {
 // readAll reads a file with plain read(2) calls on its non-blocking
 // descriptor. Unlike *os.File, this never parks on a pollable file (such as
 // a tracing pipe) waiting for data that may never come.
-func readAll(fd int, size int64) ([]byte, error) {
-	buf := make([]byte, 0, min(size, MaxReadSize)+512)
+func readAll(fd int, size, limit int64) ([]byte, error) {
+	buf := make([]byte, 0, min(size, limit)+512)
 	for {
 		if len(buf) == cap(buf) {
 			buf = append(buf, 0)[:len(buf)]
@@ -339,7 +342,7 @@ func readAll(fd int, size int64) ([]byte, error) {
 			return buf, nil
 		}
 		buf = buf[:len(buf)+n]
-		if len(buf) > MaxReadSize {
+		if int64(len(buf)) > limit {
 			return nil, ErrTooLarge
 		}
 	}

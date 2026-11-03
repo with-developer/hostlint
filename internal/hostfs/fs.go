@@ -114,3 +114,18 @@ func checkPath(op, name string) error {
 	}
 	return nil
 }
+
+// largeReader is implemented by this package's filesystems.
+type largeReader interface {
+	readLarge(name string, limit int64) ([]byte, error)
+}
+
+// ReadLargeFile is ReadFile for a file that may be larger than MaxReadSize
+// (a package database), up to limit bytes. The denylist applies.
+func ReadLargeFile(fsys FS, name string, limit int64) ([]byte, error) {
+	lr, ok := fsys.(largeReader)
+	if !ok {
+		return nil, &fs.PathError{Op: "read", Path: name, Err: errors.ErrUnsupported}
+	}
+	return lr.readLarge(name, limit)
+}
