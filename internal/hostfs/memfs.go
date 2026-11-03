@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -294,12 +295,15 @@ func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 
 // ReadDir implements FS.
 func (m *MemFS) ReadDir(name string) ([]FileInfo, error) {
-	entries, _, err := m.readDirN(name, -1)
+	entries, _, err := m.readDirN(name, -1, nil)
 	return entries, err
 }
 
-func (m *MemFS) readDirN(name string, limit int) ([]FileInfo, bool, error) {
+func (m *MemFS) readDirN(name string, limit int, skip func(string) bool) ([]FileInfo, bool, error) {
 	entries, err := m.readDir(name)
+	if err == nil && skip != nil {
+		entries = slices.DeleteFunc(entries, func(e FileInfo) bool { return skip(e.Path) })
+	}
 	if err != nil || limit < 0 || len(entries) <= limit {
 		return entries, false, err
 	}
