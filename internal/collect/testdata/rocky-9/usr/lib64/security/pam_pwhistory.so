@@ -1,0 +1,6 @@
+/etc/security/opasswd
+/etc/security/opasswd.old
+/etc/security/opasswd.tmpXXXXXX
+/etc/security/pwhistory.conf
+/group
+/usr/sbin/pwhistory_helper

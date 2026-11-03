@@ -67,3 +67,29 @@ func TestShellEnvUnreadable(t *testing.T) {
 		t.Errorf("an unreadable profile.d must make the facts incomplete: %v, complete %v", err, f.Complete)
 	}
 }
+
+func TestShellEnvBlocksAndUnset(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile.d/tmout.sh",
+		"[ -n \"$SSH_TTY\" ] && echo ssh # TMOUT=1 in a comment\n"+
+			"if [ \"$USER\" = root ]; then TMOUT=300;fi\n"+
+			"TMOUT=600\n"+
+			"case $- in *i*) umask 077;; esac\n"+
+			"umask 027\n"+
+			"unset TMOUT\n", 0o644, 0, 0)
+	env := shellEnv(t, m)
+	if len(env.TMOUT) != 3 {
+		t.Fatalf("tmout = %+v", env.TMOUT)
+	}
+	if v := env.TMOUT[0]; v.Value != "300" || !v.Conditional {
+		t.Errorf("one-line if: %+v, want conditional", v)
+	}
+	if v := env.TMOUT[1]; v.Value != "600" || v.Conditional {
+		t.Errorf("after ;fi: %+v, want unconditional", v)
+	}
+	if v := env.TMOUT[2]; !v.Unset || v.Value != "" || v.Source != "/etc/profile.d/tmout.sh:6" {
+		t.Errorf("unset: %+v", v)
+	}
+	if len(env.Umask) != 2 || !env.Umask[0].Conditional || env.Umask[1].Conditional {
+		t.Errorf("umask = %+v", env.Umask)
+	}
+}
