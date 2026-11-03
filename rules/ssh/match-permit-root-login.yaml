@@ -1,0 +1,43 @@
+id: ssh.match-permit-root-login
+version: 1
+title: No SSH Match block allows root login
+title_ko: SSH Match 블록의 root 로그인 허용 금지
+severity: high
+description: >-
+  Lists Match blocks of the OpenSSH server configuration that set PermitRootLogin to
+  anything but "no", which re-enables root login for the connections they match.
+rationale: >-
+  A Match block overrides the global setting for matching connections, so a hardened global
+  value can be undone for a whole network or user group.
+remediation: >-
+  Remove PermitRootLogin from the Match block or set it to "no" there as well.
+applies: >-
+  sshd.present
+violations:
+  over: sshd.match
+  as: m
+  where: >-
+    "permitrootlogin" in m.settings && m.settings["permitrootlogin"].value != "no"
+  key: m.source
+  text: >-
+    "Match " + m.criteria + " sets PermitRootLogin " + m.settings["permitrootlogin"].value
+  allow_empty: true
+tests:
+  - name: no Match blocks
+    facts:
+      sshd: {present: true, match: []}
+    want: PASS
+  - name: Match block without PermitRootLogin
+    facts:
+      sshd: {present: true, match: [{criteria: "User backup", settings: {x11forwarding: {value: "no", explicit: true}}, source: "/etc/ssh/sshd_config:40"}]}
+    want: PASS
+  - name: Match block allows root
+    facts:
+      sshd: {present: true, match: [{criteria: "Address 10.0.0.0/8", settings: {permitrootlogin: {value: "yes", explicit: true}}, source: "/etc/ssh/sshd_config:40"}]}
+    want: FAIL
+  - name: an unreadable include could hold a Match block
+    input: incomplete
+    incomplete: [sshd]
+    facts:
+      sshd: {present: true, match: []}
+    want: ERROR
