@@ -1,7 +1,7 @@
 id: accounts.uid0-only-root
 version: 1
 title: Only root has UID 0
-title_ko: root 이외 UID 0 계정 금지
+title_ko: UID 0은 root만 가짐
 severity: high
 description: Lists accounts other than root whose UID is 0.
 rationale: Every UID 0 account has full root privileges, under a name that may escape notice.

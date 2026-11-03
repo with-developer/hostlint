@@ -1,7 +1,7 @@
 id: accounts.su-wheel-only
 version: 1
 title: Only members of the wheel group can use su
-title_ko: su 명령어 사용 그룹 제한
+title_ko: wheel 그룹 구성원만 su를 쓸 수 있음
 severity: high
 description: >-
   Checks that the su PAM stack has a pam_wheel line that denies users outside the wheel group
