@@ -651,6 +651,8 @@ func (e *evalEnv) evalFile(spec *FileSpec) outcome {
 				}
 			case obs.Missing:
 				add(outcomeStatus(spec.Missing), p, p+": does not exist")
+			case obs.Masked:
+				add(outcomeStatus(spec.Missing), p, p+": masked (a symbolic link to /dev/null)")
 			default:
 				st, text, err := checkFile(spec, obs.Info, ff.IDs)
 				if err != nil {
