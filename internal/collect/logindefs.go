@@ -1,13 +1,15 @@
 package collect
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
+	"path"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -85,38 +87,39 @@ func (loginDefsCollector) Access() engine.Access { return engine.AccessFilesyste
 func (loginDefsCollector) Type() reflect.Type    { return reflect.TypeFor[LoginDefs]() }
 
 func (loginDefsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
-	const path = "/etc/login.defs"
 	ld := &LoginDefs{Settings: map[string]facts.Setting{}}
-	data, err := h.FS.ReadFile(path)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-	case err != nil:
-		return engine.Facts{}, err
-	default:
+	econf := usesLibeconf(h.FS)
+	main := "/etc/login.defs"
+	if econf && !exists(h.FS, main) {
+		main = "/usr/etc/login.defs" // libeconf's vendor file
+	}
+	files := []string{main}
+	if econf {
+		dropIns, err := loginDefsDropIns(h.FS)
+		if err != nil {
+			return engine.Facts{}, err
+		}
+		files = append(files, dropIns...)
+	}
+	for _, file := range files {
+		data, err := h.FS.ReadFile(file)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			continue
+		case err != nil:
+			return engine.Facts{}, err
+		}
 		ld.Present = true
-		sc := bufio.NewScanner(bytes.NewReader(data))
-		for line := 1; sc.Scan(); line++ {
-			text := strings.TrimSpace(sc.Text())
-			if text == "" || strings.HasPrefix(text, "#") {
+		// shadow-utils keeps the last value of a key; built with libeconf
+		// (RHEL 10) it keeps the first within a file, and later files
+		// (drop-ins) override earlier ones.
+		seen := map[string]bool{}
+		for _, d := range parseLoginDefs(file, data) {
+			if econf && seen[d.key] {
 				continue
 			}
-			key, value := text, ""
-			if i := strings.IndexAny(text, " \t"); i >= 0 {
-				key, value = text[:i], strings.TrimSpace(text[i+1:])
-			}
-			value = strings.Trim(value, `"`)
-			if loginDefsNumeric[key] {
-				if n, ok := parseCLong(value); ok {
-					value = strconv.FormatInt(n, 10)
-				} else {
-					value = "invalid: " + value
-				}
-			}
-			// A later line replaces an earlier one (shadow-utils getdef.c).
-			ld.Settings[key] = facts.Setting{Value: value, Explicit: true, Source: fmt.Sprintf("%s:%d", path, line)}
-		}
-		if err := sc.Err(); err != nil {
-			return engine.Facts{}, err
+			seen[d.key] = true
+			ld.Settings[d.key] = d.setting
 		}
 	}
 	for key, value := range loginDefsDefaults {
@@ -125,4 +128,81 @@ func (loginDefsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fac
 		}
 	}
 	return engine.Facts{Value: ld, Complete: true}, nil
+}
+
+type loginDef struct {
+	key     string
+	setting facts.Setting
+}
+
+// parseLoginDefs reads definitions as shadow-utils' getdef.c does: the key
+// is the first word; a line with only a key defines nothing; the value
+// starts after spaces, tabs and quotes and ends at the next quote. Only
+// ASCII whitespace separates or is trimmed.
+func parseLoginDefs(file string, data []byte) []loginDef {
+	var out []loginDef
+	for i, line := range strings.Split(string(data), "\n") {
+		text := strings.TrimRight(line, asciiSpace)
+		text = strings.TrimLeft(text, " \t")
+		if text == "" || text[0] == '#' {
+			continue
+		}
+		end := strings.IndexAny(text, " \t")
+		if end < 0 {
+			continue // a key without a value
+		}
+		key := text[:end]
+		value := strings.TrimLeft(text[end:], " \"\t")
+		if q := strings.IndexByte(value, '"'); q >= 0 {
+			value = value[:q]
+		}
+		if loginDefsNumeric[key] {
+			if n, ok := parseCLong(value); ok {
+				value = strconv.FormatInt(n, 10)
+			} else {
+				value = "invalid: " + value
+			}
+		}
+		out = append(out, loginDef{key, facts.Setting{Value: value, Explicit: true, Source: fmt.Sprintf("%s:%d", file, i+1)}})
+	}
+	return out
+}
+
+// usesLibeconf reports whether shadow-utils is built with libeconf, which
+// changes how login.defs is read.
+func usesLibeconf(fsys hostfs.FS) bool {
+	for _, prog := range []string{"/usr/sbin/useradd", "/sbin/useradd"} {
+		if data, err := fsys.ReadFile(prog); err == nil {
+			return bytes.Contains(data, []byte("libeconf.so"))
+		}
+	}
+	return false
+}
+
+// loginDefsDropIns lists libeconf's drop-ins in the order they apply: by
+// file name, a file in /etc replacing one of the same name in /usr/etc.
+func loginDefsDropIns(fsys hostfs.FS) ([]string, error) {
+	byName := map[string]string{}
+	for _, dir := range []string{"/usr/etc/login.defs.d", "/etc/login.defs.d"} {
+		matches, problems, err := hostfs.Glob(fsys, dir+"/*.defs")
+		if err != nil {
+			return nil, err
+		}
+		if len(problems) > 0 {
+			return nil, errors.New(strings.Join(problems, "; "))
+		}
+		for _, m := range matches {
+			byName[path.Base(m)] = m
+		}
+	}
+	var out []string
+	for _, name := range slices.Sorted(maps.Keys(byName)) {
+		out = append(out, byName[name])
+	}
+	return out, nil
+}
+
+func exists(fsys hostfs.FS, name string) bool {
+	_, err := fsys.Stat(name)
+	return err == nil
 }
