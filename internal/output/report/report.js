@@ -110,6 +110,8 @@
 
   function refreshToolbar() {
     const t = document.getElementById('toolbar');
+    const typed = t.querySelector('input');
+    if (typed) state.query = typed.value.trim(); // text the debounce has not applied yet
     const focused = document.activeElement && document.activeElement.type === 'search';
     t.replaceChildren(toolbar());
     if (focused) t.querySelector('input').focus();

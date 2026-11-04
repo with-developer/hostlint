@@ -49,13 +49,28 @@ func runReport(cmd *cobra.Command, files []string, out, title string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
-		inputs = append(inputs, output.ReportInput{Name: filepath.Base(name), Result: res})
+		inputs = append(inputs, output.ReportInput{Name: displayName(name, files), Result: res})
 	}
 	opts := output.ReportOptions{Title: title, Tool: version.Get().Version, Now: time.Now()}
 	if out == "" {
 		return output.WriteReport(cmd.OutOrStdout(), inputs, opts)
 	}
 	return output.WriteReportFile(out, inputs, opts)
+}
+
+// displayName is how a result file is named in the report: its file name,
+// or the path as given when another file has the same name.
+func displayName(name string, all []string) string {
+	same := 0
+	for _, other := range all {
+		if filepath.Base(other) == filepath.Base(name) {
+			same++
+		}
+	}
+	if same > 1 {
+		return filepath.Clean(name)
+	}
+	return filepath.Base(name)
 }
 
 // readResultFile reads a result document the user named. It is hostlint's

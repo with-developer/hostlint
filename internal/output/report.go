@@ -99,9 +99,19 @@ func ReadResult(r io.Reader) (*engine.Result, error) {
 
 func knownStatus(s engine.Status) bool { return slices.Contains(engine.Statuses(), s) }
 
+// knownSeverity: severities become class names in the page, so only the
+// known ones are let through.
+func knownSeverity(s engine.Severity) bool {
+	return s == engine.SeverityLow || s == engine.SeverityMedium || s == engine.SeverityHigh
+}
+
 func checkResult(res *engine.Result) error {
 	if res.Host.Hostname == "" {
 		return errors.New("no host name")
+	}
+	// The newest scan of a host is picked by this time: it must be one.
+	if _, err := time.Parse(time.RFC3339, res.Scan.StartedAt); err != nil {
+		return fmt.Errorf("scan.startedAt %q is not a timestamp", res.Scan.StartedAt)
 	}
 	profiles := map[string]bool{}
 	for _, p := range res.Profiles {
@@ -116,6 +126,8 @@ func checkResult(res *engine.Result) error {
 			return fmt.Errorf("check %q: unknown status %q", c.Ref, c.Status)
 		case c.OriginalStatus != "" && !knownStatus(c.OriginalStatus):
 			return fmt.Errorf("check %q: unknown original status %q", c.Ref, c.OriginalStatus)
+		case !knownSeverity(c.Severity):
+			return fmt.Errorf("check %q: unknown severity %q", c.Ref, c.Severity)
 		}
 		checks[c.Ref] = true
 	}
@@ -129,6 +141,8 @@ func checkResult(res *engine.Result) error {
 			return fmt.Errorf("control %q listed twice", c.ID)
 		case !knownStatus(c.Status):
 			return fmt.Errorf("control %q: unknown status %q", c.ID, c.Status)
+		case !knownSeverity(c.Severity):
+			return fmt.Errorf("control %q: unknown severity %q", c.ID, c.Severity)
 		}
 		controls[key] = true
 		for _, ref := range c.Checks {
@@ -266,14 +280,7 @@ func WriteReport(w io.Writer, inputs []ReportInput, opts ReportOptions) error {
 // replacing it with mode 0644. The report is built first, so a failure leaves
 // an existing file alone.
 func WriteReportFile(path string, inputs []ReportInput, opts ReportOptions) error {
-	var buf bytes.Buffer
-	if err := WriteReport(&buf, inputs, opts); err != nil {
-		return err
-	}
-	return writeFile(path, func(w io.Writer) error {
-		_, err := w.Write(buf.Bytes())
-		return err
-	})
+	return writeFile(path, func(w io.Writer) error { return WriteReport(w, inputs, opts) })
 }
 
 // cspHash is the CSP source expression for an inline element's content.

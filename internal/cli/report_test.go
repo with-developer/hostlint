@@ -57,3 +57,14 @@ func TestReportCommand(t *testing.T) {
 		t.Error("a failed report still wrote its file")
 	}
 }
+
+// Result files with the same name are told apart by their paths.
+func TestDisplayName(t *testing.T) {
+	all := []string{"a/result.json", "b/result.json", "c/web.json"}
+	if got := displayName("a/result.json", all); got != "a/result.json" {
+		t.Errorf("same name: %q", got)
+	}
+	if got := displayName("c/web.json", all); got != "web.json" {
+		t.Errorf("unique name: %q", got)
+	}
+}

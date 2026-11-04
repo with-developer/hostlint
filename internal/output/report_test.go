@@ -197,6 +197,9 @@ func TestReadResultRejects(t *testing.T) {
 		{"control twice", edit(func(d map[string]any) {
 			d["controls"] = append(d["controls"].([]any), first(d, "controls"))
 		}), "listed twice"},
+		{"scan time not a timestamp", edit(func(d map[string]any) { d["scan"].(map[string]any)["startedAt"] = "yesterday" }), "is not a timestamp"},
+		{"severity that is a class list", edit(func(d map[string]any) { first(d, "checks")["severity"] = "high s-FAIL" }), "unknown severity"},
+		{"control severity unknown", edit(func(d map[string]any) { first(d, "controls")["severity"] = "critical" }), "unknown severity"},
 		{"wrong type", edit(func(d map[string]any) { d["checks"] = "all good" }), "not a valid hostlint result"},
 	}
 	for _, tt := range tests {
