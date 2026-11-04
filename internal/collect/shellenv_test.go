@@ -136,6 +136,39 @@ func TestShellEnvUnknownProfileLoop(t *testing.T) {
 	}
 }
 
+// Only the system-wide files set TMOUT for every user; root's own files
+// set it for root alone.
+func TestShellEnvSystemEffective(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "umask 022\n", 0o644, 0, 0).
+		AddFile("/root/.bashrc", "TMOUT=600\nreadonly TMOUT\nexport TMOUT\n", 0o644, 0, 0).
+		AddFile("/root/.bash_profile", ". ~/.bashrc\n", 0o644, 0, 0)
+	env := shellEnv(t, m)
+	if env.Effective["TMOUT"].Value != "600" {
+		t.Errorf("root's effective = %+v", env.Effective)
+	}
+	if _, ok := env.SystemEffective["TMOUT"]; ok {
+		t.Errorf("system-wide effective = %+v, want none", env.SystemEffective)
+	}
+	m.AddFile("/etc/profile.d/autologout.sh", "TMOUT=300\n", 0o644, 0, 0).AddFile("/etc/profile", "umask 022\n"+profileLoop, 0o644, 0, 0)
+	if env := shellEnv(t, m); env.SystemEffective["TMOUT"].Value != "300" || env.Effective["TMOUT"].Value != "600" {
+		t.Errorf("system %+v, root %+v", env.SystemEffective, env.Effective)
+	}
+}
+
+// A non-root scan that cannot look into /root does not know which login
+// file bash reads: the facts are incomplete, not empty.
+func TestShellEnvRootUnreadable(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "TMOUT=600\nexport TMOUT\n", 0o644, 0, 0).
+		AddFile("/root/.profile", "unset TMOUT\n", 0o644, 0, 0).
+		SetError("/root", fsErrPermission)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || f.Complete {
+		t.Errorf("complete %v, %v; want incomplete", f.Complete, err)
+	}
+}
+
 func TestShellEnvUnreadable(t *testing.T) {
 	m := hostfs.NewMemFS().AddFile("/etc/profile", "umask 022\n"+profileLoop, 0o644, 0, 0).AddDir("/etc/profile.d", 0o755, 0, 0).SetError("/etc/profile.d", fsErrPermission)
 	f, err := collect(t, shellEnvCollector{}, m)

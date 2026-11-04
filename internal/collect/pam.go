@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"path"
 	"reflect"
 	"regexp"
@@ -517,7 +518,7 @@ func (r *pamReader) quality(rules []PAMRule) PasswordPolicy {
 	}
 	p.Settings = r.pwqualityConf(lib)
 	addDefaults(p.Settings, lib.defaults, lib.defaultSource)
-	addArgs(p.Settings, rule, true)
+	pwqualityArgs(p.Settings, lib, rule)
 	return p
 }
 
@@ -565,13 +566,33 @@ func rejecting(rules []PAMRule, is func(PAMRule) bool, p *PasswordPolicy) (PAMRu
 			}
 			return "success"
 		})
+		writer, writes := writesAnyway(rules, ran, i)
 		switch {
 		case !ran[i]:
 			p.Ignored = append(p.Ignored, rule.Module+" at "+rule.Source+": not reached when the modules before it succeed")
 		case ok:
 			p.Ignored = append(p.Ignored, rule.Module+" at "+rule.Source+": its rejection does not fail the stack (control "+rule.Control+")")
+		case writes:
+			p.Ignored = append(p.Ignored, rule.Module+" at "+rule.Source+": its rejection does not stop "+writer.Module+" at "+writer.Source+" from storing the password")
 		default:
 			return rule, true
+		}
+	}
+	return PAMRule{}, false
+}
+
+// writesAnyway returns a module that stores the new password although the
+// rule at i rejected it, which only fails the call afterwards: one that ran
+// before it, or one after it that asks for the password again. A rejecting
+// pam_pwquality, pam_cracklib or pam_pwhistory clears the password it was
+// given, so a module with use_authtok after it has nothing to store.
+func writesAnyway(rules []PAMRule, ran map[int]bool, i int) (PAMRule, bool) {
+	for j, w := range rules {
+		if j == i || !ran[j] || w.Type != "password" || !slices.Contains(passwordModules, w.Module) {
+			continue
+		}
+		if j < i || !hasArg(w, "use_authtok") {
+			return w, true
 		}
 	}
 	return PAMRule{}, false
@@ -810,7 +831,7 @@ func (r *pamReader) pwqualityConf(lib pwqualityLib) map[string]facts.Setting {
 	s := map[string]facts.Setting{}
 	var files []string
 	if lib.readsDropIns {
-		files = r.glob("/etc/security/pwquality.conf.d/*.conf")
+		files = r.pwqualityDropIns()
 	}
 	files = append(files, "/etc/security/pwquality.conf")
 	for _, file := range files {
@@ -821,15 +842,13 @@ func (r *pamReader) pwqualityConf(lib pwqualityLib) map[string]facts.Setting {
 		stopped := false
 		r.eachConfLine(file, data, func(line int, key, value string) bool {
 			key = strings.ToLower(key)
-			if !lib.options[key] || !validPwquality(key, value) {
+			v, ok := pwqualityValue(lib, key, value)
+			if !ok {
 				r.notes = append(r.notes, fmt.Sprintf("%s:%d: libpwquality stops reading its configuration at %q", file, line, key))
 				stopped = true
 				return false
 			}
-			if value == "" {
-				value = "1"
-			}
-			s[key] = facts.Setting{Value: value, Explicit: true, Source: fmt.Sprintf("%s:%d", file, line)}
+			s[key] = facts.Setting{Value: v, Explicit: true, Source: fmt.Sprintf("%s:%d", file, line)}
 			return true
 		})
 		if stopped {
@@ -839,17 +858,66 @@ func (r *pamReader) pwqualityConf(lib pwqualityLib) map[string]facts.Setting {
 	return s
 }
 
-// validPwquality reports whether value is valid for key: the numeric
-// settings need an integer, the flags no value.
-func validPwquality(key, value string) bool {
-	switch key {
-	case "badwords", "dictpath":
-		return true
-	case "enforce_for_root", "local_users_only":
-		return value == ""
+// pwqualityValue is the value libpwquality's set_name_value stores for key:
+// a flag is set whatever its value, a number is read by strtol in base 10
+// (so "00" and "+0" are 0) and must fit an int, a string is kept. It is
+// false for what libpwquality rejects.
+func pwqualityValue(lib pwqualityLib, key, value string) (string, bool) {
+	switch {
+	case !lib.options[key]:
+		return "", false
+	case key == "enforce_for_root" || key == "local_users_only":
+		return "1", true
+	case key == "badwords" || key == "dictpath":
+		return value, true
 	}
-	_, err := strconv.Atoi(value)
-	return err == nil
+	n, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || n >= math.MaxInt32 || n <= math.MinInt32 {
+		return "", false
+	}
+	return strconv.FormatInt(n, 10), true
+}
+
+// pwqualityArgs applies pam_pwquality's arguments as it does: the ones the
+// module uses itself are skipped, each other one is set as a configuration
+// line would be, and one libpwquality rejects is ignored.
+func pwqualityArgs(s map[string]facts.Setting, lib pwqualityLib, rule PAMRule) {
+	for _, arg := range rule.Args {
+		if arg == "debug" || slices.ContainsFunc([]string{"type=", "difignore=", "reject_username", "authtok_type", "use_authtok", "use_first_pass", "try_first_pass"},
+			func(prefix string) bool { return strings.HasPrefix(arg, prefix) }) {
+			continue
+		}
+		key, value, _ := strings.Cut(arg, "=")
+		key = strings.ToLower(key)
+		if v, ok := pwqualityValue(lib, key, value); ok {
+			s[key] = facts.Setting{Value: v, Explicit: true, Source: rule.Source}
+		}
+	}
+}
+
+// pwqualityDropIns lists the files libpwquality reads from
+// pwquality.conf.d: every name whose first ".conf" ends it, hidden files
+// included, in strcmp order (libpwquality 1.4.5 filter_conf).
+func (r *pamReader) pwqualityDropIns() []string {
+	const dir = "/etc/security/pwquality.conf.d"
+	entries, err := r.fsys.ReadDir(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil
+	case err != nil:
+		r.skip(err.Error())
+		return nil
+	}
+	var files []string
+	for _, e := range entries {
+		name := path.Base(e.Path)
+		if i := strings.Index(name, ".conf"); i < 0 || i+len(".conf") != len(name) || e.IsDir() {
+			continue
+		}
+		files = append(files, path.Join(dir, name))
+	}
+	slices.Sort(files)
+	return files
 }
 
 // faillockConf reads faillock.conf as pam_faillock does: later values
