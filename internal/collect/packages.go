@@ -161,6 +161,7 @@ func readDpkg(fsys hostfs.FS, status []byte) (engine.Facts, error) {
 		}
 	}
 	p := &Packages{Manager: "dpkg", Installed: map[string][]Package{}}
+	var skipped []string
 	for _, id := range order {
 		e := byID[id]
 		// The third word of Status is the package state; "not-installed"
@@ -168,15 +169,26 @@ func readDpkg(fsys hostfs.FS, status []byte) (engine.Facts, error) {
 		// behind. Any other state counts as installed, so a half-installed
 		// service is never taken for an absent one.
 		fields := strings.Fields(e.status)
-		if len(fields) != 3 || fields[2] == "not-installed" || fields[2] == "config-files" {
+		if len(fields) != 3 {
+			// A damaged stanza: whether the package is installed is unknown,
+			// not absent.
+			skipped = append(skipped, fmt.Sprintf("%s: package %s has no valid Status field", e.source, e.name))
 			continue
+		}
+		if fields[2] == "not-installed" || fields[2] == "config-files" {
+			continue
+		}
+		if e.arch == "" {
+			// dpkg tells packages apart by name and architecture; without one
+			// a journal entry cannot be matched to its status entry.
+			skipped = append(skipped, fmt.Sprintf("%s: package %s has no Architecture field", e.source, e.name))
 		}
 		p.Installed[e.name] = append(p.Installed[e.name], Package{Version: e.version, Arch: e.arch, State: fields[2], Source: e.source})
 	}
 	for _, instances := range p.Installed {
 		slices.SortFunc(instances, func(a, b Package) int { return strings.Compare(a.Arch, b.Arch) })
 	}
-	return engine.Facts{Value: p, Complete: true}, nil
+	return engine.Facts{Value: p, Complete: len(skipped) == 0, Skipped: skipped}, nil
 }
 
 // parseDpkg reads the stanzas of a dpkg database file.

@@ -18,6 +18,9 @@ type Host struct {
 	// Live is true when the target is the running system, so live state
 	// (/proc, sockets, commands) describes it.
 	Live bool
+	// Mounts are the filesystems mounted at or below the target's root, as
+	// seen by hostlint when the target was opened; nil when unknown.
+	Mounts []Mount
 
 	close func() error
 }

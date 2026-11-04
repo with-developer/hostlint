@@ -253,6 +253,40 @@ func TestPAMPwqualityAsLibpwquality(t *testing.T) {
 	}
 }
 
+// enforce_for_root and local_users_only on the module line: up to 1.4.0
+// pam_pwquality compares the argument with strncmp (case-sensitive, any
+// suffix); later versions read them as case-insensitive settings.
+func TestPAMPwqualityModuleFlags(t *testing.T) {
+	const tail = "\npassword sufficient pam_unix.so use_authtok\npassword required pam_deny.so\n"
+	tests := []struct {
+		name, lib, args string
+		want            map[string]bool
+	}{
+		{"legacy bare flags", legacyPwquality, "try_first_pass local_users_only retry=3 authtok_type= enforce_for_root", map[string]bool{"enforce_for_root": true, "local_users_only": true}},
+		{"modern bare flags", modernPwquality, "try_first_pass local_users_only retry=3 authtok_type= enforce_for_root", map[string]bool{"enforce_for_root": true, "local_users_only": true}},
+		{"legacy suffix is ignored", legacyPwquality, "enforce_for_root=0", map[string]bool{"enforce_for_root": true}},
+		{"modern value is ignored", modernPwquality, "enforce_for_root=0", map[string]bool{"enforce_for_root": true}},
+		{"legacy case matters", legacyPwquality, "ENFORCE_FOR_ROOT Local_Users_Only", nil},
+		{"modern case does not", modernPwquality, "ENFORCE_FOR_ROOT", map[string]bool{"enforce_for_root": true}},
+		{"absent", legacyPwquality, "retry=3", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := pwqualityHost(t, tt.lib).AddFile("/etc/pam.d/passwd", "password requisite pam_pwquality.so "+tt.args+tail, 0o644, 0, 0)
+			q := pamFacts(t, m).PasswordQuality
+			for _, k := range []string{"enforce_for_root", "local_users_only"} {
+				s := q.Settings[k]
+				if got := s.Explicit && s.Value == "1"; got != tt.want[k] {
+					t.Errorf("%s = %+v, want set %v", k, s, tt.want[k])
+				}
+				if tt.want[k] && s.Source != "/etc/pam.d/passwd:1" {
+					t.Errorf("%s source = %q", k, s.Source)
+				}
+			}
+		})
+	}
+}
+
 // What libpwquality does not apply is not reported as set.
 func TestPAMPwqualityReading(t *testing.T) {
 	const passwd = "password requisite pam_pwquality.so\npassword sufficient pam_unix.so\npassword required pam_deny.so\n"

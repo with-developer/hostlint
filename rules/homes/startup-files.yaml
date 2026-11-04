@@ -1,0 +1,45 @@
+id: homes.startup-files
+version: 1
+title: Users' startup files belong to them and others cannot change them
+title_ko: 사용자 시작 파일은 본인·root 소유, 다른 사용자 쓰기 금지
+severity: high
+description: >-
+  Lists accounts whose shell startup files (.profile, .bashrc, .bash_profile, ...) are owned by
+  someone other than the account or root, are writable by group or others, or are symbolic
+  links to missing files.
+rationale: A startup file runs whenever its user logs in; whoever can change it runs commands as that user.
+remediation: Run `chown <user>` and `chmod go-w` on each listed file, and remove links to missing files.
+violations:
+  over: homes.accounts
+  as: h
+  where: >-
+    h.startup_files.exists(f, f.dangling || (f.uid != 0 && f.uid != h.uid) || f.mode.matches("^..[2367]|^...[2367]"))
+  key: h.user
+  text: >-
+    h.user + ": " + h.startup_files.filter(f, f.dangling || (f.uid != 0 && f.uid != h.uid) ||
+    f.mode.matches("^..[2367]|^...[2367]")).map(f, f.path + " (" +
+    (f.dangling ? "link to a missing file" : f.mode + ", uid " + string(f.uid)) + ")").join(", ")
+  allow_empty: true
+tests:
+  - name: private files
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, startup_files: [{path: /home/alice/.bashrc, uid: 1000, mode: "0644"}, {path: /home/alice/.profile, uid: 0, mode: "0644"}]}]}
+    want: PASS
+  - name: group writable
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, startup_files: [{path: /home/alice/.bashrc, uid: 1000, mode: "0664"}]}]}
+    want: FAIL
+  - name: owned by another user
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, startup_files: [{path: /home/alice/.profile, uid: 1001, mode: "0644"}]}]}
+    want: FAIL
+  - name: link to a missing file
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, startup_files: [{path: /home/alice/.bashrc, dangling: true}]}]}
+    want: FAIL
+  - name: a home directory unreadable
+    input: incomplete
+    incomplete: [homes]
+    facts:
+      homes: {accounts: []}
+    want: ERROR

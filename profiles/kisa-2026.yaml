@@ -79,3 +79,107 @@ controls:
     # A hash kept in /etc/passwd is used by pam_unix too, and its scheme is
     # not reported, so it fails this control as well as U-04.
     checks: [accounts.password-hash-method, accounts.password-hash-strength, accounts.passwd-no-hashes]
+  - id: U-14
+    title: Safe PATH for root and system-wide shells
+    title_ko: root·시스템 PATH 안전 설정
+    severity: high
+    checks: [env.path-current-dir]
+  - id: U-15
+    title: No files without an owner
+    title_ko: 소유자 없는 파일 정리
+    severity: high
+    checks: [files.unowned]
+  - id: U-16
+    title: Ownership and permissions of /etc/passwd
+    title_ko: /etc/passwd 소유자·권한
+    severity: high
+    checks: [files.passwd-perms]
+  - id: U-17
+    title: Start-up scripts are writable by root only
+    title_ko: 시작 스크립트 쓰기 권한
+    severity: high
+    checks: [files.startup-scripts]
+  - id: U-18
+    title: Ownership and permissions of /etc/shadow
+    title_ko: /etc/shadow 소유자·권한
+    severity: high
+    checks: [files.shadow-perms]
+  - id: U-19
+    title: Ownership and permissions of /etc/hosts
+    title_ko: /etc/hosts 소유자·권한
+    severity: high
+    checks: [files.hosts-perms]
+  - id: U-20
+    title: Ownership and permissions of inetd and xinetd configuration
+    title_ko: inetd·xinetd 설정 소유자·권한
+    severity: high
+    checks: [files.inetd-conf-perms]
+  - id: U-21
+    title: Ownership and permissions of syslog configuration
+    title_ko: syslog 설정 소유자·권한
+    severity: high
+    checks: [files.syslog-conf-perms]
+  - id: U-22
+    title: Ownership and permissions of /etc/services
+    title_ko: /etc/services 소유자·권한
+    severity: high
+    checks: [files.services-perms]
+  - id: U-23
+    title: Set-ID programs are reviewed
+    title_ko: SUID·SGID 파일 점검
+    severity: high
+    checks: [files.setid-outside-system-dirs, files.review-setid]
+  - id: U-24
+    title: Users' startup files are protected
+    title_ko: 사용자 시작 파일 소유자·권한
+    severity: high
+    checks: [homes.startup-files]
+  - id: U-25
+    title: World-writable files are known
+    title_ko: 모든 사용자 쓰기 가능 파일 점검
+    severity: high
+    checks: [files.world-writable]
+  - id: U-26
+    title: No stray files in /dev
+    title_ko: /dev의 일반 파일 점검
+    severity: high
+    checks: [files.dev-regular-files]
+  - id: U-27
+    title: No password-less trust through .rhosts or hosts.equiv
+    title_ko: .rhosts·hosts.equiv 신뢰 관계 제한
+    severity: high
+    checks: [files.rhosts]
+  - id: U-28
+    title: Access is restricted by address and port
+    title_ko: 접속 IP·포트 제한
+    severity: high
+    manual: >-
+      Check that services accept connections only from the addresses that need them, with a
+      host firewall (nftables, iptables, firewalld) or the services' own access rules.
+  - id: U-29
+    title: Ownership and permissions of /etc/hosts.lpd
+    title_ko: /etc/hosts.lpd 소유자·권한
+    severity: low
+    checks: [files.hosts-lpd-perms]
+  - id: U-30
+    title: Restrictive umask
+    title_ko: umask 설정
+    severity: medium
+    checks: [env.umask-login-defs, env.umask-startup-files]
+  - id: U-31
+    title: Home directories are owned by their accounts
+    title_ko: 홈 디렉터리 소유자·권한
+    severity: medium
+    checks: [homes.owner-perms]
+  - id: U-32
+    title: Home directories exist
+    title_ko: 홈 디렉터리 존재
+    severity: medium
+    checks: [homes.exists]
+  - id: U-33
+    title: Hidden files are reviewed
+    title_ko: 숨겨진 파일·디렉터리 점검
+    severity: low
+    manual: >-
+      Look for unexpected hidden files and directories (names starting with "."), especially
+      unusual names such as "..." or ". ", and remove those that do not belong.

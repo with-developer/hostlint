@@ -1,0 +1,40 @@
+id: files.world-writable
+version: 1
+title: No world-writable files, and no world-writable directories without the sticky bit
+title_ko: 모든 사용자 쓰기 가능 파일·디렉터리 없음
+severity: high
+description: >-
+  Lists regular files that every user can write, and directories every user can write that lack
+  the sticky bit (so anyone can delete or replace others' files there), on local filesystems.
+rationale: >-
+  Anyone can change a world-writable file; if a privileged program or user reads or runs it,
+  that becomes a way to gain their rights.
+remediation: Remove write permission for others (`chmod o-w`), or set the sticky bit on shared directories (`chmod +t`).
+violations:
+  over: filesystem.world_writable
+  as: f
+  where: >-
+    f.type == "file" || (f.type == "dir" && !f.mode.matches("^[1357]"))
+  key: f.path
+  text: >-
+    f.path + " (" + f.type + ", " + f.mode + ")"
+  allow_empty: true
+tests:
+  - name: sticky shared directories
+    facts:
+      filesystem: {world_writable: [{path: /tmp, type: dir, mode: "1777"}, {path: /var/tmp, type: dir, mode: "1777"}]}
+    want: PASS
+  - name: writable file
+    facts:
+      filesystem: {world_writable: [{path: /etc/cron.d/backup, type: file, mode: "0666"}]}
+    want: FAIL
+  - name: directory without sticky bit
+    facts:
+      filesystem: {world_writable: [{path: /srv/upload, type: dir, mode: "0777"}]}
+    want: FAIL
+  - name: walk incomplete
+    input: incomplete
+    incomplete: [filesystem]
+    facts:
+      filesystem: {world_writable: []}
+    want: ERROR

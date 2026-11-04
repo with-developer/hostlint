@@ -1,0 +1,31 @@
+id: files.dev-regular-files
+version: 1
+title: No regular files in /dev
+title_ko: /dev에 일반 파일 없음
+severity: high
+description: Lists regular files under /dev (outside /dev/shm and /dev/mqueue), where only devices and directories belong.
+rationale: /dev is rarely looked at, which makes it a place to hide files; a regular file there holds no device.
+remediation: Check what each listed file is and remove the ones that do not belong.
+violations:
+  over: filesystem.dev_files
+  as: f
+  where: "true"
+  key: f.path
+  text: >-
+    f.path + " (" + f.mode + ")"
+  allow_empty: true
+tests:
+  - name: devices only
+    facts:
+      filesystem: {dev_files: []}
+    want: PASS
+  - name: hidden file
+    facts:
+      filesystem: {dev_files: [{path: /dev/.udev/x, type: file, mode: "0755"}]}
+    want: FAIL
+  - name: walk incomplete
+    input: incomplete
+    incomplete: [filesystem]
+    facts:
+      filesystem: {dev_files: []}
+    want: ERROR
