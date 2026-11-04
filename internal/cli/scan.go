@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/with-developer/hostlint/internal/collect"
+	"github.com/with-developer/hostlint/internal/config"
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/hostfs"
 	"github.com/with-developer/hostlint/internal/output"
@@ -33,9 +34,9 @@ func (e *findingsError) Error() string {
 }
 
 type scanFlags struct {
-	profile, format, output, root, failOn, color string
-	labels                                       []string
-	verbose                                      bool
+	profile, format, output, root, failOn, color, config string
+	labels                                               []string
+	verbose                                              bool
 }
 
 func newScanCommand() *cobra.Command {
@@ -65,6 +66,7 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringArrayVar(&f.labels, "label", nil, "add a key=value label to the host in the report (repeatable)")
 	fl.BoolVarP(&f.verbose, "verbose", "v", false, "also list passing and not-applicable controls in the table")
 	fl.StringVar(&f.color, "color", "auto", "color the table: auto, always or never")
+	fl.StringVar(&f.config, "config", "", "configuration file (default: ./hostlint.yaml, then /etc/hostlint/hostlint.yaml, if present)")
 	return cmd
 }
 
@@ -87,6 +89,24 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
 	}
+	opts := engine.Options{Labels: labels, Profile: f.profile}
+	cfgPath, err := config.Find(f.config)
+	if err != nil {
+		return err
+	}
+	if cfgPath != "" {
+		cfg, err := config.Load(cfgPath)
+		if err != nil {
+			return err
+		}
+		if cfg.Profile != "" && !cmd.Flags().Changed("profile") {
+			opts.Profile = cfg.Profile
+		}
+		if err := cfg.Validate(content, opts.Profile); err != nil {
+			return fmt.Errorf("%s:\n%w", cfgPath, err)
+		}
+		opts.Params, opts.Waivers = cfg.Engine()
+	}
 	e, err := engine.New(content, collect.All()...)
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
@@ -98,11 +118,8 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	defer h.Close()
 
 	info := version.Get()
-	res, err := e.Scan(cmd.Context(), h, engine.Options{
-		Profile: f.profile,
-		Labels:  labels,
-		Tool:    engine.ToolInfo{Name: "hostlint", Version: info.Version, Commit: info.Commit},
-	})
+	opts.Tool = engine.ToolInfo{Name: "hostlint", Version: info.Version, Commit: info.Commit}
+	res, err := e.Scan(cmd.Context(), h, opts)
 	if err != nil {
 		return err
 	}
@@ -112,11 +129,11 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return fmt.Errorf("--root %s: no operating system found there (no os-release); is it the root of a mounted system?", f.root)
 	}
 
-	opts := output.Options{Verbose: f.verbose, Color: useColor(f.color, f.output, cmd.OutOrStdout())}
+	outOpts := output.Options{Verbose: f.verbose, Color: useColor(f.color, f.output, cmd.OutOrStdout())}
 	if f.output != "" {
-		err = output.WriteFile(f.output, res, f.format, opts)
+		err = output.WriteFile(f.output, res, f.format, outOpts)
 	} else {
-		err = output.Write(cmd.OutOrStdout(), res, f.format, opts)
+		err = output.Write(cmd.OutOrStdout(), res, f.format, outOpts)
 	}
 	if err != nil {
 		return err
@@ -167,6 +184,11 @@ func useColor(mode, outputPath string, w io.Writer) bool {
 	case mode == "never", outputPath != "", os.Getenv("NO_COLOR") != "", os.Getenv("TERM") == "dumb":
 		return false
 	}
+	return isTerminal(w)
+}
+
+// isTerminal reports whether w is a terminal.
+func isTerminal(w io.Writer) bool {
 	f, ok := w.(*os.File)
 	if !ok {
 		return false

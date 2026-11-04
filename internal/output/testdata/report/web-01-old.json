@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "scan": {
+    "id": "019a43c2-0000-7000-8000-000000000001",
+    "startedAt": "2026-10-01T09:00:00Z",
+    "finishedAt": "2026-10-01T09:00:01Z",
+    "tool": {
+      "name": "hostlint",
+      "version": "v0.1.0"
+    },
+    "target": {
+      "kind": "host",
+      "root": "/"
+    },
+    "privileges": {
+      "euid": 0
+    }
+  },
+  "host": {
+    "hostname": "web-01",
+    "os": {
+      "id": "ubuntu",
+      "versionId": "24.04",
+      "family": "debian",
+      "name": "Ubuntu 24.04.1 LTS",
+      "supported": true
+    }
+  },
+  "profiles": [
+    {
+      "id": "kisa-2026",
+      "revision": 1,
+      "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "summary": {
+    "kisa-2026": {
+      "controls": {
+        "ERROR": 1,
+        "FAIL": 1,
+        "MANUAL": 1,
+        "NOT_APPLICABLE": 1,
+        "PASS": 1
+      },
+      "customized": 0
+    }
+  },
+  "controls": [
+    {
+      "profile": "kisa-2026",
+      "id": "U-01",
+      "title": "Restrict direct remote root login",
+      "severity": "high",
+      "status": "PASS",
+      "checks": [
+        "ssh.permit-root-login"
+      ]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-02",
+      "title": "Password policy",
+      "severity": "high",
+      "status": "PASS",
+      "checks": [
+        "accounts.password-max-age#3f9a1c2e"
+      ]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-04",
+      "title": "Protect password hashes",
+      "severity": "high",
+      "status": "ERROR",
+      "reason": "accounts.shadow-file: shadow: permission denied (run hostlint as root)",
+      "checks": [
+        "accounts.shadow-file"
+      ]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-06",
+      "title": "Restrict su to a group",
+      "severity": "high",
+      "status": "NOT_APPLICABLE",
+      "reason": "accounts.su-wheel-only: applies is false",
+      "checks": [
+        "accounts.su-wheel-only"
+      ]
+    },
+    {
+      "profile": "kisa-2026",
+      "id": "U-07",
+      "title": "Remove unneeded accounts",
+      "severity": "low",
+      "status": "MANUAL",
+      "reason": "Review the listed accounts.",
+      "checks": [
+        "accounts.review-login-accounts"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "ref": "accounts.password-max-age#3f9a1c2e",
+      "id": "accounts.password-max-age",
+      "version": 1,
+      "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "title": "Passwords expire",
+      "severity": "medium",
+      "status": "PASS",
+      "statusSource": "observed",
+      "params": {
+        "max_days": 60
+      },
+      "evidence": [
+        {
+          "key": "login_defs.settings.PASS_MAX_DAYS",
+          "text": "\"60\" (explicit); expected 1–60",
+          "source": "/etc/login.defs:165"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "ref": "accounts.review-login-accounts",
+      "id": "accounts.review-login-accounts",
+      "version": 1,
+      "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "title": "Review accounts that can log in",
+      "severity": "low",
+      "status": "MANUAL",
+      "statusSource": "observed",
+      "reason": "Review the listed accounts.",
+      "evidence": [
+        {
+          "key": "show[0]",
+          "text": "root (uid 0, /bin/bash)"
+        },
+        {
+          "key": "show[1]",
+          "text": "alice (uid 1000, /bin/bash)"
+        }
+      ],
+      "durationMs": 0
+    },
+    {
+      "ref": "accounts.shadow-file",
+      "id": "accounts.shadow-file",
+      "version": 1,
+      "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "title": "Password hashes are kept in /etc/shadow",
+      "severity": "high",
+      "status": "ERROR",
+      "statusSource": "observed",
+      "reason": "shadow: permission denied (run hostlint as root)",
+      "evidence": [],
+      "durationMs": 0
+    },
+    {
+      "ref": "accounts.su-wheel-only",
+      "id": "accounts.su-wheel-only",
+      "version": 1,
+      "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "title": "Only members of the wheel group can use su",
+      "severity": "high",
+      "status": "NOT_APPLICABLE",
+      "statusSource": "observed",
+      "reason": "applies is false",
+      "evidence": [],
+      "durationMs": 0
+    },
+    {
+      "ref": "ssh.permit-root-login",
+      "id": "ssh.permit-root-login",
+      "version": 1,
+      "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "title": "SSH does not allow direct root login",
+      "severity": "high",
+      "status": "PASS",
+      "statusSource": "observed",
+      "evidence": [
+        {
+          "key": "sshd.config.permitrootlogin",
+          "text": "\"yes\" (explicit); expected one of [no]",
+          "source": "/etc/ssh/sshd_config:32"
+        }
+      ],
+      "durationMs": 0
+    }
+  ],
+  "collectors": [
+    {
+      "name": "sshd",
+      "version": 1,
+      "access": "filesystem",
+      "status": "ok",
+      "complete": true,
+      "durationMs": 0
+    }
+  ]
+}

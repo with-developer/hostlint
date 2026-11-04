@@ -53,6 +53,9 @@ type Result struct {
 	Controls      []ControlResult           `json:"controls"`
 	Checks        []CheckResult             `json:"checks"`
 	Collectors    []CollectorRun            `json:"collectors"`
+	// Waivers lists the configured waivers that did not apply (expired,
+	// stale, or blocked by an ERROR), so they are not silently ignored.
+	Waivers []WaiverNote `json:"waivers,omitempty"`
 }
 
 // ScanInfo describes the scan itself.

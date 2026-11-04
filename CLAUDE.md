@@ -26,7 +26,8 @@ Pre-v0.1. The layout below is the target; keep this file in sync as code lands.
 - `make snapshot` — build every release artifact into `dist/` without publishing (GoReleaser;
   `SNAPSHOT_SKIP=sign,sbom` without syft); `scripts/check-release.sh dist` checks them.
   Releases: [docs/RELEASING.md](docs/RELEASING.md)
-- `make e2e` — container end-to-end tests (Docker; arrives with #13)
+- `make e2e` — scan every supported distribution in Docker, stock and hardened (`e2e/harden.sh`),
+  and compare with the goldens in `e2e/testdata`; `E2E_RUN=debian-12 E2E_UPDATE=1` rewrites the goldens of one distribution.
 
 CI runs test, lint, build (linux amd64/arm64), vuln and a release snapshot. `ci-ok` is the
 required check on `main`.
@@ -42,6 +43,7 @@ required check on `main`.
 | `internal/collect/` | Fact collectors; they read the host only through `internal/hostfs` |
 | `internal/facts/` | Shared fact types (`Setting`, `OS`) and the fact type restrictions |
 | `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
+| `internal/config/` | `hostlint.yaml`: parameter overrides and waivers, read from the machine running hostlint (not the scanned host), trust-checked |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
 | `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |

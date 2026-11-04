@@ -65,7 +65,7 @@ changes the host it scans.`,
 	}
 	root.SetVersionTemplate("{{.Version}}\n")
 	root.SetHelpCommand(newHelpCommand())
-	root.AddCommand(newScanCommand(), newVersionCommand())
+	root.AddCommand(newScanCommand(), newReportCommand(), newVersionCommand())
 	return root
 }
 

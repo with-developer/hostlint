@@ -26,6 +26,22 @@
       "type": "array",
       "items": {"$ref": "#/$defs/check"}
     },
+    "waivers": {
+      "description": "Configured waivers that did not apply: expired, stale (control waivers for another profile revision) or blocked by an ERROR.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scope", "id", "reason", "expires", "problem"],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {"enum": ["check", "control"]},
+          "id": {"type": "string", "minLength": 1},
+          "reason": {"type": "string"},
+          "expires": {"$ref": "#/$defs/date"},
+          "problem": {"type": "string"}
+        }
+      }
+    },
     "collectors": {
       "description": "Collector runs, sorted by name.",
       "type": "array",

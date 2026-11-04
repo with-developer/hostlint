@@ -1,6 +1,7 @@
 // Package output renders scan results: a terminal table, the JSON result
-// document, SARIF 2.1.0 and JUnit XML. It is the only package that may create
-// files, and only the report file the user asked for (ADR 0004).
+// document, SARIF 2.1.0, JUnit XML, and an HTML report merging many hosts.
+// It is the only package that may create files, and only the output file the
+// user asked for (ADR 0004).
 package output
 
 import (
@@ -51,13 +52,18 @@ func Write(w io.Writer, res *engine.Result, format string, opts Options) error {
 func ValidFormat(format string) bool { return slices.Contains(Formats, format) }
 
 // WriteFile renders res into the file at path, replacing it with mode 0644.
-// This is the user-requested report file; nothing else is written. The report
-// is rendered first and written to a new file beside path, which then
-// replaces it: a failure leaves an earlier report intact, and a symbolic link
-// at path is replaced, not followed.
+// This is the user-requested report file; nothing else is written.
 func WriteFile(path string, res *engine.Result, format string, opts Options) error {
+	return writeFile(path, func(w io.Writer) error { return Write(w, res, format, opts) })
+}
+
+// writeFile replaces the file at path, mode 0644, with what write writes.
+// The output is rendered first and written to a new file beside path, which
+// then replaces it: a failure leaves an earlier file intact, and a symbolic
+// link at path is replaced, not followed.
+func writeFile(path string, write func(io.Writer) error) error {
 	var buf bytes.Buffer
-	if err := Write(&buf, res, format, opts); err != nil {
+	if err := write(&buf); err != nil {
 		return err
 	}
 	var suffix [8]byte
@@ -65,7 +71,7 @@ func WriteFile(path string, res *engine.Result, format string, opts Options) err
 		return err
 	}
 	tmpPath := filepath.Join(filepath.Dir(path), ".hostlint-report-"+hex.EncodeToString(suffix[:]))
-	tmp, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G302/G304: beside the report path the user gave
+	tmp, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G302/G304: beside the output path the user gave
 	if err != nil {
 		return err
 	}
