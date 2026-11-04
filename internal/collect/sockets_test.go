@@ -74,6 +74,11 @@ func TestSocketsTables(t *testing.T) {
 	if err != nil || len(f.Value.(*Sockets).Listening) != 1 {
 		t.Fatalf("facts %+v, err %v", f.Value, err)
 	}
+	// With IPv6 up, a missing IPv6 table means sockets went unseen.
+	f, err = socketsCollect(t, m.AddFile("/proc/net/if_inet6", "", 0o444, 0, 0))
+	if err != nil || f.Complete {
+		t.Errorf("complete %v, err %v; want incomplete with IPv6 enabled", f.Complete, err)
+	}
 	if _, err := socketsCollect(t, hostfs.NewMemFS()); err == nil {
 		t.Error("missing /proc/net/tcp was accepted")
 	}

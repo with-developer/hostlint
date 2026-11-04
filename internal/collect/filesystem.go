@@ -68,7 +68,7 @@ var walkMaxListed = 10_000
 var walkedTypes = map[string]bool{
 	"ext2": true, "ext3": true, "ext4": true, "xfs": true, "btrfs": true, "zfs": true, "f2fs": true,
 	"jfs": true, "reiserfs": true, "bcachefs": true, "vfat": true, "exfat": true, "ntfs": true, "ntfs3": true,
-	"tmpfs": true, "ramfs": true,
+	"tmpfs": true, "ramfs": true, "fuseblk": true, "erofs": true, "ufs": true, "hfsplus": true,
 }
 
 // excludedPaths are never walked: kernel interfaces, /dev (walked on its
@@ -100,9 +100,14 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 	if h.Mounts == nil {
 		w.skipped = append(w.skipped, "the mount table is unknown, so only well-known paths are excluded from the walk")
 	}
+	// A later mount on the same point hides the earlier ones: its type counts.
+	top := map[string]string{}
 	for _, m := range h.Mounts {
-		if m.Path != "/" && !walkedTypes[m.Type] {
-			excluded[m.Path] = m.Type
+		top[m.Path] = m.Type
+	}
+	for p, typ := range top {
+		if p != "/" && !walkedTypes[typ] {
+			excluded[p] = typ
 		}
 	}
 	var listed []string
@@ -115,13 +120,15 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 	}
 	skip := func(p string) bool { _, ok := excluded[p]; return ok }
 
-	budget := walkTimeout
-	if deadline, ok := ctx.Deadline(); ok {
-		// Stop in time to return what was seen.
-		budget = max(time.Until(deadline)-5*time.Second, time.Second)
+	// budget is what a walk may still use: stop in time to return what was seen.
+	budget := func() time.Duration {
+		if deadline, ok := ctx.Deadline(); ok {
+			return max(time.Until(deadline)-5*time.Second, time.Second)
+		}
+		return walkTimeout
 	}
 	res, err := hostfs.Walk(ctx, h.FS, "/", hostfs.WalkOptions{
-		MaxEntries: walkMaxEntries, MaxDepth: walkMaxDepth, Timeout: budget, Skip: skip,
+		MaxEntries: walkMaxEntries, MaxDepth: walkMaxDepth, Timeout: budget(), Skip: skip,
 	}, w.visit)
 	if err != nil && ctx.Err() == nil {
 		return engine.Facts{}, err
@@ -136,7 +143,7 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 
 	// /dev on its own: only regular files matter there.
 	devSkip := func(p string) bool { return p == "/dev/shm" || p == "/dev/mqueue" || skip(p) }
-	devRes, err := hostfs.Walk(ctx, h.FS, "/dev", hostfs.WalkOptions{MaxEntries: 200_000, MaxDepth: 8, Timeout: budget, Skip: devSkip},
+	devRes, err := hostfs.Walk(ctx, h.FS, "/dev", hostfs.WalkOptions{MaxEntries: 200_000, MaxDepth: 8, Timeout: budget(), Skip: devSkip},
 		func(fi hostfs.FileInfo) error {
 			if fi.IsRegular() {
 				w.add(&fsf.DevFiles, "dev_files", fi)
@@ -146,7 +153,8 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 	switch {
 	case err != nil && ctx.Err() == nil && !isNotExist(err):
 		return engine.Facts{}, err
-	case err == nil && !devRes.Complete:
+	case err != nil && !isNotExist(err), err == nil && !devRes.Complete:
+		// Out of time or interrupted: /dev was not fully seen.
 		w.markPartial(devRes.Problems, "dev_files")
 	}
 

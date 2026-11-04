@@ -61,10 +61,10 @@ func (socketsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts
 	// /proc/net shows the network namespace hostlint runs in. In another
 	// one (a container, ip netns exec), the host's sockets are invisible.
 	self, err1 := h.FS.ReadLink("/proc/self/ns/net")
-	init, err2 := h.FS.ReadLink("/proc/1/ns/net")
+	hostNS, err2 := h.FS.ReadLink("/proc/1/ns/net")
 	switch {
-	case err1 == nil && err2 == nil && self != init:
-		return engine.Facts{}, fmt.Errorf("hostlint runs in network namespace %s, not the host's %s, so it cannot see the host's sockets", self, init)
+	case err1 == nil && err2 == nil && self != hostNS:
+		return engine.Facts{}, fmt.Errorf("hostlint runs in network namespace %s, not the host's %s, so it cannot see the host's sockets", self, hostNS)
 	case err1 != nil || err2 != nil:
 		f.Complete = false
 		f.Skipped = append(f.Skipped, "cannot tell whether hostlint shares the network namespace of process 1 (run hostlint as root)")
@@ -76,6 +76,12 @@ func (socketsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts
 			// tcp6 and udp6 are missing when IPv6 is disabled at boot, and
 			// so are IPv6 sockets; tcp and udp always exist.
 			if errors.Is(err, fs.ErrNotExist) && strings.HasSuffix(t.file, "6") {
+				// With IPv6 up the interface table exists: a missing socket
+				// table then means the IPv6 sockets could not be seen.
+				if _, statErr := h.FS.Stat("/proc/net/if_inet6"); statErr == nil {
+					f.Complete = false
+					f.Skipped = append(f.Skipped, t.file+": missing although IPv6 is enabled")
+				}
 				continue
 			}
 			return engine.Facts{}, err
