@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read # the files of a pull request, for the translation check
 
 concurrency:
   # PR runs replace each other; every commit on main keeps its own run.
@@ -48,6 +49,14 @@ jobs:
       # Same command as locally: builds the pinned golangci-lint with this Go,
       # lints, proves the ADR 0004 guards fire, and checks go.mod is tidy.
       - run: make lint
+      # An English user doc that has a Korean translation changes together with it.
+      - name: Translations follow their English docs
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename' |
+            scripts/check-translations.sh
 
   build:
     name: build (linux/${{ matrix.goarch }})
@@ -104,7 +113,7 @@ jobs:
         with:
           version: v2.18.3 # keep in step with GORELEASER_VERSION in the Makefile
           args: release --snapshot --clean --skip=sign
-      - run: shellcheck install.sh scripts/check-release.sh
+      - run: shellcheck install.sh scripts/check-release.sh scripts/check-translations.sh
       - run: scripts/check-release.sh dist
 
   # Single required status check for branch protection. Fails unless every
