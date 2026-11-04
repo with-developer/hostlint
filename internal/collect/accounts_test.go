@@ -202,3 +202,22 @@ func TestAccountsDuplicateUIDsLargeHost(t *testing.T) {
 		t.Errorf("duplicate UIDs = %+v", got)
 	}
 }
+
+// Groups without members that are nobody's primary group are listed by the
+// collector, so a check does not compare every group with every account.
+func TestAccountsEmptyGroups(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/passwd", "root:x:0:0::/root:/bin/bash\nalice:x:1000:1000::/home/alice:/bin/bash\n", 0o644, 0, 0).
+		AddFile("/etc/group", "root:x:0:\ntty:x:5:\nalice:x:1000:\nstaff:x:50:alice\nkmem:x:15:\n", 0o644, 0, 0)
+	f, err := accountsCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, g := range f.Value.(*Accounts).EmptyGroups {
+		names = append(names, g.Name)
+	}
+	if strings.Join(names, ",") != "tty,kmem" {
+		t.Errorf("empty groups = %v, want tty,kmem (root and alice are primary groups, staff has a member)", names)
+	}
+}

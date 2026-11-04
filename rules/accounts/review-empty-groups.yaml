@@ -11,5 +11,13 @@ manual:
     Confirm whether each listed group is still needed; many belong to installed software and
     own files or devices.
   show: >-
-    accounts.groups.filter(g, size(g.members) == 0 && !accounts.users.exists(u, u.gid == g.gid))
-      .map(g, g.name + " (gid " + string(g.gid) + ")")
+    accounts.empty_groups.map(g, g.name + " (gid " + string(g.gid) + ")")
+tests:
+  - name: groups without accounts
+    facts:
+      accounts: {empty_groups: [{name: tty, gid: 5}, {name: kmem, gid: 15}]}
+    want: MANUAL
+  - name: evidence unavailable still asks for the review
+    input: unavailable
+    unavailable: [accounts]
+    want: MANUAL

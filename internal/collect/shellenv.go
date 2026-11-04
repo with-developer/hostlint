@@ -232,9 +232,22 @@ func continues(code string) bool {
 	return n%2 == 1
 }
 
+// printedRe is the quoted text echo and printf print: not a command.
+var printedRe = regexp.MustCompile(`(?:^|[;&|(]\s*|\b(?:then|do|else)\s+)(?:echo|printf)\b(?:\s+-[a-zA-Z]+)*\s+("[^"]*"|'[^']*')`)
+
+// maskPrinted blanks the quoted text that echo and printf print, so that
+// echo 'TMOUT=0' >> file is not read as an assignment.
+func maskPrinted(code string) string {
+	return printedRe.ReplaceAllStringFunc(code, func(m string) string {
+		i := strings.IndexAny(m, `"'`)
+		return m[:i] + strings.Repeat(" ", len(m)-i)
+	})
+}
+
 // scanLine records every TMOUT, umask and PATH occurrence on a line, in
 // order.
 func (s *shellScanner) scanLine(code, src string, cond bool) {
+	code = maskPrinted(code)
 	type hit struct {
 		pos int
 		ev  shellEvent

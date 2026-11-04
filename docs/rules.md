@@ -201,7 +201,7 @@ Checks that the password-quality module, not in warning-only mode, has enforce_f
 
 **Why.** Without enforce_for_root, quality rules only warn when root changes a password.
 
-**Fix.** Add `enforce_for_root` to /etc/security/pwquality.conf.
+**Fix.** Add `enforce_for_root` to /etc/security/pwquality.conf. On CentOS/RHEL 7 (libpwquality 1.2) that file has no such setting: add it as an argument of the pam_pwquality line in /etc/pam.d/system-auth and password-auth instead.
 
 #### `accounts.review-admin-groups`
 

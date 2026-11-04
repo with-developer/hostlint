@@ -32,6 +32,9 @@ type Accounts struct {
 	// does not compare every account with every other (it would run out of
 	// its evaluation budget on a host with thousands of accounts).
 	DuplicateUIDs []SharedUID `json:"duplicate_uids"`
+	// EmptyGroups are the groups with no members that are no account's
+	// primary group (computed here for the same reason as DuplicateUIDs).
+	EmptyGroups []Group `json:"empty_groups"`
 }
 
 // SharedUID is a UID that more than one account has.
@@ -82,7 +85,7 @@ func (accountsCollector) Type() reflect.Type    { return reflect.TypeFor[Account
 
 func (accountsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	var skipped []string
-	a := &Accounts{Users: []User{}, Groups: []Group{}, DuplicateUIDs: []SharedUID{}}
+	a := &Accounts{Users: []User{}, Groups: []Group{}, DuplicateUIDs: []SharedUID{}, EmptyGroups: []Group{}}
 	err := eachRecord(h.FS, "/etc/passwd", 7, func(f []string, src string) error {
 		uid, err1 := strconv.ParseInt(f[2], 10, 64)
 		gid, err2 := strconv.ParseInt(f[3], 10, 64)
@@ -116,7 +119,24 @@ func (accountsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 		return engine.Facts{}, err
 	}
 	a.DuplicateUIDs = sharedUIDs(a.Users)
+	a.EmptyGroups = emptyGroups(a.Users, a.Groups)
 	return engine.Facts{Value: a, Complete: len(skipped) == 0, Skipped: skipped}, nil
+}
+
+// emptyGroups lists the groups without members that no account has as its
+// primary group, in /etc/group order.
+func emptyGroups(users []User, groups []Group) []Group {
+	primary := map[int64]bool{}
+	for _, u := range users {
+		primary[u.GID] = true
+	}
+	out := []Group{}
+	for _, g := range groups {
+		if len(g.Members) == 0 && !primary[g.GID] {
+			out = append(out, g)
+		}
+	}
+	return out
 }
 
 // sharedUIDs groups the accounts that share a UID, in order of UID.
