@@ -1,0 +1,32 @@
+id: files.cron-files
+version: 1
+title: cron and at configuration is owned by root and not readable by others
+title_ko: cron·at 설정 파일은 root 소유, 다른 사용자 읽기 금지
+severity: high
+description: >-
+  Checks that /etc/crontab, /etc/cron.d/*, and the cron and at allow and deny files are owned by
+  root with mode 0640 or stricter.
+rationale: These files decide what runs as root on a schedule and who may schedule jobs.
+remediation: Run `chown root` and `chmod 640` on each listed file.
+file:
+  paths: [/etc/crontab, /etc/cron.d/*, /etc/cron.allow, /etc/cron.deny, /etc/at.allow, /etc/at.deny]
+  owner: [root]
+  mode: "0640"
+  missing: pass
+  no_match: pass
+tests:
+  - name: restricted
+    files:
+      /etc/crontab: {mode: "0600"}
+      /etc/cron.d/backup: {mode: "0640"}
+    want: PASS
+  - name: distribution default
+    files:
+      /etc/crontab: {mode: "0644"}
+    want: FAIL
+  - name: /etc/cron.d unreadable
+    input: unavailable
+    files:
+      /etc/crontab: {mode: "0600"}
+      /etc/cron.d: {type: dir, mode: "0700", error: permission}
+    want: ERROR

@@ -36,6 +36,7 @@ type fakeCollector struct {
 	access   Access
 	facts    *svcFacts
 	complete bool
+	partial  []string
 	err      error
 	panics   bool
 	hangs    bool
@@ -55,7 +56,7 @@ func (f *fakeCollector) Collect(ctx context.Context, _ *hostfs.Host) (Facts, err
 	case f.err != nil:
 		return Facts{}, f.err
 	}
-	return Facts{Value: f.facts, Complete: f.complete, Skipped: []string{"/etc/svc.d: permission denied"}}, nil
+	return Facts{Value: f.facts, Complete: f.complete, Partial: f.partial, Skipped: []string{"/etc/svc.d: permission denied"}}, nil
 }
 
 func loadDemo(t *testing.T) *Content {

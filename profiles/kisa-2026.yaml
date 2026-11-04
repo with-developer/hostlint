@@ -79,3 +79,285 @@ controls:
     # A hash kept in /etc/passwd is used by pam_unix too, and its scheme is
     # not reported, so it fails this control as well as U-04.
     checks: [accounts.password-hash-method, accounts.password-hash-strength, accounts.passwd-no-hashes]
+  - id: U-14
+    title: Safe PATH for root and system-wide shells
+    title_ko: root·시스템 PATH 안전 설정
+    severity: high
+    checks: [env.path-current-dir]
+  - id: U-15
+    title: No files without an owner
+    title_ko: 소유자 없는 파일 정리
+    severity: high
+    checks: [files.unowned]
+  - id: U-16
+    title: Ownership and permissions of /etc/passwd
+    title_ko: /etc/passwd 소유자·권한
+    severity: high
+    checks: [files.passwd-perms]
+  - id: U-17
+    title: Start-up scripts are writable by root only
+    title_ko: 시작 스크립트 쓰기 권한
+    severity: high
+    checks: [files.startup-scripts]
+  - id: U-18
+    title: Ownership and permissions of /etc/shadow
+    title_ko: /etc/shadow 소유자·권한
+    severity: high
+    checks: [files.shadow-perms]
+  - id: U-19
+    title: Ownership and permissions of /etc/hosts
+    title_ko: /etc/hosts 소유자·권한
+    severity: high
+    checks: [files.hosts-perms]
+  - id: U-20
+    title: Ownership and permissions of inetd and xinetd configuration
+    title_ko: inetd·xinetd 설정 소유자·권한
+    severity: high
+    checks: [files.inetd-conf-perms]
+  - id: U-21
+    title: Ownership and permissions of syslog configuration
+    title_ko: syslog 설정 소유자·권한
+    severity: high
+    checks: [files.syslog-conf-perms]
+  - id: U-22
+    title: Ownership and permissions of /etc/services
+    title_ko: /etc/services 소유자·권한
+    severity: high
+    checks: [files.services-perms]
+  - id: U-23
+    title: Set-ID programs are reviewed
+    title_ko: SUID·SGID 파일 점검
+    severity: high
+    checks: [files.setid-outside-system-dirs, files.review-setid]
+  - id: U-24
+    title: Users' startup files are protected
+    title_ko: 사용자 시작 파일 소유자·권한
+    severity: high
+    checks: [homes.startup-files]
+  - id: U-25
+    title: World-writable files are known
+    title_ko: 모든 사용자 쓰기 가능 파일 점검
+    severity: high
+    checks: [files.world-writable]
+  - id: U-26
+    title: No stray files in /dev
+    title_ko: /dev의 일반 파일 점검
+    severity: high
+    checks: [files.dev-regular-files]
+  - id: U-27
+    title: No password-less trust through .rhosts or hosts.equiv
+    title_ko: .rhosts·hosts.equiv 신뢰 관계 제한
+    severity: high
+    checks: [files.rhosts]
+  - id: U-28
+    title: Access is restricted by address and port
+    title_ko: 접속 IP·포트 제한
+    severity: high
+    manual: >-
+      Check that services accept connections only from the addresses that need them, with a
+      host firewall (nftables, iptables, firewalld) or the services' own access rules.
+  - id: U-29
+    title: Ownership and permissions of /etc/hosts.lpd
+    title_ko: /etc/hosts.lpd 소유자·권한
+    severity: low
+    checks: [files.hosts-lpd-perms]
+  - id: U-30
+    title: Restrictive umask
+    title_ko: umask 설정
+    severity: medium
+    checks: [env.umask-login-defs, env.umask-startup-files]
+  - id: U-31
+    title: Home directories are owned by their accounts
+    title_ko: 홈 디렉터리 소유자·권한
+    severity: medium
+    checks: [homes.owner-perms]
+  - id: U-32
+    title: Home directories exist
+    title_ko: 홈 디렉터리 존재
+    severity: medium
+    checks: [homes.exists]
+  - id: U-33
+    title: Hidden files are reviewed
+    title_ko: 숨겨진 파일·디렉터리 점검
+    severity: low
+    manual: >-
+      Look for unexpected hidden files and directories (names starting with "."), especially
+      unusual names such as "..." or ". ", and remove those that do not belong.
+  - id: U-34
+    title: The finger service is off
+    title_ko: finger 서비스 미사용
+    severity: high
+    checks: [services.no-finger]
+  - id: U-35
+    title: No anonymous access to shared files
+    title_ko: 공유 서비스 익명 접근 제한
+    severity: high
+    checks: [services.review-anonymous-sharing]
+  - id: U-36
+    title: The r-services are off
+    title_ko: r 계열 서비스 미사용
+    severity: high
+    checks: [services.no-r-services]
+  - id: U-37
+    title: cron and at are restricted
+    title_ko: cron·at 사용 제한
+    severity: high
+    checks: [files.cron-commands, files.cron-files]
+  - id: U-38
+    title: Traffic-amplifying services are off
+    title_ko: DoS 공격에 취약한 서비스 미사용
+    severity: high
+    checks: [services.no-dos-prone]
+  - id: U-39
+    title: The NFS server is off unless needed
+    title_ko: NFS 서버 미사용
+    severity: high
+    checks: [services.no-nfs-server]
+  - id: U-40
+    title: NFS exports are restricted
+    title_ko: NFS 접근 통제
+    severity: high
+    checks: [services.review-nfs-exports]
+  - id: U-41
+    title: The automounter is off
+    title_ko: automount 미사용
+    severity: high
+    checks: [services.no-automount]
+  - id: U-42
+    title: Legacy RPC services are off
+    title_ko: 불필요한 RPC 서비스 미사용
+    severity: high
+    checks: [services.no-rpc]
+  - id: U-43
+    title: NIS is not used
+    title_ko: NIS 미사용
+    severity: high
+    checks: [services.no-nis]
+  - id: U-44
+    title: tftp and talk are off
+    title_ko: tftp·talk 서비스 미사용
+    severity: high
+    checks: [services.no-tftp-talk]
+  - id: U-45
+    title: The mail server is up to date
+    title_ko: 메일 서버 버전 관리
+    severity: high
+    checks: [services.review-mail-server]
+  - id: U-46
+    title: Only the mail system can run the mail queue
+    title_ko: 일반 사용자의 메일 서비스 실행 제한
+    severity: high
+    checks: [services.review-mail-server]
+  - id: U-47
+    title: The mail server is not an open relay
+    title_ko: 메일 릴레이 제한
+    severity: high
+    checks: [services.review-mail-server]
+  - id: U-48
+    title: SMTP does not reveal accounts
+    title_ko: SMTP 계정 확인 명령 제한
+    severity: medium
+    checks: [services.review-mail-server]
+  - id: U-49
+    title: The DNS server is up to date
+    title_ko: DNS 서버 버전 관리
+    severity: high
+    checks: [services.review-dns-server]
+  - id: U-50
+    title: DNS zone transfers are restricted
+    title_ko: DNS 영역 전송 제한
+    severity: high
+    checks: [services.review-dns-server]
+  - id: U-51
+    title: DNS dynamic updates are restricted
+    title_ko: DNS 동적 업데이트 제한
+    severity: medium
+    checks: [services.review-dns-server]
+  - id: U-52
+    title: Telnet is off
+    title_ko: 텔넷 미사용
+    severity: medium
+    checks: [services.no-telnet]
+  - id: U-53
+    title: The FTP banner hides the version
+    title_ko: FTP 배너 정보 노출 제한
+    severity: low
+    checks: [services.review-ftp-server]
+  - id: U-54
+    title: FTP is encrypted or off
+    title_ko: 암호화되지 않은 FTP 미사용
+    severity: medium
+    checks: [services.review-ftp-server]
+  - id: U-55
+    title: The ftp account cannot log in
+    title_ko: ftp 계정 셸 제한
+    severity: medium
+    checks: [services.ftp-account-shell]
+  - id: U-56
+    title: FTP access is restricted by address
+    title_ko: FTP 접근 제어
+    severity: low
+    checks: [services.review-ftp-server]
+  - id: U-57
+    title: root cannot log in to FTP
+    title_ko: FTP root 접속 제한
+    severity: medium
+    checks: [services.review-ftp-server]
+  - id: U-58
+    title: SNMP is off unless needed
+    title_ko: SNMP 미사용
+    severity: medium
+    checks: [services.no-snmp]
+  - id: U-59
+    title: SNMP uses version 3
+    title_ko: SNMP v3 사용
+    severity: high
+    checks: [services.review-snmp-agent]
+  - id: U-60
+    title: SNMP communities are not guessable
+    title_ko: SNMP 커뮤니티 문자열 복잡성
+    severity: medium
+    checks: [services.review-snmp-agent]
+  - id: U-61
+    title: SNMP access is restricted
+    title_ko: SNMP 접근 제어
+    severity: high
+    checks: [services.review-snmp-agent]
+  - id: U-62
+    title: Login banners warn against misuse
+    title_ko: 로그인 경고 메시지
+    severity: low
+    manual: >-
+      Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your
+      organization's warning and no system details.
+  - id: U-63
+    title: sudoers files are protected
+    title_ko: sudoers 파일 권한
+    severity: medium
+    checks: [files.sudoers-perms]
+  - id: U-64
+    title: Security updates are applied
+    title_ko: 보안 패치 적용
+    severity: high
+    manual: >-
+      Check that security updates are applied regularly (for example `apt list --upgradable` or
+      `dnf updateinfo list --security`) and that the release is still supported.
+  - id: U-65
+    title: Time is synchronized
+    title_ko: 시각 동기화
+    severity: medium
+    checks: [services.time-sync, services.review-time-sync]
+  - id: U-66
+    title: Logging follows your policy
+    title_ko: 로그 정책 설정
+    severity: medium
+    manual: >-
+      Check that the syslog configuration records authentication, privileged commands and system
+      events as your policy requires, and that logs are kept long enough.
+  - id: U-67
+    title: Log files are protected
+    title_ko: 로그 파일 소유자·권한
+    severity: medium
+    manual: >-
+      Check that the files in /var/log are owned by root (or the logging service) and are not
+      writable by others.

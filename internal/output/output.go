@@ -5,10 +5,14 @@
 package output
 
 import (
+	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -47,22 +51,42 @@ func Write(w io.Writer, res *engine.Result, format string, opts Options) error {
 // ValidFormat reports whether format is supported.
 func ValidFormat(format string) bool { return slices.Contains(Formats, format) }
 
-// WriteFile renders res into the file at path, creating or replacing it with
-// mode 0644. This is the user-requested report file; nothing else is written.
+// WriteFile renders res into the file at path, replacing it with mode 0644.
+// This is the user-requested report file; nothing else is written.
 func WriteFile(path string, res *engine.Result, format string, opts Options) error {
 	return writeFile(path, func(w io.Writer) error { return Write(w, res, format, opts) })
 }
 
-// writeFile creates or replaces the file at path, mode 0644, with what
-// write writes. Only the output the user asked for is written this way.
+// writeFile replaces the file at path, mode 0644, with what write writes.
+// The output is rendered first and written to a new file beside path, which
+// then replaces it: a failure leaves an earlier file intact, and a symbolic
+// link at path is replaced, not followed.
 func writeFile(path string, write func(io.Writer) error) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec // G302/G304: the output path the user gave
+	var buf bytes.Buffer
+	if err := write(&buf); err != nil {
+		return err
+	}
+	var suffix [8]byte
+	if _, err := rand.Read(suffix[:]); err != nil {
+		return err
+	}
+	tmpPath := filepath.Join(filepath.Dir(path), ".hostlint-report-"+hex.EncodeToString(suffix[:]))
+	tmp, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G302/G304: beside the output path the user gave
 	if err != nil {
 		return err
 	}
-	if err := write(f); err != nil {
-		_ = f.Close()
+	if _, err := tmp.Write(buf.Bytes()); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
-	return f.Close()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	return nil
 }

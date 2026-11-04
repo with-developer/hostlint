@@ -1,0 +1,34 @@
+id: files.sudoers-perms
+version: 1
+title: sudoers files are owned by root and not writable by others
+title_ko: sudoers 파일은 root 소유, 다른 사용자 쓰기 금지
+severity: medium
+description: Checks that /etc/sudoers and the files in /etc/sudoers.d are owned by root with mode 0640 or stricter.
+rationale: Whoever can change the sudo rules can give themselves root.
+remediation: Run `chown root` and `chmod 440` on each file (visudo keeps them that way).
+file:
+  paths: [/etc/sudoers, /etc/sudoers.d/*]
+  owner: [root]
+  mode: "0640"
+  missing: not_applicable
+  no_match: not_applicable
+tests:
+  - name: stock
+    files:
+      /etc/sudoers: {mode: "0440"}
+      /etc/sudoers.d/README: {mode: "0440"}
+    want: PASS
+  - name: drop-in writable
+    files:
+      /etc/sudoers: {mode: "0440"}
+      /etc/sudoers.d/admins: {mode: "0664"}
+    want: FAIL
+  - name: sudo not installed
+    input: absent
+    want: NOT_APPLICABLE
+  - name: /etc/sudoers.d unreadable
+    input: unavailable
+    files:
+      /etc/sudoers: {mode: "0440"}
+      /etc/sudoers.d: {type: dir, mode: "0750", error: permission}
+    want: ERROR

@@ -1,0 +1,12 @@
+id: files.review-setid
+version: 1
+title: Review the set-ID programs
+title_ko: SUID·SGID 파일 검토
+severity: medium
+description: Lists every file with the set-user-ID or set-group-ID bit on local filesystems.
+rationale: Each set-ID program runs with its owner's or group's rights; the ones nobody needs only add risk.
+remediation: Remove the set-ID bits (`chmod u-s,g-s`) from programs your users do not need, or limit who can run them.
+manual:
+  guidance: Check that every listed program needs its set-ID bit.
+  show: >-
+    filesystem.setid.map(f, f.path + " " + f.mode + " " + (f.owner != "" ? f.owner : string(f.uid)))

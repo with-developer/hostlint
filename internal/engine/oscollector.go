@@ -38,6 +38,19 @@ func (osCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
 	return f, nil
 }
 
+// targetCollector is the built-in `target` collector: whether the target is
+// the running system.
+type targetCollector struct{}
+
+func (targetCollector) Name() string       { return "target" }
+func (targetCollector) Version() int       { return 1 }
+func (targetCollector) Access() Access     { return AccessFilesystem }
+func (targetCollector) Type() reflect.Type { return reflect.TypeFor[facts.Target]() }
+
+func (targetCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
+	return Facts{Value: &facts.Target{Live: h.Live}, Complete: true}, nil
+}
+
 func osFromFacts(v any) hostfs.OS {
 	f, ok := v.(*facts.OS)
 	if !ok {

@@ -70,6 +70,9 @@ func Find(explicit string) (string, error) {
 	return "", nil
 }
 
+// maxFile is the largest configuration file.
+const maxFile = 1 << 20
+
 // Load reads a configuration file strictly: unknown keys are errors. Waivers
 // can hide findings, so the file must be one nobody else could have planted
 // or changed: a regular file owned by root or by the user running hostlint,
@@ -87,14 +90,24 @@ func Load(name string) (*File, error) {
 	if err := trusted(name, fi); err != nil {
 		return nil, err
 	}
-	data, err := io.ReadAll(io.LimitReader(fd, 1<<20))
+	data, err := io.ReadAll(io.LimitReader(fd, maxFile+1))
 	if err != nil {
 		return nil, err
+	}
+	if len(data) > maxFile {
+		return nil, fmt.Errorf("%s: larger than %d bytes", name, maxFile)
 	}
 	var f File
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	if err := dec.Decode(&f); err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	// A second document would be waivers that nothing reads: refuse it.
+	var extra yaml.Node
+	if err := dec.Decode(&extra); err == nil {
+		return nil, fmt.Errorf("%s: only one YAML document is read; remove the second one", name)
+	} else if !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	return &f, nil
@@ -105,7 +118,9 @@ func Load(name string) (*File, error) {
 func (f *File) Validate(content *engine.Content, profileID string) error {
 	var errs []string
 	add := func(format string, args ...any) { errs = append(errs, fmt.Sprintf(format, args...)) }
-	if f.Profile != "" && content.Profiles[f.Profile] == nil {
+	// The file's profile matters only when it is the one scanned: --profile
+	// overrides it.
+	if f.Profile != "" && f.Profile == profileID && content.Profiles[f.Profile] == nil {
 		add("profile %q does not exist", f.Profile)
 	}
 	for id, params := range f.Params {
@@ -122,8 +137,13 @@ func (f *File) Validate(content *engine.Content, profileID string) error {
 			case ps.Type != "int":
 				add("params: %s.%s is not an integer parameter and cannot be overridden", id, name)
 			default:
-				if _, isInt := v.(int); !isInt {
+				if n, isInt := v.(int); !isInt {
 					add("params: %s.%s must be an integer", id, name)
+				} else if n < 1 {
+					// Every integer parameter counts something (days, failures,
+					// characters): zero or less would disable the check, not
+					// tighten it.
+					add("params: %s.%s must be 1 or more", id, name)
 				}
 			}
 		}
@@ -142,6 +162,9 @@ func (f *File) Validate(content *engine.Content, profileID string) error {
 			add("%s: a control waiver needs the profile revision it was written for (revision: %d)", where, revisionOf(profile))
 		case w.Check != "" && w.Revision != 0:
 			add("%s: revision only applies to control waivers", where)
+		}
+		if w.Control != "" && w.Errors {
+			add("%s: errors applies to check waivers; a control with an ERROR check is not waived (waive its checks with errors: true)", where)
 		}
 		if strings.TrimSpace(w.Reason) == "" {
 			add("%s: reason is required", where)

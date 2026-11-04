@@ -122,6 +122,8 @@ func (e *Engine) runCase(ctx context.Context, cc *compiledCheck, tc TestCase) (S
 			if v, err = decodeFacts(e.collectors[name].Type(), doc); err != nil {
 				return "", "", fmt.Errorf("facts %s: %w", name, err)
 			}
+		case name == "target":
+			v = &facts.Target{Live: true} // a running system unless the case says otherwise
 		default:
 			return "", "", fmt.Errorf("the check reads %s: give its facts or list it as unavailable", name)
 		}

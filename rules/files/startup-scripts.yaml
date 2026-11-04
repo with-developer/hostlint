@@ -1,0 +1,53 @@
+id: files.startup-scripts
+version: 1
+title: Start-up scripts and units are owned by root and not writable by others
+title_ko: 시작 스크립트와 유닛은 root 소유, 다른 사용자 쓰기 금지
+severity: high
+description: >-
+  Checks that SysV init scripts, rc.local and the systemd units (services, timers, sockets,
+  paths and their drop-in files) in /etc/systemd/system, and the services in /usr/lib/systemd/system, are
+  owned by root and writable by no one else (mode 0755 or stricter).
+rationale: These run as root at boot; whoever can change one gets root at the next restart.
+remediation: Run `chown root` and `chmod go-w` on each listed file.
+file:
+  paths: [/etc/init.d/*, /etc/rc.d/init.d/*, /etc/rc.local, /etc/rc.d/rc.local, /etc/systemd/system/*.service, /etc/systemd/system/*.timer, /etc/systemd/system/*.socket, /etc/systemd/system/*.path, /etc/systemd/system/*.d/*.conf, /usr/lib/systemd/system/*.service]
+  owner: [root]
+  mode: "0755"
+  missing: pass
+  no_match: pass
+tests:
+  - name: stock
+    files:
+      /etc/init.d/ssh: {mode: "0755"}
+      /etc/systemd/system/app.service: {mode: "0644"}
+    want: PASS
+  - name: masked units link to /dev/null
+    files:
+      /etc/systemd/system/console-getty.service: {type: symlink, target: /dev/null}
+      /etc/systemd/system/app.service: {mode: "0644"}
+    want: PASS
+  - name: timer writable by a group
+    files:
+      /etc/systemd/system/backup.timer: {mode: "0664"}
+    want: FAIL
+  - name: drop-in writable by others
+    files:
+      /etc/systemd/system/ssh.service.d/override.conf: {mode: "0666"}
+    want: FAIL
+  - name: packaged service writable by a group
+    files:
+      /usr/lib/systemd/system/app.service: {mode: "0664"}
+    want: FAIL
+  - name: unit writable by a group
+    files:
+      /etc/systemd/system/app.service: {mode: "0664"}
+    want: FAIL
+  - name: script owned by a user
+    files:
+      /etc/init.d/backup: {mode: "0755", owner: user}
+    want: FAIL
+  - name: init.d unreadable
+    input: unavailable
+    files:
+      /etc/init.d: {type: dir, mode: "0700", error: permission}
+    want: ERROR

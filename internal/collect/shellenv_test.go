@@ -1,6 +1,8 @@
 package collect
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/with-developer/hostlint/internal/hostfs"
@@ -65,6 +67,72 @@ func TestShellEnvHardened(t *testing.T) {
 	}
 	if len(env.Path) != 2 || env.Path[0].Value != ".:/usr/bin" || env.Path[1].Value != "$PATH:/root/bin" {
 		t.Errorf("path = %+v", env.Path)
+	}
+}
+
+// Debian 13 and Ubuntu 26.04 source /etc/profile.d through run-parts.
+func TestShellEnvRunParts(t *testing.T) {
+	for _, distro := range []string{"debian-13", "ubuntu-26.04"} {
+		t.Run(distro, func(t *testing.T) {
+			if env := shellEnv(t, fixtureFS(t, distro)); len(env.TMOUT) != 0 {
+				t.Errorf("stock: tmout %+v", env.TMOUT)
+			}
+			m := fixtureFS(t, distro).
+				AddFile("/etc/profile.d/autologout.sh", "TMOUT=600\nreadonly TMOUT\nexport TMOUT\n", 0o644, 0, 0)
+			env := shellEnv(t, m)
+			if len(env.TMOUT) != 1 || env.TMOUT[0].Source != "/etc/profile.d/autologout.sh:1" || env.Effective["TMOUT"].Value != "600" {
+				t.Errorf("hardened: tmout %+v, effective %+v", env.TMOUT, env.Effective)
+			}
+		})
+	}
+}
+
+// The files run-parts --list prints, measured on Debian 13: names matching
+// the regex, regular files or links to them, in C-locale order.
+func TestShellEnvRunPartsSelection(t *testing.T) {
+	profile := "for i in $(run-parts --list --regex '^[a-zA-Z0-9_][a-zA-Z0-9._-]*\\.sh$' /etc/profile.d); do\n  if [ -r $i ]; then\n    . $i\n  fi\ndone\n"
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", profile, 0o644, 0, 0).
+		AddFile("/etc/profile.d/a.sh", "TMOUT=900\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/B.sh", "TMOUT=300\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/.hidden.sh", "TMOUT=1\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/noext", "TMOUT=2\n", 0o644, 0, 0).
+		AddDir("/etc/profile.d/dir.sh", 0o755, 0, 0).
+		AddFile("/srv/timeout", "TMOUT=700\n", 0o644, 0, 0).
+		AddSymlink("/etc/profile.d/c.sh", "/srv/timeout").
+		AddSymlink("/etc/profile.d/gone.sh", "/nonexistent")
+	env := shellEnv(t, m)
+	var got []string
+	for _, v := range env.TMOUT {
+		got = append(got, v.Value+"@"+v.Source)
+	}
+	want := []string{"300@/etc/profile.d/B.sh:1", "900@/etc/profile.d/a.sh:1", "700@/etc/profile.d/c.sh:1"}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("tmout = %v, want %v", got, want)
+	}
+
+	// Without --regex, run-parts takes names of letters, digits, _ and -.
+	m = hostfs.NewMemFS().
+		AddFile("/etc/profile", "for i in $(run-parts --list /etc/profile.d); do . $i; done\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/autologout", "TMOUT=600\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/autologout.sh", "TMOUT=1\n", 0o644, 0, 0)
+	if env := shellEnv(t, m); len(env.TMOUT) != 1 || env.TMOUT[0].Value != "600" {
+		t.Errorf("default names: tmout %+v", env.TMOUT)
+	}
+}
+
+// A loop over /etc/profile.d that is not understood leaves the facts
+// incomplete: what it sources is unknown, not absent.
+func TestShellEnvUnknownProfileLoop(t *testing.T) {
+	for _, profile := range []string{
+		"for i in $(ls /etc/profile.d); do . /etc/profile.d/$i; done\n",
+		"for i in $(run-parts --list --regex '(' /etc/profile.d); do . $i; done\n",
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/profile.d/x.sh", "umask 000\n", 0o644, 0, 0)
+		f, err := collect(t, shellEnvCollector{}, m)
+		if err != nil || f.Complete {
+			t.Errorf("%q: complete %v, %v; want incomplete", profile, f.Complete, err)
+		}
 	}
 }
 
@@ -222,5 +290,139 @@ func TestShellEnvUncertainReadonly(t *testing.T) {
 	f, err := collect(t, shellEnvCollector{}, m)
 	if err != nil || len(f.Unknown) != 1 || f.Unknown[0] != "effective" {
 		t.Errorf("unknown %v, err %v", f.Unknown, err)
+	}
+}
+
+// A loop the scanner cannot follow completely leaves the facts incomplete:
+// it must not drop part of what the line sources.
+func TestShellEnvLoopLineNotFullyUnderstood(t *testing.T) {
+	for name, profile := range map[string]string{
+		"list continues after run-parts": "for i in $(run-parts --list /etc/profile.d) /etc/profile.d/x.sh; do . $i; done\n",
+		"dynamic item in a literal list": "for i in /etc/profile.d/*.sh $(ls /etc/profile.d/extra); do . $i; done\n",
+		"variable item in a list":        "for i in /etc/profile.d/*.sh $EXTRA; do . $i; done\n",
+		"loop behind &&":                 "[ -d /etc/profile.d ] && for i in /etc/profile.d/*.sh; do . $i; done\n",
+		"loop after then":                "if [ -d /etc/profile.d ]; then for i in /etc/profile.d/*.sh; do . $i; done; fi\n",
+		"regex with \\d":                 "for i in $(run-parts --list --regex '^\\d+\\.sh$' /etc/profile.d); do . $i; done\n",
+		"regex with a flag group":        "for i in $(run-parts --list --regex '(?i)\\.SH$' /etc/profile.d); do . $i; done\n",
+		"regex with backslash in class":  "for i in $(run-parts --list --regex '^[\\w]+\\.sh$' /etc/profile.d); do . $i; done\n",
+		"brace expansion in a list":      "for i in /etc/profile.d/{a,b}.sh; do . $i; done\n",
+		"GNU word boundary":              "for i in $(run-parts --list --regex '\\<x' /etc/profile.d); do . $i; done\n",
+		"backslash after a first ]":      "for i in $(run-parts --list --regex '[]\\w]+' /etc/profile.d); do . $i; done\n",
+		"class POSIX does not have":      "for i in $(run-parts --list --regex '[[:word:]]+' /etc/profile.d); do . $i; done\n",
+		"double quoted regex expands":    "for i in $(run-parts --list --regex \"^$NAME\\.sh$\" /etc/profile.d); do . $i; done\n",
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/profile.d/x.sh", "umask 000\n", 0o644, 0, 0)
+		f, err := collect(t, shellEnvCollector{}, m)
+		if err != nil || f.Complete {
+			t.Errorf("%s: complete %v, %v; want incomplete", name, f.Complete, err)
+		}
+	}
+}
+
+// What follows a loop's list on its line is still read.
+func TestShellEnvAfterLoopOnSameLine(t *testing.T) {
+	for _, profile := range []string{
+		"for i in $(run-parts --list /etc/profile.d); do . $i; done; . /etc/extra.sh\n",
+		"for i in /etc/profile.d/*.sh; do . $i; done; . /etc/extra.sh\n",
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/extra.sh", "TMOUT=450\n", 0o644, 0, 0)
+		if env := shellEnv(t, m); len(env.TMOUT) != 1 || env.TMOUT[0].Value != "450" {
+			t.Errorf("%q: tmout %+v, want the 450 of /etc/extra.sh", profile, env.TMOUT)
+		}
+	}
+}
+
+// An empty --regex matches every name; it is not the same as no --regex.
+func TestShellEnvRunPartsEmptyRegex(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "for i in $(run-parts --list --regex '' /etc/profile.d); do . $i; done\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/a.conf", "TMOUT=700\n", 0o644, 0, 0)
+	if env := shellEnv(t, m); len(env.TMOUT) != 1 || env.TMOUT[0].Value != "700" {
+		t.Errorf("tmout %+v, want the 700 of a.conf", env.TMOUT)
+	}
+}
+
+// A directory with more files than hostlint reads is reported once, quickly.
+func TestShellEnvRunPartsManyFiles(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile", "for i in $(run-parts --list /etc/profile.d); do . $i; done\n", 0o644, 0, 0)
+	for i := range 3 * maxShellFiles {
+		m.AddFile(fmt.Sprintf("/etc/profile.d/f%04d", i), "umask 022\n", 0o644, 0, 0)
+	}
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || f.Complete {
+		t.Fatalf("complete %v, %v; want incomplete", f.Complete, err)
+	}
+	if len(f.Skipped) > 2 {
+		t.Errorf("%d skip notes reported, want at most 2: %v", len(f.Skipped), f.Skipped)
+	}
+}
+
+// The notes about a loop name the file and line, never its text, which may
+// hold a secret.
+func TestShellEnvLoopNotesHoldNoSourceText(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile",
+		"for i in $(ls /etc/profile.d); do export API_TOKEN=hunter2; done\n"+
+			"for i in $(run-parts --list --regex '\\d$x' /etc/profile.d); do TOKEN=hunter2 . $i; done\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || f.Complete {
+		t.Fatalf("complete %v, %v; want incomplete", f.Complete, err)
+	}
+	for _, note := range f.Skipped {
+		if strings.Contains(note, "hunter2") || strings.Contains(note, "TOKEN") {
+			t.Errorf("note holds source text: %q", note)
+		}
+		if !strings.HasPrefix(note, "/etc/profile:") {
+			t.Errorf("note does not name the file and line: %q", note)
+		}
+	}
+}
+
+// Continued lines are read as one, as bash does: a loop list may continue on
+// the next line, an unrelated for loop must not make the facts incomplete,
+// and a backslash in a comment continues nothing.
+func TestShellEnvContinuedLines(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "for i in \\\n  /etc/profile.d/*.sh; do . $i; done\n"+
+			"for colors in \"$HOME/.a\" \\\n    \"$HOME/.b\"; do\n  [ -e \"$colors\" ] && break\ndone\n"+
+			"# a comment that ends in a backslash \\\nTMOUT=900\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/x.sh", "umask 027\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || !f.Complete {
+		t.Fatalf("complete %v, %v, skipped %v", f.Complete, err, f.Skipped)
+	}
+	env := f.Value.(*ShellEnv)
+	if len(env.Umask) != 1 || env.Umask[0].Value != "027" {
+		t.Errorf("umask %+v, want the 027 of x.sh from the continued loop", env.Umask)
+	}
+	if len(env.TMOUT) != 1 || env.TMOUT[0].Value != "900" || env.TMOUT[0].Source != "/etc/profile:8" {
+		t.Errorf("tmout %+v, want 900 at /etc/profile:8", env.TMOUT)
+	}
+}
+
+// Only an odd number of trailing backslashes continues a line; a list cut off
+// by the end of the file, or a runaway join, leaves the facts incomplete; a
+// quote that spans the join keeps a "#" inside it.
+func TestShellEnvContinuationEdges(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile", "echo a \\\\\nTMOUT=900\nPATH=\"/usr/bin:\\\n/opt/x#y\"\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || !f.Complete {
+		t.Fatalf("complete %v, %v, skipped %v", f.Complete, err, f.Skipped)
+	}
+	env := f.Value.(*ShellEnv)
+	if len(env.TMOUT) != 1 || env.TMOUT[0].Source != "/etc/profile:2" {
+		t.Errorf("tmout %+v, want one at /etc/profile:2 (an even number of backslashes ends the line)", env.TMOUT)
+	}
+	if len(env.Path) != 1 || env.Path[0].Value != "/usr/bin: /opt/x#y" {
+		t.Errorf("path %+v, want the quoted value across the join", env.Path)
+	}
+
+	for name, profile := range map[string]string{
+		"list cut off by the end": "for i in /etc/profile.d/*.sh \\",
+		"runaway join":            strings.Repeat("x \\\n", maxJoinedLine),
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0)
+		if f, err := collect(t, shellEnvCollector{}, m); err != nil || f.Complete {
+			t.Errorf("%s: complete %v, %v; want incomplete", name, f.Complete, err)
+		}
 	}
 }

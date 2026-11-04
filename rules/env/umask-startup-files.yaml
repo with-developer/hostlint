@@ -1,0 +1,39 @@
+id: env.umask-startup-files
+version: 1
+title: Startup files do not set a permissive umask
+title_ko: 시작 파일이 느슨한 umask를 설정하지 않음
+severity: medium
+description: >-
+  Lists umask commands in the system-wide and root's startup files that leave write permission
+  for group or others, including those inside if or case blocks, and symbolic ones to review.
+rationale: A permissive umask in a startup file overrides the system default for every session.
+remediation: Use `umask 022` (or stricter) and remove permissive or symbolic umask commands.
+violations:
+  over: shell_env.umask
+  as: u
+  where: >-
+    !u.value.matches("^0*[0-7]?[2367][2367]$")
+  key: u.source
+  text: >-
+    "umask " + u.value + (u.value.matches("^[0-7]+$") ? "" : " (symbolic: review it)") +
+    (u.conditional ? " (conditional)" : "") + " at " + u.source
+  allow_empty: true
+tests:
+  - name: strict
+    facts:
+      shell_env: {umask: [{value: "022", source: "/etc/profile:27"}, {value: "027", source: "/etc/profile.d/umask.sh:1"}]}
+    want: PASS
+  - name: group writable for some users
+    facts:
+      shell_env: {umask: [{value: "002", conditional: true, source: "/etc/bashrc:12"}, {value: "022", conditional: true, source: "/etc/bashrc:14"}]}
+    want: FAIL
+  - name: symbolic
+    facts:
+      shell_env: {umask: [{value: "g=rwx", source: "/etc/profile:30"}]}
+    want: FAIL
+  - name: startup files incomplete
+    input: incomplete
+    incomplete: [shell_env]
+    facts:
+      shell_env: {umask: []}
+    want: ERROR

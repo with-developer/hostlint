@@ -1,0 +1,33 @@
+id: files.services-perms
+version: 1
+title: /etc/services is owned by a system account and not writable by others
+title_ko: /etc/services는 시스템 계정 소유, 다른 사용자 쓰기 금지
+severity: high
+description: >-
+  Checks that /etc/services is owned by root, bin or sys with mode 0644 or stricter. Not
+  applicable when it does not exist (minimal images without netbase).
+rationale: Changing a service's port number in /etc/services can expose or hide it.
+remediation: Run `chown root /etc/services` and `chmod 644 /etc/services`.
+file:
+  paths: [/etc/services]
+  owner: [root, bin, sys]
+  mode: "0644"
+  missing: not_applicable
+tests:
+  - name: stock
+    files:
+      /etc/services: {mode: "0644"}
+    want: PASS
+  - name: group writable
+    files:
+      /etc/services: {mode: "0664"}
+    want: FAIL
+  - name: missing
+    input: absent
+    want: NOT_APPLICABLE
+  - name: /etc unreadable
+    input: unavailable
+    files:
+      /etc: {type: dir, mode: "0755", error: permission}
+      /etc/services: {mode: "0644"}
+    want: ERROR

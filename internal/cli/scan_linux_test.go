@@ -101,3 +101,12 @@ func TestScanWithConfig(t *testing.T) {
 		t.Errorf("exit %d, stderr %q", code, stderr)
 	}
 }
+
+// A directory that is not a system must not scan as one: absent files would
+// read as passing checks.
+func TestScanRootWithoutOS(t *testing.T) {
+	code, stdout, stderr := run(context.Background(), t, "scan", "--root", t.TempDir(), "--format", "json", "--fail-on", "none")
+	if code != ExitError || stdout != "" || !strings.Contains(stderr, "no operating system") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want exit %d and a note about the missing OS", code, stdout, stderr, ExitError)
+	}
+}
