@@ -75,13 +75,19 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 		return engine.Facts{}, err
 	}
 	for _, db := range rpmSQLite {
-		if _, err := h.FS.Stat(db); err == nil {
+		switch _, err := h.FS.Stat(db); {
+		case err == nil:
 			return readRPM(h.FS, db)
+		case !errors.Is(err, fs.ErrNotExist):
+			return engine.Facts{}, err
 		}
 	}
 	for _, db := range rpmBDB {
-		if _, err := h.FS.Stat(db); err == nil {
-			return engine.Facts{}, fmt.Errorf("%s: reading the Berkeley DB rpm database (EL7, EL8) is not supported yet", db)
+		switch _, err := h.FS.Stat(db); {
+		case err == nil:
+			return engine.Facts{}, fmt.Errorf("%s: reading this rpm database format (Berkeley DB on EL7 and EL8, ndb on SUSE) is not supported yet", db)
+		case !errors.Is(err, fs.ErrNotExist):
+			return engine.Facts{}, err
 		}
 	}
 	return engine.Facts{}, errors.New("no dpkg or rpm package database found")
@@ -90,9 +96,27 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 // readRPM reads an rpm SQLite database. Changes still in its write-ahead log
 // or a rollback journal are not in the file yet: the list may be outdated.
 func readRPM(fsys hostfs.FS, db string) (engine.Facts, error) {
-	data, err := hostfs.ReadLargeFile(fsys, db, maxRPMDB)
-	if err != nil {
-		return engine.Facts{}, err
+	// rpm may be writing the live database: read it again when its size or
+	// time changed while it was read, so the pages are not from two states.
+	var data []byte
+	for attempt := 0; ; attempt++ {
+		before, err := fsys.Stat(db)
+		if err != nil {
+			return engine.Facts{}, err
+		}
+		if data, err = hostfs.ReadLargeFile(fsys, db, maxRPMDB); err != nil {
+			return engine.Facts{}, err
+		}
+		after, err := fsys.Stat(db)
+		if err != nil {
+			return engine.Facts{}, err
+		}
+		if before.Size == after.Size && before.ModTime.Equal(after.ModTime) {
+			break
+		}
+		if attempt == 2 {
+			return engine.Facts{}, fmt.Errorf("%s: changed while being read (is rpm running?)", db)
+		}
 	}
 	pkgs, err := readRPMSQLite(data)
 	if err != nil {

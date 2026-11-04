@@ -60,7 +60,17 @@ type sqliteDB struct {
 	usable   int
 	pages    int
 	visits   int // pages read, against a cycle in a corrupt file
+	// seen are the pages reached in the current walk: a b-tree is a tree, so
+	// a page reached twice (a repeated child, an overflow page shared by two
+	// rows) means a corrupt or crafted file.
+	seen map[uint32]bool
+	// payload is the bytes of row payloads read; the rows of a valid file
+	// fit in it, so more than twice its size is not a valid file.
+	payload int
 }
+
+// maxRPMHeader bounds one header: real ones are well under a few MiB.
+const maxRPMHeader = 64 << 20
 
 func openSQLite(data []byte) (*sqliteDB, error) {
 	if len(data) < 100 || !bytes.Equal(data[:16], []byte("SQLite format 3\x00")) {
@@ -86,6 +96,10 @@ func (db *sqliteDB) page(n uint32) ([]byte, int, error) {
 	if n < 1 || int64(n) > int64(db.pages) || db.visits > 4*db.pages+16 {
 		return nil, 0, fmt.Errorf("%w: page %d", errMalformedDB, n)
 	}
+	if db.seen[n] {
+		return nil, 0, fmt.Errorf("%w: page %d reached twice", errMalformedDB, n)
+	}
+	db.seen[n] = true
 	off := int(n-1) * db.pageSize
 	header := 0
 	if n == 1 {
@@ -120,6 +134,7 @@ func (db *sqliteDB) tableRoot(name string) (uint32, error) {
 // tableRows calls fn with the payload of every row of the table b-tree at
 // root, in rowid order.
 func (db *sqliteDB) tableRows(root uint32, fn func(record []byte) error) error {
+	db.seen = map[uint32]bool{}
 	return db.walk(root, 0, fn)
 }
 
@@ -177,7 +192,7 @@ func (db *sqliteDB) leafPayload(p []byte, off int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: cell offset %d", errMalformedDB, off)
 	}
 	size, n := sqliteVarint(p[off:])
-	if n == 0 || size < 0 || size > int64(len(db.data)) {
+	if n == 0 || size < 0 || size > int64(len(db.data)) || size > maxRPMHeader {
 		return nil, fmt.Errorf("%w: payload size", errMalformedDB)
 	}
 	off += n
@@ -187,6 +202,9 @@ func (db *sqliteDB) leafPayload(p []byte, off int) ([]byte, error) {
 	}
 	off += n
 	total := int(size)
+	if db.payload += total; db.payload > 2*len(db.data) {
+		return nil, fmt.Errorf("%w: rows hold more than the file", errMalformedDB)
+	}
 	local := db.localSize(total)
 	if off+local > len(p) {
 		return nil, fmt.Errorf("%w: payload past page", errMalformedDB)
@@ -360,6 +378,10 @@ func parseRPMHeader(b []byte) (rpmPackage, error) {
 		typ := binary.BigEndian.Uint32(e[4:8])
 		off := int64(binary.BigEndian.Uint32(e[8:12]))
 		count := binary.BigEndian.Uint32(e[12:16])
+		wanted := tag == rpmTagName || tag == rpmTagVersion || tag == rpmTagRelease || tag == rpmTagArch || tag == rpmTagEpoch
+		if wanted && off >= int64(len(store)) {
+			return rpmPackage{}, fmt.Errorf("%w: tag %d points outside the header", errMalformedDB, tag)
+		}
 		if off >= int64(len(store)) {
 			continue
 		}
@@ -383,8 +405,8 @@ func parseRPMHeader(b []byte) (rpmPackage, error) {
 			pkg.epoch = int64(binary.BigEndian.Uint32(store[off:]))
 		}
 	}
-	if pkg.name == "" {
-		return rpmPackage{}, fmt.Errorf("%w: header without a name", errMalformedDB)
+	if pkg.name == "" || pkg.version == "" || pkg.release == "" {
+		return rpmPackage{}, fmt.Errorf("%w: header without a name, version or release", errMalformedDB)
 	}
 	return pkg, nil
 }

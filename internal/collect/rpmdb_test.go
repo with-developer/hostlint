@@ -124,3 +124,67 @@ func FuzzParseRPMHeader(f *testing.F) {
 		_, _ = parseRPMHeader(d)
 	})
 }
+
+// rpmHeader builds an exported header of string tags: (tag, offset) pairs
+// point into the data.
+func rpmHeader(entries [][2]uint32, data string) []byte {
+	b := make([]byte, 8, 8+16*len(entries)+len(data))
+	b[3], b[7] = byte(len(entries)), byte(len(data))
+	for _, e := range entries {
+		x := make([]byte, 16)
+		x[0], x[1], x[2], x[3] = byte(e[0]>>24), byte(e[0]>>16), byte(e[0]>>8), byte(e[0])
+		x[7] = rpmTypeString
+		x[8], x[9], x[10], x[11] = byte(e[1]>>24), byte(e[1]>>16), byte(e[1]>>8), byte(e[1])
+		x[15] = 1
+		b = append(b, x...)
+	}
+	return append(b, data...)
+}
+
+// A header whose tags are missing, empty or point outside it is an error,
+// not a package with an empty version.
+func TestParseRPMHeaderDamaged(t *testing.T) {
+	const data = "pkg\x001.0\x002.el9\x00"
+	ok := [][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 4}, {rpmTagRelease, 8}}
+	if p, err := parseRPMHeader(rpmHeader(ok, data)); err != nil || p.fullVersion() != "1.0-2.el9" {
+		t.Fatalf("valid header: %+v, %v", p, err)
+	}
+	for name, h := range map[string][]byte{
+		"offset outside": rpmHeader([][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 4}, {rpmTagRelease, 99}}, data),
+		"no release":     rpmHeader(ok[:2], data),
+		"empty version":  rpmHeader([][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 3}, {rpmTagRelease, 8}}, data),
+		"arch outside":   rpmHeader(append(append([][2]uint32{}, ok...), [2]uint32{rpmTagArch, 500}), data),
+	} {
+		if p, err := parseRPMHeader(h); err == nil {
+			t.Errorf("%s: read %+v without an error", name, p)
+		}
+	}
+}
+
+// A page reached twice, or rows that hold more than the file, are not read
+// as a list with duplicates.
+func TestReadRPMSQLiteRepeatedPage(t *testing.T) {
+	data, _ := rpmFixture(t)
+	d := bytes.Clone(data)
+	db, _ := openSQLite(d)
+	root, _ := db.tableRoot("Packages")
+	off := int(root-1) * db.pageSize
+	if d[off] != 0x05 || int(d[off+3])<<8|int(d[off+4]) < 1 {
+		t.Skip("the fixture's root page is not an interior page with cells")
+	}
+	// The first cell's child becomes the right-most child.
+	cell := int(d[off+12])<<8 | int(d[off+13])
+	copy(d[off+cell:off+cell+4], d[off+8:off+12])
+	if pkgs, err := readRPMSQLite(d); err == nil {
+		t.Errorf("read %d packages from a tree that repeats a page", len(pkgs))
+	}
+}
+
+// A database that cannot be examined is reported, not taken for absent.
+func TestPackagesRPMUnreadable(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/var/lib/rpm/rpmdb.sqlite", "x", 0o600, 0, 0).SetError("/var/lib/rpm/rpmdb.sqlite", os.ErrPermission)
+	_, err := packagesCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err == nil || strings.Contains(err.Error(), "no dpkg or rpm") {
+		t.Errorf("err = %v, want the permission error", err)
+	}
+}
