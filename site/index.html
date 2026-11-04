@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hostlint — eslint for Linux servers</title>
+<meta name="description" content="One Go binary that checks a host's security configuration against hardening baselines. KISA CII Unix first.">
+<style>
+:root{--bg:#fff;--fg:#1b1f24;--mut:#57606a;--line:#d8dee4;--acc:#0b5fff;--code:#0d1117;--codefg:#e6edf3}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#9aa4af;--line:#30363d;--acc:#6ea8ff;--code:#010409;--codefg:#e6edf3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+main{max-width:880px;margin:0 auto;padding:0 16px 64px}
+header{padding:56px 0 24px}
+h1{font-size:2.4rem;line-height:1.2;margin:0 0 8px}
+h2{margin:48px 0 12px;font-size:1.4rem}
+h3{margin:0 0 4px;font-size:1.05rem}
+.tag{font-size:1.25rem;color:var(--mut);margin:0 0 16px}
+.btns a{display:inline-block;margin:8px 8px 0 0;padding:8px 16px;border:1px solid var(--line);border-radius:6px;color:var(--fg);text-decoration:none}
+.btns a.p{background:var(--acc);border-color:var(--acc);color:#fff}
+a{color:var(--acc)}
+ul.f{list-style:none;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+ul.f li{border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+ul.f p{margin:0;color:var(--mut)}
+pre{background:var(--code);color:var(--codefg);padding:16px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+footer{margin-top:48px;color:var(--mut);font-size:.9rem;border-top:1px solid var(--line);padding-top:16px}
+nav{text-align:right;padding-top:16px;font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="ko/" hreflang="ko">한국어</a></nav>
+<header>
+<h1>hostlint</h1>
+<p class="tag">A Linux host's security configuration, checked like code.</p>
+<p>One static binary. Run it as root; get one result per control, with the value, the file and the line behind every verdict. It only reads: it never changes the host.</p>
+<p class="btns"><a class="p" href="#start">Get started</a><a href="https://github.com/with-developer/hostlint">GitHub</a><a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">Rule reference</a></p>
+</header>
+<h2>Why hostlint</h2>
+<ul class="f"><li><h3>Evidence for every verdict</h3><p>The value, the file and line, explicit or default. No "FAIL" without a reason.</p></li><li><h3>No false PASS</h3><p>When a control cannot be decided (an unreadable file, a cut-off scan) the result is ERROR or MANUAL, never a guessed PASS. Configuration is read the way the program reads it: PAM like libpam, login.defs like shadow-utils, shell files like bash.</p></li><li><h3>Observation only</h3><p>Rules are data, not scripts: they cannot run commands. Password hashes, keys and tokens never appear in a result.</p></li><li><h3>Hosts and images</h3><p>Scan a running system, or a filesystem mounted elsewhere (a golden image in CI).</p></li><li><h3>Built for pipelines</h3><p>Table, JSON (with a schema), SARIF and JUnit; one self-contained HTML report for many hosts; waivers with a reason and an expiry in hostlint.yaml.</p></li><li><h3>Signed releases</h3><p>Archives, .deb and .rpm packages, SBOMs and checksums, signed with Sigstore and carrying build provenance.</p></li></ul>
+<h2>What it looks like</h2>
+<pre>$ sudo hostlint scan
+hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
+
+✗ FAIL   U-02   Password policy [high]
+    ✗ accounts.password-min-length — Passwords have a minimum length
+        pam.password_quality.module = ""
+        pam.password_quality.settings.minlen.value: not set
+✗ FAIL   U-12   Session timeout [low]
+    ✗ accounts.session-timeout-set — Idle shells time out
+        not set; expected a value matching [1-9][0-9]*
+✗ FAIL   U-18   Ownership and permissions of /etc/shadow [high]
+    ✗ files.shadow-perms — /etc/shadow is owned by root and readable by root only
+        /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400
+? MANUAL U-23   Set-ID programs are reviewed [high]
+    ? files.review-setid — Review the set-ID programs
+        /usr/bin/chage 2755 root
+        /usr/bin/chsh 4755 root
+        … and 10 more
+
+kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
+<h2>Supported targets</h2>
+<p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux and AlmaLinux 9, 10 · CentOS/RHEL 7 (best effort). The first profile is the KISA CII technical vulnerability assessment guide, 2026 edition (Unix, U-01–U-67); other baselines are added as profiles over the same checks.</p>
+<h2 id="start">Quick start</h2>
+<p>Build from source until the first release (v0.1.0):</p>
+<pre>go install github.com/with-developer/hostlint/cmd/hostlint@latest
+sudo "$(go env GOPATH)/bin/hostlint" scan
+
+# many hosts, one report
+sudo hostlint scan --format json --output web-01.json
+hostlint report *.json --output report.html</pre>
+<p>Docs: <a href="https://github.com/with-developer/hostlint/blob/main/README.md">README</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.md">hostlint.yaml</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/RELEASING.md">Releasing</a> · <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">Security</a></p>
+<footer>Apache-2.0 licensed. <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></footer>
+</main>
+</body>
+</html>

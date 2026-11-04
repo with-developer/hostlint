@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hostlint — 리눅스 서버를 위한 eslint</title>
+<meta name="description" content="호스트의 보안 설정을 하드닝 기준에 맞춰 점검하는 Go 바이너리 하나. KISA 주요정보통신기반시설(Unix)부터.">
+<style>
+:root{--bg:#fff;--fg:#1b1f24;--mut:#57606a;--line:#d8dee4;--acc:#0b5fff;--code:#0d1117;--codefg:#e6edf3}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#9aa4af;--line:#30363d;--acc:#6ea8ff;--code:#010409;--codefg:#e6edf3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+main{max-width:880px;margin:0 auto;padding:0 16px 64px}
+header{padding:56px 0 24px}
+h1{font-size:2.4rem;line-height:1.2;margin:0 0 8px}
+h2{margin:48px 0 12px;font-size:1.4rem}
+h3{margin:0 0 4px;font-size:1.05rem}
+.tag{font-size:1.25rem;color:var(--mut);margin:0 0 16px}
+.btns a{display:inline-block;margin:8px 8px 0 0;padding:8px 16px;border:1px solid var(--line);border-radius:6px;color:var(--fg);text-decoration:none}
+.btns a.p{background:var(--acc);border-color:var(--acc);color:#fff}
+a{color:var(--acc)}
+ul.f{list-style:none;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+ul.f li{border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+ul.f p{margin:0;color:var(--mut)}
+pre{background:var(--code);color:var(--codefg);padding:16px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+footer{margin-top:48px;color:var(--mut);font-size:.9rem;border-top:1px solid var(--line);padding-top:16px}
+nav{text-align:right;padding-top:16px;font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="../" hreflang="en">English</a></nav>
+<header>
+<h1>hostlint</h1>
+<p class="tag">리눅스 호스트의 보안 설정을 코드처럼 점검합니다.</p>
+<p>정적 바이너리 하나. root로 실행하면 컨트롤마다 결과가 나오고, 모든 판정에 값과 파일, 줄이 붙습니다. 읽기만 합니다. 호스트를 바꾸지 않습니다.</p>
+<p class="btns"><a class="p" href="#start">시작하기</a><a href="https://github.com/with-developer/hostlint">GitHub</a><a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">규칙 참조</a></p>
+</header>
+<h2>왜 hostlint인가</h2>
+<ul class="f"><li><h3>모든 판정에 근거</h3><p>값, 그 값이 나온 파일과 줄, 명시한 값인지 기본값인지. 이유를 모르는 FAIL은 없습니다.</p></li><li><h3>잘못된 PASS 없음</h3><p>판단할 수 없으면(읽을 수 없는 파일, 중간에 끊긴 수집) 추측한 PASS 대신 ERROR나 MANUAL을 냅니다. 설정은 프로그램이 읽는 방식대로 읽습니다: PAM은 libpam처럼, login.defs는 shadow-utils처럼, 셸 파일은 bash처럼.</p></li><li><h3>관찰만 합니다</h3><p>규칙은 스크립트가 아니라 데이터라서 명령을 실행할 수 없습니다. 비밀번호 해시, 키, 토큰은 결과에 나오지 않습니다.</p></li><li><h3>운영 호스트와 이미지</h3><p>실행 중인 시스템이나 다른 곳에 마운트한 파일시스템(CI의 골든 이미지)을 점검합니다.</p></li><li><h3>파이프라인에 맞춰</h3><p>표, JSON(스키마 포함), SARIF, JUnit. 여러 호스트를 한 파일 HTML 보고서로. hostlint.yaml에는 사유와 만료일이 있는 예외(waiver).</p></li><li><h3>서명된 릴리스</h3><p>아카이브, .deb·.rpm 패키지, SBOM, 체크섬. Sigstore로 서명하고 빌드 출처 증명을 붙입니다.</p></li></ul>
+<h2>이렇게 나옵니다</h2>
+<pre>$ sudo hostlint scan
+hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
+
+✗ FAIL   U-02   Password policy [high]
+    ✗ accounts.password-min-length — Passwords have a minimum length
+        pam.password_quality.module = ""
+        pam.password_quality.settings.minlen.value: not set
+✗ FAIL   U-12   Session timeout [low]
+    ✗ accounts.session-timeout-set — Idle shells time out
+        not set; expected a value matching [1-9][0-9]*
+✗ FAIL   U-18   Ownership and permissions of /etc/shadow [high]
+    ✗ files.shadow-perms — /etc/shadow is owned by root and readable by root only
+        /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400
+? MANUAL U-23   Set-ID programs are reviewed [high]
+    ? files.review-setid — Review the set-ID programs
+        /usr/bin/chage 2755 root
+        /usr/bin/chsh 4755 root
+        … and 10 more
+
+kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
+<h2>지원 대상</h2>
+<p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux·AlmaLinux 9, 10 · CentOS/RHEL 7(최선 노력). 첫 프로파일은 KISA 주요정보통신기반시설 기술적 취약점 분석·평가 가이드 2026년판(Unix, U-01–U-67)이고, 다른 기준은 같은 점검 위에 프로파일로 추가합니다.</p>
+<h2 id="start">빠른 시작</h2>
+<p>첫 릴리스(v0.1.0) 전에는 소스에서 빌드하세요:</p>
+<pre>go install github.com/with-developer/hostlint/cmd/hostlint@latest
+sudo "$(go env GOPATH)/bin/hostlint" scan
+
+# many hosts, one report
+sudo hostlint scan --format json --output web-01.json
+hostlint report *.json --output report.html</pre>
+<p>문서: <a href="https://github.com/with-developer/hostlint/blob/main/README.ko.md">README</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.ko.md">hostlint.yaml</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/RELEASING.md">Releasing</a> · <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">Security</a></p>
+<footer>Apache-2.0 라이선스. <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></footer>
+</main>
+</body>
+</html>

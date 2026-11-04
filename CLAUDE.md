@@ -53,7 +53,8 @@ required check on `main`.
 | `schema/` | JSON Schema of the result document (ADR 0006), with a valid example |
 | `testdata/` | Fixture root filesystems per distro (hardened and default) |
 | `install.sh` | The installer: downloads a release, verifies it, installs the binary |
-| `scripts/` | Release checks and lint guards (`check-release.sh`, `lint-guards.sh`) |
+| `scripts/` | Release checks, the translation check and lint guards (`check-release.sh`, `check-translations.sh`, `lint-guards.sh`) |
+| `site/` | The project page for GitHub Pages (English, and `ko/`); published by `.github/workflows/pages.yml` once Pages is enabled |
 | `.goreleaser.yaml` | Release build: archives, packages, SBOMs, checksums and signing (docs/RELEASING.md) |
 
 ## Security invariants — never violate
