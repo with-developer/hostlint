@@ -169,3 +169,36 @@ func TestFactTypes(t *testing.T) {
 		}
 	}
 }
+
+// Accounts that share a UID are grouped by the collector, so a check does not
+// compare every account with every other.
+func TestAccountsDuplicateUIDs(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/passwd", "root:x:0:0::/root:/bin/bash\ntoor:x:0:0::/root:/bin/bash\nalice:x:1000:1000::/home/alice:/bin/bash\nbob:x:1001:1001::/home/bob:/bin/bash\nrob:x:0:0::/root:/bin/bash\n", 0o644, 0, 0).
+		AddFile("/etc/group", "root:x:0:\n", 0o644, 0, 0)
+	f, err := accountsCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := f.Value.(*Accounts).DuplicateUIDs
+	if len(got) != 1 || got[0].UID != 0 || strings.Join(got[0].Users, ",") != "root,toor,rob" || strings.Join(got[0].Sources, ",") != "/etc/passwd:1,/etc/passwd:2,/etc/passwd:5" {
+		t.Errorf("duplicate UIDs = %+v", got)
+	}
+}
+
+// Thousands of accounts: the grouping stays cheap and finds the one pair.
+func TestAccountsDuplicateUIDsLargeHost(t *testing.T) {
+	var b strings.Builder
+	for i := range 5000 {
+		fmt.Fprintf(&b, "u%d:x:%d:%d::/home/u%d:/bin/bash\n", i, 2000+i, 2000+i, i)
+	}
+	b.WriteString("clone:x:2000:2000::/home/clone:/bin/bash\n")
+	m := hostfs.NewMemFS().AddFile("/etc/passwd", b.String(), 0o644, 0, 0).AddFile("/etc/group", "root:x:0:\n", 0o644, 0, 0)
+	f, err := accountsCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := f.Value.(*Accounts).DuplicateUIDs; len(got) != 1 || got[0].UID != 2000 || len(got[0].Users) != 2 {
+		t.Errorf("duplicate UIDs = %+v", got)
+	}
+}

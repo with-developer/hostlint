@@ -7,21 +7,21 @@ description: Lists accounts that share a UID with another account.
 rationale: Accounts sharing a UID are the same user to the kernel, so access and audit trails cannot tell them apart.
 remediation: Give each account a unique UID (usermod -u) and fix the ownership of its files.
 violations:
-  over: accounts.users
-  as: u
-  where: accounts.users.filter(o, o.uid == u.uid).size() > 1
-  key: u.name
+  over: accounts.duplicate_uids
+  as: d
+  where: "true"
+  key: string(d.uid)
   text: >-
-    u.name + " shares UID " + string(u.uid) + " with " +
-    accounts.users.filter(o, o.uid == u.uid && o.name != u.name).map(o, o.name).join(", ")
+    "UID " + string(d.uid) + " is shared by " + d.users.join(", ") + " (" + d.sources.join(", ") + ")"
+  allow_empty: true
 tests:
   - name: unique
     facts:
-      accounts: {users: [{name: root, uid: 0}, {name: alice, uid: 1000}, {name: bob, uid: 1001}]}
+      accounts: {duplicate_uids: []}
     want: PASS
   - name: shared
     facts:
-      accounts: {users: [{name: alice, uid: 1000}, {name: alice2, uid: 1000}]}
+      accounts: {duplicate_uids: [{uid: 1000, users: [alice, alice2], sources: ["/etc/passwd:3", "/etc/passwd:4"]}]}
     want: FAIL
   - name: accounts unreadable
     input: unavailable

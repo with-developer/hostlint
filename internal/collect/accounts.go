@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -26,6 +28,18 @@ func All() []engine.Collector {
 type Accounts struct {
 	Users  []User  `json:"users"`
 	Groups []Group `json:"groups"`
+	// DuplicateUIDs are the UIDs shared by more than one account, so a check
+	// does not compare every account with every other (it would run out of
+	// its evaluation budget on a host with thousands of accounts).
+	DuplicateUIDs []SharedUID `json:"duplicate_uids"`
+}
+
+// SharedUID is a UID that more than one account has.
+type SharedUID struct {
+	UID   int64    `json:"uid"`
+	Users []string `json:"users"` // in /etc/passwd order
+	// Sources are the /etc/passwd lines of Users, in the same order.
+	Sources []string `json:"sources"`
 }
 
 // User is one /etc/passwd entry.
@@ -68,7 +82,7 @@ func (accountsCollector) Type() reflect.Type    { return reflect.TypeFor[Account
 
 func (accountsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	var skipped []string
-	a := &Accounts{Users: []User{}, Groups: []Group{}}
+	a := &Accounts{Users: []User{}, Groups: []Group{}, DuplicateUIDs: []SharedUID{}}
 	err := eachRecord(h.FS, "/etc/passwd", 7, func(f []string, src string) error {
 		uid, err1 := strconv.ParseInt(f[2], 10, 64)
 		gid, err2 := strconv.ParseInt(f[3], 10, 64)
@@ -101,7 +115,30 @@ func (accountsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	if err != nil {
 		return engine.Facts{}, err
 	}
+	a.DuplicateUIDs = sharedUIDs(a.Users)
 	return engine.Facts{Value: a, Complete: len(skipped) == 0, Skipped: skipped}, nil
+}
+
+// sharedUIDs groups the accounts that share a UID, in order of UID.
+func sharedUIDs(users []User) []SharedUID {
+	byUID := map[int64][]User{}
+	for _, u := range users {
+		byUID[u.UID] = append(byUID[u.UID], u)
+	}
+	out := []SharedUID{}
+	for _, uid := range slices.Sorted(maps.Keys(byUID)) {
+		group := byUID[uid]
+		if len(group) < 2 {
+			continue
+		}
+		s := SharedUID{UID: uid}
+		for _, u := range group {
+			s.Users = append(s.Users, u.Name)
+			s.Sources = append(s.Sources, u.Source)
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 // passwdField classifies the password field of /etc/passwd. A hash behind
