@@ -177,7 +177,7 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 		// after && or ||, or in a subshell.
 		lineCond := cond || depthBlocks > 0 || opens > 0 || hasControlOperator(code)
 		s.scanLine(code, src, lineCond)
-		s.follow(code, lineCond, depth)
+		s.follow(code, src, lineCond, depth)
 		depthBlocks = max(depthBlocks+opens-closes, 0)
 	}
 	if err := sc.Err(); err != nil {
@@ -226,24 +226,22 @@ func (s *shellScanner) scanLine(code, src string, cond bool) {
 
 // follow scans the files a line sources: ". file" and "source file", and
 // the /etc/profile.d loop of /etc/profile.
-func (s *shellScanner) follow(code string, cond bool, depth int) {
+func (s *shellScanner) follow(code, src string, cond bool, depth int) {
 	rest := code
 	switch m := runPartsLoopRe.FindStringSubmatch(code); {
 	case m != nil:
 		after := code[len(m[0]):]
 		hasRegex := strings.Contains(m[0], "--regex")
-		s.runParts(m[1]+m[2], hasRegex, m[2] != "", depth)
-		rest = s.afterLoop(code, after)
+		s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth)
+		rest = s.afterLoop(src, after)
 	case forRe.MatchString(code) && strings.HasSuffix(code, `\`):
 		// The list may continue on the next line, which is not parsed.
-		s.skip("cannot tell which files this loop sources: " + code)
-		return
-	case forRe.MatchString(code) && (strings.Contains(code, "/etc/profile.d") || strings.Contains(code, "run-parts")):
-		rest = s.profileLoop(code, depth)
-	case forAnywhereRe.MatchString(code) && (strings.Contains(code, "/etc/profile.d") || strings.Contains(code, "run-parts")):
+		s.unknownLoop(src)
+	case forRe.MatchString(code) && mentionsProfileD(code):
+		rest = s.profileLoop(code, src, depth)
+	case forAnywhereRe.MatchString(code) && mentionsProfileD(code):
 		// A loop behind a condition or another command.
-		s.skip("cannot tell which files this loop sources: " + code)
-		return
+		s.unknownLoop(src)
 	}
 	for _, m := range sourceRe.FindAllStringSubmatch(rest, -1) {
 		target := strings.Trim(m[1], `"'`)
@@ -259,12 +257,22 @@ func (s *shellScanner) follow(code string, cond bool, depth int) {
 	}
 }
 
+func mentionsProfileD(code string) bool {
+	return strings.Contains(code, "/etc/profile.d") || strings.Contains(code, "run-parts")
+}
+
+// unknownLoop notes a loop whose files are not known. The note names the
+// line only: its text may hold secrets.
+func (s *shellScanner) unknownLoop(src string) {
+	s.skip(src + ": cannot tell which files this loop sources")
+}
+
 // afterLoop returns the commands that follow a loop's list on its line. It
 // notes the loop as incomplete when the list continues past what was parsed.
-func (s *shellScanner) afterLoop(code, after string) string {
+func (s *shellScanner) afterLoop(src, after string) string {
 	m := loopRestRe.FindStringSubmatch(after)
 	if m == nil {
-		s.skip("cannot tell which files this loop sources: " + code)
+		s.unknownLoop(src)
 		return ""
 	}
 	return m[1]
@@ -275,13 +283,13 @@ func (s *shellScanner) afterLoop(code, after string) string {
 // source every readable file they list. A loop whose list is not literal
 // paths and globs leaves the facts incomplete: what it sources is unknown,
 // not absent.
-func (s *shellScanner) profileLoop(code string, depth int) string {
+func (s *shellScanner) profileLoop(code, src string, depth int) string {
 	list, rest, ok := loopList(code)
 	var files []string
 	listed := ok // the loop lists literal paths or globs
 	for _, word := range strings.Fields(list) {
 		word = strings.Trim(word, `"'`)
-		if !strings.HasPrefix(word, "/etc/profile.d/") || strings.ContainsAny(word, "$`()~") {
+		if !strings.HasPrefix(word, "/etc/profile.d/") || strings.ContainsAny(word, "$`()~{") {
 			listed = false
 			break
 		}
@@ -301,7 +309,7 @@ func (s *shellScanner) profileLoop(code string, depth int) string {
 		files = append(files, slices.DeleteFunc(matches, func(m string) bool { return strings.HasPrefix(path.Base(m), ".") })...)
 	}
 	if !listed || list == "" {
-		s.skip("cannot tell which files this loop sources: " + strings.TrimSpace(code))
+		s.unknownLoop(src)
 		return rest
 	}
 	for _, f := range files {
@@ -348,16 +356,16 @@ func loopRest(s string) string {
 // them, whose names match, in C-locale order. Root's `[ -r $i ]` always
 // holds, so each is sourced. hasRegex is true for an option given even when
 // its value is empty (that matches every name).
-func (s *shellScanner) runParts(expr string, hasRegex, doubleQuoted bool, depth int) {
+func (s *shellScanner) runParts(expr string, hasRegex, doubleQuoted bool, src string, depth int) {
 	re := runPartsNameRe
 	if hasRegex {
 		if why := notERE(expr, doubleQuoted); why != "" {
-			s.skip(fmt.Sprintf("/etc/profile: run-parts --regex %q: %s", expr, why))
+			s.skip(fmt.Sprintf("%s: run-parts --regex %s", src, why))
 			return
 		}
 		var err error
 		if re, err = regexp.Compile(expr); err != nil {
-			s.skip(fmt.Sprintf("/etc/profile: run-parts --regex %q: %v", expr, err))
+			s.skip(src + ": run-parts --regex is not a valid expression")
 			return
 		}
 	}
@@ -412,25 +420,47 @@ func notERE(expr string, doubleQuoted bool) string {
 	if strings.Contains(expr, "(?") {
 		return "uses a construct POSIX does not have"
 	}
-	if strings.Contains(expr, "[:word:]") || strings.Contains(expr, "[:ascii:]") {
-		return "uses a class POSIX does not have"
-	}
-	inBracket := false
 	for i := 0; i < len(expr); i++ {
 		c := expr[i]
 		switch {
-		case inBracket && c == '\\':
-			return "has a backslash in a bracket expression"
-		case inBracket && c == ']' && i > 0:
-			inBracket = false
-		case !inBracket && c == '[':
-			inBracket = true
-		case !inBracket && c == '\\':
-			// Only an escaped punctuation character means the same in both.
-			if i+1 >= len(expr) || isASCIIAlnum(expr[i+1]) {
+		case c == '[':
+			// A bracket expression: "]" first is a member, "[:class:]" nests,
+			// and a backslash is an ordinary character in POSIX.
+			j := i + 1
+			if j < len(expr) && expr[j] == '^' {
+				j++
+			}
+			if j < len(expr) && expr[j] == ']' {
+				j++
+			}
+			for ; j < len(expr) && expr[j] != ']'; j++ {
+				switch {
+				case expr[j] == '\\':
+					return "has a backslash in a bracket expression"
+				case expr[j] == '[' && j+1 < len(expr) && expr[j+1] == ':':
+					end := strings.Index(expr[j:], ":]")
+					if end < 0 {
+						return "has an unclosed character class"
+					}
+					switch class := expr[j+2 : j+end]; class {
+					case "alpha", "digit", "alnum", "upper", "lower", "space", "blank", "punct", "print", "graph", "cntrl", "xdigit":
+					default:
+						return "uses a class POSIX does not have"
+					}
+					j += end + 1
+				}
+			}
+			if j >= len(expr) {
+				return "has an unclosed bracket expression"
+			}
+			i = j
+		case c == '\\':
+			// Only these escapes mean the same in POSIX and RE2; \< \> \` \'
+			// and \w and the like are GNU extensions.
+			if i+1 >= len(expr) || strings.IndexByte(`.-/^$*+?()[]{}|\\`, expr[i+1]) < 0 {
 				return "has a backslash escape that POSIX does not define"
 			}
-			if doubleQuoted && strings.IndexByte("$`\"\\", expr[i+1]) >= 0 {
+			if doubleQuoted && strings.IndexByte("$\\", expr[i+1]) >= 0 {
 				return "has an escape that the shell rewrites inside double quotes"
 			}
 			i++

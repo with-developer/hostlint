@@ -273,6 +273,10 @@ func TestShellEnvLoopLineNotFullyUnderstood(t *testing.T) {
 		"regex with \\d":                 "for i in $(run-parts --list --regex '^\\d+\\.sh$' /etc/profile.d); do . $i; done\n",
 		"regex with a flag group":        "for i in $(run-parts --list --regex '(?i)\\.SH$' /etc/profile.d); do . $i; done\n",
 		"regex with backslash in class":  "for i in $(run-parts --list --regex '^[\\w]+\\.sh$' /etc/profile.d); do . $i; done\n",
+		"brace expansion in a list":      "for i in /etc/profile.d/{a,b}.sh; do . $i; done\n",
+		"GNU word boundary":              "for i in $(run-parts --list --regex '\\<x' /etc/profile.d); do . $i; done\n",
+		"backslash after a first ]":      "for i in $(run-parts --list --regex '[]\\w]+' /etc/profile.d); do . $i; done\n",
+		"class POSIX does not have":      "for i in $(run-parts --list --regex '[[:word:]]+' /etc/profile.d); do . $i; done\n",
 		"double quoted regex expands":    "for i in $(run-parts --list --regex \"^$NAME\\.sh$\" /etc/profile.d); do . $i; done\n",
 	} {
 		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/profile.d/x.sh", "umask 000\n", 0o644, 0, 0)
@@ -318,5 +322,25 @@ func TestShellEnvRunPartsManyFiles(t *testing.T) {
 	}
 	if len(f.Skipped) > 2 {
 		t.Errorf("%d skip notes reported, want at most 2: %v", len(f.Skipped), f.Skipped)
+	}
+}
+
+// The notes about a loop name the file and line, never its text, which may
+// hold a secret.
+func TestShellEnvLoopNotesHoldNoSourceText(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile",
+		"for i in $(ls /etc/profile.d); do export API_TOKEN=hunter2; done\n"+
+			"for i in $(run-parts --list --regex '\\d$x' /etc/profile.d); do TOKEN=hunter2 . $i; done\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || f.Complete {
+		t.Fatalf("complete %v, %v; want incomplete", f.Complete, err)
+	}
+	for _, note := range f.Skipped {
+		if strings.Contains(note, "hunter2") || strings.Contains(note, "TOKEN") {
+			t.Errorf("note holds source text: %q", note)
+		}
+		if !strings.HasPrefix(note, "/etc/profile:") {
+			t.Errorf("note does not name the file and line: %q", note)
+		}
 	}
 }
