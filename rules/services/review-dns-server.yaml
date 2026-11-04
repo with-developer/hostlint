@@ -1,0 +1,28 @@
+id: services.review-dns-server
+version: 1
+title: Review the DNS server
+title_ko: DNS 서버 설정 검토
+severity: high
+description: >-
+  Applies when a DNS server is started; then shows how, for a review of its configuration. Not
+  applicable otherwise.
+rationale: >-
+  Zone transfers map your network for attackers, and open dynamic updates let them change it.
+remediation: >-
+  Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
+applies: >-
+  services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+manual:
+  guidance: >-
+    Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
+  show: >-
+    services.started.filter(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+    want: NOT_APPLICABLE
+  - name: started
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+    want: MANUAL

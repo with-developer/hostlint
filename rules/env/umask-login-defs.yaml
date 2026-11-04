@@ -1,0 +1,35 @@
+id: env.umask-login-defs
+version: 1
+title: The default umask keeps new files unwritable by group and others
+title_ko: 기본 umask가 그룹·기타 사용자의 쓰기를 막음 (login.defs)
+severity: medium
+description: >-
+  Checks that UMASK in /etc/login.defs removes write permission for group and others (022 or
+  stricter). shadow-utils and pam_umask use it for new sessions and home directories.
+rationale: A permissive umask makes new files writable by other users.
+remediation: Set `UMASK 022` (or `027`) in /etc/login.defs.
+setting:
+  fact: login_defs.settings.UMASK
+  matches: "0*[0-7]?[2367][2367]"
+  absent: default
+tests:
+  - name: "022"
+    facts:
+      login_defs: {present: true, settings: {UMASK: {value: "022", explicit: true}}}
+    want: PASS
+  - name: "077"
+    facts:
+      login_defs: {present: true, settings: {UMASK: {value: "077", explicit: true}}}
+    want: PASS
+  - name: "002"
+    facts:
+      login_defs: {present: true, settings: {UMASK: {value: "002", explicit: true}}}
+    want: FAIL
+  - name: not set, default 022
+    facts:
+      login_defs: {present: false, settings: {UMASK: {value: "022", source: "default (login.defs(5))"}}}
+    want: PASS
+  - name: login.defs unreadable
+    input: unavailable
+    unavailable: [login_defs]
+    want: ERROR

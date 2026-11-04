@@ -289,3 +289,49 @@ func TestHostname(t *testing.T) {
 		t.Errorf("Hostname() without /etc/hostname = %q", got)
 	}
 }
+
+func TestWalkSkipAndDirLimit(t *testing.T) {
+	fsys := walkFixture()
+	var seen []string
+	res, err := Walk(context.Background(), fsys, "/", WalkOptions{Skip: func(p string) bool { return p == "/home" }},
+		func(fi FileInfo) error { seen = append(seen, fi.Path); return nil })
+	if err != nil || !res.Complete {
+		t.Fatalf("res %+v, err %v", res, err)
+	}
+	for _, p := range seen {
+		if strings.HasPrefix(p, "/home") {
+			t.Errorf("skipped path visited: %s", p)
+		}
+	}
+	res, _ = Walk(context.Background(), fsys, "/", WalkOptions{MaxDirEntries: 2}, func(FileInfo) error { return nil })
+	if res.Complete || !strings.Contains(strings.Join(res.Problems, ";"), "/etc: too many entries") {
+		t.Errorf("res %+v, want /etc cut short", res)
+	}
+}
+
+// inodeFS gives some directories the same identity, like a bind mount.
+type inodeFS struct {
+	FS
+	ino map[string]uint64
+}
+
+func (f inodeFS) ReadDir(name string) ([]FileInfo, error) {
+	entries, err := f.FS.ReadDir(name)
+	for i := range entries {
+		entries[i].Dev, entries[i].Ino = 1, f.ino[entries[i].Path]
+	}
+	return entries, err
+}
+
+func TestWalkBindMountOnce(t *testing.T) {
+	fsys := inodeFS{FS: NewMemFS().AddFile("/data/f", "", 0o644, 0, 0).AddFile("/mnt/data/f", "", 0o644, 0, 0),
+		ino: map[string]uint64{"/data": 7, "/mnt/data": 7}}
+	var seen []string
+	res, err := Walk(context.Background(), fsys, "/", WalkOptions{}, func(fi FileInfo) error { seen = append(seen, fi.Path); return nil })
+	if err != nil || !res.Complete {
+		t.Fatalf("res %+v, err %v", res, err)
+	}
+	if got := strings.Join(seen, " "); got != "/ /data /data/f /mnt /mnt/data" {
+		t.Errorf("visited %s", got)
+	}
+}

@@ -1,0 +1,41 @@
+id: services.no-rpc
+version: 1
+title: Legacy RPC services are not started
+title_ko: 불필요한 RPC 서비스 미사용
+severity: high
+description: >-
+  Lists the ways legacy RPC services (rusersd, rwalld, sprayd, rstatd, rexd, the CDE calendar and tooltalk daemons, sadmind, pcnfsd, ypupdated, rquotad, nisd) are started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  These RPC services have a long record of remote exploits and are rarely needed. rpc.statd is
+  not listed: NFS clients use it for file locking (services.no-nfs-server covers NFS servers).
+remediation: >-
+  Disable each listed service.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["rusersd", "rwalld", "sprayd", "rstatd", "rexd", "cmsd", "ttdbserverd", "sadmind", "pcnfsd", "ypupdated", "rquotad", "rpc-rquotad", "nisd"] || s.program.matches("/(rpc\\.)?(rusersd|rwalld|sprayd|rstatd|rexd|cmsd|ttdbserverd|sadmind|pcnfsd|ypupdated|rquotad|nisd)$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: the NFS client's statd is not a legacy service
+    facts:
+      services: {started: [{service: rpc-statd, name: rpc-statd.service, kind: active, program: /usr/sbin/rpc.statd, source: systemctl list-units}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: rstatd, name: rstatd/1-5, kind: inetd, program: /usr/sbin/rpc.rstatd, source: "/etc/inetd.conf:40"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

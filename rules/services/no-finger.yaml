@@ -1,0 +1,36 @@
+id: services.no-finger
+version: 1
+title: The finger service is not started
+title_ko: finger 서비스 미사용
+severity: high
+description: >-
+  Lists the ways the finger service (fingerd, cfingerd) is started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  finger tells anyone on the network who your users are and when they log in.
+remediation: >-
+  Disable the service: remove its inetd/xinetd entry, or `systemctl disable --now` its unit.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["finger", "fingerd", "cfingerd"] || s.program.matches("/(in\\.)?c?fingerd$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: finger, name: finger, kind: inetd, program: /usr/sbin/in.fingerd, source: "/etc/inetd.conf:9"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

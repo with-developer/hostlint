@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -77,11 +78,22 @@ func Glob(fsys FS, pattern string) (matches, problems []string, err error) {
 type WalkOptions struct {
 	// MaxEntries stops the walk after this many entries (default 1,000,000).
 	MaxEntries int
+	// MaxDirEntries is the most entries one directory may have; a larger
+	// directory is listed only that far and makes the walk incomplete
+	// (default 100,000), so one directory cannot take the whole budget
+	// into memory.
+	MaxDirEntries int
 	// MaxDepth stops descending below this depth; the root is depth 0
 	// (default 32).
 	MaxDepth int
 	// Timeout stops the walk after this long (default 60s).
 	Timeout time.Duration
+	// Skip, if set, is called with the path of every entry below the root
+	// before its metadata is read; returning true leaves the entry out
+	// without making the walk incomplete. Use it for paths known up front,
+	// such as the mount points of network filesystems, where even reading
+	// the metadata can hang.
+	Skip func(path string) bool
 	// Prune, if set, is called for every directory below the root; returning
 	// true skips its contents without making the walk incomplete (e.g.
 	// pseudo-filesystems).
@@ -90,8 +102,9 @@ type WalkOptions struct {
 
 // dirLister is implemented by filesystems that can list a bounded number of
 // directory entries, so a huge directory cannot exhaust a walk's memory.
+// skip, if set, leaves out entries by path before reading their metadata.
 type dirLister interface {
-	readDirN(name string, n int) (entries []FileInfo, truncated bool, err error)
+	readDirN(name string, n int, skip func(string) bool) (entries []FileInfo, truncated bool, err error)
 }
 
 // WalkResult says how much a Walk saw.
@@ -119,6 +132,9 @@ func Walk(ctx context.Context, fsys FS, root string, opts WalkOptions, fn func(F
 	if opts.MaxEntries <= 0 {
 		opts.MaxEntries = 1_000_000
 	}
+	if opts.MaxDirEntries <= 0 {
+		opts.MaxDirEntries = 100_000
+	}
 	if opts.MaxDepth <= 0 {
 		opts.MaxDepth = 32
 	}
@@ -141,6 +157,9 @@ func Walk(ctx context.Context, fsys FS, root string, opts WalkOptions, fn func(F
 		depth int
 	}
 	stack := []item{{fi, 0}}
+	// Directories already walked, by device and inode: a bind mount shows
+	// the same tree again, possibly inside itself.
+	walked := map[[2]uint64]bool{}
 	for len(stack) > 0 {
 		if err := ctx.Err(); err != nil {
 			res.stop("interrupted")
@@ -167,16 +186,29 @@ func Walk(ctx context.Context, fsys FS, root string, opts WalkOptions, fn func(F
 		if !it.fi.IsDir() || (it.depth > 0 && opts.Prune != nil && opts.Prune(it.fi)) {
 			continue
 		}
+		if id := [2]uint64{it.fi.Dev, it.fi.Ino}; it.fi.Ino != 0 {
+			if walked[id] {
+				continue
+			}
+			walked[id] = true
+		}
 		if it.depth >= opts.MaxDepth {
 			res.stop(fmt.Sprintf("%s: deeper than %d levels", it.fi.Path, opts.MaxDepth))
 			continue
 		}
+		limit := min(max(opts.MaxEntries-res.Entries-len(stack), 0), opts.MaxDirEntries)
 		var entries []FileInfo
 		var truncated bool
 		if dl, ok := fsys.(dirLister); ok {
-			entries, truncated, err = dl.readDirN(it.fi.Path, max(opts.MaxEntries-res.Entries-len(stack), 0))
+			entries, truncated, err = dl.readDirN(it.fi.Path, limit, opts.Skip)
 		} else {
 			entries, err = fsys.ReadDir(it.fi.Path)
+			if opts.Skip != nil {
+				entries = slices.DeleteFunc(entries, func(e FileInfo) bool { return opts.Skip(e.Path) })
+			}
+			if len(entries) > limit {
+				entries, truncated = entries[:limit], true
+			}
 		}
 		switch {
 		case errors.Is(err, ErrAutomount):

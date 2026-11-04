@@ -1,0 +1,42 @@
+id: homes.owner-perms
+version: 1
+title: Home directories belong to their accounts and others cannot write them
+title_ko: 홈 디렉터리는 계정 본인 소유, 다른 사용자 쓰기 금지
+severity: medium
+description: >-
+  Lists accounts with a login shell whose home directory is owned by another account or is
+  writable by others.
+rationale: Whoever can write a home directory can replace its startup files and keys.
+remediation: Run `chown <user> <home>` and `chmod o-w <home>` for each listed account.
+violations:
+  over: homes.accounts
+  as: h
+  where: >-
+    h.login_shell && h.exists && (h.owner_uid != h.uid || h.mode.matches("^...[2367]"))
+  key: h.user
+  text: >-
+    h.user + ": " + h.path + " (" + h.mode + ", owner uid " + string(h.owner_uid) + ")"
+  allow_empty: true
+tests:
+  - name: private
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, login_shell: true, path: /home/alice, exists: true, owner_uid: 1000, mode: "0750"}]}
+    want: PASS
+  - name: owned by root
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, login_shell: true, path: /home/alice, exists: true, owner_uid: 0, mode: "0755"}]}
+    want: FAIL
+  - name: writable by others
+    facts:
+      homes: {accounts: [{user: alice, uid: 1000, login_shell: true, path: /home/alice, exists: true, owner_uid: 1000, mode: "0777"}]}
+    want: FAIL
+  - name: system account
+    facts:
+      homes: {accounts: [{user: daemon, uid: 1, login_shell: false, path: /usr/sbin, exists: true, owner_uid: 0, mode: "0755"}]}
+    want: PASS
+  - name: a home directory unreadable
+    input: incomplete
+    incomplete: [homes]
+    facts:
+      homes: {accounts: []}
+    want: ERROR

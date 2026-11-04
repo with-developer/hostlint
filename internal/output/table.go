@@ -123,16 +123,16 @@ func writeCheck(b *strings.Builder, p painter, c engine.CheckResult) {
 	if c.Status == engine.StatusPass || c.Status == engine.StatusNotApplicable {
 		return
 	}
-	for i, ev := range c.Evidence {
-		if i == maxEvidenceLines {
-			fmt.Fprintf(b, "        %s\n", p.paint(dim, fmt.Sprintf("… and %d more", len(c.Evidence)-i+c.EvidenceOmitted)))
-			break
-		}
+	shown := min(len(c.Evidence), maxEvidenceLines)
+	for _, ev := range c.Evidence[:shown] {
 		line := oneLine(ev.Text)
 		if src := oneLine(ev.Source); src != "" && !strings.Contains(line, src) {
 			line += "  " + p.paint(dim, src)
 		}
 		fmt.Fprintf(b, "        %s\n", line)
+	}
+	if more := len(c.Evidence) - shown + c.EvidenceOmitted; more > 0 {
+		fmt.Fprintf(b, "        %s\n", p.paint(dim, fmt.Sprintf("… and %d more", more)))
 	}
 }
 

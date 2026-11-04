@@ -1,0 +1,44 @@
+id: env.path-current-dir
+version: 1
+title: PATH does not search the current directory first
+title_ko: PATH에서 현재 디렉터리를 먼저 찾지 않음
+severity: high
+description: >-
+  Lists PATH assignments in the system-wide and root's startup files that put the current
+  directory (".", or an empty entry) anywhere but last.
+rationale: >-
+  With the current directory early in PATH, a program named like a system command in the
+  directory you are in runs instead of it, as you.
+remediation: Remove "." and empty entries from PATH, or move them to the end.
+violations:
+  over: shell_env.path
+  as: p
+  where: >-
+    p.value.split(":").slice(0, p.value.split(":").size() - 1).exists(e, e == "." || e == "")
+  key: p.source
+  text: >-
+    "PATH=" + p.value + (p.conditional ? " (conditional)" : "") + " at " + p.source
+  allow_empty: true
+tests:
+  - name: system directories
+    facts:
+      shell_env: {path: [{value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin", source: "/etc/profile:4"}]}
+    want: PASS
+  - name: dot at the end
+    facts:
+      shell_env: {path: [{value: "$PATH:.", source: "/root/.bashrc:9"}]}
+    want: PASS
+  - name: dot first
+    facts:
+      shell_env: {path: [{value: ".:$PATH", source: "/root/.bashrc:9"}]}
+    want: FAIL
+  - name: empty entry in the middle
+    facts:
+      shell_env: {path: [{value: "/usr/bin::/bin", source: "/etc/profile:4"}]}
+    want: FAIL
+  - name: startup files incomplete
+    input: incomplete
+    incomplete: [shell_env]
+    facts:
+      shell_env: {path: []}
+    want: ERROR

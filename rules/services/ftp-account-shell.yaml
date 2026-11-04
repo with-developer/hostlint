@@ -1,0 +1,31 @@
+id: services.ftp-account-shell
+version: 1
+title: The ftp account cannot log in
+title_ko: ftp 계정 로그인 셸 제한
+severity: medium
+description: Checks that the ftp account, if it exists, has a shell such as /sbin/nologin or /bin/false.
+rationale: The ftp account exists for anonymous FTP; with a login shell it can become a way in.
+remediation: Run `usermod -s /sbin/nologin ftp`.
+violations:
+  over: accounts.users
+  as: u
+  where: u.name == "ftp" && u.login_shell
+  key: u.name
+  text: >-
+    "ftp has the login shell " + (u.shell != "" ? u.shell : "/bin/sh (empty field)") + " at " + u.source
+  allow_empty: true
+tests:
+  - name: nologin
+    facts:
+      accounts: {users: [{name: ftp, uid: 14, shell: /sbin/nologin, login_shell: false}], groups: []}
+    want: PASS
+  - name: bash
+    facts:
+      accounts: {users: [{name: ftp, uid: 14, shell: /bin/bash, login_shell: true, source: "/etc/passwd:12"}], groups: []}
+    want: FAIL
+  - name: passwd incomplete
+    input: incomplete
+    incomplete: [accounts]
+    facts:
+      accounts: {users: [], groups: []}
+    want: ERROR

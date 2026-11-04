@@ -1,0 +1,34 @@
+id: files.unowned
+version: 1
+title: No files without an owner
+title_ko: 소유자·그룹이 없는 파일 없음
+severity: high
+description: >-
+  Lists files and directories on local filesystems whose owner or group has no account in
+  /etc/passwd or /etc/group.
+rationale: >-
+  A file left behind by a deleted account belongs to whoever is next given its UID or GID.
+remediation: Give each listed file an owner and group (`chown`), or remove it.
+violations:
+  over: filesystem.unowned
+  as: f
+  where: "true"
+  key: f.path
+  text: >-
+    f.path + " (uid " + string(f.uid) + ", gid " + string(f.gid) + ")"
+  allow_empty: true
+tests:
+  - name: none
+    facts:
+      filesystem: {unowned: []}
+    want: PASS
+  - name: left behind
+    facts:
+      filesystem: {unowned: [{path: /home/olduser/notes, type: file, mode: "0600", uid: 1500, gid: 1500}]}
+    want: FAIL
+  - name: walk incomplete
+    input: incomplete
+    incomplete: [filesystem]
+    facts:
+      filesystem: {unowned: []}
+    want: ERROR

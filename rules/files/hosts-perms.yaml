@@ -1,0 +1,28 @@
+id: files.hosts-perms
+version: 1
+title: /etc/hosts is owned by root and not writable by others
+title_ko: /etc/hosts는 root 소유, 다른 사용자 쓰기 금지
+severity: high
+description: Checks that /etc/hosts is owned by root with mode 0644 or stricter.
+rationale: Whoever can write /etc/hosts can redirect host names to their own addresses.
+remediation: Run `chown root /etc/hosts` and `chmod 644 /etc/hosts`.
+file:
+  paths: [/etc/hosts]
+  owner: [root]
+  mode: "0644"
+  missing: pass
+tests:
+  - name: stock
+    files:
+      /etc/hosts: {mode: "0644"}
+    want: PASS
+  - name: world writable
+    files:
+      /etc/hosts: {mode: "0666"}
+    want: FAIL
+  - name: /etc unreadable
+    input: unavailable
+    files:
+      /etc: {type: dir, mode: "0755", error: permission}
+      /etc/hosts: {mode: "0644"}
+    want: ERROR
