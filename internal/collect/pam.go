@@ -163,6 +163,8 @@ func (pamCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, 
 	switch s, state := r.passwordHash(p.Stacks["passwd"]); state {
 	case hashDecided:
 		p.Effective["password_hash"] = s
+	case hashNone:
+		// Nothing to report.
 	case hashElsewhere:
 		// Passwords are changed by another module (pam_sss, pam_ldap, ...), or
 		// pam_unix is not certain to run (a sufficient module before it):
