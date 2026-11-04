@@ -160,6 +160,9 @@ var spaces = regexp.MustCompile(`[ \t]+\n`)
 // control and check with its status, reason and evidence, and the
 // collectors that did not see everything. Times, IDs and versions are left
 // out.
+// maxGoldenEvidence is how many evidence lines of a check the goldens keep.
+const maxGoldenEvidence = 8
+
 func summary(r *engine.Result) string {
 	var b strings.Builder
 	o := r.Host.OS
@@ -192,15 +195,21 @@ func summary(r *engine.Result) string {
 				fmt.Fprintf(&b, ": %s", oneLine(k.Reason))
 			}
 			b.WriteByte('\n')
-			for _, e := range k.Evidence {
+			// The first evidence lines only: a long list (every unit file of a
+			// directory) differs between architectures, and its length is not
+			// what the golden is for.
+			for i, e := range k.Evidence {
+				if i == maxGoldenEvidence {
+					break
+				}
 				fmt.Fprintf(&b, "    - %s", oneLine(e.Text))
 				if e.Source != "" {
 					fmt.Fprintf(&b, "  [%s]", e.Source)
 				}
 				b.WriteByte('\n')
 			}
-			if k.EvidenceOmitted > 0 {
-				fmt.Fprintf(&b, "    - …and %d more\n", k.EvidenceOmitted)
+			if len(k.Evidence) > maxGoldenEvidence || k.EvidenceOmitted > 0 {
+				b.WriteString("    - …\n")
 			}
 		}
 	}

@@ -75,15 +75,7 @@ U-09 MANUAL
     - wheel (gid 10)
     - cdrom (gid 11)
     - man (gid 15)
-    - dialout (gid 18)
-    - floppy (gid 19)
-    - games (gid 20)
-    - tape (gid 33)
-    - video (gid 39)
-    - lock (gid 54)
-    - audio (gid 63)
-    - utmp (gid 22)
-    - utempter (gid 35)
+    - …
 
 U-10 PASS
   accounts.unique-uids PASS
@@ -126,13 +118,7 @@ U-17 PASS
     - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
     - /etc/systemd/system/*.service: no matching files  [/etc/systemd/system/*.service]
     - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
-    - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
-    - /usr/lib/systemd/system/dnf-makecache.service: root:root 0644  [/usr/lib/systemd/system/dnf-makecache.service]
-    - /usr/lib/systemd/system/fstrim.service: root:root 0644  [/usr/lib/systemd/system/fstrim.service]
-    - /usr/lib/systemd/system/nis-domainname.service: root:root 0644  [/usr/lib/systemd/system/nis-domainname.service]
-    - /usr/lib/systemd/system/pam_namespace.service: root:root 0644  [/usr/lib/systemd/system/pam_namespace.service]
-    - /usr/lib/systemd/system/rdisc.service: root:root 0644  [/usr/lib/systemd/system/rdisc.service]
-    - /usr/lib/systemd/system/rpmdb-rebuild.service: root:root 0644  [/usr/lib/systemd/system/rpmdb-rebuild.service]
+    - …
 
 U-18 PASS
   files.shadow-perms PASS
@@ -169,10 +155,7 @@ U-23 MANUAL
     - /usr/bin/su 4755 root
     - /usr/bin/umount 4755 root
     - /usr/bin/write 2755 root
-    - /usr/libexec/utempter/utempter 2711 root
-    - /usr/sbin/pam_timestamp_check 4755 root
-    - /usr/sbin/unix_chkpwd 4755 root
-    - /usr/sbin/userhelper 4711 root
+    - …
 
 U-24 PASS
   homes.startup-files PASS
@@ -336,15 +319,7 @@ U-65 FAIL
     - services.units["chrony.service"].enabled: not set
     - services.units["chrony.service"].masked: not set
     - services.units["chronyd.service"].enabled: not set
-    - services.units["chronyd.service"].masked: not set
-    - services.units["ntp.service"].enabled: not set
-    - services.units["ntp.service"].masked: not set
-    - services.units["ntpd.service"].enabled: not set
-    - services.units["ntpd.service"].masked: not set
-    - services.units["ntpsec.service"].enabled: not set
-    - services.units["ntpsec.service"].masked: not set
-    - services.units["systemd-timesyncd.service"].enabled: not set
-    - services.units["systemd-timesyncd.service"].masked: not set
+    - …
   services.review-time-sync NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"])
     - services.started = []
 

@@ -74,21 +74,7 @@ U-09 MANUAL
     - wheel (gid 10)
     - cdrom (gid 11)
     - man (gid 15)
-    - dialout (gid 18)
-    - floppy (gid 19)
-    - games (gid 20)
-    - tape (gid 33)
-    - video (gid 39)
-    - lock (gid 54)
-    - audio (gid 63)
-    - clock (gid 103)
-    - utmp (gid 22)
-    - input (gid 104)
-    - kvm (gid 36)
-    - render (gid 105)
-    - sgx (gid 106)
-    - systemd-journal (gid 190)
-    - utempter (gid 35)
+    - …
 
 U-10 PASS
   accounts.unique-uids PASS
@@ -131,49 +117,7 @@ U-17 PASS
     - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
     - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
     - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
-    - /etc/systemd/system/console-getty.service: masked (a symbolic link to /dev/null)  [/etc/systemd/system/console-getty.service]
-    - /etc/systemd/system/dbus.service: root:root 0644  [/etc/systemd/system/dbus.service]
-    - /etc/systemd/system/systemd-logind.service: masked (a symbolic link to /dev/null)  [/etc/systemd/system/systemd-logind.service]
-    - /etc/systemd/system/systemd-remount-fs.service: masked (a symbolic link to /dev/null)  [/etc/systemd/system/systemd-remount-fs.service]
-    - /usr/lib/systemd/system/autovt@.service: root:root 0644  [/usr/lib/systemd/system/autovt@.service]
-    - /usr/lib/systemd/system/capsule@.service: root:root 0644  [/usr/lib/systemd/system/capsule@.service]
-    - /usr/lib/systemd/system/chrony-wait.service: root:root 0644  [/usr/lib/systemd/system/chrony-wait.service]
-    - /usr/lib/systemd/system/chronyd-restricted.service: root:root 0644  [/usr/lib/systemd/system/chronyd-restricted.service]
-    - /usr/lib/systemd/system/chronyd.service: root:root 0644  [/usr/lib/systemd/system/chronyd.service]
-    - /usr/lib/systemd/system/console-getty.service: root:root 0644  [/usr/lib/systemd/system/console-getty.service]
-    - /usr/lib/systemd/system/container-getty@.service: root:root 0644  [/usr/lib/systemd/system/container-getty@.service]
-    - /usr/lib/systemd/system/dbus-broker.service: root:root 0644  [/usr/lib/systemd/system/dbus-broker.service]
-    - /usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service]
-    - /usr/lib/systemd/system/dbus-org.freedesktop.locale1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.locale1.service]
-    - /usr/lib/systemd/system/dbus-org.freedesktop.login1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.login1.service]
-    - /usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service]
-    - /usr/lib/systemd/system/debug-shell.service: root:root 0644  [/usr/lib/systemd/system/debug-shell.service]
-    - /usr/lib/systemd/system/dnf-makecache.service: root:root 0644  [/usr/lib/systemd/system/dnf-makecache.service]
-    - /usr/lib/systemd/system/dnf-system-upgrade-cleanup.service: root:root 0644  [/usr/lib/systemd/system/dnf-system-upgrade-cleanup.service]
-    - /usr/lib/systemd/system/dnf-system-upgrade.service: root:root 0644  [/usr/lib/systemd/system/dnf-system-upgrade.service]
-    - /usr/lib/systemd/system/emergency.service: root:root 0644  [/usr/lib/systemd/system/emergency.service]
-    - /usr/lib/systemd/system/fips-crypto-policy-overlay.service: root:root 0644  [/usr/lib/systemd/system/fips-crypto-policy-overlay.service]
-    - /usr/lib/systemd/system/fstrim.service: root:root 0644  [/usr/lib/systemd/system/fstrim.service]
-    - /usr/lib/systemd/system/getty@.service: root:root 0644  [/usr/lib/systemd/system/getty@.service]
-    - /usr/lib/systemd/system/ldconfig.service: root:root 0644  [/usr/lib/systemd/system/ldconfig.service]
-    - /usr/lib/systemd/system/modprobe@.service: root:root 0644  [/usr/lib/systemd/system/modprobe@.service]
-    - /usr/lib/systemd/system/nis-domainname.service: root:root 0644  [/usr/lib/systemd/system/nis-domainname.service]
-    - /usr/lib/systemd/system/pam_namespace.service: root:root 0644  [/usr/lib/systemd/system/pam_namespace.service]
-    - /usr/lib/systemd/system/rc-local.service: root:root 0644  [/usr/lib/systemd/system/rc-local.service]
-    - /usr/lib/systemd/system/rescue.service: root:root 0644  [/usr/lib/systemd/system/rescue.service]
-    - /usr/lib/systemd/system/rpmdb-migrate.service: root:root 0644  [/usr/lib/systemd/system/rpmdb-migrate.service]
-    - /usr/lib/systemd/system/rpmdb-rebuild.service: root:root 0644  [/usr/lib/systemd/system/rpmdb-rebuild.service]
-    - /usr/lib/systemd/system/serial-getty@.service: root:root 0644  [/usr/lib/systemd/system/serial-getty@.service]
-    - /usr/lib/systemd/system/ssh-host-keys-migration.service: root:root 0644  [/usr/lib/systemd/system/ssh-host-keys-migration.service]
-    - /usr/lib/systemd/system/sshd-keygen@.service: root:root 0644  [/usr/lib/systemd/system/sshd-keygen@.service]
-    - /usr/lib/systemd/system/sshd.service: root:root 0644  [/usr/lib/systemd/system/sshd.service]
-    - /usr/lib/systemd/system/sshd@.service: root:root 0644  [/usr/lib/systemd/system/sshd@.service]
-    - /usr/lib/systemd/system/system-update-cleanup.service: root:root 0644  [/usr/lib/systemd/system/system-update-cleanup.service]
-    - /usr/lib/systemd/system/systemd-ask-password-console.service: root:root 0644  [/usr/lib/systemd/system/systemd-ask-password-console.service]
-    - /usr/lib/systemd/system/systemd-ask-password-wall.service: root:root 0644  [/usr/lib/systemd/system/systemd-ask-password-wall.service]
-    - /usr/lib/systemd/system/systemd-battery-check.service: root:root 0644  [/usr/lib/systemd/system/systemd-battery-check.service]
-    - /usr/lib/systemd/system/systemd-boot-check-no-failures.service: root:root 0644  [/usr/lib/systemd/system/systemd-boot-check-no-failures.service]
-    - …and 37 more
+    - …
 
 U-18 PASS
   files.shadow-perms PASS
@@ -210,11 +154,7 @@ U-23 MANUAL
     - /usr/bin/newgrp 4755 root
     - /usr/bin/passwd 4755 root
     - /usr/bin/su 4755 root
-    - /usr/bin/umount 4755 root
-    - /usr/bin/write 2755 root
-    - /usr/libexec/utempter/utempter 2711 root
-    - /usr/sbin/pam_timestamp_check 4755 root
-    - /usr/sbin/unix_chkpwd 4755 root
+    - …
 
 U-24 PASS
   homes.startup-files PASS
@@ -378,15 +318,7 @@ U-65 MANUAL
     - services.units["chrony.service"].enabled: not set
     - services.units["chrony.service"].masked: not set
     - services.units["chronyd.service"].enabled = true
-    - services.units["chronyd.service"].masked = false
-    - services.units["ntp.service"].enabled: not set
-    - services.units["ntp.service"].masked: not set
-    - services.units["ntpd.service"].enabled: not set
-    - services.units["ntpd.service"].masked: not set
-    - services.units["ntpsec.service"].enabled: not set
-    - services.units["ntpsec.service"].masked: not set
-    - services.units["systemd-timesyncd.service"].enabled: not set
-    - services.units["systemd-timesyncd.service"].masked: not set
+    - …
   services.review-time-sync MANUAL: Check that the time service uses your approved servers (chrony.conf, ntp.conf or timesyncd.conf).
     - chronyd.service (unit)
 
