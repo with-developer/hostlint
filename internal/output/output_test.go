@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -175,5 +176,77 @@ func TestTableEscapesHostText(t *testing.T) {
 		if got := oneLine(tt.in); got != tt.want {
 			t.Errorf("oneLine(%q) = %q, want %q", tt.in, got, tt.want)
 		}
+	}
+}
+
+// A failed render leaves an earlier report alone, and a link at the path is
+// replaced instead of followed.
+func TestWriteFileIsAtomicAndDoesNotFollowLinks(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "report.json")
+	if err := os.WriteFile(path, []byte("earlier report"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFile(path, sampleResult(), "yaml", Options{}); err == nil {
+		t.Fatal("unknown format accepted")
+	}
+	if data, _ := os.ReadFile(path); string(data) != "earlier report" {
+		t.Errorf("report after a failed render = %q", data)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+		t.Errorf("files left in the directory: %v", entries)
+	}
+
+	victim := filepath.Join(dir, "victim")
+	if err := os.WriteFile(victim, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link.json")
+	if err := os.Symlink(victim, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFile(link, sampleResult(), "json", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if data, _ := os.ReadFile(victim); string(data) != "keep" {
+		t.Errorf("the link's target was written: %q", data)
+	}
+	if fi, err := os.Lstat(link); err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm() != 0o644 {
+		t.Errorf("report: %v, %v", fi, err)
+	}
+}
+
+// File paths in SARIF locations are valid URIs.
+func TestSARIFLocationEscapesPaths(t *testing.T) {
+	locs := sarifLocations([]engine.Evidence{{Source: "/etc/sudoers.d/my file#1:3"}, {Source: "/etc/ssh/sshd_config"}, {Source: "not a path"}})
+	if len(locs) != 2 {
+		t.Fatalf("locations = %+v", locs)
+	}
+	if got := locs[0].PhysicalLocation.ArtifactLocation.URI; got != "file:///etc/sudoers.d/my%20file%231" {
+		t.Errorf("uri = %q", got)
+	}
+	if r := locs[0].PhysicalLocation.Region; r == nil || r.StartLine != 3 {
+		t.Errorf("region = %+v", r)
+	}
+	if got := locs[1].PhysicalLocation.ArtifactLocation.URI; got != "file:///etc/ssh/sshd_config" || locs[1].PhysicalLocation.Region != nil {
+		t.Errorf("uri = %q, region %+v", got, locs[1].PhysicalLocation.Region)
+	}
+}
+
+// Evidence the engine capped is announced even when few items were kept.
+func TestTableNotesOmittedEvidence(t *testing.T) {
+	res := sampleResult()
+	for i := range res.Checks {
+		if res.Checks[i].Status == engine.StatusFail {
+			res.Checks[i].Evidence = res.Checks[i].Evidence[:min(1, len(res.Checks[i].Evidence))]
+			res.Checks[i].EvidenceOmitted = 40
+		}
+	}
+	var b bytes.Buffer
+	if err := Write(&b, res, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "… and 40 more") && !strings.Contains(b.String(), "… and 41 more") {
+		t.Errorf("no note about omitted evidence:\n%s", b.String())
 	}
 }

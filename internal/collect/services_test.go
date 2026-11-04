@@ -265,3 +265,57 @@ func TestServicesStarted(t *testing.T) {
 		t.Errorf("partial %v", f.Partial)
 	}
 }
+
+// systemd splits ExecStart on any white space, joins continued lines, and an
+// empty assignment resets the earlier ones.
+func TestExecStartForms(t *testing.T) {
+	for name, unit := range map[string]string{
+		"tab":          "[Service]\nExecStart=/usr/sbin/in.telnetd\t-h\n",
+		"continuation": "[Service]\nExecStart=\\\n  /usr/sbin/in.telnetd -h\n",
+		"reset":        "[Service]\nExecStart=/bin/false\nExecStart=\nExecStart=/usr/sbin/in.telnetd -h\n",
+		"prefix":       "[Service]\nExecStart=-@/usr/sbin/in.telnetd telnetd\n",
+	} {
+		if got := execStart([]byte(unit)); got != "/usr/sbin/in.telnetd" {
+			t.Errorf("%s: execStart = %q", name, got)
+		}
+	}
+}
+
+// An inetd entry may be continued on the next line or end in a comment.
+func TestServicesInetdContinuation(t *testing.T) {
+	conf := "telnet stream tcp nowait root \\\n  /usr/sbin/tcpd in.telnetd # old\n# shell stream tcp nowait root /usr/sbin/in.rshd in.rshd\nlogin stream tcp nowait root /usr/sbin/in.rlogind in.rlogind\n"
+	s, _, _ := servicesFacts(t, hostfs.NewMemFS().AddFile(inetdConf, conf, 0o644, 0, 0))
+	if len(s.Inetd) != 2 || s.Inetd[0].Name != "telnet" || s.Inetd[0].Server != "/usr/sbin/tcpd" || s.Inetd[0].Args != "in.telnetd" || s.Inetd[0].Source != inetdConf+":1" || s.Inetd[1].Name != "login" {
+		t.Errorf("inetd = %+v", s.Inetd)
+	}
+}
+
+// A section written on one line is read as a section.
+func TestServicesXinetdOneLine(t *testing.T) {
+	conf := "service telnet { disable = yes }\nservice shell { server = /usr/sbin/in.rshd\n disable = no }\nservice login\n{\n server = /usr/sbin/in.rlogind }\n"
+	s, _, _ := servicesFacts(t, hostfs.NewMemFS().AddFile("/etc/xinetd.conf", conf, 0o644, 0, 0))
+	got := map[string]XinetdService{}
+	for _, x := range s.Xinetd {
+		got[x.Name] = x
+	}
+	if len(got) != 3 || !got["telnet"].Disabled || got["shell"].Disabled || got["shell"].Settings["server"] != "/usr/sbin/in.rshd" || got["login"].Settings["server"] != "/usr/sbin/in.rlogind" {
+		t.Errorf("xinetd = %+v", s.Xinetd)
+	}
+}
+
+// A .wants link to a unit file of another name, or to nothing, is read as
+// the link says.
+func TestServicesWantsLinks(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/usr/lib/systemd/system/telnet-real.service", "[Service]\nExecStart=/usr/sbin/in.telnetd\n", 0o644, 0, 0).
+		AddDir("/etc/systemd/system/multi-user.target.wants", 0o755, 0, 0).
+		AddSymlink("/etc/systemd/system/multi-user.target.wants/telnet.service", "/usr/lib/systemd/system/telnet-real.service").
+		AddSymlink("/etc/systemd/system/multi-user.target.wants/ghost.service", "/usr/lib/systemd/system/ghost.service")
+	s, _, _ := servicesFacts(t, m)
+	if u := s.Units["telnet.service"]; !u.Enabled || u.AliasOf != "telnet-real.service" {
+		t.Errorf("telnet.service = %+v, want an enabled alias of telnet-real.service", u)
+	}
+	if u := s.Units["ghost.service"]; !u.Enabled {
+		t.Errorf("ghost.service = %+v", u)
+	}
+}

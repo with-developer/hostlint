@@ -358,7 +358,12 @@ func (r *serviceReader) units() map[string]Unit {
 			if !isUnitName(name) {
 				continue
 			}
-			u := units[name]
+			u, known := units[name]
+			if !known && e.IsSymlink() {
+				// A link to a unit file of another name, or to nothing: what
+				// it points at is what the unit is.
+				u = r.unitFile(e)
+			}
 			if !u.Enabled {
 				u.Enabled, u.Source = true, e.Path
 			}
@@ -407,8 +412,9 @@ func (r *serviceReader) unitFile(e hostfs.FileInfo) Unit {
 // execStart returns the program of the first ExecStart= line of a service
 // unit, without systemd's prefixes (-, @, +, !, :).
 func execStart(data []byte) string {
-	section := ""
-	for line := range strings.Lines(string(data)) {
+	section, prog := "", ""
+	// A line ending in a backslash continues on the next one.
+	for line := range strings.Lines(strings.ReplaceAll(string(data), "\\\n", " ")) {
 		line = strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(line, "["):
@@ -420,12 +426,15 @@ func execStart(data []byte) string {
 				continue
 			}
 			value = strings.TrimLeft(strings.TrimSpace(value), "-@+!:")
-			if prog, _, _ := strings.Cut(value, " "); prog != "" {
-				return prog
+			switch f := strings.Fields(value); {
+			case len(f) == 0:
+				prog = "" // an empty assignment resets the earlier ones
+			case prog == "":
+				prog = f[0]
 			}
 		}
 	}
-	return ""
+	return prog
 }
 
 // templateFile returns the file of an instance's template unit
@@ -484,15 +493,25 @@ func (r *serviceReader) inetd() []InetdService {
 		if !ok {
 			continue
 		}
+		// A line ending in a backslash continues on the next one; the entry is
+		// reported at the line it starts on.
 		sc := bufio.NewScanner(bytes.NewReader(data))
 		for line := 1; sc.Scan(); line++ {
-			f := strings.Fields(sc.Text())
+			text, start := sc.Text(), line
+			for strings.HasSuffix(text, `\`) && sc.Scan() {
+				line++
+				text = strings.TrimSuffix(text, `\`) + " " + sc.Text()
+			}
+			if i := strings.Index(text, " #"); i >= 0 {
+				text = text[:i] // a trailing comment
+			}
+			f := strings.Fields(text)
 			if len(f) < 6 || strings.HasPrefix(f[0], "#") {
 				continue
 			}
 			out = append(out, InetdService{
 				Name: f[0], SocketType: f[1], Protocol: f[2], User: f[4], Server: f[5],
-				Args: strings.Join(f[6:], " "), Source: fmt.Sprintf("%s:%d", file, line),
+				Args: strings.Join(f[6:], " "), Source: fmt.Sprintf("%s:%d", file, start),
 			})
 		}
 	}
@@ -549,14 +568,31 @@ type xinetdParser struct {
 // parse reads "service <name> { attr = value }" and "defaults { ... }"
 // sections and includedir lines.
 func (x *xinetdParser) parse(file string, data []byte) {
-	var cur *XinetdService
-	var inDefaults, inSection bool
+	var state xinetdState
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	for line := 1; sc.Scan(); line++ {
 		text := strings.TrimSpace(sc.Text())
 		if i := strings.Index(text, "#"); i >= 0 {
 			text = strings.TrimSpace(text[:i])
 		}
+		// A brace is a statement of its own: "service a { disable = yes }"
+		// may share one line.
+		for _, stmt := range splitBraces(text) {
+			x.statement(stmt, file, line, &state)
+		}
+	}
+}
+
+// xinetdState is where the parser is in the file.
+type xinetdState struct {
+	cur                   *XinetdService
+	inDefaults, inSection bool
+}
+
+func (x *xinetdParser) statement(text, file string, line int, st *xinetdState) {
+	cur, inDefaults, inSection := st.cur, st.inDefaults, st.inSection
+	defer func() { st.cur, st.inDefaults, st.inSection = cur, inDefaults, inSection }()
+	{
 		f := strings.Fields(text)
 		switch {
 		case len(f) == 0:
@@ -606,4 +642,24 @@ func xinetdAttr(text string) (attr, op string, values []string) {
 		attr, op = attr[:len(attr)-1], string(c)+"="
 	}
 	return strings.TrimSpace(attr), op, strings.Fields(text[i+1:])
+}
+
+// splitBraces cuts a line at its braces: "service a { b = c }" becomes
+// "service a", "{", "b = c", "}".
+func splitBraces(text string) []string {
+	var out []string
+	start := 0
+	for i := 0; i < len(text); i++ {
+		if text[i] == '{' || text[i] == '}' {
+			if s := strings.TrimSpace(text[start:i]); s != "" {
+				out = append(out, s)
+			}
+			out = append(out, text[i:i+1])
+			start = i + 1
+		}
+	}
+	if s := strings.TrimSpace(text[start:]); s != "" {
+		out = append(out, s)
+	}
+	return out
 }

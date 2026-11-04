@@ -3,6 +3,7 @@ package collect
 import (
 	"context"
 	"io/fs"
+	"slices"
 	"strings"
 	"testing"
 
@@ -99,5 +100,32 @@ func TestFilesystemNoPasswd(t *testing.T) {
 	f := collectFS(t, hostfs.NewTestHost(m, nil, false))
 	if len(f.Unknown) != 1 || f.Unknown[0] != "unowned" || len(f.Value.(*Filesystem).Unowned) != 0 {
 		t.Errorf("unknown %v, unowned %v", f.Unknown, f.Value.(*Filesystem).Unowned)
+	}
+}
+
+// The last mount on a point decides whether it is walked.
+func TestFilesystemHiddenMounts(t *testing.T) {
+	m := fsTree().AddFile("/data/set", "", 0o4755, 0, 0)
+	for name, mounts := range map[string][]hostfs.Mount{
+		"local over network": {{Path: "/data", Type: "nfs4"}, {Path: "/data", Type: "ext4"}},
+		"network over local": {{Path: "/data", Type: "ext4"}, {Path: "/data", Type: "nfs4"}},
+	} {
+		h := hostfs.NewTestHost(m, nil, false)
+		h.Mounts = mounts
+		got := collectFS(t, h).Value.(*Filesystem)
+		walked := strings.Contains(paths(got.SetID), "/data/set")
+		if want := name == "local over network"; walked != want {
+			t.Errorf("%s: /data walked %v, want %v", name, walked, want)
+		}
+	}
+}
+
+// A walk of /dev cut short makes dev_files partial, not empty.
+func TestFilesystemDevInterrupted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	f, err := filesystemCollector{}.Collect(ctx, hostfs.NewTestHost(fsTree(), nil, false))
+	if err != nil || !slices.Contains(f.Partial, "dev_files") {
+		t.Errorf("partial %v, err %v; want dev_files partial", f.Partial, err)
 	}
 }

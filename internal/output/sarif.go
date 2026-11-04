@@ -3,6 +3,7 @@ package output
 import (
 	"encoding/json"
 	"io"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -129,12 +130,16 @@ func sarifLocations(evidence []engine.Evidence) []sarifLocation {
 			continue
 		}
 		seen[src] = true
-		loc := sarifLocation{PhysicalLocation: sarifPhysical{ArtifactLocation: sarifArtifact{URI: "file://" + src}}}
+		file, line := src, 0
 		if i := strings.LastIndex(src, ":"); i > 0 {
-			if line, err := strconv.Atoi(src[i+1:]); err == nil {
-				loc.PhysicalLocation.ArtifactLocation.URI = "file://" + src[:i]
-				loc.PhysicalLocation.Region = &sarifRegion{StartLine: line}
+			if n, err := strconv.Atoi(src[i+1:]); err == nil {
+				file, line = src[:i], n
 			}
+		}
+		// A path with a space, "#", "%" or "?" must be escaped to be a URI.
+		loc := sarifLocation{PhysicalLocation: sarifPhysical{ArtifactLocation: sarifArtifact{URI: (&url.URL{Scheme: "file", Path: file}).String()}}}
+		if line > 0 {
+			loc.PhysicalLocation.Region = &sarifRegion{StartLine: line}
 		}
 		locs = append(locs, loc)
 	}
