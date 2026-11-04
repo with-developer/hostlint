@@ -49,7 +49,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-34 | high | The finger service is off (finger 서비스 미사용) | [`services.no-finger`](#servicesno-finger) |
 | U-35 | high | No anonymous access to shared files (공유 서비스 익명 접근 제한) | [`services.review-anonymous-sharing`](#servicesreview-anonymous-sharing) |
 | U-36 | high | The r-services are off (r 계열 서비스 미사용) | [`services.no-r-services`](#servicesno-r-services) |
-| U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool) |
+| U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool), [`files.cron-root-spool`](#filescron-root-spool) |
 | U-38 | high | Traffic-amplifying services are off (DoS 공격에 취약한 서비스 미사용) | [`services.no-dos-prone`](#servicesno-dos-prone) |
 | U-39 | high | The NFS server is off unless needed (NFS 서버 미사용) | [`services.no-nfs-server`](#servicesno-nfs-server) |
 | U-40 | high | NFS exports are restricted (NFS 접근 통제) | [`services.review-nfs-exports`](#servicesreview-nfs-exports) |
@@ -361,6 +361,16 @@ Checks that /etc/crontab, /etc/cron.d/*, and the cron and at allow and deny file
 
 **Fix.** Run `chown root` and `chmod 640` on each listed file.
 
+#### `files.cron-root-spool`
+
+Root's crontab is root's and private (root의 crontab은 root 소유이며 root만 읽고 쓸 수 있음) — severity high, reads file metadata.
+
+Checks that root's crontab (/var/spool/cron/crontabs/root on Debian and Ubuntu, /var/spool/cron/root on the RHEL family) is owned by root and can be read and written by root only (mode 0600 or stricter).
+
+**Why.** Whoever can change root's crontab runs commands as root.
+
+**Fix.** Run `chown root` and `chmod 600` on the listed crontab.
+
 #### `files.cron-scripts`
 
 Scheduled script directories are owned by root and not writable by others (cron 스크립트 디렉터리는 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
@@ -375,7 +385,7 @@ Checks that the scripts in /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly a
 
 Users' crontabs are private (사용자 crontab은 본인만 읽고 쓸 수 있음) — severity high, reads file metadata.
 
-Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) and root's crontab in /var/spool/cron (RHEL family) can be read and written by their owner only (mode 0600). Each belongs to the user whose jobs it holds.
+Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) can be read and written by their owner only (mode 0600 or stricter). Root's crontab, which must also belong to root, is files.cron-root-spool. Users' crontabs in /var/spool/cron on the RHEL family are not listed yet (a glob there would also match Debian's crontabs directory).
 
 **Why.** A crontab other users can change runs commands as its owner, root's as root.
 

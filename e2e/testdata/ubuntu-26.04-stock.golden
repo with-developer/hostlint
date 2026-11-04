@@ -218,6 +218,8 @@ U-37 FAIL
     - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
   files.cron-spool PASS
     - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-root-spool PASS
+    - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
     - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
 
 U-38 PASS

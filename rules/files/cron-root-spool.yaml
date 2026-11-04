@@ -1,0 +1,37 @@
+id: files.cron-root-spool
+version: 1
+title: Root's crontab is root's and private
+title_ko: root의 crontab은 root 소유이며 root만 읽고 쓸 수 있음
+severity: high
+description: >-
+  Checks that root's crontab (/var/spool/cron/crontabs/root on Debian and Ubuntu,
+  /var/spool/cron/root on the RHEL family) is owned by root and can be read and written by root
+  only (mode 0600 or stricter).
+rationale: Whoever can change root's crontab runs commands as root.
+remediation: Run `chown root` and `chmod 600` on the listed crontab.
+file:
+  paths: [/var/spool/cron/crontabs/root, /var/spool/cron/root]
+  owner: [root]
+  mode: "0600"
+  missing: pass
+tests:
+  - name: private
+    files:
+      /var/spool/cron/root: {mode: "0600"}
+    want: PASS
+  - name: no root crontab
+    files: {}
+    want: PASS
+  - name: writable by a group
+    files:
+      /var/spool/cron/root: {mode: "0660"}
+    want: FAIL
+  - name: owned by a user
+    files:
+      /var/spool/cron/crontabs/root: {mode: "0600", owner: user}
+    want: FAIL
+  - name: spool unreadable
+    input: unavailable
+    files:
+      /var/spool/cron: {type: dir, mode: "0700", error: permission}
+    want: ERROR
