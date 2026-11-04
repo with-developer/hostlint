@@ -130,9 +130,16 @@ func TestScanManyAccounts(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
 		t.Fatalf("not JSON: %v\n%s%s", err, stdout, stderr)
 	}
+	found := false
 	for _, c := range res.Controls {
-		if c.ID == "U-10" && (c.Status != engine.StatusFail) {
-			t.Errorf("U-10 = %s (%s), want FAIL for the shared UID 2000", c.Status, c.Reason)
+		if c.ID == "U-10" {
+			found = true
+			if c.Status != engine.StatusFail {
+				t.Errorf("U-10 = %s (%s), want FAIL for the shared UID 2000", c.Status, c.Reason)
+			}
 		}
+	}
+	if !found {
+		t.Error("no U-10 in the result")
 	}
 }
