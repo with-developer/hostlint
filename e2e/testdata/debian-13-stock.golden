@@ -6,7 +6,7 @@ U-01 NOT_APPLICABLE
     - sshd.present = false
   ssh.match-permit-root-login NOT_APPLICABLE: applies is false: sshd.present
     - sshd.present = false
-  services.review-remote-root-login NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["telnet", "telnetd", "rlogin", "rlogind", "krlogind", "ktelnet"] || s.program.matches("/(in\\.)?(telnetd|rlogind)$|/krlogind$"))
+  services.review-remote-root-login NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["telnet", "telnetd", "rlogin", "rlogind", "krlogind", "ktelnet", "ktelnetd"] || (s.service == "login" && s.kind in ["inetd", "xinetd"]) || s.program.matches("/((in\\.)?(telnetd|rlogind)|k(telnetd|rlogind))$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-02 FAIL
