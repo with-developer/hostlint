@@ -1,6 +1,6 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
 profile kisa-2026 revision 1: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
-collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory]
+collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -11,17 +11,17 @@ U-01 NOT_APPLICABLE
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
 U-02 FAIL
-  accounts.password-min-length ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
-  accounts.password-complexity ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
-  accounts.password-quality-root ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
+  accounts.password-min-length ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
+  accounts.password-complexity ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
+  accounts.password-quality-root ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
   accounts.password-max-age FAIL
     - "99999" (explicit); expected 1–90  [/etc/login.defs:131]
   accounts.password-min-age FAIL
     - "0" (explicit); expected 1–99999  [/etc/login.defs:132]
-  accounts.password-history ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
+  accounts.password-history ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
 
 U-03 ERROR
-  accounts.lockout-threshold ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
+  accounts.lockout-threshold ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
 
 U-04 PASS
   accounts.passwd-no-hashes PASS
@@ -32,7 +32,7 @@ U-05 PASS
   accounts.uid0-only-root PASS
 
 U-06 ERROR
-  accounts.su-wheel-only ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
+  accounts.su-wheel-only ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
 
 U-07 MANUAL
   accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
@@ -67,7 +67,7 @@ U-12 FAIL
   accounts.session-timeout-value PASS
 
 U-13 ERROR
-  accounts.password-hash-method ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory)
+  accounts.password-hash-method ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
   accounts.password-hash-strength PASS
   accounts.passwd-no-hashes PASS
 
