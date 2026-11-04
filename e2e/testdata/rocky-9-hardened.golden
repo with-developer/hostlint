@@ -127,7 +127,53 @@ U-17 PASS
     - /etc/rc.d/init.d/*: no matching files  [/etc/rc.d/init.d/*]
     - /etc/rc.d/rc.local: root:root 0644  [/etc/rc.d/rc.local]
     - /etc/rc.local: root:root 0644  [/etc/rc.local]
+    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
+    - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
+    - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
+    - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
     - /etc/systemd/system/dbus.service: root:root 0644  [/etc/systemd/system/dbus.service]
+    - /usr/lib/systemd/system/autovt@.service: root:root 0644  [/usr/lib/systemd/system/autovt@.service]
+    - /usr/lib/systemd/system/chrony-wait.service: root:root 0644  [/usr/lib/systemd/system/chrony-wait.service]
+    - /usr/lib/systemd/system/chronyd-restricted.service: root:root 0644  [/usr/lib/systemd/system/chronyd-restricted.service]
+    - /usr/lib/systemd/system/chronyd.service: root:root 0644  [/usr/lib/systemd/system/chronyd.service]
+    - /usr/lib/systemd/system/console-getty.service: root:root 0644  [/usr/lib/systemd/system/console-getty.service]
+    - /usr/lib/systemd/system/container-getty@.service: root:root 0644  [/usr/lib/systemd/system/container-getty@.service]
+    - /usr/lib/systemd/system/dbus-broker.service: root:root 0644  [/usr/lib/systemd/system/dbus-broker.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.locale1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.locale1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.login1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.login1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service]
+    - /usr/lib/systemd/system/debug-shell.service: root:root 0644  [/usr/lib/systemd/system/debug-shell.service]
+    - /usr/lib/systemd/system/dnf-makecache.service: root:root 0644  [/usr/lib/systemd/system/dnf-makecache.service]
+    - /usr/lib/systemd/system/emergency.service: root:root 0644  [/usr/lib/systemd/system/emergency.service]
+    - /usr/lib/systemd/system/fstrim.service: root:root 0644  [/usr/lib/systemd/system/fstrim.service]
+    - /usr/lib/systemd/system/getty@.service: root:root 0644  [/usr/lib/systemd/system/getty@.service]
+    - /usr/lib/systemd/system/ldconfig.service: root:root 0644  [/usr/lib/systemd/system/ldconfig.service]
+    - /usr/lib/systemd/system/modprobe@.service: root:root 0644  [/usr/lib/systemd/system/modprobe@.service]
+    - /usr/lib/systemd/system/nis-domainname.service: root:root 0644  [/usr/lib/systemd/system/nis-domainname.service]
+    - /usr/lib/systemd/system/pam_namespace.service: root:root 0644  [/usr/lib/systemd/system/pam_namespace.service]
+    - /usr/lib/systemd/system/rc-local.service: root:root 0644  [/usr/lib/systemd/system/rc-local.service]
+    - /usr/lib/systemd/system/rdisc.service: root:root 0644  [/usr/lib/systemd/system/rdisc.service]
+    - /usr/lib/systemd/system/rescue.service: root:root 0644  [/usr/lib/systemd/system/rescue.service]
+    - /usr/lib/systemd/system/rpmdb-rebuild.service: root:root 0644  [/usr/lib/systemd/system/rpmdb-rebuild.service]
+    - /usr/lib/systemd/system/serial-getty@.service: root:root 0644  [/usr/lib/systemd/system/serial-getty@.service]
+    - /usr/lib/systemd/system/sshd-keygen@.service: root:root 0644  [/usr/lib/systemd/system/sshd-keygen@.service]
+    - /usr/lib/systemd/system/sshd.service: root:root 0644  [/usr/lib/systemd/system/sshd.service]
+    - /usr/lib/systemd/system/sshd@.service: root:root 0644  [/usr/lib/systemd/system/sshd@.service]
+    - /usr/lib/systemd/system/system-update-cleanup.service: root:root 0644  [/usr/lib/systemd/system/system-update-cleanup.service]
+    - /usr/lib/systemd/system/systemd-ask-password-console.service: root:root 0644  [/usr/lib/systemd/system/systemd-ask-password-console.service]
+    - /usr/lib/systemd/system/systemd-ask-password-wall.service: root:root 0644  [/usr/lib/systemd/system/systemd-ask-password-wall.service]
+    - /usr/lib/systemd/system/systemd-boot-check-no-failures.service: root:root 0644  [/usr/lib/systemd/system/systemd-boot-check-no-failures.service]
+    - /usr/lib/systemd/system/systemd-exit.service: root:root 0644  [/usr/lib/systemd/system/systemd-exit.service]
+    - /usr/lib/systemd/system/systemd-firstboot.service: root:root 0644  [/usr/lib/systemd/system/systemd-firstboot.service]
+    - /usr/lib/systemd/system/systemd-halt.service: root:root 0644  [/usr/lib/systemd/system/systemd-halt.service]
+    - /usr/lib/systemd/system/systemd-hostnamed.service: root:root 0644  [/usr/lib/systemd/system/systemd-hostnamed.service]
+    - /usr/lib/systemd/system/systemd-initctl.service: root:root 0644  [/usr/lib/systemd/system/systemd-initctl.service]
+    - /usr/lib/systemd/system/systemd-journal-catalog-update.service: root:root 0644  [/usr/lib/systemd/system/systemd-journal-catalog-update.service]
+    - /usr/lib/systemd/system/systemd-journal-flush.service: root:root 0644  [/usr/lib/systemd/system/systemd-journal-flush.service]
+    - /usr/lib/systemd/system/systemd-journald.service: root:root 0644  [/usr/lib/systemd/system/systemd-journald.service]
+    - /usr/lib/systemd/system/systemd-journald@.service: root:root 0644  [/usr/lib/systemd/system/systemd-journald@.service]
+    - …and 23 more
 
 U-18 PASS
   files.shadow-perms PASS
@@ -249,31 +295,31 @@ U-44 PASS
   services.no-tftp-talk PASS
 
 U-45 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-46 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-47 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-48 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-49 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…
 
 U-52 PASS
@@ -325,6 +371,10 @@ U-64 MANUAL
 U-65 MANUAL
   services.time-sync PASS
     - services.active is empty
+    - services.sysv["chrony"].enabled: not set
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
     - services.units["chrony.service"].enabled: not set
     - services.units["chrony.service"].masked: not set
     - services.units["chronyd.service"].enabled = true

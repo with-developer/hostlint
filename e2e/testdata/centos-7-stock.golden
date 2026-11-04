@@ -124,7 +124,53 @@ U-17 PASS
     - /etc/rc.d/init.d/README: root:root 0644  [/etc/rc.d/init.d/README]
     - /etc/rc.d/rc.local: root:root 0644  [/etc/rc.d/rc.local]
     - /etc/rc.local: root:root 0644  [/etc/rc.local]
+    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
+    - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
     - /etc/systemd/system/*.service: no matching files  [/etc/systemd/system/*.service]
+    - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
+    - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
+    - /usr/lib/systemd/system/autovt@.service: root:root 0644  [/usr/lib/systemd/system/autovt@.service]
+    - /usr/lib/systemd/system/blk-availability.service: root:root 0444  [/usr/lib/systemd/system/blk-availability.service]
+    - /usr/lib/systemd/system/console-getty.service: root:root 0644  [/usr/lib/systemd/system/console-getty.service]
+    - /usr/lib/systemd/system/console-shell.service: root:root 0644  [/usr/lib/systemd/system/console-shell.service]
+    - /usr/lib/systemd/system/container-getty@.service: root:root 0644  [/usr/lib/systemd/system/container-getty@.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.import1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.import1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.locale1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.locale1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.login1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.login1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.machine1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.machine1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service]
+    - /usr/lib/systemd/system/dbus.service: root:root 0644  [/usr/lib/systemd/system/dbus.service]
+    - /usr/lib/systemd/system/debug-shell.service: root:root 0644  [/usr/lib/systemd/system/debug-shell.service]
+    - /usr/lib/systemd/system/dracut-cmdline.service: root:root 0644  [/usr/lib/systemd/system/dracut-cmdline.service]
+    - /usr/lib/systemd/system/dracut-initqueue.service: root:root 0644  [/usr/lib/systemd/system/dracut-initqueue.service]
+    - /usr/lib/systemd/system/dracut-mount.service: root:root 0644  [/usr/lib/systemd/system/dracut-mount.service]
+    - /usr/lib/systemd/system/dracut-pre-mount.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-mount.service]
+    - /usr/lib/systemd/system/dracut-pre-pivot.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-pivot.service]
+    - /usr/lib/systemd/system/dracut-pre-trigger.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-trigger.service]
+    - /usr/lib/systemd/system/dracut-pre-udev.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-udev.service]
+    - /usr/lib/systemd/system/dracut-shutdown.service: root:root 0644  [/usr/lib/systemd/system/dracut-shutdown.service]
+    - /usr/lib/systemd/system/emergency.service: root:root 0644  [/usr/lib/systemd/system/emergency.service]
+    - /usr/lib/systemd/system/fstrim.service: root:root 0644  [/usr/lib/systemd/system/fstrim.service]
+    - /usr/lib/systemd/system/getty@.service: root:root 0644  [/usr/lib/systemd/system/getty@.service]
+    - /usr/lib/systemd/system/halt-local.service: root:root 0644  [/usr/lib/systemd/system/halt-local.service]
+    - /usr/lib/systemd/system/initrd-cleanup.service: root:root 0644  [/usr/lib/systemd/system/initrd-cleanup.service]
+    - /usr/lib/systemd/system/initrd-parse-etc.service: root:root 0644  [/usr/lib/systemd/system/initrd-parse-etc.service]
+    - /usr/lib/systemd/system/initrd-switch-root.service: root:root 0644  [/usr/lib/systemd/system/initrd-switch-root.service]
+    - /usr/lib/systemd/system/initrd-udevadm-cleanup-db.service: root:root 0644  [/usr/lib/systemd/system/initrd-udevadm-cleanup-db.service]
+    - /usr/lib/systemd/system/kmod-static-nodes.service: root:root 0644  [/usr/lib/systemd/system/kmod-static-nodes.service]
+    - /usr/lib/systemd/system/messagebus.service: root:root 0644  [/usr/lib/systemd/system/messagebus.service]
+    - /usr/lib/systemd/system/qemu-guest-agent.service: root:root 0644  [/usr/lib/systemd/system/qemu-guest-agent.service]
+    - /usr/lib/systemd/system/quotaon.service: root:root 0644  [/usr/lib/systemd/system/quotaon.service]
+    - /usr/lib/systemd/system/rc-local.service: root:root 0644  [/usr/lib/systemd/system/rc-local.service]
+    - /usr/lib/systemd/system/rdisc.service: root:root 0644  [/usr/lib/systemd/system/rdisc.service]
+    - /usr/lib/systemd/system/rescue.service: root:root 0644  [/usr/lib/systemd/system/rescue.service]
+    - /usr/lib/systemd/system/serial-getty@.service: root:root 0644  [/usr/lib/systemd/system/serial-getty@.service]
+    - /usr/lib/systemd/system/systemd-ask-password-console.service: root:root 0644  [/usr/lib/systemd/system/systemd-ask-password-console.service]
+    - /usr/lib/systemd/system/systemd-ask-password-wall.service: root:root 0644  [/usr/lib/systemd/system/systemd-ask-password-wall.service]
+    - /usr/lib/systemd/system/systemd-backlight@.service: root:root 0644  [/usr/lib/systemd/system/systemd-backlight@.service]
+    - /usr/lib/systemd/system/systemd-binfmt.service: root:root 0644  [/usr/lib/systemd/system/systemd-binfmt.service]
+    - …and 47 more
 
 U-18 PASS
   files.shadow-perms PASS
@@ -247,31 +293,31 @@ U-44 PASS
   services.no-tftp-talk PASS
 
 U-45 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-46 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-47 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-48 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-49 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-52 PASS
@@ -323,6 +369,10 @@ U-64 MANUAL
 U-65 FAIL
   services.time-sync FAIL
     - services.active is empty
+    - services.sysv["chrony"].enabled: not set
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
     - services.units["chrony.service"].enabled: not set
     - services.units["chrony.service"].masked: not set
     - services.units["chronyd.service"].enabled: not set
@@ -335,7 +385,8 @@ U-65 FAIL
     - services.units["ntpsec.service"].masked: not set
     - services.units["systemd-timesyncd.service"].enabled: not set
     - services.units["systemd-timesyncd.service"].masked: not set
-  services.review-time-sync MANUAL: Check that the time service uses your approved servers (chrony.conf, ntp.conf or timesyncd.conf).
+  services.review-time-sync NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"])
+    - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-66 MANUAL
 

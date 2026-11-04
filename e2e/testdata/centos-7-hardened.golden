@@ -1,12 +1,12 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 1: FAIL 1 MANUAL 11 PASS 37 NOT_APPLICABLE 18
+profile kisa-2026 revision 1: MANUAL 11 PASS 38 NOT_APPLICABLE 18
 
 U-01 PASS
   ssh.permit-root-login PASS
     - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:1]
   ssh.match-permit-root-login PASS
 
-U-02 FAIL
+U-02 PASS
   accounts.password-min-length PASS
     - pam.password_quality.module = "pam_pwquality.so"
     - pam.password_quality.settings.dcredit.value = "-1"
@@ -23,7 +23,7 @@ U-02 FAIL
     - pam.password_quality.settings.minclass.value = "0"
     - pam.password_quality.settings.ocredit.value = "-1"
     - pam.password_quality.settings.ucredit.value = "-1"
-  accounts.password-quality-root FAIL
+  accounts.password-quality-root PASS
     - pam.password_quality.module = "pam_pwquality.so"
     - pam.password_quality.settings.enforcing.value = "1"
   accounts.password-max-age PASS
@@ -124,7 +124,53 @@ U-17 PASS
     - /etc/rc.d/init.d/README: root:root 0644  [/etc/rc.d/init.d/README]
     - /etc/rc.d/rc.local: root:root 0644  [/etc/rc.d/rc.local]
     - /etc/rc.local: root:root 0644  [/etc/rc.local]
+    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
+    - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
     - /etc/systemd/system/*.service: no matching files  [/etc/systemd/system/*.service]
+    - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
+    - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
+    - /usr/lib/systemd/system/autovt@.service: root:root 0644  [/usr/lib/systemd/system/autovt@.service]
+    - /usr/lib/systemd/system/blk-availability.service: root:root 0444  [/usr/lib/systemd/system/blk-availability.service]
+    - /usr/lib/systemd/system/chrony-dnssrv@.service: root:root 0644  [/usr/lib/systemd/system/chrony-dnssrv@.service]
+    - /usr/lib/systemd/system/chrony-wait.service: root:root 0644  [/usr/lib/systemd/system/chrony-wait.service]
+    - /usr/lib/systemd/system/chronyd.service: root:root 0644  [/usr/lib/systemd/system/chronyd.service]
+    - /usr/lib/systemd/system/console-getty.service: root:root 0644  [/usr/lib/systemd/system/console-getty.service]
+    - /usr/lib/systemd/system/console-shell.service: root:root 0644  [/usr/lib/systemd/system/console-shell.service]
+    - /usr/lib/systemd/system/container-getty@.service: root:root 0644  [/usr/lib/systemd/system/container-getty@.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.import1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.import1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.locale1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.locale1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.login1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.login1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.machine1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.machine1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service]
+    - /usr/lib/systemd/system/dbus.service: root:root 0644  [/usr/lib/systemd/system/dbus.service]
+    - /usr/lib/systemd/system/debug-shell.service: root:root 0644  [/usr/lib/systemd/system/debug-shell.service]
+    - /usr/lib/systemd/system/dracut-cmdline.service: root:root 0644  [/usr/lib/systemd/system/dracut-cmdline.service]
+    - /usr/lib/systemd/system/dracut-initqueue.service: root:root 0644  [/usr/lib/systemd/system/dracut-initqueue.service]
+    - /usr/lib/systemd/system/dracut-mount.service: root:root 0644  [/usr/lib/systemd/system/dracut-mount.service]
+    - /usr/lib/systemd/system/dracut-pre-mount.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-mount.service]
+    - /usr/lib/systemd/system/dracut-pre-pivot.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-pivot.service]
+    - /usr/lib/systemd/system/dracut-pre-trigger.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-trigger.service]
+    - /usr/lib/systemd/system/dracut-pre-udev.service: root:root 0644  [/usr/lib/systemd/system/dracut-pre-udev.service]
+    - /usr/lib/systemd/system/dracut-shutdown.service: root:root 0644  [/usr/lib/systemd/system/dracut-shutdown.service]
+    - /usr/lib/systemd/system/emergency.service: root:root 0644  [/usr/lib/systemd/system/emergency.service]
+    - /usr/lib/systemd/system/fstrim.service: root:root 0644  [/usr/lib/systemd/system/fstrim.service]
+    - /usr/lib/systemd/system/getty@.service: root:root 0644  [/usr/lib/systemd/system/getty@.service]
+    - /usr/lib/systemd/system/halt-local.service: root:root 0644  [/usr/lib/systemd/system/halt-local.service]
+    - /usr/lib/systemd/system/initrd-cleanup.service: root:root 0644  [/usr/lib/systemd/system/initrd-cleanup.service]
+    - /usr/lib/systemd/system/initrd-parse-etc.service: root:root 0644  [/usr/lib/systemd/system/initrd-parse-etc.service]
+    - /usr/lib/systemd/system/initrd-switch-root.service: root:root 0644  [/usr/lib/systemd/system/initrd-switch-root.service]
+    - /usr/lib/systemd/system/initrd-udevadm-cleanup-db.service: root:root 0644  [/usr/lib/systemd/system/initrd-udevadm-cleanup-db.service]
+    - /usr/lib/systemd/system/kmod-static-nodes.service: root:root 0644  [/usr/lib/systemd/system/kmod-static-nodes.service]
+    - /usr/lib/systemd/system/messagebus.service: root:root 0644  [/usr/lib/systemd/system/messagebus.service]
+    - /usr/lib/systemd/system/qemu-guest-agent.service: root:root 0644  [/usr/lib/systemd/system/qemu-guest-agent.service]
+    - /usr/lib/systemd/system/quotaon.service: root:root 0644  [/usr/lib/systemd/system/quotaon.service]
+    - /usr/lib/systemd/system/rc-local.service: root:root 0644  [/usr/lib/systemd/system/rc-local.service]
+    - /usr/lib/systemd/system/rdisc.service: root:root 0644  [/usr/lib/systemd/system/rdisc.service]
+    - /usr/lib/systemd/system/rescue.service: root:root 0644  [/usr/lib/systemd/system/rescue.service]
+    - /usr/lib/systemd/system/serial-getty@.service: root:root 0644  [/usr/lib/systemd/system/serial-getty@.service]
+    - /usr/lib/systemd/system/sshd-keygen.service: root:root 0644  [/usr/lib/systemd/system/sshd-keygen.service]
+    - …and 53 more
 
 U-18 PASS
   files.shadow-perms PASS
@@ -248,31 +294,31 @@ U-44 PASS
   services.no-tftp-talk PASS
 
 U-45 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-46 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-47 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-48 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-49 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-52 PASS
@@ -324,6 +370,10 @@ U-64 MANUAL
 U-65 MANUAL
   services.time-sync PASS
     - services.active is empty
+    - services.sysv["chrony"].enabled: not set
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
     - services.units["chrony.service"].enabled: not set
     - services.units["chrony.service"].masked: not set
     - services.units["chronyd.service"].enabled = true

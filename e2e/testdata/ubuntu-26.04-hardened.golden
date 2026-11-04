@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile kisa-2026 revision 1: FAIL 1 MANUAL 11 PASS 35 NOT_APPLICABLE 20
+profile kisa-2026 revision 1: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -89,9 +89,9 @@ U-10 PASS
 U-11 PASS
   accounts.system-account-shells PASS
 
-U-12 FAIL
-  accounts.session-timeout-set FAIL
-    - not set; expected a value matching [1-9][0-9]*
+U-12 PASS
+  accounts.session-timeout-set PASS
+    - "600" (explicit); expected a value matching [1-9][0-9]*  [/etc/profile.d/tmout.sh:1]
   accounts.session-timeout-value PASS
 
 U-13 PASS
@@ -122,7 +122,51 @@ U-17 PASS
     - /etc/rc.d/init.d/*: no matching files  [/etc/rc.d/init.d/*]
     - /etc/rc.d/rc.local: does not exist  [/etc/rc.d/rc.local]
     - /etc/rc.local: does not exist  [/etc/rc.local]
+    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
+    - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
+    - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
+    - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
     - /etc/systemd/system/chronyd.service: root:root 0644  [/etc/systemd/system/chronyd.service]
+    - /usr/lib/systemd/system/apt-daily-upgrade.service: root:root 0644  [/usr/lib/systemd/system/apt-daily-upgrade.service]
+    - /usr/lib/systemd/system/apt-daily.service: root:root 0644  [/usr/lib/systemd/system/apt-daily.service]
+    - /usr/lib/systemd/system/autovt@.service: root:root 0644  [/usr/lib/systemd/system/autovt@.service]
+    - /usr/lib/systemd/system/breakpoint-pre-basic.service: root:root 0644  [/usr/lib/systemd/system/breakpoint-pre-basic.service]
+    - /usr/lib/systemd/system/breakpoint-pre-mount.service: root:root 0644  [/usr/lib/systemd/system/breakpoint-pre-mount.service]
+    - /usr/lib/systemd/system/breakpoint-pre-switch-root.service: root:root 0644  [/usr/lib/systemd/system/breakpoint-pre-switch-root.service]
+    - /usr/lib/systemd/system/breakpoint-pre-udev.service: root:root 0644  [/usr/lib/systemd/system/breakpoint-pre-udev.service]
+    - /usr/lib/systemd/system/capsule@.service: root:root 0644  [/usr/lib/systemd/system/capsule@.service]
+    - /usr/lib/systemd/system/chrony-dnssrv@.service: root:root 0644  [/usr/lib/systemd/system/chrony-dnssrv@.service]
+    - /usr/lib/systemd/system/chrony-wait.service: root:root 0644  [/usr/lib/systemd/system/chrony-wait.service]
+    - /usr/lib/systemd/system/chrony.service: root:root 0644  [/usr/lib/systemd/system/chrony.service]
+    - /usr/lib/systemd/system/console-getty.service: root:root 0644  [/usr/lib/systemd/system/console-getty.service]
+    - /usr/lib/systemd/system/container-getty@.service: root:root 0644  [/usr/lib/systemd/system/container-getty@.service]
+    - /usr/lib/systemd/system/cryptdisks-early.service: masked (a symbolic link to /dev/null)  [/usr/lib/systemd/system/cryptdisks-early.service]
+    - /usr/lib/systemd/system/cryptdisks.service: masked (a symbolic link to /dev/null)  [/usr/lib/systemd/system/cryptdisks.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.hostname1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.locale1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.locale1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.login1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.login1.service]
+    - /usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service: root:root 0644  [/usr/lib/systemd/system/dbus-org.freedesktop.timedate1.service]
+    - /usr/lib/systemd/system/debug-shell.service: root:root 0644  [/usr/lib/systemd/system/debug-shell.service]
+    - /usr/lib/systemd/system/dpkg-db-backup.service: root:root 0644  [/usr/lib/systemd/system/dpkg-db-backup.service]
+    - /usr/lib/systemd/system/e2scrub@.service: root:root 0644  [/usr/lib/systemd/system/e2scrub@.service]
+    - /usr/lib/systemd/system/e2scrub_all.service: root:root 0644  [/usr/lib/systemd/system/e2scrub_all.service]
+    - /usr/lib/systemd/system/e2scrub_fail@.service: root:root 0644  [/usr/lib/systemd/system/e2scrub_fail@.service]
+    - /usr/lib/systemd/system/e2scrub_reap.service: root:root 0644  [/usr/lib/systemd/system/e2scrub_reap.service]
+    - /usr/lib/systemd/system/emergency.service: root:root 0644  [/usr/lib/systemd/system/emergency.service]
+    - /usr/lib/systemd/system/fstrim.service: root:root 0644  [/usr/lib/systemd/system/fstrim.service]
+    - /usr/lib/systemd/system/getty-static.service: root:root 0644  [/usr/lib/systemd/system/getty-static.service]
+    - /usr/lib/systemd/system/getty@.service: root:root 0644  [/usr/lib/systemd/system/getty@.service]
+    - /usr/lib/systemd/system/hwclock.service: masked (a symbolic link to /dev/null)  [/usr/lib/systemd/system/hwclock.service]
+    - /usr/lib/systemd/system/initrd-cleanup.service: root:root 0644  [/usr/lib/systemd/system/initrd-cleanup.service]
+    - /usr/lib/systemd/system/initrd-parse-etc.service: root:root 0644  [/usr/lib/systemd/system/initrd-parse-etc.service]
+    - /usr/lib/systemd/system/initrd-switch-root.service: root:root 0644  [/usr/lib/systemd/system/initrd-switch-root.service]
+    - /usr/lib/systemd/system/initrd-udevadm-cleanup-db.service: root:root 0644  [/usr/lib/systemd/system/initrd-udevadm-cleanup-db.service]
+    - /usr/lib/systemd/system/kmod-static-nodes.service: root:root 0644  [/usr/lib/systemd/system/kmod-static-nodes.service]
+    - /usr/lib/systemd/system/kmod.service: root:root 0644  [/usr/lib/systemd/system/kmod.service]
+    - /usr/lib/systemd/system/ldconfig.service: root:root 0644  [/usr/lib/systemd/system/ldconfig.service]
+    - /usr/lib/systemd/system/modprobe@.service: root:root 0644  [/usr/lib/systemd/system/modprobe@.service]
+    - /usr/lib/systemd/system/motd-news.service: root:root 0644  [/usr/lib/systemd/system/motd-news.service]
+    - …and 107 more
 
 U-18 PASS
   files.shadow-perms PASS
@@ -244,31 +288,31 @@ U-44 PASS
   services.no-tftp-talk PASS
 
 U-45 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-46 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-47 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-48 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-49 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-52 PASS
@@ -320,6 +364,10 @@ U-64 MANUAL
 U-65 MANUAL
   services.time-sync PASS
     - services.active is empty
+    - services.sysv["chrony"].enabled = true
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
     - services.units["chrony.service"].enabled = true
     - services.units["chrony.service"].masked = false
     - services.units["chronyd.service"].enabled = false
