@@ -52,7 +52,7 @@ type ShellValue struct {
 }
 
 var (
-	tmoutRe      = regexp.MustCompile(`(?:^|[;&|\s(])(readonly\s+|export\s+|declare\s+-[a-zA-Z]+\s+|typeset\s+-[a-zA-Z]+\s+)?TMOUT=["']?(\d*)["']?`)
+	tmoutRe      = regexp.MustCompile(`(?:^|[;&|\s(])(readonly\s+|export\s+|declare\s+-[a-zA-Z]+\s+|typeset\s+-[a-zA-Z]+\s+)?TMOUT=["']?([+]?\d*)["']?`)
 	unsetTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s(])unset\s+(?:-v\s+)?(?:\w+\s+)*TMOUT\b`)
 	// A read-only declaration without an assignment.
 	readonlyTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s(])(?:readonly|declare\s+-[a-zA-Z]*r[a-zA-Z]*|typeset\s+-[a-zA-Z]*r[a-zA-Z]*)\s+(?:\w+\s+)*TMOUT\b(?:[^=]|$)`)
@@ -245,7 +245,7 @@ func (s *shellScanner) scanLine(code, src string, cond bool) {
 		if m[2] >= 0 {
 			prefix = code[m[2]:m[3]]
 		}
-		hits = append(hits, hit{m[0], shellEvent{kind: "set", value: code[m[4]:m[5]], readonly: readonlyPrefix(prefix), cond: cond, source: src}})
+		hits = append(hits, hit{m[0], shellEvent{kind: "set", value: decimal(code[m[4]:m[5]]), readonly: readonlyPrefix(prefix), cond: cond, source: src}})
 	}
 	for _, m := range unsetTMOUTRe.FindAllStringIndex(code, -1) {
 		hits = append(hits, hit{m[0], shellEvent{kind: "unset", cond: cond, source: src}})
@@ -566,6 +566,19 @@ func effectiveTMOUT(events []shellEvent) (facts.Setting, bool) {
 		return facts.Setting{}, true
 	}
 	return cur, true
+}
+
+// decimal is the number bash reads from digits with an optional sign and
+// leading zeros: "0600" and "+600" are 600. Anything else is returned as is.
+func decimal(v string) string {
+	d := strings.TrimPrefix(v, "+")
+	if d == "" || strings.Trim(d, "0123456789") != "" {
+		return v
+	}
+	if d = strings.TrimLeft(d, "0"); d == "" {
+		return "0"
+	}
+	return d
 }
 
 var positiveTMOUT = regexp.MustCompile(`^0*[1-9][0-9]*$`)
