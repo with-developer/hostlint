@@ -302,7 +302,6 @@ func TestShellEnvLoopLineNotFullyUnderstood(t *testing.T) {
 		"variable item in a list":        "for i in /etc/profile.d/*.sh $EXTRA; do . $i; done\n",
 		"loop behind &&":                 "[ -d /etc/profile.d ] && for i in /etc/profile.d/*.sh; do . $i; done\n",
 		"loop after then":                "if [ -d /etc/profile.d ]; then for i in /etc/profile.d/*.sh; do . $i; done; fi\n",
-		"list on the next line":          "for i in \\\n  /etc/profile.d/*.sh; do . $i; done\n",
 		"regex with \\d":                 "for i in $(run-parts --list --regex '^\\d+\\.sh$' /etc/profile.d); do . $i; done\n",
 		"regex with a flag group":        "for i in $(run-parts --list --regex '(?i)\\.SH$' /etc/profile.d); do . $i; done\n",
 		"regex with backslash in class":  "for i in $(run-parts --list --regex '^[\\w]+\\.sh$' /etc/profile.d); do . $i; done\n",
@@ -375,5 +374,27 @@ func TestShellEnvLoopNotesHoldNoSourceText(t *testing.T) {
 		if !strings.HasPrefix(note, "/etc/profile:") {
 			t.Errorf("note does not name the file and line: %q", note)
 		}
+	}
+}
+
+// Continued lines are read as one, as bash does: a loop list may continue on
+// the next line, an unrelated for loop must not make the facts incomplete,
+// and a backslash in a comment continues nothing.
+func TestShellEnvContinuedLines(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "for i in \\\n  /etc/profile.d/*.sh; do . $i; done\n"+
+			"for colors in \"$HOME/.a\" \\\n    \"$HOME/.b\"; do\n  [ -e \"$colors\" ] && break\ndone\n"+
+			"# a comment that ends in a backslash \\\nTMOUT=900\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/x.sh", "umask 027\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || !f.Complete {
+		t.Fatalf("complete %v, %v, skipped %v", f.Complete, err, f.Skipped)
+	}
+	env := f.Value.(*ShellEnv)
+	if len(env.Umask) != 1 || env.Umask[0].Value != "027" {
+		t.Errorf("umask %+v, want the 027 of x.sh from the continued loop", env.Umask)
+	}
+	if len(env.TMOUT) != 1 || env.TMOUT[0].Value != "900" || env.TMOUT[0].Source != "/etc/profile:8" {
+		t.Errorf("tmout %+v, want 900 at /etc/profile:8", env.TMOUT)
 	}
 }
