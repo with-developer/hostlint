@@ -1,0 +1,38 @@
+id: files.cron-scripts
+version: 1
+title: Scheduled script directories are owned by root and not writable by others
+title_ko: cron 스크립트 디렉터리는 root 소유, 다른 사용자 쓰기 금지
+severity: high
+description: >-
+  Checks that the scripts in /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly and
+  /etc/cron.monthly are owned by root and writable by no one else (mode 0755 or stricter).
+rationale: These scripts run as root on a schedule; whoever can change one gets root at the next run.
+remediation: Run `chown root` and `chmod go-w` on each listed script.
+file:
+  paths: [/etc/cron.hourly/*, /etc/cron.daily/*, /etc/cron.weekly/*, /etc/cron.monthly/*]
+  owner: [root]
+  mode: "0755"
+  missing: pass
+  no_match: pass
+tests:
+  - name: stock
+    files:
+      /etc/cron.daily/logrotate: {mode: "0755"}
+      /etc/cron.hourly/0anacron: {mode: "0755"}
+    want: PASS
+  - name: no scripts
+    files: {}
+    want: PASS
+  - name: writable by a group
+    files:
+      /etc/cron.daily/backup: {mode: "0775"}
+    want: FAIL
+  - name: owned by a user
+    files:
+      /etc/cron.weekly/report: {mode: "0755", owner: user}
+    want: FAIL
+  - name: directory unreadable
+    input: unavailable
+    files:
+      /etc/cron.daily: {type: dir, mode: "0700", error: permission}
+    want: ERROR

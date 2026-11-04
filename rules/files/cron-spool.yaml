@@ -1,0 +1,38 @@
+id: files.cron-spool
+version: 1
+title: Users' crontabs are private
+title_ko: 사용자 crontab은 본인만 읽고 쓸 수 있음
+severity: high
+description: >-
+  Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) and root's
+  crontab in /var/spool/cron (RHEL family) can be read and written by their owner only (mode
+  0600). Each belongs to the user whose jobs it holds.
+rationale: A crontab other users can change runs commands as its owner, root's as root.
+remediation: Run `chmod 600` on each listed crontab.
+file:
+  paths: [/var/spool/cron/crontabs/*, /var/spool/cron/root]
+  mode: "0600"
+  missing: pass
+  no_match: pass
+tests:
+  - name: private
+    files:
+      /var/spool/cron/crontabs/alice: {mode: "0600", owner: user}
+      /var/spool/cron/root: {mode: "0600"}
+    want: PASS
+  - name: no crontabs
+    files: {}
+    want: PASS
+  - name: readable by others
+    files:
+      /var/spool/cron/crontabs/alice: {mode: "0644", owner: user}
+    want: FAIL
+  - name: root's crontab writable by a group
+    files:
+      /var/spool/cron/root: {mode: "0660"}
+    want: FAIL
+  - name: spool unreadable
+    input: unavailable
+    files:
+      /var/spool/cron/crontabs: {type: dir, mode: "0730", error: permission}
+    want: ERROR

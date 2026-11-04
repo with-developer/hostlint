@@ -214,6 +214,14 @@ U-37 PASS
     - /etc/cron.d/*: no matching files  [/etc/cron.d/*]
     - /etc/cron.deny: does not exist  [/etc/cron.deny]
     - /etc/crontab: does not exist  [/etc/crontab]
+  files.cron-scripts PASS
+    - /etc/cron.daily/*: no matching files  [/etc/cron.daily/*]
+    - /etc/cron.hourly/*: no matching files  [/etc/cron.hourly/*]
+    - /etc/cron.monthly/*: no matching files  [/etc/cron.monthly/*]
+    - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
+  files.cron-spool PASS
+    - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+    - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
 
 U-38 PASS
   services.no-dos-prone PASS

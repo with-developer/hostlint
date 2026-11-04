@@ -202,7 +202,7 @@ controls:
     title: cron and at are restricted
     title_ko: cron·at 사용 제한
     severity: high
-    checks: [files.cron-commands, files.cron-files]
+    checks: [files.cron-commands, files.cron-files, files.cron-scripts, files.cron-spool]
   - id: U-38
     title: Traffic-amplifying services are off
     title_ko: DoS 공격에 취약한 서비스 미사용

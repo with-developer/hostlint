@@ -49,7 +49,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-34 | high | The finger service is off (finger 서비스 미사용) | [`services.no-finger`](#servicesno-finger) |
 | U-35 | high | No anonymous access to shared files (공유 서비스 익명 접근 제한) | [`services.review-anonymous-sharing`](#servicesreview-anonymous-sharing) |
 | U-36 | high | The r-services are off (r 계열 서비스 미사용) | [`services.no-r-services`](#servicesno-r-services) |
-| U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files) |
+| U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool) |
 | U-38 | high | Traffic-amplifying services are off (DoS 공격에 취약한 서비스 미사용) | [`services.no-dos-prone`](#servicesno-dos-prone) |
 | U-39 | high | The NFS server is off unless needed (NFS 서버 미사용) | [`services.no-nfs-server`](#servicesno-nfs-server) |
 | U-40 | high | NFS exports are restricted (NFS 접근 통제) | [`services.review-nfs-exports`](#servicesreview-nfs-exports) |
@@ -360,6 +360,26 @@ Checks that /etc/crontab, /etc/cron.d/*, and the cron and at allow and deny file
 **Why.** These files decide what runs as root on a schedule and who may schedule jobs.
 
 **Fix.** Run `chown root` and `chmod 640` on each listed file.
+
+#### `files.cron-scripts`
+
+Scheduled script directories are owned by root and not writable by others (cron 스크립트 디렉터리는 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
+
+Checks that the scripts in /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly and /etc/cron.monthly are owned by root and writable by no one else (mode 0755 or stricter).
+
+**Why.** These scripts run as root on a schedule; whoever can change one gets root at the next run.
+
+**Fix.** Run `chown root` and `chmod go-w` on each listed script.
+
+#### `files.cron-spool`
+
+Users' crontabs are private (사용자 crontab은 본인만 읽고 쓸 수 있음) — severity high, reads file metadata.
+
+Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) and root's crontab in /var/spool/cron (RHEL family) can be read and written by their owner only (mode 0600). Each belongs to the user whose jobs it holds.
+
+**Why.** A crontab other users can change runs commands as its owner, root's as root.
+
+**Fix.** Run `chmod 600` on each listed crontab.
 
 #### `files.dev-regular-files`
 
