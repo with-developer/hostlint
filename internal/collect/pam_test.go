@@ -617,6 +617,11 @@ func TestPAMPasswordHashUnreachedUnix(t *testing.T) {
 		{"sss first and sufficient", "password sufficient pam_sss.so\npassword required pam_unix.so md5\n", true},
 		{"only sss", "password required pam_sss.so\n", true},
 		{"no password rules", "auth required pam_unix.so\n", false},
+		{"only a pam_unix of another type", "auth required pam_unix.so\npassword requisite pam_deny.so\n", false},
+		{"password changes are denied", "password requisite pam_deny.so\n", false},
+		{"pam_deny before pam_unix", "password requisite pam_deny.so\npassword required pam_unix.so sha512\n", false},
+		{"pam_unix then sss", "password required pam_unix.so sha512\npassword optional pam_sss.so\n", false},
+		{"reached without a hash option", "password required pam_unix.so\n", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

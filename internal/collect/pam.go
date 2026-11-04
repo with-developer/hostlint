@@ -160,12 +160,14 @@ func (pamCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, 
 			p.Effective["su_wheel"] = s
 		}
 	}
-	if s, ok := r.passwordHash(p.Stacks["passwd"]); ok {
+	switch s, state := r.passwordHash(p.Stacks["passwd"]); state {
+	case hashDecided:
 		p.Effective["password_hash"] = s
-	} else if passwordStackWithoutUnix(p.Stacks["passwd"]) {
+	case hashElsewhere:
 		// Passwords are changed by another module (pam_sss, pam_ldap, ...), or
-		// pam_unix is never reached: ENCRYPT_METHOD says nothing about them.
-		r.unknownField("effective.password_hash", "the passwd stack does not reach pam_unix: the hash of new passwords is set elsewhere")
+		// pam_unix is not certain to run (a sufficient module before it):
+		// ENCRYPT_METHOD says nothing about them.
+		r.unknownField("effective.password_hash", "the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere")
 	}
 	f := engine.Facts{Value: p, Complete: len(r.skipped) == 0, Skipped: append(r.skipped, r.notes...)}
 	for field := range r.unknown {
@@ -814,19 +816,37 @@ func suWheel(rules []PAMRule) (facts.Setting, bool) {
 	return facts.Setting{Value: "not restricted: " + why, Explicit: true, Source: wheel[0].Source}, true
 }
 
+// hashState says what is known of the hash of new passwords.
+type hashState int
+
+const (
+	hashNone      hashState = iota // no password rules to speak of (or none that sets a password)
+	hashDecided                    // the hash is known
+	hashElsewhere                  // password rules exist but pam_unix does not certainly run
+)
+
 // passwordHash returns the hash pam_unix uses in the passwd stack: the last
 // hash option of the pam_unix rule that changes the password, or else the
-// first ENCRYPT_METHOD in /etc/login.defs (pam_unix reads it with
-// pam_modutil_search_key).
-func (r *pamReader) passwordHash(rules []PAMRule) (facts.Setting, bool) {
+// first ENCRYPT_METHOD of /etc/login.defs (pam_unix reads it with
+// pam_modutil_search_key). When password rules exist but no pam_unix runs, the
+// hash is set elsewhere (hashElsewhere); rules that only deny or permit say
+// nothing.
+func (r *pamReader) passwordHash(rules []PAMRule) (facts.Setting, hashState) {
 	_, ran := evaluate(rules, "password", func(rule PAMRule) string {
 		if rule.Module == "pam_deny.so" {
 			return "auth_err"
 		}
 		return "success"
 	})
+	setters := false // a password rule that runs, other than pam_deny and pam_permit
 	for i, rule := range rules {
-		if rule.Type != "password" || rule.Module != "pam_unix.so" || !ran[i] {
+		if rule.Type != "password" {
+			continue
+		}
+		if ran[i] && rule.Module != "pam_deny.so" && rule.Module != "pam_permit.so" {
+			setters = true
+		}
+		if rule.Module != "pam_unix.so" || !ran[i] {
 			continue
 		}
 		hash := ""
@@ -836,39 +856,20 @@ func (r *pamReader) passwordHash(rules []PAMRule) (facts.Setting, bool) {
 			}
 		}
 		if hash != "" {
-			return facts.Setting{Value: hash, Explicit: true, Source: rule.Source}, true
+			return facts.Setting{Value: hash, Explicit: true, Source: rule.Source}, hashDecided
 		}
 		conf := r.searchKeyConf("/etc/login.defs", []string{"ENCRYPT_METHOD"})
 		if s, ok := conf["encrypt_method"]; ok {
 			s.Value, s.Explicit = strings.ToLower(s.Value), false
 			s.Source += " (ENCRYPT_METHOD, read by pam_unix)"
-			return s, true
+			return s, hashDecided
 		}
-		return facts.Setting{}, false
+		return facts.Setting{}, hashNone
 	}
-	return facts.Setting{}, false
-}
-
-// passwordStackWithoutUnix reports whether the passwd stack has password rules
-// but none of them is a pam_unix that runs, so pam_unix decides no hash.
-func passwordStackWithoutUnix(rules []PAMRule) bool {
-	_, ran := evaluate(rules, "password", func(rule PAMRule) string {
-		if rule.Module == "pam_deny.so" {
-			return "auth_err"
-		}
-		return "success"
-	})
-	hasRules := false
-	for i, rule := range rules {
-		if rule.Type != "password" {
-			continue
-		}
-		hasRules = true
-		if rule.Module == "pam_unix.so" && ran[i] {
-			return false
-		}
+	if setters {
+		return facts.Setting{}, hashElsewhere
 	}
-	return hasRules
+	return facts.Setting{}, hashNone
 }
 
 // --- Configuration files ----------------------------------------------------------
