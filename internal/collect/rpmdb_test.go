@@ -127,7 +127,8 @@ func FuzzParseRPMHeader(f *testing.F) {
 
 // rpmHeader builds an exported header of string tags: (tag, offset) pairs
 // point into the data.
-func rpmHeader(entries [][2]uint32, data string) []byte {
+func rpmHeader(entries [][2]uint32) []byte {
+	const data = "pkg\x001.0\x002.el9\x00"
 	b := make([]byte, 8, 8+16*len(entries)+len(data))
 	b[3], b[7] = byte(len(entries)), byte(len(data))
 	for _, e := range entries {
@@ -144,16 +145,15 @@ func rpmHeader(entries [][2]uint32, data string) []byte {
 // A header whose tags are missing, empty or point outside it is an error,
 // not a package with an empty version.
 func TestParseRPMHeaderDamaged(t *testing.T) {
-	const data = "pkg\x001.0\x002.el9\x00"
 	ok := [][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 4}, {rpmTagRelease, 8}}
-	if p, err := parseRPMHeader(rpmHeader(ok, data)); err != nil || p.fullVersion() != "1.0-2.el9" {
+	if p, err := parseRPMHeader(rpmHeader(ok)); err != nil || p.fullVersion() != "1.0-2.el9" {
 		t.Fatalf("valid header: %+v, %v", p, err)
 	}
 	for name, h := range map[string][]byte{
-		"offset outside": rpmHeader([][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 4}, {rpmTagRelease, 99}}, data),
-		"no release":     rpmHeader(ok[:2], data),
-		"empty version":  rpmHeader([][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 3}, {rpmTagRelease, 8}}, data),
-		"arch outside":   rpmHeader(append(append([][2]uint32{}, ok...), [2]uint32{rpmTagArch, 500}), data),
+		"offset outside": rpmHeader([][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 4}, {rpmTagRelease, 99}}),
+		"no release":     rpmHeader(ok[:2]),
+		"empty version":  rpmHeader([][2]uint32{{rpmTagName, 0}, {rpmTagVersion, 3}, {rpmTagRelease, 8}}),
+		"arch outside":   rpmHeader(append(append([][2]uint32{}, ok...), [2]uint32{rpmTagArch, 500})),
 	} {
 		if p, err := parseRPMHeader(h); err == nil {
 			t.Errorf("%s: read %+v without an error", name, p)
