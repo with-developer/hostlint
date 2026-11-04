@@ -1,0 +1,5 @@
+# the build context of the hardened images is this directory: send only
+# what the Dockerfile uses
+testdata
+*.go
+*.golden

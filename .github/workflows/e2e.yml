@@ -5,9 +5,10 @@ name: e2e
 on:
   pull_request:
     paths:
-      - "internal/collect/**"
-      - "internal/engine/**"
-      - "internal/hostfs/**"
+      - "internal/**"
+      - "cmd/**"
+      - "go.mod"
+      - "go.sum"
       - "rules/**"
       - "profiles/**"
       - "e2e/**"

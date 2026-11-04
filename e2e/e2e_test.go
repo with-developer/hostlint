@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -90,14 +89,8 @@ func buildHostlint(t *testing.T) string {
 	return dir
 }
 
-// pulls serializes pulls and builds of the same base image.
-var pulls sync.Map
-
 func buildHardened(t *testing.T, name, base string) string {
 	t.Helper()
-	mu, _ := pulls.LoadOrStore(base, &sync.Mutex{})
-	mu.(*sync.Mutex).Lock()
-	defer mu.(*sync.Mutex).Unlock()
 	tag := "hostlint-e2e/" + name + ":hardened"
 	run(t, "docker", "build", "--quiet", "--build-arg", "BASE="+base, "--tag", tag, "--file", "hardened.Dockerfile", ".")
 	return tag
@@ -133,9 +126,18 @@ func run(t *testing.T, name string, args ...string) string {
 	return runInput(t, "", name, args...)
 }
 
+// dockerSlots limits the docker commands that run at once: the subtests run
+// in parallel, and many simultaneous package installs and image pulls
+// exhaust mirrors and registry rate limits.
+var dockerSlots = make(chan struct{}, 4)
+
 // runInput runs a command with stdin and returns its standard output.
 func runInput(t *testing.T, stdin, name string, args ...string) string {
 	t.Helper()
+	if name == "docker" {
+		dockerSlots <- struct{}{}
+		defer func() { <-dockerSlots }()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 	var stdout, stderr bytes.Buffer
