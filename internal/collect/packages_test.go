@@ -48,6 +48,7 @@ Version: 1.0
 
 Package: half
 Status: install reinstreq half-configured
+Architecture: amd64
 Version: 2.0
 Description: a package
  with a long description
@@ -127,5 +128,21 @@ func TestPackagesUnavailable(t *testing.T) {
 				t.Errorf("err = %v, want one mentioning %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// A stanza that cannot be read as installed or not leaves the facts
+// incomplete: the package is unknown, not absent.
+func TestPackagesDpkgDamagedStanza(t *testing.T) {
+	for name, status := range map[string]string{
+		"truncated status": "Package: telnetd\nStatus: install ok\nArchitecture: amd64\n",
+		"no status":        "Package: telnetd\nArchitecture: amd64\n",
+		"no architecture":  "Package: telnetd\nStatus: install ok installed\n",
+	} {
+		h := hostfs.NewTestHost(hostfs.NewMemFS().AddFile(dpkgStatus, status, 0o644, 0, 0), nil, false)
+		f, err := packagesCollector{}.Collect(context.Background(), h)
+		if err != nil || f.Complete || len(f.Skipped) != 1 || !strings.Contains(f.Skipped[0], "/var/lib/dpkg/status:1") {
+			t.Errorf("%s: complete %v, skipped %v, err %v; want one note at the stanza", name, f.Complete, f.Skipped, err)
+		}
 	}
 }
