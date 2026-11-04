@@ -4,7 +4,8 @@ title: A time synchronization service is started
 title_ko: 시각 동기화 서비스 사용
 severity: medium
 description: >-
-  Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled, or running on a live host.
+  Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled (as a unit or an init script),
+  or running on a live host.
   Which servers it uses is for services.review-time-sync.
 rationale: Logs from hosts with drifting clocks cannot be correlated, and time-based protocols fail.
 remediation: Enable a time synchronization service (`systemctl enable --now chronyd`).
@@ -16,7 +17,11 @@ expect: >-
   ("ntpsec.service" in services.units && services.units["ntpsec.service"].enabled && !services.units["ntpsec.service"].masked) ||
   ("systemd-timesyncd.service" in services.units && services.units["systemd-timesyncd.service"].enabled && !services.units["systemd-timesyncd.service"].masked) ||
   "chronyd.service" in services.active || "chrony.service" in services.active || "ntpd.service" in services.active ||
-  "ntp.service" in services.active || "ntpsec.service" in services.active || "systemd-timesyncd.service" in services.active
+  "ntp.service" in services.active || "ntpsec.service" in services.active || "systemd-timesyncd.service" in services.active ||
+  ("chronyd" in services.sysv && services.sysv["chronyd"].enabled && !("chronyd.service" in services.units)) ||
+  ("chrony" in services.sysv && services.sysv["chrony"].enabled && !("chrony.service" in services.units)) ||
+  ("ntpd" in services.sysv && services.sysv["ntpd"].enabled && !("ntpd.service" in services.units)) ||
+  ("ntp" in services.sysv && services.sysv["ntp"].enabled && !("ntp.service" in services.units))
 tests:
   - name: chronyd enabled
     facts:
@@ -29,6 +34,14 @@ tests:
   - name: none
     facts:
       services: {units: {chronyd.service: {enabled: false, file: /usr/lib/systemd/system/chronyd.service}}, active: {}}
+    want: FAIL
+  - name: ntp as an init script
+    facts:
+      services: {units: {}, active: {}, sysv: {ntp: {enabled: true, source: "/etc/rc2.d/S01ntp"}}}
+    want: PASS
+  - name: init script not enabled
+    facts:
+      services: {units: {}, active: {}, sysv: {ntp: {enabled: false, source: "/etc/init.d/ntp"}}}
     want: FAIL
   - name: masked
     facts:

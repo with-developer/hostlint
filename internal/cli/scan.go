@@ -29,7 +29,7 @@ type findingsError struct {
 }
 
 func (e *findingsError) Error() string {
-	return fmt.Sprintf("%d control(s) failed at severity %s or above", e.controls, e.threshold)
+	return fmt.Sprintf("%d control(s) failed or could not be checked at severity %s or above", e.controls, e.threshold)
 }
 
 type scanFlags struct {
@@ -61,7 +61,7 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: "+strings.Join(output.Formats, ", "))
 	fl.StringVarP(&f.output, "output", "o", "", "write the report to this file instead of stdout")
 	fl.StringVar(&f.root, "root", "/", "scan a filesystem mounted at this directory instead of the running system")
-	fl.StringVar(&f.failOn, "fail-on", "low", "exit with status 1 when a control of this severity or higher fails: "+strings.Join(failOnLevels, ", "))
+	fl.StringVar(&f.failOn, "fail-on", "low", "exit with status 1 when a control of this severity or higher fails or could not be checked (ERROR): "+strings.Join(failOnLevels, ", "))
 	fl.StringArrayVar(&f.labels, "label", nil, "add a key=value label to the host in the report (repeatable)")
 	fl.BoolVarP(&f.verbose, "verbose", "v", false, "also list passing and not-applicable controls in the table")
 	fl.StringVar(&f.color, "color", "auto", "color the table: auto, always or never")
@@ -106,6 +106,11 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return err
 	}
+	if f.root != "/" && res.Host.OS.ID == "unknown" {
+		// Without an operating system, absent files would read as passing
+		// checks for a root that was never a system.
+		return fmt.Errorf("--root %s: no operating system found there (no os-release); is it the root of a mounted system?", f.root)
+	}
 
 	opts := output.Options{Verbose: f.verbose, Color: useColor(f.color, f.output, cmd.OutOrStdout())}
 	if f.output != "" {
@@ -137,7 +142,8 @@ func parseLabels(raw []string) (map[string]string, error) {
 	return labels, nil
 }
 
-// failedAtOrAbove counts FAIL controls whose severity reaches threshold.
+// failedAtOrAbove counts FAIL and ERROR controls whose severity reaches
+// threshold: a control that could not be checked is not a pass.
 func failedAtOrAbove(res *engine.Result, threshold string) int {
 	if threshold == "none" {
 		return 0
@@ -145,7 +151,7 @@ func failedAtOrAbove(res *engine.Result, threshold string) int {
 	minRank := engine.Severity(threshold).Rank()
 	n := 0
 	for _, c := range res.Controls {
-		if c.Status == engine.StatusFail && c.Severity.Rank() >= minRank {
+		if (c.Status == engine.StatusFail || c.Status == engine.StatusError) && c.Severity.Rank() >= minRank {
 			n++
 		}
 	}

@@ -4,7 +4,7 @@ title: tftp and talk are not started
 title_ko: tftp, talk 서비스 미사용
 severity: high
 description: >-
-  Lists the ways the tftp, talk and ntalk services is started: enabled units, units running now, init scripts and
+  Lists the ways the tftp, talk and ntalk services are started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
 rationale: >-
   tftp serves files without authentication; talk is an old, unneeded chat service.

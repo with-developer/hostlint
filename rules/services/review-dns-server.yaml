@@ -11,12 +11,12 @@ rationale: >-
 remediation: >-
   Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
 applies: >-
-  services.started.exists(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$"))
+  services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
 manual:
   guidance: >-
     Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
   show: >-
-    services.started.filter(s, s.service in ["named", "bind9", "bind", "unbound", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|unbound|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+    services.started.filter(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:
   - name: not started
     facts:

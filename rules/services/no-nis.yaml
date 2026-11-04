@@ -4,7 +4,7 @@ title: NIS is not used
 title_ko: NIS 서비스 미사용
 severity: high
 description: >-
-  Lists the ways the NIS server and client daemons (ypserv, ypbind, yppasswdd, ypxfrd) is started: enabled units, units running now, init scripts and
+  Lists the ways the NIS server and client daemons (ypserv, ypbind, yppasswdd, ypxfrd) are started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
 rationale: >-
   NIS hands out account data, including password hashes, with weak protection.

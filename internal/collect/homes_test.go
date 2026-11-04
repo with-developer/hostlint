@@ -56,3 +56,29 @@ func TestHomes(t *testing.T) {
 		t.Errorf("complete %v, err %v", f.Complete, err)
 	}
 }
+
+// A startup file linked to /dev/null is blanked, not world-writable; shared
+// homes are looked at once; more startup files are covered.
+func TestHomesNullLinksSharedHomesAndMoreFiles(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/passwd", "alice:x:1000:1000::/home/alice:/bin/bash\n"+
+			"sys1:x:2:2::/var/empty:/usr/sbin/nologin\nsys2:x:3:3::/var/empty:/usr/sbin/nologin\n", 0o644, 0, 0).
+		AddFile("/dev/null", "", 0o666, 0, 0).
+		AddDir("/home/alice", 0o750, 1000, 1000).
+		AddSymlink("/home/alice/.bash_logout", "/dev/null").
+		AddSymlink("/home/alice/.bashrc", "../alice/../../dev/null").
+		AddFile("/home/alice/.tcshrc", "", 0o666, 1000, 1000).
+		AddDir("/var/empty", 0o755, 0, 0).
+		AddFile("/var/empty/.profile", "", 0o644, 0, 0)
+	f, err := homesCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil || !f.Complete {
+		t.Fatalf("complete %v, err %v, skipped %v", f.Complete, err, f.Skipped)
+	}
+	accounts := f.Value.(*Homes).Accounts
+	if n := len(accounts[0].StartupFiles); n != 1 || accounts[0].StartupFiles[0].Path != "/home/alice/.tcshrc" || accounts[0].StartupFiles[0].Mode != "0666" {
+		t.Errorf("alice's startup files = %+v, want only .tcshrc", accounts[0].StartupFiles)
+	}
+	if len(accounts[1].StartupFiles) != 1 || len(accounts[2].StartupFiles) != 1 || accounts[2].Mode != "0755" {
+		t.Errorf("shared home: %+v and %+v", accounts[1], accounts[2])
+	}
+}
