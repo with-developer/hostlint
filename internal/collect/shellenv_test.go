@@ -429,3 +429,14 @@ func TestShellEnvContinuationEdges(t *testing.T) {
 		}
 	}
 }
+
+// A TMOUT bash does not read as a number is no timeout: its value is empty,
+// which the checks report, instead of the digits it starts with.
+func TestShellEnvTMOUTNotANumber(t *testing.T) {
+	for _, v := range []string{"600s", "0x10", "+", "99999999999999999999", "$((10*60))"} {
+		env := shellEnv(t, hostfs.NewMemFS().AddFile("/etc/profile", "TMOUT="+v+"\n", 0o644, 0, 0))
+		if len(env.TMOUT) != 1 || env.TMOUT[0].Value != "" {
+			t.Errorf("TMOUT=%s: %+v, want an empty value", v, env.TMOUT)
+		}
+	}
+}

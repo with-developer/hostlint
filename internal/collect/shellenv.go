@@ -52,7 +52,7 @@ type ShellValue struct {
 }
 
 var (
-	tmoutRe      = regexp.MustCompile(`(?:^|[;&|\s(])(readonly\s+|export\s+|declare\s+-[a-zA-Z]+\s+|typeset\s+-[a-zA-Z]+\s+)?TMOUT=["']?([+]?\d*)["']?`)
+	tmoutRe      = regexp.MustCompile(`(?:^|[;&|\s(])(readonly\s+|export\s+|declare\s+-[a-zA-Z]+\s+|typeset\s+-[a-zA-Z]+\s+)?TMOUT=["']?([^\s;&|)"']*)`)
 	unsetTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s(])unset\s+(?:-v\s+)?(?:\w+\s+)*TMOUT\b`)
 	// A read-only declaration without an assignment.
 	readonlyTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s(])(?:readonly|declare\s+-[a-zA-Z]*r[a-zA-Z]*|typeset\s+-[a-zA-Z]*r[a-zA-Z]*)\s+(?:\w+\s+)*TMOUT\b(?:[^=]|$)`)
@@ -569,11 +569,12 @@ func effectiveTMOUT(events []shellEvent) (facts.Setting, bool) {
 }
 
 // decimal is the number bash reads from digits with an optional sign and
-// leading zeros: "0600" and "+600" are 600. Anything else is returned as is.
+// leading zeros: "0600" and "+600" are 600. Anything else ("600s", "0x10", an
+// expansion, a lone sign, a number too large) is no timeout: "".
 func decimal(v string) string {
 	d := strings.TrimPrefix(v, "+")
-	if d == "" || strings.Trim(d, "0123456789") != "" {
-		return v
+	if d == "" || len(d) > 18 || strings.Trim(d, "0123456789") != "" {
+		return ""
 	}
 	if d = strings.TrimLeft(d, "0"); d == "" {
 		return "0"
