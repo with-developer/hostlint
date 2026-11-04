@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 9bbc411 -->
+<!-- translated from README.md @ 8009548 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -57,8 +57,8 @@ kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 `cosign`이 있으면 체크섬의 Sigstore 서명도 확인합니다.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.1.1/install.sh
-sh install.sh -v v0.1.1          # 먼저 읽어 보세요. 설치 위치는 -b DIR
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.1.2/install.sh
+sh install.sh -v v0.1.2          # 먼저 읽어 보세요. 설치 위치는 -b DIR
 sudo hostlint scan
 ```
 
@@ -67,7 +67,7 @@ sudo hostlint scan
 (Go 1.26 이상, 바이너리 자체는 의존성이 없습니다):
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.1.1
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.1.2
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -153,7 +153,7 @@ hostlint는 양보하지 않는 몇 가지 원칙 위에 만들어졌습니다. 
 
 hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·
 SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
-패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.1.1이
+패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.1.2가
 릴리스되었습니다. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.2 계획입니다. [로드맵](docs/ROADMAP.md)을
 참고하세요.
 
