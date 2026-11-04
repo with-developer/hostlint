@@ -299,3 +299,18 @@ func (s slowCollector) Collect(ctx context.Context, _ *hostfs.Host) (Facts, erro
 		return Facts{}, ctx.Err()
 	}
 }
+
+// A value a collector marks as unreadable by the program is out of range, not
+// an evaluation error: the program falls back to its default.
+func TestCompareSettingInvalidValue(t *testing.T) {
+	spec := &SettingSpec{Range: &RangeSpec{Min: &Bound{Value: 1}, Max: &Bound{Value: 90}}}
+	for value, want := range map[string]bool{"30": true, "91": false, "invalid: 090": false} {
+		ok, err := compareSetting(spec, 1, 90, value)
+		if err != nil || ok != want {
+			t.Errorf("%q: %v, %v; want %v", value, ok, err, want)
+		}
+	}
+	if _, err := compareSetting(spec, 1, 90, "soon"); err == nil {
+		t.Error("a word that no collector marked was accepted as a number")
+	}
+}
