@@ -3,6 +3,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -36,10 +37,14 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	err := cmd.ExecuteContext(ctx)
+	var findings *findingsError
 	switch {
 	case ctx.Err() != nil:
 		_, _ = fmt.Fprintln(stderr, "hostlint: interrupted")
 		return ExitInterrupted
+	case errors.As(err, &findings):
+		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
+		return ExitFail
 	case err != nil:
 		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
 		return ExitError
@@ -60,7 +65,7 @@ changes the host it scans.`,
 	}
 	root.SetVersionTemplate("{{.Version}}\n")
 	root.SetHelpCommand(newHelpCommand())
-	root.AddCommand(newVersionCommand())
+	root.AddCommand(newScanCommand(), newVersionCommand())
 	return root
 }
 

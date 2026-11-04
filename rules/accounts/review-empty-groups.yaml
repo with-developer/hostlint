@@ -1,0 +1,15 @@
+id: accounts.review-empty-groups
+version: 1
+title: Review groups without accounts
+title_ko: 계정이 속하지 않은 그룹 검토
+severity: low
+description: Lists groups that have no members and are no account's primary group.
+rationale: Unused groups can still own files and be reused by a new account by mistake.
+remediation: Remove groups that are not needed (groupdel), after checking which files they own.
+manual:
+  guidance: >-
+    Confirm whether each listed group is still needed; many belong to installed software and
+    own files or devices.
+  show: >-
+    accounts.groups.filter(g, size(g.members) == 0 && !accounts.users.exists(u, u.gid == g.gid))
+      .map(g, g.name + " (gid " + string(g.gid) + ")")

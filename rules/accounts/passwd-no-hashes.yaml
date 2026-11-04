@@ -1,0 +1,32 @@
+id: accounts.passwd-no-hashes
+version: 1
+title: No password hashes or empty passwords in /etc/passwd
+title_ko: /etc/passwd에 비밀번호 해시나 빈 비밀번호 없음
+severity: high
+description: >-
+  Lists accounts whose /etc/passwd password field holds a hash or is empty instead of
+  pointing to /etc/shadow ("x").
+rationale: >-
+  /etc/passwd is readable by every user, so a hash there can be cracked offline, and an empty
+  field means no password at all.
+remediation: Run `pwconv` to move passwords to /etc/shadow, and lock or set passwords for empty ones.
+violations:
+  over: accounts.users
+  as: u
+  where: u.password == "hash" || u.password == "empty"
+  key: u.name
+  text: >-
+    u.name + (u.password == "hash" ? " has a password hash in /etc/passwd" : " has an empty password field")
+tests:
+  - name: all shadowed
+    facts:
+      accounts: {users: [{name: root, uid: 0, password: shadowed}, {name: alice, uid: 1000, password: shadowed}]}
+    want: PASS
+  - name: hash in passwd
+    facts:
+      accounts: {users: [{name: root, uid: 0, password: shadowed}, {name: legacy, uid: 1001, password: hash}]}
+    want: FAIL
+  - name: unreadable passwd
+    input: unavailable
+    unavailable: [accounts]
+    want: ERROR

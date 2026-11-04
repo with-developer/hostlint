@@ -1,0 +1,80 @@
+//go:build linux
+
+package cli
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/with-developer/hostlint/internal/engine"
+)
+
+// fakeRoot builds a small mounted root: enough for every account check to
+// decide without a live host.
+func fakeRoot(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	files := map[string]string{
+		"etc/os-release":   "ID=debian\nVERSION_ID=\"12\"\nPRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\n",
+		"etc/hostname":     "img-01\n",
+		"etc/passwd":       "root:x:0:0:root:/root:/bin/bash\ntoor:x:0:0::/root:/bin/bash\n",
+		"etc/group":        "root:x:0:\n",
+		"etc/login.defs":   "PASS_MAX_DAYS 90\nPASS_MIN_DAYS 1\nENCRYPT_METHOD SHA512\n",
+		"etc/pam.d/passwd": "password requisite pam_pwquality.so retry=3\n",
+		"etc/pam.d/login":  "auth required pam_unix.so\n",
+	}
+	for name, content := range files {
+		p := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+func TestScanMountedRoot(t *testing.T) {
+	root := fakeRoot(t)
+	code, stdout, stderr := run(context.Background(), t, "scan", "--root", root, "--format", "json", "--label", "env=test")
+	if code != ExitFail {
+		t.Fatalf("exit %d, want %d (a second UID 0 account fails U-05); stderr %q", code, ExitFail, stderr)
+	}
+	var res engine.Result
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
+		t.Fatalf("not JSON: %v\n%s", err, stdout)
+	}
+	status := map[string]engine.Status{}
+	for _, c := range res.Controls {
+		status[c.ID] = c.Status
+	}
+	if status["U-05"] != engine.StatusFail || res.Host.Hostname != "img-01" || res.Host.Labels["env"] != "test" || res.Scan.Target.Kind != "root" {
+		t.Errorf("U-05 %s, host %+v, target %+v", status["U-05"], res.Host, res.Scan.Target)
+	}
+
+	// --fail-on high still fails (U-05 is high); --fail-on none never does.
+	if code, _, _ := run(context.Background(), t, "scan", "--root", root, "--format", "json", "--fail-on", "none"); code != ExitOK {
+		t.Errorf("--fail-on none: exit %d", code)
+	}
+
+	out := filepath.Join(t.TempDir(), "report.sarif")
+	code, stdout, _ = run(context.Background(), t, "scan", "--root", root, "--format", "sarif", "--output", out, "--fail-on", "none")
+	data, err := os.ReadFile(out)
+	if code != ExitOK || err != nil || !strings.Contains(string(data), `"version": "2.1.0"`) || stdout != "" {
+		t.Errorf("--output: exit %d, err %v, stdout %q", code, err, stdout)
+	}
+}
+
+// A directory that is not a system must not scan as one: absent files would
+// read as passing checks.
+func TestScanRootWithoutOS(t *testing.T) {
+	code, stdout, stderr := run(context.Background(), t, "scan", "--root", t.TempDir(), "--format", "json", "--fail-on", "none")
+	if code != ExitError || stdout != "" || !strings.Contains(stderr, "no operating system") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want exit %d and a note about the missing OS", code, stdout, stderr, ExitError)
+	}
+}

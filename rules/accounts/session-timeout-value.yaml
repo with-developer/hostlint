@@ -1,0 +1,44 @@
+id: accounts.session-timeout-value
+version: 1
+title: The idle timeout is short enough
+title_ko: 유휴 시간 제한이 충분히 짧음
+severity: low
+description: >-
+  Lists TMOUT assignments that are empty, zero or longer than `max_seconds`, and unset TMOUT
+  commands, including those inside if or case blocks, which can apply to some sessions.
+rationale: A long or disabled timeout leaves idle sessions open.
+remediation: Set `TMOUT=600` (or less) and remove larger assignments and unset commands.
+params:
+  max_seconds: {type: int, default: 600, stricter: lower, description: Longest acceptable idle timeout in seconds}
+violations:
+  over: shell_env.tmout
+  as: t
+  where: >-
+    t.unset || t.value == "" || int(t.value) < 1 || int(t.value) > params.max_seconds
+  key: t.source
+  text: >-
+    (t.unset ? "unset TMOUT" : "TMOUT=" + t.value) + (t.conditional ? " (conditional)" : "") + " at " + t.source
+  allow_empty: true
+tests:
+  - name: ten minutes
+    facts:
+      shell_env: {tmout: [{value: "600", source: "/etc/profile.d/timeout.sh:1"}]}
+    want: PASS
+  - name: an hour
+    facts:
+      shell_env: {tmout: [{value: "3600", source: "/etc/profile:80"}]}
+    want: FAIL
+  - name: disabled for some sessions
+    facts:
+      shell_env: {tmout: [{value: "600", source: "/etc/profile.d/timeout.sh:1"}, {value: "0", conditional: true, source: "/root/.bashrc:3"}]}
+    want: FAIL
+  - name: unset
+    facts:
+      shell_env: {tmout: [{value: "600", source: "/etc/profile.d/timeout.sh:1"}, {unset: true, source: "/root/.bashrc:5"}]}
+    want: FAIL
+  - name: incomplete without a bad value cannot pass
+    input: incomplete
+    incomplete: [shell_env]
+    facts:
+      shell_env: {tmout: [{value: "300"}]}
+    want: ERROR

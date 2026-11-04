@@ -1,0 +1,31 @@
+id: files.shadow-perms
+version: 1
+title: /etc/shadow is owned by root and readable by root only
+title_ko: /etc/shadow는 root 소유, root만 읽기
+severity: high
+description: >-
+  Checks that /etc/shadow is owned by root with mode 0400 or stricter. Debian-family systems
+  ship it as 0640 with group shadow, which this check reports.
+rationale: Password hashes in /etc/shadow can be cracked offline by anyone who can read them.
+remediation: Run `chown root /etc/shadow` and `chmod 400 /etc/shadow`.
+file:
+  paths: [/etc/shadow]
+  owner: [root]
+  mode: "0400"
+  missing: error
+tests:
+  - name: root only
+    files:
+      /etc/shadow: {mode: "0400"}
+    want: PASS
+  - name: no permissions at all
+    files:
+      /etc/shadow: {mode: "0000"}
+    want: PASS
+  - name: Debian default
+    files:
+      /etc/shadow: {mode: "0640", group: "42"}
+    want: FAIL
+  - name: missing
+    input: absent
+    want: ERROR

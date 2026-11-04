@@ -1,0 +1,28 @@
+id: services.review-snmp-agent
+version: 1
+title: Review the SNMP agent
+title_ko: SNMP 에이전트 설정 검토
+severity: high
+description: >-
+  Applies when an SNMP agent is started; then shows how, for a review of its configuration. Not
+  applicable otherwise.
+rationale: >-
+  SNMP v1/v2c communities travel in clear text and default ones are the first thing scanners try.
+remediation: >-
+  Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, uses no default or guessable community, and answers only the management hosts that need it.
+applies: >-
+  services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+manual:
+  guidance: >-
+    Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, uses no default or guessable community, and answers only the management hosts that need it.
+  show: >-
+    services.started.filter(s, s.service in ["snmpd"] || s.program.matches("/snmpd$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+    want: NOT_APPLICABLE
+  - name: started
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+    want: MANUAL

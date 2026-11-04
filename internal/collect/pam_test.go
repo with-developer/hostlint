@@ -214,6 +214,79 @@ func TestPAMPwqualityConfig(t *testing.T) {
 	}
 }
 
+// libpwquality 1.4.5 (settings.c): a flag is set whatever its value, a
+// number is read by strtol, every name whose first ".conf" ends it is a
+// drop-in (hidden files too), and a module argument it rejects is ignored.
+func TestPAMPwqualityAsLibpwquality(t *testing.T) {
+	const passwd = "password requisite pam_pwquality.so\npassword sufficient pam_unix.so use_authtok\npassword required pam_deny.so\n"
+	m := pwqualityHost(t, modernPwquality).
+		AddFile("/etc/pam.d/passwd", passwd, 0o644, 0, 0).
+		AddFile("/etc/security/pwquality.conf.d/.site.conf", "dcredit = -1\n", 0o644, 0, 0).
+		AddFile("/etc/security/pwquality.conf.d/a.conf.conf", "ucredit = -9\n", 0o644, 0, 0).
+		AddFile("/etc/security/pwquality.conf.d/b.confx", "lcredit = -9\n", 0o644, 0, 0).
+		AddFile("/etc/security/pwquality.conf", "enforce_for_root = 0\nminlen = 6\nenforcing = 00\nocredit = +2\n", 0o644, 0, 0)
+	q := pamFacts(t, m).PasswordQuality
+	want := map[string]string{"enforce_for_root": "1", "minlen": "6", "enforcing": "0", "ocredit": "2", "dcredit": "-1"}
+	for k, w := range want {
+		if q.Settings[k].Value != w {
+			t.Errorf("%s = %+v, want %q", k, q.Settings[k], w)
+		}
+	}
+	for _, k := range []string{"ucredit", "lcredit"} {
+		if q.Settings[k].Explicit {
+			t.Errorf("%s = %+v, from a file libpwquality does not read", k, q.Settings[k])
+		}
+	}
+
+	// Arguments: a bare number setting is rejected and ignored, so the
+	// configuration's enforcing = 0 stands; the module's own options are not
+	// settings.
+	m = pwqualityHost(t, modernPwquality).
+		AddFile("/etc/pam.d/passwd", "password requisite pam_pwquality.so enforcing try_first_pass minlen=x retry=3\npassword sufficient pam_unix.so use_authtok\npassword required pam_deny.so\n", 0o644, 0, 0).
+		AddFile("/etc/security/pwquality.conf", "enforcing = 0\nminlen = 12\n", 0o644, 0, 0)
+	q = pamFacts(t, m).PasswordQuality
+	if q.Settings["enforcing"].Value != "0" || q.Settings["minlen"].Value != "12" || q.Settings["retry"].Value != "3" {
+		t.Errorf("arguments: %+v", q.Settings)
+	}
+	if _, ok := q.Settings["try_first_pass"]; ok {
+		t.Errorf("try_first_pass reported as a setting: %+v", q.Settings)
+	}
+}
+
+// enforce_for_root and local_users_only on the module line: up to 1.4.0
+// pam_pwquality compares the argument with strncmp (case-sensitive, any
+// suffix); later versions read them as case-insensitive settings.
+func TestPAMPwqualityModuleFlags(t *testing.T) {
+	const tail = "\npassword sufficient pam_unix.so use_authtok\npassword required pam_deny.so\n"
+	tests := []struct {
+		name, lib, args string
+		want            map[string]bool
+	}{
+		{"legacy bare flags", legacyPwquality, "try_first_pass local_users_only retry=3 authtok_type= enforce_for_root", map[string]bool{"enforce_for_root": true, "local_users_only": true}},
+		{"modern bare flags", modernPwquality, "try_first_pass local_users_only retry=3 authtok_type= enforce_for_root", map[string]bool{"enforce_for_root": true, "local_users_only": true}},
+		{"legacy suffix is ignored", legacyPwquality, "enforce_for_root=0", map[string]bool{"enforce_for_root": true}},
+		{"modern value is ignored", modernPwquality, "enforce_for_root=0", map[string]bool{"enforce_for_root": true}},
+		{"legacy case matters", legacyPwquality, "ENFORCE_FOR_ROOT Local_Users_Only", nil},
+		{"modern case does not", modernPwquality, "ENFORCE_FOR_ROOT", map[string]bool{"enforce_for_root": true}},
+		{"absent", legacyPwquality, "retry=3", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := pwqualityHost(t, tt.lib).AddFile("/etc/pam.d/passwd", "password requisite pam_pwquality.so "+tt.args+tail, 0o644, 0, 0)
+			q := pamFacts(t, m).PasswordQuality
+			for _, k := range []string{"enforce_for_root", "local_users_only"} {
+				s := q.Settings[k]
+				if got := s.Explicit && s.Value == "1"; got != tt.want[k] {
+					t.Errorf("%s = %+v, want set %v", k, s, tt.want[k])
+				}
+				if tt.want[k] && s.Source != "/etc/pam.d/passwd:1" {
+					t.Errorf("%s source = %q", k, s.Source)
+				}
+			}
+		})
+	}
+}
+
 // What libpwquality does not apply is not reported as set.
 func TestPAMPwqualityReading(t *testing.T) {
 	const passwd = "password requisite pam_pwquality.so\npassword sufficient pam_unix.so\npassword required pam_deny.so\n"
@@ -409,6 +482,40 @@ func TestPAMHistoryConfByVersion(t *testing.T) {
 	legacy := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", "password sufficient pam_unix.so sha512 remember=4\n", 0o644, 0, 0)
 	if h := pamFacts(t, legacy).PasswordHistory; h.Module != "pam_unix.so" || h.Settings["remember"].Value != "4" {
 		t.Errorf("pam_unix remember = %+v", h)
+	}
+}
+
+// A rejection only counts when it keeps the password from being stored:
+// pam_unix after it must take the password from the stack (use_authtok),
+// and must not have run before it (verified in debian:12: chpasswd stores
+// the reused password in both failing stacks below).
+func TestPAMRejectionBeforeStore(t *testing.T) {
+	tests := []struct {
+		name, stack string
+		enforced    bool
+	}{
+		{"history first, pam_unix use_authtok",
+			"password required pam_pwhistory.so remember=4 use_authtok\npassword [success=1 default=ignore] pam_unix.so obscure use_authtok yescrypt\npassword requisite pam_deny.so\npassword required pam_permit.so\n", true},
+		{"history after pam_unix",
+			"password [success=1 default=ignore] pam_unix.so obscure yescrypt\npassword requisite pam_deny.so\npassword required pam_permit.so\npassword requisite pam_pwhistory.so remember=5 use_authtok enforce_for_root\n", false},
+		{"required history, pam_unix asks again",
+			"password required pam_pwhistory.so remember=4\npassword [success=1 default=ignore] pam_unix.so obscure yescrypt\npassword requisite pam_deny.so\npassword required pam_permit.so\n", false},
+		{"requisite history stops the stack",
+			"password requisite pam_pwhistory.so remember=4\npassword sufficient pam_unix.so sha512\npassword required pam_deny.so\n", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd", tt.stack, 0o644, 0, 0)
+			h := pamFacts(t, m).PasswordHistory
+			if got := h.Module == "pam_pwhistory.so"; got != tt.enforced {
+				t.Errorf("enforced = %v (module %q, ignored %v), want %v", got, h.Module, h.Ignored, tt.enforced)
+			}
+		})
+	}
+	quality := hostfs.NewMemFS().AddFile("/etc/pam.d/passwd",
+		"password required pam_pwquality.so retry=3\npassword sufficient pam_unix.so sha512 shadow\npassword required pam_deny.so\n", 0o644, 0, 0)
+	if q := pamFacts(t, quality).PasswordQuality; q.Module != "" || len(q.Ignored) == 0 || !strings.Contains(q.Ignored[0], "from storing the password") {
+		t.Errorf("required pwquality before a prompting pam_unix = %+v", q)
 	}
 }
 

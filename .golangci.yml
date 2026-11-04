@@ -92,7 +92,7 @@ linters:
       - path: internal/output/
         linters:
           - forbidigo
-        text: use of `os\.(Create|OpenFile|WriteFile)` forbidden
+        text: use of `os\.(Create|OpenFile|WriteFile|Remove|Rename)` forbidden
 
 formatters:
   enable:

@@ -99,3 +99,12 @@ type OS struct {
 	Family       string   `json:"family"` // debian, rhel or unknown
 	Supported    bool     `json:"supported"`
 }
+
+// Target describes what is being scanned: the `target` variable.
+type Target struct {
+	// Live is true when the target is the running system, so live facts
+	// (running services, sockets) describe it; false for a mounted root
+	// (--root), where nothing runs. Checks use it to require live facts on
+	// live targets only.
+	Live bool `json:"live"`
+}

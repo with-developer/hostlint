@@ -1,0 +1,28 @@
+id: services.review-ftp-server
+version: 1
+title: Review the FTP server
+title_ko: FTP 서버 설정 검토
+severity: medium
+description: >-
+  Applies when an FTP server is started; then shows how, for a review of its configuration. Not
+  applicable otherwise.
+rationale: >-
+  Plain FTP sends passwords in clear text, and a version banner tells attackers which exploits to try.
+remediation: >-
+  Check that the FTP server requires TLS (or is replaced by SFTP), hides its version in the banner, accepts connections only from the addresses that need it, and refuses root (ftpusers, user_list).
+applies: >-
+  services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+manual:
+  guidance: >-
+    Check that the FTP server requires TLS (or is replaced by SFTP), hides its version in the banner, accepts connections only from the addresses that need it, and refuses root (ftpusers, user_list).
+  show: >-
+    services.started.filter(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+    want: NOT_APPLICABLE
+  - name: started
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+    want: MANUAL

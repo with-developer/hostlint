@@ -1,0 +1,32 @@
+id: files.passwd-perms
+version: 1
+title: /etc/passwd is owned by root and not writable by others
+title_ko: /etc/passwd는 root 소유, 다른 사용자 쓰기 금지
+severity: high
+description: Checks that /etc/passwd is owned by root with mode 0644 or stricter.
+rationale: Anyone who can write /etc/passwd can add an account with UID 0.
+remediation: Run `chown root /etc/passwd` and `chmod 644 /etc/passwd`.
+file:
+  paths: [/etc/passwd]
+  owner: [root]
+  mode: "0644"
+  missing: error
+tests:
+  - name: stock
+    files:
+      /etc/passwd: {mode: "0644"}
+    want: PASS
+  - name: group writable
+    files:
+      /etc/passwd: {mode: "0664"}
+    want: FAIL
+  - name: owned by a user
+    files:
+      /etc/passwd: {mode: "0644", owner: user}
+    want: FAIL
+  - name: /etc unreadable
+    input: unavailable
+    files:
+      /etc: {type: dir, mode: "0755", error: permission}
+      /etc/passwd: {mode: "0644"}
+    want: ERROR

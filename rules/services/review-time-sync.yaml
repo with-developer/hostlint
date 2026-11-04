@@ -1,0 +1,23 @@
+id: services.review-time-sync
+version: 1
+title: Review the time servers
+title_ko: 시각 동기화 서버 검토
+severity: low
+description: Shows the time synchronization services that are started, to check their servers against your standard.
+rationale: A synchronized clock is only as good as the servers it follows.
+remediation: Point the service at the time servers your organization approves (`server` or `pool` lines).
+applies: >-
+  services.started.exists(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"])
+manual:
+  guidance: Check that the time service uses your approved servers (chrony.conf, ntp.conf or timesyncd.conf).
+  show: >-
+    services.started.filter(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"]).map(s, s.name + " (" + s.kind + ")")
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+    want: NOT_APPLICABLE
+  - name: started
+    facts:
+      services: {started: [{service: chronyd, name: chronyd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/chronyd.service"}]}
+    want: MANUAL

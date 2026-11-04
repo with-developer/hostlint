@@ -61,7 +61,7 @@ type bindings struct {
 	strict, partial               cel.PartialActivation
 	strictUnknown, partialUnknown []*cel.AttributePatternType
 	failed, incomplete            []string // collectors
-	unknownFields                 []string // collector.field
+	unknownFields, partialFields  []string // collector.field
 }
 
 func (e *evalEnv) bind(cc *compiledCheck, params map[string]any) (*bindings, error) {
@@ -87,13 +87,16 @@ func (e *evalEnv) bind(cc *compiledCheck, params map[string]any) (*bindings, err
 			b.strictUnknown = append(b.strictUnknown, cel.AttributePattern(name))
 		}
 		for _, field := range c.facts.Unknown {
-			pat := cel.AttributePattern(name)
-			for _, q := range strings.Split(field, ".") {
-				pat = pat.QualString(q)
-			}
+			pat := fieldPattern(name, field)
 			b.strictUnknown = append(b.strictUnknown, pat)
 			b.partialUnknown = append(b.partialUnknown, pat)
 			b.unknownFields = append(b.unknownFields, name+"."+field)
+		}
+		for _, field := range c.facts.Partial {
+			// Unknown to the strict activation only: the partial pass of a
+			// violations check sees what the field holds.
+			b.strictUnknown = append(b.strictUnknown, fieldPattern(name, field))
+			b.partialFields = append(b.partialFields, name+"."+field)
 		}
 	}
 	var err error
@@ -104,6 +107,15 @@ func (e *evalEnv) bind(cc *compiledCheck, params map[string]any) (*bindings, err
 		return nil, err
 	}
 	return b, nil
+}
+
+// fieldPattern matches the dot-separated field of a collector variable.
+func fieldPattern(name, field string) *cel.AttributePatternType {
+	pat := cel.AttributePattern(name)
+	for q := range strings.SplitSeq(field, ".") {
+		pat = pat.QualString(q)
+	}
+	return pat
 }
 
 // unknownReason explains an undetermined result v. It names the collectors
@@ -138,6 +150,12 @@ func (e *evalEnv) unknownParts(b *bindings, vars map[string]bool) []string {
 		name, _, _ := strings.Cut(field, ".")
 		if relevant(name) {
 			parts = append(parts, fmt.Sprintf("%s: not determined (%s)", field, summarize(e.collected[name].facts.Skipped)))
+		}
+	}
+	for _, field := range b.partialFields {
+		name, _, _ := strings.Cut(field, ".")
+		if relevant(name) {
+			parts = append(parts, fmt.Sprintf("%s: incomplete observation (%s)", field, summarize(e.collected[name].facts.Skipped)))
 		}
 	}
 	return parts
@@ -633,6 +651,8 @@ func (e *evalEnv) evalFile(spec *FileSpec) outcome {
 				}
 			case obs.Missing:
 				add(outcomeStatus(spec.Missing), p, p+": does not exist")
+			case obs.Masked:
+				add(outcomeStatus(spec.Missing), p, p+": masked (a symbolic link to /dev/null)")
 			default:
 				st, text, err := checkFile(spec, obs.Info, ff.IDs)
 				if err != nil {

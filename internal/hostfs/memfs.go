@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -262,12 +263,15 @@ func (m *MemFS) ReadLink(name string) (string, error) {
 }
 
 // ReadFile implements FS.
-func (m *MemFS) ReadFile(name string) ([]byte, error) { return m.read(name, true) }
+func (m *MemFS) ReadFile(name string) ([]byte, error) { return m.read(name, true, MaxReadSize) }
 
 // readSensitive reads a denylisted file for a parser in this package.
-func (m *MemFS) readSensitive(name string) ([]byte, error) { return m.read(name, false) }
+func (m *MemFS) readSensitive(name string) ([]byte, error) { return m.read(name, false, MaxReadSize) }
 
-func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
+// readLarge reads a file that may be larger than MaxReadSize, up to limit.
+func (m *MemFS) readLarge(name string, limit int64) ([]byte, error) { return m.read(name, true, limit) }
+
+func (m *MemFS) read(name string, enforceDenylist bool, limit int64) ([]byte, error) {
 	if err := checkPath("read", name); err != nil {
 		return nil, err
 	}
@@ -283,7 +287,7 @@ func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 		err = ErrNotRegular
 	case enforceDenylist && denied(resolved):
 		err = ErrDenied
-	case len(n.data) > MaxReadSize:
+	case int64(len(n.data)) > limit:
 		err = ErrTooLarge
 	}
 	if err != nil {
@@ -294,12 +298,15 @@ func (m *MemFS) read(name string, enforceDenylist bool) ([]byte, error) {
 
 // ReadDir implements FS.
 func (m *MemFS) ReadDir(name string) ([]FileInfo, error) {
-	entries, _, err := m.readDirN(name, -1)
+	entries, _, err := m.readDirN(name, -1, nil)
 	return entries, err
 }
 
-func (m *MemFS) readDirN(name string, limit int) ([]FileInfo, bool, error) {
+func (m *MemFS) readDirN(name string, limit int, skip func(string) bool) ([]FileInfo, bool, error) {
 	entries, err := m.readDir(name)
+	if err == nil && skip != nil {
+		entries = slices.DeleteFunc(entries, func(e FileInfo) bool { return skip(e.Path) })
+	}
 	if err != nil || limit < 0 || len(entries) <= limit {
 		return entries, false, err
 	}

@@ -1,0 +1,36 @@
+id: services.no-nfs-server
+version: 1
+title: The NFS server is not started
+title_ko: NFS 서버 미사용
+severity: high
+description: >-
+  Lists the ways the NFS server is started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  An NFS server shares files over the network; when nobody needs it, it is only exposure.
+remediation: >-
+  Disable it (`systemctl disable --now nfs-server`) if no client needs these shares.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, program: /usr/sbin/rpc.nfsd, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR
