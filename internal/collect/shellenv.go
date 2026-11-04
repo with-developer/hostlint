@@ -190,11 +190,20 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 	for line := 1; sc.Scan(); line++ {
 		start := line
 		code := trimASCII(stripShellComment(sc.Text()))
-		// A line ending in a backslash continues on the next one (a backslash
-		// in a comment does not: the comment is already cut off).
-		for strings.HasSuffix(code, `\`) && sc.Scan() {
+		// A line ending in an odd number of backslashes continues on the next
+		// one (a backslash in a comment does not: the comment is cut off
+		// first). The text is joined before comments are cut again, so a quote
+		// that spans the join is tracked; a runaway join is cut off.
+		for continues(code) && sc.Scan() {
 			line++
-			code = strings.TrimSuffix(code, `\`) + " " + trimASCII(stripShellComment(sc.Text()))
+			if len(code) > maxJoinedLine {
+				s.skip(fmt.Sprintf("%s:%d: a continued line is longer than hostlint reads", name, start))
+				break
+			}
+			code = trimASCII(stripShellComment(strings.TrimSuffix(code, `\`) + " " + sc.Text()))
+		}
+		if continues(code) && mentionsProfileD(code) {
+			s.unknownLoop(fmt.Sprintf("%s:%d", name, start)) // the file ends inside the list
 		}
 		if code == "" {
 			continue
@@ -211,6 +220,16 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 	if err := sc.Err(); err != nil {
 		s.skip(fmt.Sprintf("%s: %v", name, err))
 	}
+}
+
+// maxJoinedLine bounds what continued lines are joined into.
+const maxJoinedLine = 64 << 10
+
+// continues reports whether a line ends in an odd number of backslashes: an
+// even number is escaped backslashes, and the line ends.
+func continues(code string) bool {
+	n := len(code) - len(strings.TrimRight(code, `\`))
+	return n%2 == 1
 }
 
 // scanLine records every TMOUT, umask and PATH occurrence on a line, in

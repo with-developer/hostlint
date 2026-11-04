@@ -398,3 +398,31 @@ func TestShellEnvContinuedLines(t *testing.T) {
 		t.Errorf("tmout %+v, want 900 at /etc/profile:8", env.TMOUT)
 	}
 }
+
+// Only an odd number of trailing backslashes continues a line; a list cut off
+// by the end of the file, or a runaway join, leaves the facts incomplete; a
+// quote that spans the join keeps a "#" inside it.
+func TestShellEnvContinuationEdges(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile", "echo a \\\\\nTMOUT=900\nPATH=\"/usr/bin:\\\n/opt/x#y\"\n", 0o644, 0, 0)
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || !f.Complete {
+		t.Fatalf("complete %v, %v, skipped %v", f.Complete, err, f.Skipped)
+	}
+	env := f.Value.(*ShellEnv)
+	if len(env.TMOUT) != 1 || env.TMOUT[0].Source != "/etc/profile:2" {
+		t.Errorf("tmout %+v, want one at /etc/profile:2 (an even number of backslashes ends the line)", env.TMOUT)
+	}
+	if len(env.Path) != 1 || env.Path[0].Value != "/usr/bin: /opt/x#y" {
+		t.Errorf("path %+v, want the quoted value across the join", env.Path)
+	}
+
+	for name, profile := range map[string]string{
+		"list cut off by the end": "for i in /etc/profile.d/*.sh \\",
+		"runaway join":            strings.Repeat("x \\\n", maxJoinedLine),
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0)
+		if f, err := collect(t, shellEnvCollector{}, m); err != nil || f.Complete {
+			t.Errorf("%s: complete %v, %v; want incomplete", name, f.Complete, err)
+		}
+	}
+}
