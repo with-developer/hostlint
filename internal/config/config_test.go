@@ -65,7 +65,6 @@ func TestLoadAndValidate(t *testing.T) {
 func TestValidateErrors(t *testing.T) {
 	tests := []struct{ name, text, want string }{
 		{"unknown key", "profil: kisa-2026\n", "field profil not found"},
-		{"unknown profile", "profile: cis\n", `profile "cis" does not exist`},
 		{"unknown check", "params:\n  x.y: {a: 1}\n", `unknown check "x.y"`},
 		{"unknown parameter", "params:\n  accounts.password-max-age: {days: 1}\n", `has no parameter "days"`},
 		{"string parameter", "params:\n  accounts.password-max-age: {label: y}\n", "cannot be overridden"},
@@ -75,6 +74,10 @@ func TestValidateErrors(t *testing.T) {
 		{"both targets", "waivers:\n  - check: files.shadow-perms\n    control: U-18\n    reason: r\n    expires: 2027-01-01\n", "exactly one of check and control"},
 		{"unknown control", "waivers:\n  - control: U-99\n    revision: 1\n    reason: r\n    expires: 2027-01-01\n", `no control "U-99"`},
 		{"control without revision", "waivers:\n  - control: U-18\n    reason: r\n    expires: 2027-01-01\n", "needs the profile revision"},
+		{"zero parameter", "params:\n  accounts.password-max-age: {max_days: 0}\n", "must be 1 or more"},
+		{"negative parameter", "params:\n  accounts.password-max-age: {max_days: -1}\n", "must be 1 or more"},
+		{"errors on a control waiver", "waivers:\n  - control: U-18\n    revision: 1\n    reason: r\n    expires: 2027-01-01\n    errors: true\n", "errors applies to check waivers"},
+		{"second document", "profile: kisa-2026\n---\nwaivers:\n  - check: files.shadow-perms\n    reason: r\n    expires: 2027-01-01\n", "only one YAML document"},
 		{"bad host glob", "waivers:\n  - check: files.shadow-perms\n    reason: r\n    expires: 2027-01-01\n    hosts: [\"[\"]\n", "host pattern"},
 	}
 	for _, tt := range tests {
@@ -139,5 +142,28 @@ func TestFind(t *testing.T) {
 	}
 	if _, err := Find(filepath.Join(dir, "missing.yaml")); err == nil {
 		t.Error("a missing --config file was accepted")
+	}
+}
+
+// A file over the size limit is refused, not cut off.
+func TestLoadTooLarge(t *testing.T) {
+	text := "# " + strings.Repeat("x", maxFile) + "\nprofile: kisa-2026\n"
+	if _, err := Load(write(t, t.TempDir(), "hostlint.yaml", text, 0o644)); err == nil || !strings.Contains(err.Error(), "larger than") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+// The profile named in the file matters only when it is the one scanned:
+// --profile overrides it.
+func TestValidateProfileOverridden(t *testing.T) {
+	f, err := Load(write(t, t.TempDir(), "hostlint.yaml", "profile: kisa-2027\n", 0o644))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Validate(content(), "kisa-2026"); err != nil {
+		t.Errorf("a stale profile in the file stopped a scan that names another: %v", err)
+	}
+	if err := f.Validate(content(), "kisa-2027"); err == nil {
+		t.Error("an unknown profile in use was accepted")
 	}
 }

@@ -38,6 +38,7 @@ CI runs test, lint, build (linux amd64/arm64) and vuln. `ci-ok` is the required 
 | `internal/collect/` | Fact collectors; they read the host only through `internal/hostfs` |
 | `internal/facts/` | Shared fact types (`Setting`, `OS`) and the fact type restrictions |
 | `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
+| `internal/config/` | `hostlint.yaml`: parameter overrides and waivers, read from the machine running hostlint (not the scanned host), trust-checked |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
 | `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |
