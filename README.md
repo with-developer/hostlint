@@ -70,15 +70,25 @@ sudo hostlint scan --root /mnt/image
 
 # CI: fail only on high-severity controls
 sudo hostlint scan --fail-on high --format junit --output hostlint.xml
+
+# One HTML report for many hosts: a single file that makes no network requests
+hostlint report results/*.json --output report.html
+
+# Pick the profile, tighten thresholds and accept findings you decided to live with
+sudo hostlint scan --config hostlint.yaml
 ```
+
+The checks that decide each result are listed in the output; `--config` and the file format are
+described in [docs/configuration.md](docs/configuration.md).
 
 | Flag | Meaning |
 |---|---|
 | `-p, --profile` | Profile to check against (default `kisa-2026`) |
 | `-f, --format` | `table`, `json`, `sarif` or `junit` |
 | `-o, --output` | Write the report to a file |
-| `--fail-on` | Exit with status 1 when a control of this severity or higher fails: `low`, `medium`, `high`, `none` |
-| `--root` | Scan a filesystem mounted at this directory |
+| `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low`, `medium`, `high`, `none` |
+| `--root` | Scan a filesystem mounted at this directory (it must hold an operating system) |
+| `--config` | Configuration file (default: `./hostlint.yaml`, then `/etc/hostlint/hostlint.yaml`, if present) |
 | `--label key=value` | Add a label to the host in the report |
 | `-v, --verbose` | Also list passing and not-applicable controls |
 
@@ -129,9 +139,11 @@ and the [architecture decisions](docs/adr/):
 
 ## Status
 
-hostlint is under active development toward v0.1.0: checks, collectors and output formats are in
-place; a multi-host HTML report, a configuration file with waivers, release packaging and a
-container test matrix are next. Fleet mode (an agent and a server with a web UI) is planned for
+hostlint is under active development toward v0.1.0. The KISA 2026 profile (U-01–U-67), the
+collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
+with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`) and a
+container test matrix over every supported distribution are in place; the first release, v0.1.0,
+is next. Until then, build from source as above. Fleet mode (an agent and a server with a web UI) is planned for
 v0.2. See the [roadmap](docs/ROADMAP.md).
 
 ## License

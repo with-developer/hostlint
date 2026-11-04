@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 91d7f9f -->
+<!-- translated from README.md @ c81bd4f -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -70,15 +70,25 @@ sudo hostlint scan --root /mnt/image
 
 # CI: 심각도 high인 컨트롤이 실패할 때만 실패 처리
 sudo hostlint scan --fail-on high --format junit --output hostlint.xml
+
+# 여러 호스트를 HTML 보고서 하나로: 네트워크 요청을 하지 않는 파일 하나
+hostlint report results/*.json --output report.html
+
+# 프로파일을 고르고, 기준을 더 엄격하게 하고, 안고 가기로 한 발견을 예외로 처리
+sudo hostlint scan --config hostlint.yaml
 ```
+
+각 결과를 정하는 점검은 출력에 나열됩니다. `--config`와 파일 형식은
+[docs/configuration.ko.md](docs/configuration.ko.md)에 있습니다.
 
 | 플래그 | 의미 |
 |---|---|
 | `-p, --profile` | 점검할 프로파일 (기본값 `kisa-2026`) |
 | `-f, --format` | `table`, `json`, `sarif`, `junit` |
 | `-o, --output` | 결과를 파일로 저장 |
-| `--fail-on` | 이 심각도 이상의 컨트롤이 실패하면 종료 코드 1: `low`, `medium`, `high`, `none` |
-| `--root` | 이 디렉터리에 마운트된 파일시스템을 점검 |
+| `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`, `medium`, `high`, `none` |
+| `--root` | 이 디렉터리에 마운트된 파일시스템을 점검 (운영체제가 있어야 함) |
+| `--config` | 설정 파일 (기본값: `./hostlint.yaml`, 없으면 `/etc/hostlint/hostlint.yaml`) |
 | `--label key=value` | 결과의 호스트 정보에 라벨 추가 |
 | `-v, --verbose` | 통과·해당 없음 컨트롤도 표에 표시 |
 
@@ -128,9 +138,10 @@ hostlint는 양보하지 않는 몇 가지 원칙 위에 만들어졌습니다. 
 
 ## 상태
 
-hostlint는 v0.1.0을 향해 활발히 개발 중입니다. 점검, 수집기, 출력 형식은 갖춰졌고, 여러 호스트를
-합친 HTML 보고서, 예외(waiver)를 담는 설정 파일, 릴리스 패키징, 컨테이너 테스트 매트릭스가 다음
-순서입니다. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.2 계획입니다. [로드맵](docs/ROADMAP.md)을
+hostlint는 v0.1.0을 향해 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·
+SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
+패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, 첫
+릴리스인 v0.1.0이 다음 순서입니다. 그때까지는 위처럼 소스에서 빌드하세요. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.2 계획입니다. [로드맵](docs/ROADMAP.md)을
 참고하세요.
 
 ## 라이선스
