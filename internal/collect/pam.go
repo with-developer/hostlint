@@ -858,17 +858,17 @@ func passwordStackWithoutUnix(rules []PAMRule) bool {
 		}
 		return "success"
 	})
-	any := false
+	hasRules := false
 	for i, rule := range rules {
 		if rule.Type != "password" {
 			continue
 		}
-		any = true
+		hasRules = true
 		if rule.Module == "pam_unix.so" && ran[i] {
 			return false
 		}
 	}
-	return any
+	return hasRules
 }
 
 // --- Configuration files ----------------------------------------------------------
