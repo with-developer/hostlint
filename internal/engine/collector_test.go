@@ -26,7 +26,7 @@ func TestHasFieldThroughMapKeys(t *testing.T) {
 		"name.x":          false,
 		"nope":            false,
 		"nope.x":          false,
-		"nested":          false, // no json tag
+		"nested":          true,
 		"anything.x":      false,
 	} {
 		if got := hasField(typ, path); got != want {
