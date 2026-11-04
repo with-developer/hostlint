@@ -107,7 +107,8 @@ A control's status is the worst of its checks: `FAIL` > `ERROR` > `MANUAL` > `PA
 
 ## What it checks
 
-The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 edition):
+The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 edition); the
+[rule reference](docs/rules.md) lists every control with the checks, parameters and fixes behind it:
 
 - **Accounts (U-01–U-13):** remote root login, password length, complexity and aging, lockout,
   password file protection, UID 0, `su` restriction, session timeout, password hashing.

@@ -22,6 +22,8 @@ Pre-v0.1. The layout below is the target; keep this file in sync as code lands.
   (proves those rules fire, using `internal/lintguard`), and a `go.mod` tidiness check. Builds the
   pinned linter into `.tools/` on first run
 - `make fmt` — format the code
+- `make docs` — regenerate `docs/rules.md` (the rule reference) from `rules/` and `profiles/`;
+  `make test` fails when it is stale
 - `make vuln` — govulncheck
 - `make snapshot` — build every release artifact into `dist/` without publishing (GoReleaser;
   `SNAPSHOT_SKIP=sign,sbom` without syft); `scripts/check-release.sh dist` checks them.
@@ -44,6 +46,7 @@ required check on `main`.
 | `internal/facts/` | Shared fact types (`Setting`, `OS`) and the fact type restrictions |
 | `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
 | `internal/config/` | `hostlint.yaml`: parameter overrides and waivers, read from the machine running hostlint (not the scanned host), trust-checked |
+| `internal/rulesdoc/` | Renders the rule reference `docs/rules.md` from the built-in rules and profiles |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
 | `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |

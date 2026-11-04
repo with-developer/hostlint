@@ -26,7 +26,7 @@ GORELEASER := $(TOOLS)/goreleaser-$(GORELEASER_VERSION)
 SNAPSHOT_SKIP ?= sign
 
 .DEFAULT_GOAL := help
-.PHONY: help build test lint lint-guards fmt tidy vuln snapshot e2e clean
+.PHONY: help build test lint lint-guards fmt tidy vuln snapshot docs e2e clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -57,6 +57,9 @@ vuln: ## Scan dependencies for known vulnerabilities
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 .PHONY: help build test lint lint-guards fmt tidy vuln snapshot clean
+
+docs: ## Regenerate docs/rules.md from rules/ and profiles/
+	go test ./internal/rulesdoc -run TestRulesDocIsUpToDate -update
 
 # E2E_RUN selects distributions (e.g. debian-12); E2E_UPDATE=1 rewrites their goldens.
 E2E_RUN ?=

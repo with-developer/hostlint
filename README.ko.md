@@ -1,4 +1,4 @@
-<!-- translated from README.md @ c81bd4f -->
+<!-- translated from README.md @ a29fab4 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -107,7 +107,8 @@ sudo hostlint scan --config hostlint.yaml
 
 ## 무엇을 점검하나
 
-`kisa-2026` 프로파일은 KISA 가이드(2026년판) Unix 컨트롤 67개를 모두 매핑합니다.
+`kisa-2026` 프로파일은 KISA 가이드(2026년판) Unix 컨트롤 67개를 모두 매핑합니다. 컨트롤마다 점검,
+매개변수, 조치 방법은 [규칙 참조](docs/rules.md)에 있습니다(점검 제목은 한국어 병기).
 
 - **계정 관리 (U-01–U-13):** root 원격 접속, 비밀번호 길이·복잡도·사용 기간, 계정 잠금, 비밀번호
   파일 보호, UID 0, `su` 제한, 세션 타임아웃, 비밀번호 해시 알고리즘.
