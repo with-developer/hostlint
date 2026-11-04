@@ -162,6 +162,10 @@ func isFacts(v any, t reflect.Type) bool {
 // of the struct type t.
 func hasField(t reflect.Type, path string) bool {
 	for name := range strings.SplitSeq(path, ".") {
+		if t.Kind() == reflect.Map && t.Key().Kind() == reflect.String {
+			t = t.Elem() // a key of a map field, such as pam.effective.su_wheel
+			continue
+		}
 		if t.Kind() != reflect.Struct {
 			return false
 		}
