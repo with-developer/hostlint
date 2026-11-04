@@ -1,0 +1,40 @@
+id: services.no-r-services
+version: 1
+title: The r-services are not started
+title_ko: r 계열 서비스 미사용
+severity: high
+description: >-
+  Lists the ways rsh, rlogin and rexec (inetd's shell, login and exec services, or their units) are started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  The r-services send passwords in clear text and trust hosts by address.
+remediation: >-
+  Disable rsh, rlogin and rexec and use SSH instead.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["rsh", "rlogin", "rexec", "rshd", "rlogind", "rexecd"] || (s.service in ["shell", "login", "exec"] && s.kind in ["inetd", "xinetd"]) || s.program.matches("/(in\\.)?r(sh|login|exec)d$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: a unit that happens to be called login
+    facts:
+      services: {started: [{service: login, name: login.service, kind: unit, program: /usr/local/bin/banner, source: "/etc/systemd/system/multi-user.target.wants/login.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: shell, name: shell, kind: inetd, program: /usr/sbin/in.rshd, source: "/etc/inetd.conf:12"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

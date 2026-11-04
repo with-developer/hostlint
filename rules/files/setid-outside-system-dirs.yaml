@@ -1,0 +1,41 @@
+id: files.setid-outside-system-dirs
+version: 1
+title: No set-ID programs outside the system program directories
+title_ko: 시스템 디렉터리 밖의 SUID·SGID 파일 없음
+severity: high
+description: >-
+  Lists files with the set-user-ID or set-group-ID bit outside /usr/bin, /usr/sbin, /usr/lib,
+  /usr/lib64, /usr/libexec, /bin, /sbin, /lib and /lib64, such as in home directories, /tmp,
+  /var, /opt or /srv.
+rationale: >-
+  Distributions install their set-ID programs in the system directories; one anywhere else is
+  usually a leftover or a backdoor that grants its owner's rights to whoever runs it.
+remediation: Remove the set-ID bits (`chmod u-s,g-s`) or the file, unless the software needs them.
+violations:
+  over: filesystem.setid
+  as: f
+  where: >-
+    !f.path.matches("^/(usr/)?(bin|sbin|lib|lib64|libexec)/")
+  key: f.path
+  text: >-
+    f.path + " (" + f.mode + ", " + (f.owner != "" ? f.owner : string(f.uid)) + ")"
+  allow_empty: true
+tests:
+  - name: system programs
+    facts:
+      filesystem: {setid: [{path: /usr/bin/passwd, mode: "4755", owner: root}, {path: /usr/lib/openssh/ssh-keysign, mode: "4755", owner: root}]}
+    want: PASS
+  - name: in a home directory
+    facts:
+      filesystem: {setid: [{path: /home/alice/.cache/sh, mode: "4755", owner: root}]}
+    want: FAIL
+  - name: in /usr/local
+    facts:
+      filesystem: {setid: [{path: /usr/local/bin/tool, mode: "4711", uid: 0, owner: root}]}
+    want: FAIL
+  - name: walk incomplete
+    input: incomplete
+    incomplete: [filesystem]
+    facts:
+      filesystem: {setid: []}
+    want: ERROR

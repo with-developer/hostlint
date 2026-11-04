@@ -1,0 +1,36 @@
+id: services.no-automount
+version: 1
+title: The automounter is not started
+title_ko: automountd 미사용
+severity: high
+description: >-
+  Lists the ways the automounter (autofs) is started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  The automounter mounts file systems on access, which can expose local or remote file systems unexpectedly.
+remediation: >-
+  Disable autofs (`systemctl disable --now autofs`) if nothing needs it.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["autofs", "automount", "automountd"] || s.program.matches("/automount(d)?$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: autofs, name: autofs.service, kind: unit, program: /usr/sbin/automount, source: "/etc/systemd/system/multi-user.target.wants/autofs.service"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

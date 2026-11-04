@@ -39,8 +39,8 @@ required check on `main`.
 | `internal/cli/` | Command definitions (Cobra) |
 | `internal/version/` | Build information |
 | `internal/engine/` | Rule loading, evaluation, result model |
-| `internal/collect/` | Fact collectors — the only code that touches the host |
-| `internal/facts/` | Shared fact types (`Setting`, `OS`) and the rules fact types must follow |
+| `internal/collect/` | Fact collectors; they read the host only through `internal/hostfs` |
+| `internal/facts/` | Shared fact types (`Setting`, `OS`) and the fact type restrictions |
 | `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |

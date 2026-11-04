@@ -12,3 +12,5 @@ Consequences. Don't edit an accepted ADR to change a decision — add a new ADR 
 | [0005](0005-license-apache-2.md) | License: Apache-2.0 |
 | [0006](0006-rule-format-evaluation-results.md) | Rule format (CEL), evaluation, statuses and result schema v1 |
 | [0007](0007-kisa-2026-edition.md) | The KISA profile targets the 2026 edition (U-01–U-67) |
+| [0008](0008-package-service-socket-facts.md) | Package, service and socket facts: files first, live state gated by `target.live` |
+| [0009](0009-bounded-filesystem-walk.md) | Bounded filesystem walks: local filesystems only, partial lists never pass |

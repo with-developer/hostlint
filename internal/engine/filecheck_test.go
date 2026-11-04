@@ -132,6 +132,41 @@ func TestFileCheckDanglingSymlink(t *testing.T) {
 	}
 }
 
+// A link to /dev/null masks a file (systemd units, blanked configuration):
+// it is absent in effect, and /dev/null's mode (0666) is not the file's. The
+// link is recognized without /dev existing, as in a mounted image.
+func TestFileCheckMasked(t *testing.T) {
+	tests := []struct {
+		name, path, target, missing string
+		want                        Status
+	}{
+		{"masked unit", "/etc/systemd/system/getty.service", "/dev/null", "pass", StatusPass},
+		{"relative link", "/etc/systemd/system/getty.service", "../../../dev/null", "pass", StatusPass},
+		{"required file masked", "/etc/systemd/system/getty.service", "/dev/null", "fail", StatusFail},
+		{"link to a writable file", "/etc/systemd/system/getty.service", "/srv/getty.service", "pass", StatusFail},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := demoHost().AddSymlink(tt.path, tt.target).AddFile("/srv/getty.service", "", 0o666, 0, 0)
+			c := &Check{ID: "x.units", File: &FileSpec{Paths: []string{"/etc/systemd/system/*.service"}, Owner: []string{"root"}, Mode: "0755", Missing: tt.missing, NoMatch: "pass"}}
+			got := scanOne(t, c, demoSvc(), m)
+			if got.Status != tt.want {
+				t.Errorf("status %s (%q), want %s", got.Status, text(got), tt.want)
+			}
+			if tt.target != "/srv/getty.service" && !strings.Contains(text(got), "masked") {
+				t.Errorf("evidence %q does not say the file is masked", text(got))
+			}
+		})
+	}
+	// A device that is not reached through a link to /dev/null is a file
+	// like any other.
+	m := demoHost().AddSpecial("/etc/systemd/system/odd.service", fs.ModeDevice|fs.ModeCharDevice, 0o666, 0, 0)
+	c := &Check{ID: "x.units", File: &FileSpec{Paths: []string{"/etc/systemd/system/*.service"}, Owner: []string{"root"}, Mode: "0755", Missing: "pass", NoMatch: "pass"}}
+	if got := scanOne(t, c, demoSvc(), m); got.Status != StatusFail {
+		t.Errorf("device: %s (%q), want FAIL", got.Status, text(got))
+	}
+}
+
 // blockingFS hangs on one path, like a stat on a dead NFS mount.
 type blockingFS struct {
 	hostfs.FS

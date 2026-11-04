@@ -1,0 +1,26 @@
+id: files.hosts-lpd-perms
+version: 1
+title: /etc/hosts.lpd is owned by root and private, if it exists
+title_ko: /etc/hosts.lpd는 있으면 root 소유, 비공개
+severity: low
+description: Checks that /etc/hosts.lpd, if present, is owned by root with mode 0600 or stricter.
+rationale: The file lists hosts allowed to print; whoever can change it can open the print service to others.
+remediation: Remove /etc/hosts.lpd if printing from other hosts is not needed; otherwise `chown root` and `chmod 600` it.
+file:
+  paths: [/etc/hosts.lpd]
+  owner: [root]
+  mode: "0600"
+  missing: pass
+tests:
+  - name: absent
+    want: PASS
+  - name: readable by all
+    files:
+      /etc/hosts.lpd: {mode: "0644"}
+    want: FAIL
+  - name: /etc unreadable
+    input: unavailable
+    files:
+      /etc: {type: dir, mode: "0755", error: permission}
+      /etc/hosts.lpd: {mode: "0600"}
+    want: ERROR

@@ -1,0 +1,36 @@
+id: services.no-snmp
+version: 1
+title: SNMP is not started unless needed
+title_ko: SNMP 서비스 미사용
+severity: medium
+description: >-
+  Lists the ways the SNMP agent (snmpd) is started: enabled units, units running now, init scripts and
+  inetd/xinetd entries, found by service name or program.
+rationale: >-
+  An SNMP agent exposes system details and, misconfigured, lets others change settings.
+remediation: >-
+  Disable snmpd if nothing monitors this host through SNMP; otherwise waive this check and secure snmpd.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["snmpd"] || s.program.matches("/snmpd$")
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: started
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, program: /usr/sbin/snmpd, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

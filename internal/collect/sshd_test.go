@@ -90,6 +90,26 @@ func TestSSHDMountedRoot(t *testing.T) {
 	}
 }
 
+// OpenSSH 8.7 and later split values with argv_split: quotes group, and a
+// word starting with # is a comment (reproduced with sshd -T on debian:12).
+func TestSSHDValueSplitting(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/ssh/sshd_config",
+		"PermitRootLogin no   # KISA U-01\nUsePAM 'yes'\nBanner \"/etc/issue net\" # quoted path\nAllowUsers alice bob#2\nMatch User admin\n  PermitRootLogin no # also here\n", 0o644, 0, 0)
+	f, err := sshdCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := f.Value.(*SSHD)
+	for key, want := range map[string]string{"permitrootlogin": "no", "usepam": "yes", "banner": "/etc/issue net", "allowusers": "alice bob#2"} {
+		if s.Config[key].Value != want {
+			t.Errorf("%s = %q, want %q", key, s.Config[key].Value, want)
+		}
+	}
+	if len(s.Match) != 1 || s.Match[0].Settings["permitrootlogin"].Value != "no" {
+		t.Errorf("match = %+v", s.Match)
+	}
+}
+
 func TestSSHDNotInstalled(t *testing.T) {
 	f, err := sshdCollector{}.Collect(context.Background(), hostfs.NewTestHost(hostfs.NewMemFS(), nil, true))
 	if err != nil || f.Value.(*SSHD).Present {
