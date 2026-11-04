@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -549,34 +550,57 @@ func TestPAMPasswordHash(t *testing.T) {
 	}
 }
 
-// su restricted by its permissions counts as restricted: only members of its
-// group can run it.
+// su restricted by its permissions counts as restricted: only members of an
+// administrators' group can run it.
 func TestPAMSuPermissions(t *testing.T) {
 	const su = "auth sufficient pam_rootok.so\nauth required pam_unix.so\n"
+	const group = "root:x:0:\nwheel:x:10:\nusers:x:100:\n"
+	type file struct {
+		path     string
+		mode     uint32
+		uid, gid int64
+	}
 	tests := []struct {
-		name string
-		mode uint32
-		uid  int64
-		gid  int64
-		want string
+		name  string
+		files []file
+		want  string
 	}{
-		{"setuid root:wheel 4750", 0o4750, 0, 10, "restricted"},
-		{"stock root:root 4755", 0o4755, 0, 0, ""},
-		{"others can still run it", 0o4751, 0, 10, ""},
-		{"not setuid", 0o750, 0, 10, ""},
-		{"group is root's", 0o4750, 0, 0, ""},
-		{"owned by a user", 0o4750, 1000, 10, ""},
+		{"setuid root:wheel 4750", []file{{"/usr/bin/su", 0o4750, 0, 10}}, "restricted"},
+		{"only /bin/su", []file{{"/bin/su", 0o4750, 0, 10}}, "restricted"},
+		{"both restricted", []file{{"/usr/bin/su", 0o4750, 0, 10}, {"/bin/su", 0o4750, 0, 10}}, "restricted"},
+		{"one copy open", []file{{"/usr/bin/su", 0o4750, 0, 10}, {"/bin/su", 0o4755, 0, 0}}, ""},
+		{"stock root:root 4755", []file{{"/usr/bin/su", 0o4755, 0, 0}}, ""},
+		{"others can still run it", []file{{"/usr/bin/su", 0o4751, 0, 10}}, ""},
+		{"not setuid", []file{{"/usr/bin/su", 0o750, 0, 10}}, ""},
+		{"group is root's", []file{{"/usr/bin/su", 0o4750, 0, 0}}, ""},
+		{"a group everyone is in", []file{{"/usr/bin/su", 0o4750, 0, 100}}, ""},
+		{"owned by a user", []file{{"/usr/bin/su", 0o4750, 1000, 10}}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := hostfs.NewMemFS().AddFile("/etc/pam.d/su", su, 0o644, 0, 0).AddFile("/usr/bin/su", "", tt.mode, tt.uid, tt.gid)
+			m := hostfs.NewMemFS().AddFile("/etc/pam.d/su", su, 0o644, 0, 0).AddFile("/etc/group", group, 0o644, 0, 0)
+			for _, f := range tt.files {
+				m.AddFile(f.path, "", f.mode, f.uid, f.gid)
+			}
 			s := pamFacts(t, m).Effective["su_wheel"]
 			if s.Value != tt.want {
 				t.Errorf("su_wheel = %+v, want %q", s, tt.want)
 			}
-			if tt.want != "" && !strings.Contains(s.Source, "/usr/bin/su") {
+			if tt.want != "" && !strings.Contains(s.Source, "su (mode 4750, group wheel)") {
 				t.Errorf("source = %q", s.Source)
 			}
 		})
+	}
+
+	// The pam_wheel line decides when it restricts su: its source stays.
+	m := hostfs.NewMemFS().AddFile("/etc/pam.d/su", "auth required pam_wheel.so use_uid\n", 0o644, 0, 0).AddFile("/etc/group", group, 0o644, 0, 0).AddFile("/usr/bin/su", "", 0o4750, 0, 10)
+	if s := pamFacts(t, m).Effective["su_wheel"]; s.Value != "restricted" || !strings.HasPrefix(s.Source, "/etc/pam.d/su") {
+		t.Errorf("with pam_wheel: %+v", s)
+	}
+	// su that cannot be examined leaves the field undecided, not the PAM facts incomplete.
+	m = hostfs.NewMemFS().AddFile("/etc/pam.d/su", su, 0o644, 0, 0).AddFile("/usr/bin/su", "", 0o4755, 0, 0).SetError("/usr/bin", os.ErrPermission)
+	f, err := collect(t, pamCollector{}, m)
+	if err != nil || !f.Complete || !slices.Contains(f.Unknown, "effective.su_wheel") {
+		t.Errorf("complete %v, unknown %v, err %v", f.Complete, f.Unknown, err)
 	}
 }

@@ -43,9 +43,11 @@ type PAM struct {
 	// stacks do not decide it:
 	//   - su_wheel: "restricted" when the su stack denies a user outside the
 	//     pam_wheel group who knows root's password; otherwise "not
-	//     restricted: <why>". Absent when the su stack has no pam_wheel.so.
-	//     "restricted" also when su itself is restricted by its permissions:
-	//     setuid root, a group other than root's, not executable by others.
+	//     restricted: <why>". "restricted" also when every su found is
+	//     restricted by its permissions: setuid root, a group of
+	//     administrators (wheel, sudo, admin, adm), not executable by others.
+	//     Absent when neither the su stack has a pam_wheel.so nor su is so
+	//     restricted.
 	//   - password_hash: the hash pam_unix in the passwd stack uses (md5,
 	//     sha256, sha512, yescrypt, ...): its last hash option, or else the
 	//     first ENCRYPT_METHOD of /etc/login.defs, which pam_unix reads.
@@ -169,29 +171,63 @@ func (pamCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, 
 	return f, nil
 }
 
-// suPaths are where su is found.
+// suPaths are where su is found; on a merged /usr they are the same file.
 var suPaths = []string{"/usr/bin/su", "/bin/su"}
 
+// adminGroups are the groups whose members administer the host. su restricted
+// to another group (users, staff) may still be open to every user, so only
+// these count; a site's own group is not recognized (the check then fails
+// rather than passes).
+var adminGroups = []string{"wheel", "sudo", "admin", "adm"}
+
 // suPermissions reports a restriction of su by its file permissions: owned by
-// root, a group other than root's, setuid, and not executable by others, so
-// only members of that group can run it.
+// root, a group of administrators, setuid, and not executable by others, so
+// only members of that group can run it. Every su found must be restricted.
 func (r *pamReader) suPermissions() (facts.Setting, bool) {
+	groups := r.groupNames()
+	var source string
 	for _, p := range suPaths {
 		fi, err := r.fsys.Stat(p)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
 			continue
 		case err != nil:
-			r.skipped = append(r.skipped, err.Error())
+			r.unknownField("effective.su_wheel", p+": "+err.Error())
 			return facts.Setting{}, false
 		}
 		perm := fi.Perm()
-		if fi.IsRegular() && fi.UID == 0 && fi.GID != 0 && perm&0o4000 != 0 && perm&0o010 != 0 && perm&0o001 == 0 {
-			return facts.Setting{Value: "restricted", Explicit: true, Source: fmt.Sprintf("%s (mode %04o, group %d)", p, perm, fi.GID)}, true
+		if !fi.IsRegular() || fi.UID != 0 || !slices.Contains(adminGroups, groups[fi.GID]) || perm&0o4000 == 0 || perm&0o010 == 0 || perm&0o001 != 0 {
+			return facts.Setting{}, false
 		}
+		if source == "" {
+			source = fmt.Sprintf("%s (mode %04o, group %s)", p, perm, groups[fi.GID])
+		}
+	}
+	if source == "" {
 		return facts.Setting{}, false
 	}
-	return facts.Setting{}, false
+	return facts.Setting{Value: "restricted", Explicit: true, Source: source}, true
+}
+
+// groupNames maps group ids to names from /etc/group; empty when it cannot be read.
+func (r *pamReader) groupNames() map[int64]string {
+	names := map[int64]string{}
+	data, err := r.fsys.ReadFile("/etc/group")
+	if err != nil {
+		return names
+	}
+	for line := range strings.Lines(string(data)) {
+		f := strings.Split(strings.TrimSpace(line), ":")
+		if len(f) < 3 || strings.HasPrefix(f[0], "#") {
+			continue
+		}
+		if gid, err := strconv.ParseInt(f[2], 10, 64); err == nil {
+			if _, dup := names[gid]; !dup {
+				names[gid] = f[0]
+			}
+		}
+	}
+	return names
 }
 
 type pamReader struct {
