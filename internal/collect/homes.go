@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"path"
 	"reflect"
+	"slices"
 	"strconv"
 
 	"github.com/with-developer/hostlint/internal/engine"
@@ -50,7 +51,7 @@ type HomeFile struct {
 var startupFiles = []string{
 	".profile", ".bash_profile", ".bash_login", ".bashrc", ".bash_logout",
 	".cshrc", ".login", ".logout", ".kshrc", ".zshenv", ".zprofile", ".zshrc", ".zlogin",
-	".exrc", ".xinitrc", ".xsession",
+	".exrc", ".xinitrc", ".xsession", ".zlogout", ".xprofile", ".tcshrc", ".pam_environment", ".ssh/rc",
 }
 
 type homesCollector struct{}
@@ -63,14 +64,20 @@ func (homesCollector) Type() reflect.Type    { return reflect.TypeFor[Homes]() }
 func (homesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	var skipped []string
 	homes := &Homes{Accounts: []Home{}}
+	seen := map[string]Home{} // accounts often share a home (/, /var/empty)
 	err := eachRecord(h.FS, "/etc/passwd", 7, func(f []string, _ string) error {
 		uid, err := strconv.ParseInt(f[2], 10, 64)
 		if err != nil {
 			return errMalformed
 		}
 		home := Home{User: f[0], UID: uid, LoginShell: !noLoginShells[f[6]], Path: f[5], StartupFiles: []HomeFile{}}
-		if err := observeHome(h.FS, &home); err != nil {
-			skipped = append(skipped, err.Error())
+		if prev, ok := seen[home.Path]; ok {
+			home.Exists, home.OwnerUID, home.Mode, home.StartupFiles = prev.Exists, prev.OwnerUID, prev.Mode, prev.StartupFiles
+		} else {
+			if err := observeHome(h.FS, &home); err != nil && !slices.Contains(skipped, err.Error()) {
+				skipped = append(skipped, err.Error())
+			}
+			seen[home.Path] = home
 		}
 		homes.Accounts = append(homes.Accounts, home)
 		return nil
@@ -104,6 +111,9 @@ func observeHome(fsys hostfs.FS, home *Home) error {
 	}
 	for _, name := range startupFiles {
 		file := path.Join(p, name)
+		if pointsToNull(fsys, file) {
+			continue // a blanked file: nothing runs
+		}
 		f, err := fsys.Stat(file)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
@@ -117,4 +127,21 @@ func observeHome(fsys hostfs.FS, home *Home) error {
 		home.StartupFiles = append(home.StartupFiles, HomeFile{Path: file, UID: f.UID, Mode: fmt.Sprintf("%04o", f.Perm())})
 	}
 	return nil
+}
+
+// pointsToNull reports whether file is a symbolic link to /dev/null, the way
+// to blank a file that others would otherwise create.
+func pointsToNull(fsys hostfs.FS, file string) bool {
+	li, err := fsys.Lstat(file)
+	if err != nil || !li.IsSymlink() {
+		return false
+	}
+	target, err := fsys.ReadLink(file)
+	if err != nil {
+		return false
+	}
+	if !path.IsAbs(target) {
+		target = path.Join(path.Dir(file), target)
+	}
+	return path.Clean(target) == "/dev/null"
 }
