@@ -10,7 +10,7 @@ controls:
     title: Restrict direct remote root login
     title_ko: 원격에서 root로 직접 로그인하지 못하게 함
     severity: high
-    checks: [ssh.permit-root-login, ssh.match-permit-root-login]
+    checks: [ssh.permit-root-login, ssh.match-permit-root-login, services.review-remote-root-login]
   - id: U-02
     title: Password policy
     title_ko: 비밀번호 정책

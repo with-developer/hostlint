@@ -1,0 +1,35 @@
+id: services.review-remote-root-login
+version: 1
+title: Review root login through telnet and other remote terminal services
+title_ko: telnet 등 원격 터미널 서비스의 root 로그인 검토
+severity: high
+description: >-
+  Applies when telnet or rlogin is started; then shows how, for a review of whether root can log
+  in through it. Not applicable otherwise. The OpenSSH checks do not cover these services.
+rationale: >-
+  A telnet or rlogin server lets root log in remotely unless its login stack refuses it, and it
+  sends the password in clear text.
+remediation: >-
+  Turn the service off (services.no-telnet, services.no-r-services). If it must run, add
+  `auth required pam_securetty.so` to its PAM login stack (/etc/pam.d/login and, where the
+  service uses it, /etc/pam.d/remote) and remove every pts/N line from /etc/securetty.
+applies: >-
+  services.started.exists(s, s.service in ["telnet", "telnetd", "rlogin", "rlogind", "krlogind", "ktelnet"] || s.program.matches("/(in\\.)?(telnetd|rlogind)$|/krlogind$"))
+manual:
+  guidance: >-
+    Check that root cannot log in through the service: pam_securetty in its auth stack and no pts/N line in /etc/securetty. Better, turn the service off.
+  show: >-
+    services.started.filter(s, s.service in ["telnet", "telnetd", "rlogin", "rlogind", "krlogind", "ktelnet"] || s.program.matches("/(in\\.)?(telnetd|rlogind)$|/krlogind$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: NOT_APPLICABLE
+  - name: telnet started by inetd
+    facts:
+      services: {started: [{service: telnet, name: telnet, kind: inetd, program: /usr/sbin/in.telnetd, source: "/etc/inetd.conf:12"}]}
+    want: MANUAL
+  - name: telnet socket
+    facts:
+      services: {started: [{service: telnet, name: telnet.socket, kind: unit, source: "/etc/systemd/system/sockets.target.wants/telnet.socket"}]}
+    want: MANUAL
