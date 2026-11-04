@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -256,5 +257,66 @@ func TestShellEnvUncertainReadonly(t *testing.T) {
 	f, err := collect(t, shellEnvCollector{}, m)
 	if err != nil || len(f.Unknown) != 1 || f.Unknown[0] != "effective" {
 		t.Errorf("unknown %v, err %v", f.Unknown, err)
+	}
+}
+
+// A loop the scanner cannot follow completely leaves the facts incomplete:
+// it must not drop part of what the line sources.
+func TestShellEnvLoopLineNotFullyUnderstood(t *testing.T) {
+	for name, profile := range map[string]string{
+		"list continues after run-parts": "for i in $(run-parts --list /etc/profile.d) /etc/profile.d/x.sh; do . $i; done\n",
+		"dynamic item in a literal list": "for i in /etc/profile.d/*.sh $(ls /etc/profile.d/extra); do . $i; done\n",
+		"variable item in a list":        "for i in /etc/profile.d/*.sh $EXTRA; do . $i; done\n",
+		"loop behind &&":                 "[ -d /etc/profile.d ] && for i in /etc/profile.d/*.sh; do . $i; done\n",
+		"loop after then":                "if [ -d /etc/profile.d ]; then for i in /etc/profile.d/*.sh; do . $i; done; fi\n",
+		"list on the next line":          "for i in \\\n  /etc/profile.d/*.sh; do . $i; done\n",
+		"regex with \\d":                 "for i in $(run-parts --list --regex '^\\d+\\.sh$' /etc/profile.d); do . $i; done\n",
+		"regex with a flag group":        "for i in $(run-parts --list --regex '(?i)\\.SH$' /etc/profile.d); do . $i; done\n",
+		"regex with backslash in class":  "for i in $(run-parts --list --regex '^[\\w]+\\.sh$' /etc/profile.d); do . $i; done\n",
+		"double quoted regex expands":    "for i in $(run-parts --list --regex \"^$NAME\\.sh$\" /etc/profile.d); do . $i; done\n",
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/profile.d/x.sh", "umask 000\n", 0o644, 0, 0)
+		f, err := collect(t, shellEnvCollector{}, m)
+		if err != nil || f.Complete {
+			t.Errorf("%s: complete %v, %v; want incomplete", name, f.Complete, err)
+		}
+	}
+}
+
+// What follows a loop's list on its line is still read.
+func TestShellEnvAfterLoopOnSameLine(t *testing.T) {
+	for _, profile := range []string{
+		"for i in $(run-parts --list /etc/profile.d); do . $i; done; . /etc/extra.sh\n",
+		"for i in /etc/profile.d/*.sh; do . $i; done; . /etc/extra.sh\n",
+	} {
+		m := hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0).AddFile("/etc/extra.sh", "TMOUT=450\n", 0o644, 0, 0)
+		if env := shellEnv(t, m); len(env.TMOUT) != 1 || env.TMOUT[0].Value != "450" {
+			t.Errorf("%q: tmout %+v, want the 450 of /etc/extra.sh", profile, env.TMOUT)
+		}
+	}
+}
+
+// An empty --regex matches every name; it is not the same as no --regex.
+func TestShellEnvRunPartsEmptyRegex(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "for i in $(run-parts --list --regex '' /etc/profile.d); do . $i; done\n", 0o644, 0, 0).
+		AddFile("/etc/profile.d/a.conf", "TMOUT=700\n", 0o644, 0, 0)
+	if env := shellEnv(t, m); len(env.TMOUT) != 1 || env.TMOUT[0].Value != "700" {
+		t.Errorf("tmout %+v, want the 700 of a.conf", env.TMOUT)
+	}
+}
+
+// A directory with more files than hostlint reads is reported once, quickly.
+func TestShellEnvRunPartsManyFiles(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/profile", "for i in $(run-parts --list /etc/profile.d); do . $i; done\n", 0o644, 0, 0)
+	for i := range 3 * maxShellFiles {
+		m.AddFile(fmt.Sprintf("/etc/profile.d/f%04d", i), "umask 022\n", 0o644, 0, 0)
+	}
+	f, err := collect(t, shellEnvCollector{}, m)
+	if err != nil || f.Complete {
+		t.Fatalf("complete %v, %v; want incomplete", f.Complete, err)
+	}
+	if len(f.Skipped) > 2 {
+		t.Errorf("%d skip notes reported, want at most 2: %v", len(f.Skipped), f.Skipped)
 	}
 }
