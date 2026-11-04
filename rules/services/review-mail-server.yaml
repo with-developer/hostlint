@@ -11,12 +11,12 @@ rationale: >-
 remediation: >-
   Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
 applies: >-
-  services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$"))
+  services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
 manual:
   guidance: >-
     Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
   show: >-
-    services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+    services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:
   - name: not started
     facts:
