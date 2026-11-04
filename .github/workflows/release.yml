@@ -52,6 +52,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }} # the tag that was pushed, whatever else points at the commit
       - name: Check the artifacts and install.sh
         run: scripts/check-release.sh dist
       - name: Verify the signature of checksums.txt

@@ -43,6 +43,12 @@ git tag -a v0.1.0 -m "hostlint v0.1.0" <commit on main>
 git push origin v0.1.0
 ```
 
+Do not tag a release and its release candidate on the same commit unless the workflow
+names the tag it builds (it does: `GORELEASER_CURRENT_TAG`): git sorts `v0.1.0-rc.1` after
+`v0.1.0`, and GoReleaser took the candidate for the version of the release's own build, which
+failed uploading files the candidate's release already had. `v0.1.0` was tagged and never
+released for that reason; `v0.1.1` was the first release.
+
 The workflow then:
 
 1. refuses a tag whose commit is not on `main`, and runs the tests;

@@ -4,6 +4,13 @@ version: 2
 
 project_name: hostlint
 
+git:
+  # A release and its release candidate may share a commit (v0.1.0 and
+  # v0.1.0-rc.1 did). git sorts a pre-release after the release by default, so
+  # GoReleaser took the rc as the version of the release's own build; with the
+  # suffix declared, the release sorts last. The workflow also names the tag.
+  prerelease_suffix: "-"
+
 builds:
   - id: hostlint
     main: ./cmd/hostlint

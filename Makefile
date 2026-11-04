@@ -56,7 +56,8 @@ tidy: ## Tidy go.mod and go.sum
 vuln: ## Scan dependencies for known vulnerabilities
 	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
-.PHONY: help build test lint lint-guards fmt tidy vuln snapshot clean
+snapshot: $(GORELEASER) ## Build the release artifacts into dist/ without publishing (docs/RELEASING.md)
+	$(GORELEASER) release --snapshot --clean --skip=$(SNAPSHOT_SKIP)
 
 docs: ## Regenerate docs/rules.md from rules/ and profiles/
 	go test ./internal/rulesdoc -run TestRulesDocIsUpToDate -update
