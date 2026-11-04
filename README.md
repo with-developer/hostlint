@@ -30,8 +30,9 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 ```
 
-> 🚧 **Pre-release.** The first release (v0.1.0) is close but not tagged yet; build from source
-> to try it. See the [roadmap](docs/ROADMAP.md).
+> 🚧 **Early release.** v0.1.1 is the first release (v0.1.0 exists as a tag only; its release
+> build failed, see [docs/RELEASING.md](docs/RELEASING.md)). Expect rough edges in the less
+> common setups, and report them. See the [roadmap](docs/ROADMAP.md).
 
 ## Why hostlint
 
@@ -52,10 +53,21 @@ kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 
 ## Quick start
 
-Requires Go 1.26 or later to build; the binary itself has no dependencies.
+Install a release (Linux, amd64 or arm64). `install.sh` verifies the SHA-256 of the archive and,
+when `cosign` is installed, the Sigstore signature of the checksums:
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@latest
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.1.1/install.sh
+sh install.sh -v v0.1.1          # read it first; add -b DIR to choose where it goes
+sudo hostlint scan
+```
+
+Each [release](https://github.com/with-developer/hostlint/releases) also has `.deb` and `.rpm`
+packages, SBOMs and build provenance (`gh attestation verify FILE -R with-developer/hostlint`).
+To build instead (Go 1.26 or later; the binary itself has no dependencies):
+
+```sh
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.1.1
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -140,11 +152,11 @@ and the [architecture decisions](docs/adr/):
 
 ## Status
 
-hostlint is under active development toward v0.1.0. The KISA 2026 profile (U-01–U-67), the
+hostlint is under active development. The KISA 2026 profile (U-01–U-67), the
 collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
 with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`) and a
-container test matrix over every supported distribution are in place; the first release, v0.1.0,
-is next. Until then, build from source as above. Fleet mode (an agent and a server with a web UI) is planned for
+container test matrix over every supported distribution are in place, and v0.1.1 is released.
+Fleet mode (an agent and a server with a web UI) is planned for
 v0.2. See the [roadmap](docs/ROADMAP.md).
 
 ## License

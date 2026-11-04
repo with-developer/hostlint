@@ -1,4 +1,4 @@
-<!-- translated from README.md @ a29fab4 -->
+<!-- translated from README.md @ 9bbc411 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -30,8 +30,9 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 ```
 
-> 🚧 **출시 전입니다.** 첫 릴리스(v0.1.0)가 가까워졌지만 아직 태그가 없습니다. 사용해 보려면
-> 소스에서 빌드하세요. [로드맵](docs/ROADMAP.md)을 참고하세요.
+> 🚧 **초기 릴리스입니다.** v0.1.1이 첫 릴리스입니다(v0.1.0은 태그만 있고, 릴리스 빌드가
+> 실패했습니다. [docs/RELEASING.md](docs/RELEASING.md) 참고). 흔치 않은 환경에서는 거친 부분이 있을
+> 수 있으니 알려 주세요. [로드맵](docs/ROADMAP.md)을 참고하세요.
 
 ## 왜 hostlint인가
 
@@ -52,10 +53,21 @@ kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 
 ## 빠른 시작
 
-빌드에는 Go 1.26 이상이 필요합니다. 바이너리 자체는 의존성이 없습니다.
+릴리스를 설치합니다(Linux, amd64 또는 arm64). `install.sh`는 아카이브의 SHA-256을 확인하고,
+`cosign`이 있으면 체크섬의 Sigstore 서명도 확인합니다.
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@latest
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.1.1/install.sh
+sh install.sh -v v0.1.1          # 먼저 읽어 보세요. 설치 위치는 -b DIR
+sudo hostlint scan
+```
+
+[릴리스](https://github.com/with-developer/hostlint/releases)에는 `.deb`·`.rpm` 패키지, SBOM, 빌드
+출처 증명도 있습니다(`gh attestation verify 파일 -R with-developer/hostlint`). 직접 빌드하려면
+(Go 1.26 이상, 바이너리 자체는 의존성이 없습니다):
+
+```sh
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.1.1
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -139,10 +151,10 @@ hostlint는 양보하지 않는 몇 가지 원칙 위에 만들어졌습니다. 
 
 ## 상태
 
-hostlint는 v0.1.0을 향해 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·
+hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·
 SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
-패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, 첫
-릴리스인 v0.1.0이 다음 순서입니다. 그때까지는 위처럼 소스에서 빌드하세요. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.2 계획입니다. [로드맵](docs/ROADMAP.md)을
+패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.1.1이
+릴리스되었습니다. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.2 계획입니다. [로드맵](docs/ROADMAP.md)을
 참고하세요.
 
 ## 라이선스
