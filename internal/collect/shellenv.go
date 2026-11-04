@@ -244,16 +244,17 @@ func (s *shellScanner) logicalLines(name string, data []byte) []shellLine {
 var (
 	loopVarRe   = regexp.MustCompile(`^\s*for\s+(\w+)\s+in\b`)
 	loopOpenRe  = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:for|while|until|select)\s`)
-	loopCloseRe = regexp.MustCompile(`\bdone\b`)
+	loopCloseRe = regexp.MustCompile(`(?:^|[;&|(){}]\s*|\b(?:then|do|else)\s+)done\b`)
+	loopDoRe    = regexp.MustCompile(`(?:^|[;\s])do(?:[\s;]|$)`)
 )
 
 // loopBody returns the text of the loop that starts on lines[idx]: after its
 // first "do" up to the matching "done" ("" when it cannot be found).
 func loopBody(lines []shellLine, idx int) string {
 	first := lines[idx].code
-	do := strings.Index(first, " do")
-	if do < 0 {
-		do = len(first)
+	do := len(first)
+	if loc := loopDoRe.FindStringIndex(first); loc != nil {
+		do = loc[0]
 	}
 	var b strings.Builder
 	b.WriteString(first[do:])
@@ -275,7 +276,7 @@ func loopBody(lines []shellLine, idx int) string {
 }
 
 // loopSourcesItems reports whether the loop on code may source its variable:
-// its body mentions the variable. A loop that never uses it (": ;") sources
+// its body names the variable as a word. A loop that never uses it (": ;") sources
 // nothing, however it lists files.
 func loopSourcesItems(code string, body func() string) bool {
 	m := loopVarRe.FindStringSubmatch(code)
@@ -286,7 +287,9 @@ func loopSourcesItems(code string, body func() string) bool {
 	if b == "" {
 		return true // the body could not be found: assume it does
 	}
-	return strings.Contains(b, "$"+m[1]) || strings.Contains(b, "${"+m[1])
+	// The variable as a word anywhere in the body ($h, ${h}, ${!h}, $((h))):
+	// only a body that does not name it at all sources nothing.
+	return regexp.MustCompile(`\b` + regexp.QuoteMeta(m[1]) + `\b`).MatchString(b)
 }
 
 // maxJoinedLine bounds what continued lines are joined into.

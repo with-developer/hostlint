@@ -470,6 +470,10 @@ func TestShellEnvLoopBodyDecidesWhatIsSourced(t *testing.T) {
 		{"body without the variable", "for h in /etc/profile.d/*.sh; do\n  true\ndone\n", ""},
 		{"braced variable", "for h in /etc/profile.d/*.sh; do . ${h}; done\n", "600"},
 		{"nested loop before the source", "for h in /etc/profile.d/*.sh; do\n  for x in 1 2; do :; done\n  . $h\ndone\n", "600"},
+		{"do without a space", "for h in /etc/profile.d/*.sh;do . \"$h\";done\n", "600"},
+		{"one-line body", "for h in /etc/profile.d/*.sh; do . $h; done\n", "600"},
+		{"done inside a word does not end the body", "for h in /etc/profile.d/*.sh; do\n  touch x.done\n  . $h\ndone\n", "600"},
+		{"another variable with the same prefix", "for h in /etc/profile.d/*.sh; do\n  echo $hdr\ndone\n", ""},
 		{"run-parts loop with an empty body", "for h in $(run-parts --list /etc/profile.d); do : ; done\n", ""},
 	}
 	for _, tt := range tests {
