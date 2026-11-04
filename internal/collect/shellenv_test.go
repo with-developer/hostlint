@@ -222,6 +222,10 @@ func TestShellEnvEffectiveTMOUT(t *testing.T) {
 		{"last wins", "TMOUT=600\nTMOUT=1800\n", "1800"},
 		{"echoed text is not an assignment", "echo 'TMOUT=0' >> /tmp/x\nTMOUT=600\n", "600"},
 		{"printed double quotes", "printf \"export TMOUT=1800\\n\" | tee /etc/profile.d/x.sh\n", ""},
+		{"unquoted echo", "echo export TMOUT=0 >> /etc/profile\nTMOUT=600\n", "600"},
+		{"printf with a format and an argument", "printf '%s\\n' 'export TMOUT=1800' > /etc/profile.d/t.sh\nTMOUT=600\n", "600"},
+		{"escaped quotes in the printed text", "echo \"set \\\"x\\\" TMOUT=0\" >> f\nTMOUT=600\n", "600"},
+		{"echo inside a block", "if true; then echo 'TMOUT=0'; fi\nTMOUT=600\n", "600"},
 		{"an echo does not hide a real assignment on the line", "echo done; TMOUT=300\n", "300"},
 		{"leading zero is decimal to bash", "TMOUT=0600\n", "600"},
 		{"a plus sign is allowed", "TMOUT=+600\n", "600"},
@@ -441,5 +445,15 @@ func TestShellEnvTMOUTNotANumber(t *testing.T) {
 		if len(env.TMOUT) != 1 || env.TMOUT[0].Value != "" {
 			t.Errorf("TMOUT=%s: %+v, want an empty value", v, env.TMOUT)
 		}
+	}
+}
+
+// Printed text is not sourced either.
+func TestShellEnvPrintedSourceIsNotFollowed(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/profile", "echo \". /etc/x.sh\"\nprintf 'source /etc/x.sh\\n'\n", 0o644, 0, 0).
+		AddFile("/etc/x.sh", "TMOUT=1\n", 0o644, 0, 0)
+	if env := shellEnv(t, m); len(env.TMOUT) != 0 {
+		t.Errorf("tmout %+v, want none: the file is only printed", env.TMOUT)
 	}
 }

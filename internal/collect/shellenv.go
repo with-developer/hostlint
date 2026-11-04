@@ -205,7 +205,8 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 		if continues(code) && mentionsProfileD(code) {
 			s.unknownLoop(fmt.Sprintf("%s:%d", name, start)) // the file ends inside the list
 		}
-		if code == "" {
+		code = maskPrinted(code)
+		if strings.TrimSpace(code) == "" {
 			continue
 		}
 		opens, closes := blockWords(code)
@@ -232,22 +233,51 @@ func continues(code string) bool {
 	return n%2 == 1
 }
 
-// printedRe is the quoted text echo and printf print: not a command.
-var printedRe = regexp.MustCompile(`(?:^|[;&|(]\s*|\b(?:then|do|else)\s+)(?:echo|printf)\b(?:\s+-[a-zA-Z]+)*\s+("[^"]*"|'[^']*')`)
-
-// maskPrinted blanks the quoted text that echo and printf print, so that
-// echo 'TMOUT=0' >> file is not read as an assignment.
+// maskPrinted blanks the commands that only print text (echo and printf), so
+// that echo 'TMOUT=0' >> file, echo export TMOUT=0 and printf '%s' '. /x' are
+// not read as assignments or as sourced files. A command ends at an unquoted
+// ; & | ( ) { } and the offsets of the line are kept.
 func maskPrinted(code string) string {
-	return printedRe.ReplaceAllStringFunc(code, func(m string) string {
-		i := strings.IndexAny(m, `"'`)
-		return m[:i] + strings.Repeat(" ", len(m)-i)
-	})
+	out := []byte(code)
+	quote := byte(0)
+	start := 0
+	flush := func(end int) {
+		if isPrinting(code[start:end]) {
+			for k := start; k < end; k++ {
+				out[k] = ' '
+			}
+		}
+	}
+	for k := 0; k < len(code); k++ {
+		c := code[k]
+		switch {
+		case quote == '"' && c == '\\':
+			k++ // an escaped character inside double quotes
+		case quote != 0:
+			if c == quote {
+				quote = 0
+			}
+		case c == '\\':
+			k++
+		case c == '"' || c == '\'':
+			quote = c
+		case strings.IndexByte(";&|(){}", c) >= 0:
+			flush(k)
+			start = k + 1
+		}
+	}
+	flush(len(code))
+	return string(out)
 }
+
+// printingRe is a command that prints: its name after any then, do, else or !.
+var printingRe = regexp.MustCompile(`^\s*(?:(?:then|do|else|!)\s+)*(?:echo|printf)(?:\s|$)`)
+
+func isPrinting(cmd string) bool { return printingRe.MatchString(cmd) }
 
 // scanLine records every TMOUT, umask and PATH occurrence on a line, in
 // order.
 func (s *shellScanner) scanLine(code, src string, cond bool) {
-	code = maskPrinted(code)
 	type hit struct {
 		pos int
 		ev  shellEvent
