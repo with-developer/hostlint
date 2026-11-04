@@ -313,4 +313,10 @@ func TestCompareSettingInvalidValue(t *testing.T) {
 	if _, err := compareSetting(spec, 1, 90, "soon"); err == nil {
 		t.Error("a word that no collector marked was accepted as a number")
 	}
+	if _, err := compareSetting(spec, 1, 90, "invalid:"); err == nil {
+		t.Error("a value that is not a marker made by facts.Invalid was taken for one")
+	}
+	if ok, err := compareSetting(&SettingSpec{Matches: ".*"}, 0, 0, facts.Invalid("090")); err != nil || ok {
+		t.Errorf("a permissive pattern accepted an unreadable value: %v, %v", ok, err)
+	}
 }

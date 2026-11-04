@@ -6,6 +6,7 @@ package facts
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // Setting is one configuration value, in one of three states:
@@ -108,3 +109,15 @@ type Target struct {
 	// live targets only.
 	Live bool `json:"live"`
 }
+
+// InvalidPrefix starts the value of a Setting that the program reading it
+// cannot parse (login.defs "090" for a number): the program falls back to its
+// default, so the value must not satisfy a check. Use Invalid to make one and
+// IsInvalid to recognize it.
+const InvalidPrefix = "invalid: "
+
+// Invalid is the value of a setting the program cannot read as value.
+func Invalid(value string) string { return InvalidPrefix + value }
+
+// IsInvalid reports whether value was made by Invalid.
+func IsInvalid(value string) bool { return strings.HasPrefix(value, InvalidPrefix) }

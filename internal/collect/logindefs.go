@@ -41,7 +41,7 @@ var loginDefsDefaults = map[string]string{
 // strtol in base 0 (getdef.c): "010" is octal 8 and "0x10" is 16, while a
 // value that is not entirely a number ("090", "90 days") is a configuration
 // error and the key falls back to its default. Their values are stored in
-// decimal, or as "invalid: <value>" so that no range check accepts them.
+// decimal, or as facts.Invalid(value) so that no check accepts them.
 var loginDefsNumeric = map[string]bool{
 	"PASS_MAX_DAYS": true, "PASS_MIN_DAYS": true, "PASS_WARN_AGE": true,
 	"PASS_MIN_LEN": true, "PASS_MAX_LEN": true,
@@ -160,7 +160,7 @@ func parseLoginDefs(file string, data []byte) []loginDef {
 			if n, ok := parseCLong(value); ok {
 				value = strconv.FormatInt(n, 10)
 			} else {
-				value = "invalid: " + value
+				value = facts.Invalid(value)
 			}
 		}
 		out = append(out, loginDef{key, facts.Setting{Value: value, Explicit: true, Source: fmt.Sprintf("%s:%d", file, i+1)}})

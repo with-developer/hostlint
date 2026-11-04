@@ -319,16 +319,18 @@ func (e *evalEnv) evalSetting(cc *compiledCheck, params map[string]any, b *bindi
 }
 
 func compareSetting(spec *SettingSpec, lo, hi int64, value string) (bool, error) {
+	if facts.IsInvalid(value) {
+		// A value the program cannot read (login.defs "090") makes it fall
+		// back to its default: it never satisfies a check, and it is not an
+		// evaluation error. The checks that read such settings want values
+		// the default does not meet; a check whose range includes the default
+		// would need to compare it instead.
+		return false, nil
+	}
 	switch {
 	case len(spec.In) > 0:
 		return slices.Contains(spec.In, value), nil
 	case spec.Range != nil:
-		if strings.HasPrefix(value, "invalid:") {
-			// A collector marks a value the program cannot read as a number
-			// (login.defs "090"): the program falls back to its default, so the
-			// value is out of range, not undecidable.
-			return false, nil
-		}
 		n, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
 		if err != nil {
 			return false, fmt.Errorf("value %q is not an integer", value)
