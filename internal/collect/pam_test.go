@@ -548,3 +548,35 @@ func TestPAMPasswordHash(t *testing.T) {
 		}
 	}
 }
+
+// su restricted by its permissions counts as restricted: only members of its
+// group can run it.
+func TestPAMSuPermissions(t *testing.T) {
+	const su = "auth sufficient pam_rootok.so\nauth required pam_unix.so\n"
+	tests := []struct {
+		name string
+		mode uint32
+		uid  int64
+		gid  int64
+		want string
+	}{
+		{"setuid root:wheel 4750", 0o4750, 0, 10, "restricted"},
+		{"stock root:root 4755", 0o4755, 0, 0, ""},
+		{"others can still run it", 0o4751, 0, 10, ""},
+		{"not setuid", 0o750, 0, 10, ""},
+		{"group is root's", 0o4750, 0, 0, ""},
+		{"owned by a user", 0o4750, 1000, 10, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := hostfs.NewMemFS().AddFile("/etc/pam.d/su", su, 0o644, 0, 0).AddFile("/usr/bin/su", "", tt.mode, tt.uid, tt.gid)
+			s := pamFacts(t, m).Effective["su_wheel"]
+			if s.Value != tt.want {
+				t.Errorf("su_wheel = %+v, want %q", s, tt.want)
+			}
+			if tt.want != "" && !strings.Contains(s.Source, "/usr/bin/su") {
+				t.Errorf("source = %q", s.Source)
+			}
+		})
+	}
+}

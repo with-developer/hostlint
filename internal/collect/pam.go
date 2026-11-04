@@ -44,6 +44,8 @@ type PAM struct {
 	//   - su_wheel: "restricted" when the su stack denies a user outside the
 	//     pam_wheel group who knows root's password; otherwise "not
 	//     restricted: <why>". Absent when the su stack has no pam_wheel.so.
+	//     "restricted" also when su itself is restricted by its permissions:
+	//     setuid root, a group other than root's, not executable by others.
 	//   - password_hash: the hash pam_unix in the passwd stack uses (md5,
 	//     sha256, sha512, yescrypt, ...): its last hash option, or else the
 	//     first ENCRYPT_METHOD of /etc/login.defs, which pam_unix reads.
@@ -151,6 +153,11 @@ func (pamCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, 
 	if s, ok := suWheel(p.Stacks["su"]); ok {
 		p.Effective["su_wheel"] = s
 	}
+	if p.Effective["su_wheel"].Value != "restricted" {
+		if s, ok := r.suPermissions(); ok {
+			p.Effective["su_wheel"] = s
+		}
+	}
 	if s, ok := r.passwordHash(p.Stacks["passwd"]); ok {
 		p.Effective["password_hash"] = s
 	}
@@ -160,6 +167,31 @@ func (pamCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, 
 	}
 	slices.Sort(f.Unknown)
 	return f, nil
+}
+
+// suPaths are where su is found.
+var suPaths = []string{"/usr/bin/su", "/bin/su"}
+
+// suPermissions reports a restriction of su by its file permissions: owned by
+// root, a group other than root's, setuid, and not executable by others, so
+// only members of that group can run it.
+func (r *pamReader) suPermissions() (facts.Setting, bool) {
+	for _, p := range suPaths {
+		fi, err := r.fsys.Stat(p)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			continue
+		case err != nil:
+			r.skipped = append(r.skipped, err.Error())
+			return facts.Setting{}, false
+		}
+		perm := fi.Perm()
+		if fi.IsRegular() && fi.UID == 0 && fi.GID != 0 && perm&0o4000 != 0 && perm&0o010 != 0 && perm&0o001 == 0 {
+			return facts.Setting{Value: "restricted", Explicit: true, Source: fmt.Sprintf("%s (mode %04o, group %d)", p, perm, fi.GID)}, true
+		}
+		return facts.Setting{}, false
+	}
+	return facts.Setting{}, false
 }
 
 type pamReader struct {

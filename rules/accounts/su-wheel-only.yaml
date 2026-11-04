@@ -5,13 +5,16 @@ title_ko: wheel 그룹 구성원만 su를 쓸 수 있음
 severity: high
 description: >-
   Checks that the su PAM stack has a pam_wheel line that denies users outside the wheel group
-  (or the group given with group=). A line with trust or deny, a control that does not deny
-  (optional, sufficient), or a sufficient rule earlier in the stack does not restrict su.
+  (or the group given with group=), or that su itself is restricted by its permissions (owned
+  by root, a group other than root's, setuid, not executable by others). A line with trust or
+  deny, a control that does not deny (optional, sufficient), or a sufficient rule earlier in
+  the stack does not restrict su.
 rationale: >-
   Without the restriction, any user who learns the root password can become root with su.
 remediation: >-
   Add `auth required pam_wheel.so use_uid` to /etc/pam.d/su, before the common-auth or
-  system-auth include, and add administrators to the wheel group.
+  system-auth include, and add administrators to the wheel group. Or restrict the program:
+  `chgrp wheel /usr/bin/su && chmod 4750 /usr/bin/su`.
 setting:
   fact: pam.effective.su_wheel
   in: [restricted]
