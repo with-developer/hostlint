@@ -22,10 +22,10 @@ behind them. Three constraints shape how:
 
 - **Packages** come from the package database files, never from running the package manager.
   dpkg: `/var/lib/dpkg/status` plus the journal in `/var/lib/dpkg/updates`, applied in order as
-  dpkg does; every state other than `not-installed` and `config-files` counts as installed. The
-  rpm database is binary and is not read yet: on rpm targets the `packages` collector fails, so
-  checks that read it are ERROR instead of seeing an empty list. A direct, read-only reader of
-  the rpm database is a follow-up.
+  dpkg does; every state other than `not-installed` and `config-files` counts as installed.
+  rpm's SQLite database (EL9 and later) is read directly with a small read-only parser of the
+  SQLite file format and rpm headers. The Berkeley DB of EL7 and EL8 is not read yet: there the
+  `packages` collector fails, so checks that read it are ERROR instead of seeing an empty list.
 - **Services** are read from the files that decide them, the same way live and under `--root`:
   systemd units on the unit search path (enabled through `.wants`, `.requires` and `.upholds`
   links; masked through `/dev/null` links or empty files; aliases; template instances; the
@@ -49,7 +49,7 @@ behind them. Three constraints shape how:
 
 ## Consequences
 
-- Package checks are ERROR on rpm targets until the rpm database reader lands; service checks,
+- Package checks are ERROR on EL7 and EL8 until a Berkeley DB reader lands; service checks,
   which do not depend on packages alone, work everywhere.
 - Image and host scans agree on what is enabled, because both read the same files.
 - Known gaps, documented on the facts: units started only through `Wants=`/`Requires=` in other
