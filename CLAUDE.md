@@ -47,6 +47,9 @@ required check on `main`.
 | `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |
 | `schema/` | JSON Schema of the result document (ADR 0006), with a valid example |
 | `testdata/` | Fixture root filesystems per distro (hardened and default) |
+| `install.sh` | The installer: downloads a release, verifies it, installs the binary |
+| `scripts/` | Release checks and lint guards (`check-release.sh`, `lint-guards.sh`) |
+| `.goreleaser.yaml` | Release build: archives, packages, SBOMs, checksums and signing (docs/RELEASING.md) |
 
 ## Security invariants — never violate
 

@@ -48,8 +48,20 @@ cp "$dist/checksums.txt" "$dist/hostlint_${version#v}_linux_$arch.tar.gz" "$tmp/
 # checksum, not on a missing file.
 [ ! -e "$dist/checksums.txt.sigstore.json" ] || cp "$dist/checksums.txt.sigstore.json" "$tmp/tampered/"
 printf x >>"$tmp/tampered/hostlint_${version#v}_linux_$arch.tar.gz"
-if HOSTLINT_DOWNLOAD_URL="file://$tmp/tampered" sh "$root/install.sh" -v "$version" -b "$tmp/bin2" 2>/dev/null; then
+if HOSTLINT_DOWNLOAD_URL="file://$tmp/tampered" sh "$root/install.sh" -v "$version" -b "$tmp/bin2" 2>"$tmp/tamper.log"; then
 	fail "install.sh installed a tampered archive"
 fi
+# It must fail on the checksum, not on something else.
+grep -q 'does not match its SHA-256' "$tmp/tamper.log" || {
+	cat "$tmp/tamper.log" >&2
+	fail "install.sh refused the tampered archive for another reason than its SHA-256"
+}
 [ ! -e "$tmp/bin2/hostlint" ] || fail "install.sh left a tampered binary behind"
+# A version is made of what a release tag is made of: it ends up in a URL.
+for bad in 'v1/../../evil' 'v1?x' 'latest'; do
+	if sh "$root/install.sh" -v "$bad" -b "$tmp/bin3" 2>"$tmp/version.log"; then
+		fail "install.sh accepted the version $bad"
+	fi
+	grep -q 'not a release version' "$tmp/version.log" || fail "install.sh did not reject the version $bad as such"
+done
 echo "release artifacts OK"

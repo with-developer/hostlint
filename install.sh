@@ -69,10 +69,19 @@ sha256() {
 if [ -z "$version" ]; then
 	latest=$(curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$repo/releases/latest") ||
 		fail "could not find the latest release"
-	version=${latest##*/tag/}
+	case $latest in
+	*/tag/*) version=${latest##*/tag/} ;;
+	*) fail "$repo has no release yet; choose a version with -v" ;;
+	esac
 fi
+# Only what a release tag is made of: the version becomes part of a URL and
+# of the signing identity.
 case $version in
-v[0-9]*) ;;
+v[0-9]*.[0-9]*.[0-9]* | v[0-9]*.[0-9]*.[0-9]*[-+]*)
+	case ${version#v} in
+	*[!0-9A-Za-z.+-]*) fail "not a release version: $version" ;;
+	esac
+	;;
 *) fail "not a release version: $version" ;;
 esac
 
@@ -110,7 +119,10 @@ want=$(awk -v f="$archive" '$2 == f { print $1 }' "$tmp/checksums.txt")
 tar -xzf "$tmp/$archive" -C "$tmp" hostlint
 mkdir -p "$bindir" 2>/dev/null || true
 [ -w "$bindir" ] || fail "cannot write to $bindir; run as root, or choose a directory with -b"
-install -m 0755 "$tmp/hostlint" "$bindir/hostlint" 2>/dev/null || {
-	cp "$tmp/hostlint" "$bindir/hostlint" && chmod 0755 "$bindir/hostlint"
-} || fail "could not install into $bindir"
+# Written beside the target and renamed over it: a running hostlint, a full
+# disk or an interrupted copy never leaves a truncated binary behind.
+new="$bindir/.hostlint.new.$$"
+trap 'rm -rf "$tmp" "$new"' EXIT
+{ cp "$tmp/hostlint" "$new" && chmod 0755 "$new" && mv -f "$new" "$bindir/hostlint"; } ||
+	fail "could not install into $bindir"
 say "installed $("$bindir/hostlint" version | head -n 1) to $bindir/hostlint"
