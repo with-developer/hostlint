@@ -162,6 +162,10 @@ func (pamCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, 
 	}
 	if s, ok := r.passwordHash(p.Stacks["passwd"]); ok {
 		p.Effective["password_hash"] = s
+	} else if passwordStackWithoutUnix(p.Stacks["passwd"]) {
+		// Passwords are changed by another module (pam_sss, pam_ldap, ...), or
+		// pam_unix is never reached: ENCRYPT_METHOD says nothing about them.
+		r.unknownField("effective.password_hash", "the passwd stack does not reach pam_unix: the hash of new passwords is set elsewhere")
 	}
 	f := engine.Facts{Value: p, Complete: len(r.skipped) == 0, Skipped: append(r.skipped, r.notes...)}
 	for field := range r.unknown {
@@ -843,6 +847,28 @@ func (r *pamReader) passwordHash(rules []PAMRule) (facts.Setting, bool) {
 		return facts.Setting{}, false
 	}
 	return facts.Setting{}, false
+}
+
+// passwordStackWithoutUnix reports whether the passwd stack has password rules
+// but none of them is a pam_unix that runs, so pam_unix decides no hash.
+func passwordStackWithoutUnix(rules []PAMRule) bool {
+	_, ran := evaluate(rules, "password", func(rule PAMRule) string {
+		if rule.Module == "pam_deny.so" {
+			return "auth_err"
+		}
+		return "success"
+	})
+	any := false
+	for i, rule := range rules {
+		if rule.Type != "password" {
+			continue
+		}
+		any = true
+		if rule.Module == "pam_unix.so" && ran[i] {
+			return false
+		}
+	}
+	return any
 }
 
 // --- Configuration files ----------------------------------------------------------
