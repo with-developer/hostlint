@@ -457,3 +457,28 @@ func TestShellEnvPrintedSourceIsNotFollowed(t *testing.T) {
 		t.Errorf("tmout %+v, want none: the file is only printed", env.TMOUT)
 	}
 }
+
+// A loop that lists files but never uses its variable sources nothing; a loop
+// whose body uses it does, also across lines and next to nested loops.
+func TestShellEnvLoopBodyDecidesWhatIsSourced(t *testing.T) {
+	tests := []struct {
+		name, profile string
+		want          string // "" when TMOUT stays unset
+	}{
+		{"empty body", "for h in /etc/profile.d/*.sh; do : ; done\n", ""},
+		{"body on later lines", "for h in /etc/profile.d/*.sh; do\n  echo $h\n  . \"$h\"\ndone\n", "600"},
+		{"body without the variable", "for h in /etc/profile.d/*.sh; do\n  true\ndone\n", ""},
+		{"braced variable", "for h in /etc/profile.d/*.sh; do . ${h}; done\n", "600"},
+		{"nested loop before the source", "for h in /etc/profile.d/*.sh; do\n  for x in 1 2; do :; done\n  . $h\ndone\n", "600"},
+		{"run-parts loop with an empty body", "for h in $(run-parts --list /etc/profile.d); do : ; done\n", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := hostfs.NewMemFS().AddFile("/etc/profile", tt.profile, 0o644, 0, 0).AddFile("/etc/profile.d/t.sh", "TMOUT=600\n", 0o644, 0, 0)
+			env := shellEnv(t, m)
+			if got, ok := env.Effective["TMOUT"]; got.Value != tt.want || ok != (tt.want != "") {
+				t.Errorf("effective %+v (present %v), want %q", got, ok, tt.want)
+			}
+		})
+	}
+}

@@ -185,6 +185,30 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 	s.read[name] = true
 
 	depthBlocks := 0
+	lines := s.logicalLines(name, data)
+	for idx, l := range lines {
+		code := l.code
+		opens, closes := blockWords(code)
+		src := fmt.Sprintf("%s:%d", name, l.start)
+		// A command may not run inside a block, on a line that opens one,
+		// after && or ||, or in a subshell.
+		lineCond := cond || depthBlocks > 0 || opens > 0 || hasControlOperator(code)
+		s.scanLine(code, src, lineCond)
+		s.follow(code, src, lineCond, depth, func() string { return loopBody(lines, idx) })
+		depthBlocks = max(depthBlocks+opens-closes, 0)
+	}
+}
+
+// shellLine is one command line of a file: continued lines joined, comments
+// cut, printed text blanked; start is the line number it starts on.
+type shellLine struct {
+	code  string
+	start int
+}
+
+// logicalLines reads the command lines of a startup file.
+func (s *shellScanner) logicalLines(name string, data []byte) []shellLine {
+	var out []shellLine
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
 	for line := 1; sc.Scan(); line++ {
@@ -209,18 +233,60 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 		if strings.TrimSpace(code) == "" {
 			continue
 		}
-		opens, closes := blockWords(code)
-		src := fmt.Sprintf("%s:%d", name, start)
-		// A command may not run inside a block, on a line that opens one,
-		// after && or ||, or in a subshell.
-		lineCond := cond || depthBlocks > 0 || opens > 0 || hasControlOperator(code)
-		s.scanLine(code, src, lineCond)
-		s.follow(code, src, lineCond, depth)
-		depthBlocks = max(depthBlocks+opens-closes, 0)
+		out = append(out, shellLine{code, start})
 	}
 	if err := sc.Err(); err != nil {
 		s.skip(fmt.Sprintf("%s: %v", name, err))
 	}
+	return out
+}
+
+var (
+	loopVarRe   = regexp.MustCompile(`^\s*for\s+(\w+)\s+in\b`)
+	loopOpenRe  = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:for|while|until|select)\s`)
+	loopCloseRe = regexp.MustCompile(`\bdone\b`)
+)
+
+// loopBody returns the text of the loop that starts on lines[idx]: after its
+// first "do" up to the matching "done" ("" when it cannot be found).
+func loopBody(lines []shellLine, idx int) string {
+	first := lines[idx].code
+	do := strings.Index(first, " do")
+	if do < 0 {
+		do = len(first)
+	}
+	var b strings.Builder
+	b.WriteString(first[do:])
+	depth := 1
+	for k := idx; k < len(lines) && k < idx+2000; k++ {
+		text := lines[k].code
+		if k == idx {
+			text = first[do:]
+		} else {
+			b.WriteString("\n" + text)
+		}
+		depth += len(loopOpenRe.FindAllString(text, -1))
+		depth -= len(loopCloseRe.FindAllString(text, -1))
+		if depth <= 0 {
+			return b.String()
+		}
+	}
+	return ""
+}
+
+// loopSourcesItems reports whether the loop on code may source its variable:
+// its body mentions the variable. A loop that never uses it (": ;") sources
+// nothing, however it lists files.
+func loopSourcesItems(code string, body func() string) bool {
+	m := loopVarRe.FindStringSubmatch(code)
+	if m == nil {
+		return true
+	}
+	b := body()
+	if b == "" {
+		return true // the body could not be found: assume it does
+	}
+	return strings.Contains(b, "$"+m[1]) || strings.Contains(b, "${"+m[1])
 }
 
 // maxJoinedLine bounds what continued lines are joined into.
@@ -316,16 +382,18 @@ func (s *shellScanner) scanLine(code, src string, cond bool) {
 
 // follow scans the files a line sources: ". file" and "source file", and
 // the /etc/profile.d loop of /etc/profile.
-func (s *shellScanner) follow(code, src string, cond bool, depth int) {
+func (s *shellScanner) follow(code, src string, cond bool, depth int, body func() string) {
 	rest := code
 	switch m := runPartsLoopRe.FindStringSubmatch(code); {
 	case m != nil:
 		after := code[len(m[0]):]
 		hasRegex := strings.Contains(m[0], "--regex")
-		s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth)
+		if loopSourcesItems(code, body) {
+			s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth)
+		}
 		rest = s.afterLoop(src, after)
 	case forRe.MatchString(code) && mentionsProfileD(code):
-		rest = s.profileLoop(code, src, depth)
+		rest = s.profileLoop(code, src, depth, loopSourcesItems(code, body))
 	case forAnywhereRe.MatchString(code) && mentionsProfileD(code):
 		// A loop behind a condition or another command.
 		s.unknownLoop(src)
@@ -370,7 +438,7 @@ func (s *shellScanner) afterLoop(src, after string) string {
 // source every readable file they list. A loop whose list is not literal
 // paths and globs leaves the facts incomplete: what it sources is unknown,
 // not absent.
-func (s *shellScanner) profileLoop(code, src string, depth int) string {
+func (s *shellScanner) profileLoop(code, src string, depth int, sources bool) string {
 	list, rest, ok := loopList(code)
 	var files []string
 	listed := ok // the loop lists literal paths or globs
@@ -398,6 +466,9 @@ func (s *shellScanner) profileLoop(code, src string, depth int) string {
 	if !listed || list == "" {
 		s.unknownLoop(src)
 		return rest
+	}
+	if !sources {
+		return rest // the loop never uses what it lists
 	}
 	for _, f := range files {
 		s.file(f, false, depth+1)
