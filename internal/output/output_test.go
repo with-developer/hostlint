@@ -308,3 +308,17 @@ func TestTableHidesNotApplicableChecksUnlessVerbose(t *testing.T) {
 		}
 	}
 }
+
+// A mounted image often has no host name: the header says so instead of
+// leaving a gap.
+func TestTableHeaderWithoutHostName(t *testing.T) {
+	res := sampleResult()
+	res.Host.Hostname = ""
+	var b bytes.Buffer
+	if err := Write(&b, res, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if first, _, _ := strings.Cut(b.String(), "\n"); !strings.Contains(first, "(no host name)") || strings.Contains(first, "·  ") {
+		t.Errorf("header %q", first)
+	}
+}

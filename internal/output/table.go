@@ -52,6 +52,9 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 	}
 
 	host := oneLine(res.Host.Hostname)
+	if host == "" {
+		host = "(no host name)" // a mounted image often has none
+	}
 	if name := oneLine(res.Host.OS.Name); name != "" {
 		host += " (" + name + ")"
 	}
