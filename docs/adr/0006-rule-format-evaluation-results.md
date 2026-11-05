@@ -249,7 +249,8 @@ never contains secrets.
 - `file`: one item per offending path ("mode 0664 exceeds 0644").
 - `violations`: one item per match, plus `coverage` (population and count).
 - `expect`: the values of the fact paths the expression references, from CEL's evaluation
-  state, with provenance from the collector's path table.
+  state, with provenance from the collector's path table. A check may add `failure:`, a sentence
+  shown first when it fails, where those values alone do not say what is wrong.
 - `manual`: the guidance and the values of `show`.
 - `NOT_APPLICABLE` and `ERROR`: the deciding facts or the error.
 

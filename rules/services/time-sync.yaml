@@ -9,6 +9,7 @@ description: >-
   Which servers it uses is for services.review-time-sync.
 rationale: Logs from hosts with drifting clocks cannot be correlated, and time-based protocols fail.
 remediation: Enable a time synchronization service (`systemctl enable --now chronyd`).
+failure: No time synchronization service (chrony, ntpd, ntpsec or systemd-timesyncd) is enabled or running.
 expect: >-
   ("chronyd.service" in services.units && services.units["chronyd.service"].enabled && !services.units["chronyd.service"].masked) ||
   ("chrony.service" in services.units && services.units["chrony.service"].enabled && !services.units["chrony.service"].masked) ||

@@ -329,6 +329,7 @@ U-64 MANUAL
 
 U-65 FAIL
   services.time-sync FAIL
+    - No time synchronization service (chrony, ntpd, ntpsec or systemd-timesyncd) is enabled or running.
     - services.active is empty
     - services.sysv["chrony"].enabled: not set
     - services.sysv["chronyd"].enabled: not set
@@ -336,7 +337,6 @@ U-65 FAIL
     - services.sysv["ntpd"].enabled: not set
     - services.units["chrony.service"].enabled: not set
     - services.units["chrony.service"].masked: not set
-    - services.units["chronyd.service"].enabled: not set
     - …
   services.review-time-sync NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"])
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…

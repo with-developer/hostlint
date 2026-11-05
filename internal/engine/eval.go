@@ -240,6 +240,8 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 		o := outcome{status: StatusFail, evidence: e.pathEvidence(cc.evidencePaths, b.strict)}
 		if v == types.True {
 			o.status = StatusPass
+		} else if c.Failure != "" {
+			o.evidence = append([]Evidence{{Key: "failure", Text: c.Failure}}, o.evidence...)
 		}
 		return o
 	case cc.over != nil:

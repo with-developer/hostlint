@@ -67,6 +67,10 @@ type Check struct {
 	Violations *ViolationsSpec `yaml:"violations"`
 	Expect     string          `yaml:"expect"`
 	Manual     *ManualSpec     `yaml:"manual"`
+	// Failure is a sentence an expect check shows first when it fails, for an
+	// expression whose own evidence (the values of the paths it reads) does not
+	// say what is wrong. It is prose, like the title, and not part of the digest.
+	Failure string `yaml:"failure"`
 
 	Tests []TestCase `yaml:"tests"`
 }
@@ -324,6 +328,9 @@ func validateCheck(file string, c *Check) error {
 	}
 	for name, ps := range c.Params {
 		validateParam(p, name, ps)
+	}
+	if c.Failure != "" && (c.Expect == "" || strings.TrimSpace(c.Failure) == "" || len(c.Failure) > 300) {
+		p.add("failure is a sentence of at most 300 characters, and only for an expect check")
 	}
 	switch {
 	case c.Setting != nil:

@@ -279,6 +279,8 @@ func TestLoadRejectsInvalidContent(t *testing.T) {
 		{"id does not match path", "x/z.yaml", valid, "must match its path"},
 		{"unknown field", "x/y.yaml", valid + "shade: red\n", "field shade not found"},
 		{"two kinds", "x/y.yaml", valid + "manual: {guidance: g}\n", "exactly one of"},
+		{"failure on a file check", "x/y.yaml", "id: x.y\nversion: 1\ntitle: T\nseverity: low\nfailure: Nope.\nfile: {paths: [/etc/a], mode: \"0644\", missing: error}\n", "only for an expect check"},
+		{"empty failure", "x/y.yaml", valid + "failure: \" \"\n", "only for an expect check"},
 		{"bad severity", "x/y.yaml", strings.Replace(valid, "severity: low", "severity: urgent", 1), "severity must be"},
 		{"bad platform", "x/y.yaml", valid + "platforms: [ubuntu]\n", "unknown platform"},
 		{"missing tests", "x/y.yaml", "id: x.y\nversion: 1\ntitle: T\nseverity: low\nexpect: >-\n  svc.present\n", "tests need"},

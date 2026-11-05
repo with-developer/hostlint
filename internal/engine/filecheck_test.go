@@ -365,6 +365,24 @@ func TestExpectEvidenceSkipsEmptyWhy(t *testing.T) {
 	}
 }
 
+// A failing expect check with a failure sentence shows it before the values of
+// the paths it read; a passing one shows only those values.
+func TestExpectFailureSentence(t *testing.T) {
+	for _, tt := range []struct {
+		expect string
+		want   Status
+		first  string
+	}{
+		{"!svc.present", StatusFail, "Nothing is set."},
+		{"svc.present", StatusPass, "svc.present = true"},
+	} {
+		got := scanOne(t, &Check{ID: "x.failure", Expect: tt.expect, Failure: "Nothing is set."}, demoSvc(), demoHost())
+		if got.Status != tt.want || len(got.Evidence) == 0 || got.Evidence[0].Text != tt.first {
+			t.Errorf("%s: status %s, evidence %+v; want %s first %q", tt.expect, got.Status, got.Evidence, tt.want, tt.first)
+		}
+	}
+}
+
 func TestTruncateKeepsUTF8(t *testing.T) {
 	s := strings.Repeat("가", 10) // 3 bytes each
 	if got := truncate(s, 7); got != "가가…" {
