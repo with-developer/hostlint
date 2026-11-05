@@ -17,7 +17,7 @@ import (
 )
 
 // NFS is the `nfs` facts: /etc/exports and /etc/exports.d/*.exports. They
-// describe the static exports; an export added at run time (the exportfs command) is not
+// describe the static exports; an export added by a command at run time is not
 // in them.
 type NFS struct {
 	// Present is true when /etc/exports or a file in /etc/exports.d exists.
