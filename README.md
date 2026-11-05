@@ -139,9 +139,9 @@ The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 editio
 - **Services, patching and logging (U-34–U-67):** finger, r-services, telnet, tftp, NFS, NIS,
   SNMP and other legacy services (enabled units, running units, init scripts, inetd and xinetd),
   SNMP community strings and access (read from `snmpd.conf`, never copied into the result), Postfix
-  open relay and VRFY, BIND zone transfers and updates, NFS exports, cron and sudoers permissions, time synchronization.
+  open relay and VRFY, BIND zone transfers and updates, NFS exports, vsftpd banner, TLS and root login, cron and sudoers permissions, time synchronization.
 
-Controls that need configuration parsers not written yet (mail servers other than Postfix, DNS servers other than BIND, FTP settings,
+Controls that need configuration parsers not written yet (mail servers other than Postfix, DNS servers other than BIND, FTP servers other than vsftpd,
 banners, logging policy) are `MANUAL` with guidance, and `NOT_APPLICABLE` where the software is
 not running. Supported targets: Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10
 (Rocky Linux, AlmaLinux), and CentOS/RHEL 7 best-effort; other versions are scanned

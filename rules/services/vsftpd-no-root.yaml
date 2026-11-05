@@ -1,0 +1,44 @@
+id: services.vsftpd-no-root
+version: 1
+title: root cannot log in to vsftpd
+title_ko: root가 vsftpd에 로그인할 수 없음
+severity: high
+description: >-
+  Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable and userlist_deny make vsftpd refuse a root that is in its user list. Nested PAM includes are not followed. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+rationale: >-
+  A root password sent over FTP, even over TLS, puts the whole host at the mercy of one login.
+remediation: >-
+  List root in /etc/ftpusers (or /etc/vsftpd/ftpusers) and keep the pam_listfile line in the vsftpd PAM service.
+applies: >-
+  ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+failure: Nothing refuses root, so list root in the file of a pam_listfile line of the vsftpd PAM service (ftpusers), or use the user list.
+expect: >-
+  ftp.root_denied
+tests:
+  - name: root is refused
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: default, root_denied: true, root_denied_by: "/etc/ftpusers"}
+    want: PASS
+  - name: root is not refused
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: default, root_denied: false, root_denied_by: "/etc/ftpusers"}
+    want: FAIL
+  - name: vsftpd is not started
+    facts:
+      services: {started: []}
+      ftp: {present: true, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: no vsftpd.conf
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: false, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: a file could not be read
+    input: incomplete
+    incomplete: [ftp]
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", source: "default"}}, banner: custom, root_denied: true, root_denied_by: /etc/ftpusers}
+    want: ERROR

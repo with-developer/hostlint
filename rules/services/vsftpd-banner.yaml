@@ -1,0 +1,49 @@
+id: services.vsftpd-banner
+version: 1
+title: The vsftpd banner does not show the version
+title_ko: vsftpd 접속 배너에 버전이 없음
+severity: low
+description: >-
+  Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+rationale: >-
+  A version banner tells attackers which exploits to try.
+remediation: >-
+  Set `ftpd_banner=Authorized users only.` in vsftpd.conf, with no version number and not the name vsftpd.
+applies: >-
+  ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+failure: The connection banner shows the vsftpd version or its name, so set ftpd_banner to a text without them.
+expect: >-
+  ftp.banner == "custom"
+tests:
+  - name: a custom banner
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: custom, root_denied: false, root_denied_by: "/etc/ftpusers"}
+    want: PASS
+  - name: the default banner
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: default, root_denied: false, root_denied_by: "/etc/ftpusers"}
+    want: FAIL
+  - name: a banner with a version
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: version, root_denied: false, root_denied_by: "/etc/ftpusers"}
+    want: FAIL
+  - name: vsftpd is not started
+    facts:
+      services: {started: []}
+      ftp: {present: true, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: no vsftpd.conf
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: false, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: a file could not be read
+    input: incomplete
+    incomplete: [ftp]
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", source: "default"}}, banner: custom, root_denied: true, root_denied_by: /etc/ftpusers}
+    want: ERROR

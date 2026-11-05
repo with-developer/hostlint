@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 9)
+## kisa-2026 (revision 10)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -65,11 +65,11 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-50 | high | DNS zone transfers are restricted (DNS 영역 전송 제한) | [`services.bind-restrict-transfer`](#servicesbind-restrict-transfer), [`services.review-dns-other`](#servicesreview-dns-other) |
 | U-51 | medium | DNS dynamic updates are restricted (DNS 동적 업데이트 제한) | [`services.bind-restrict-update`](#servicesbind-restrict-update), [`services.review-dns-other`](#servicesreview-dns-other) |
 | U-52 | medium | Telnet is off (텔넷 미사용) | [`services.no-telnet`](#servicesno-telnet) |
-| U-53 | low | The FTP banner hides the version (FTP 배너 정보 노출 제한) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
-| U-54 | medium | FTP is encrypted or off (암호화되지 않은 FTP 미사용) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
+| U-53 | low | The FTP banner hides the version (FTP 배너 정보 노출 제한) | [`services.vsftpd-banner`](#servicesvsftpd-banner), [`services.review-ftp-other`](#servicesreview-ftp-other) |
+| U-54 | medium | FTP is encrypted or off (암호화되지 않은 FTP 미사용) | [`services.vsftpd-tls`](#servicesvsftpd-tls), [`services.review-ftp-other`](#servicesreview-ftp-other) |
 | U-55 | medium | The ftp account cannot log in (ftp 계정 셸 제한) | [`services.ftp-account-shell`](#servicesftp-account-shell) |
 | U-56 | low | FTP access is restricted by address (FTP 접근 제어) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
-| U-57 | medium | root cannot log in to FTP (FTP root 접속 제한) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
+| U-57 | medium | root cannot log in to FTP (FTP root 접속 제한) | [`services.vsftpd-no-root`](#servicesvsftpd-no-root), [`services.review-ftp-other`](#servicesreview-ftp-other) |
 | U-58 | medium | SNMP is off unless needed (SNMP 미사용) | [`services.no-snmp`](#servicesno-snmp) |
 | U-59 | high | SNMP uses version 3 (SNMP v3 사용) | [`services.snmp-v3-only`](#servicessnmp-v3-only), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
 | U-60 | medium | SNMP communities are not guessable (SNMP 커뮤니티 문자열 복잡성) | [`services.snmp-community-strong`](#servicessnmp-community-strong), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
@@ -835,6 +835,16 @@ Applies when a DNS server is started; then shows how, for a review of its config
 
 **Fix.** Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
 
+#### `services.review-ftp-other`
+
+Review the FTP server's banner, encryption and root login (FTP 서버의 배너·암호화·root 로그인 설정 검토) — severity high, a review (`MANUAL`).
+
+Applies when an FTP server other than vsftpd is started, or vsftpd is started and has no vsftpd.conf (vsftpd with a configuration is checked by services.vsftpd-banner, services.vsftpd-tls and services.vsftpd-no-root); then shows how it was started, for a review of its configuration. Not applicable otherwise.
+
+**Why.** Plain FTP sends passwords in clear text, a version banner tells attackers which exploits to try, and a root login over FTP exposes the host.
+
+**Fix.** Check that the FTP server requires TLS (or is replaced by SFTP), hides its version in the banner and refuses root (ftpusers).
+
 #### `services.review-ftp-server`
 
 Review the FTP server (FTP 서버 설정 검토) — severity medium, a review (`MANUAL`).
@@ -954,6 +964,36 @@ Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled (as a unit or a
 **Why.** Logs from hosts with drifting clocks cannot be correlated, and time-based protocols fail.
 
 **Fix.** Enable a time synchronization service (`systemctl enable --now chronyd`).
+
+#### `services.vsftpd-banner`
+
+The vsftpd banner does not show the version (vsftpd 접속 배너에 버전이 없음) — severity low, evaluates an expression.
+
+Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+
+**Why.** A version banner tells attackers which exploits to try.
+
+**Fix.** Set `ftpd_banner=Authorized users only.` in vsftpd.conf, with no version number and not the name vsftpd.
+
+#### `services.vsftpd-no-root`
+
+root cannot log in to vsftpd (root가 vsftpd에 로그인할 수 없음) — severity high, evaluates an expression.
+
+Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable and userlist_deny make vsftpd refuse a root that is in its user list. Nested PAM includes are not followed. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+
+**Why.** A root password sent over FTP, even over TLS, puts the whole host at the mercy of one login.
+
+**Fix.** List root in /etc/ftpusers (or /etc/vsftpd/ftpusers) and keep the pam_listfile line in the vsftpd PAM service.
+
+#### `services.vsftpd-tls`
+
+vsftpd requires TLS (vsftpd가 TLS를 사용함) — severity high, compares one setting.
+
+Checks ssl_enable in vsftpd.conf. Plain FTP sends passwords and files in clear text; with ssl_enable=YES vsftpd offers TLS and, by default, requires it for local logins. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+
+**Why.** Plain FTP sends passwords in clear text.
+
+**Fix.** Set `ssl_enable=YES` with a certificate (`rsa_cert_file`) in vsftpd.conf, or replace FTP by SFTP.
 
 #### `ssh.match-permit-root-login`
 

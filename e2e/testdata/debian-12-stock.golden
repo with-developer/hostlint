@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 12 (bookworm) (id debian, version 12, family debian, supported true)
-profile kisa-2026 revision 9: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
+profile kisa-2026 revision 10: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -304,11 +304,19 @@ U-52 PASS
   services.no-telnet PASS
 
 U-53 NOT_APPLICABLE
-  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+  services.vsftpd-banner NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+  services.review-ftp-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
+    - ftp.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-54 NOT_APPLICABLE
-  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+  services.vsftpd-tls NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+  services.review-ftp-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
+    - ftp.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-55 PASS
@@ -319,7 +327,11 @@ U-56 NOT_APPLICABLE
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-57 NOT_APPLICABLE
-  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+  services.vsftpd-no-root NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+  services.review-ftp-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
+    - ftp.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-58 PASS

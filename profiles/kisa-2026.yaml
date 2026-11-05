@@ -2,7 +2,7 @@
 # (ADR 0007). Control titles are hostlint's own short wording; only the control
 # IDs and importance levels come from the guide.
 id: kisa-2026
-revision: 9
+revision: 10
 title: KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 title_ko: 주요정보통신기반시설 기술적 취약점 분석·평가 상세가이드 (2026) — Unix 서버
 controls:
@@ -279,12 +279,12 @@ controls:
     title: The FTP banner hides the version
     title_ko: FTP 배너 정보 노출 제한
     severity: low
-    checks: [services.review-ftp-server]
+    checks: [services.vsftpd-banner, services.review-ftp-other]
   - id: U-54
     title: FTP is encrypted or off
     title_ko: 암호화되지 않은 FTP 미사용
     severity: medium
-    checks: [services.review-ftp-server]
+    checks: [services.vsftpd-tls, services.review-ftp-other]
   - id: U-55
     title: The ftp account cannot log in
     title_ko: ftp 계정 셸 제한
@@ -299,7 +299,7 @@ controls:
     title: root cannot log in to FTP
     title_ko: FTP root 접속 제한
     severity: medium
-    checks: [services.review-ftp-server]
+    checks: [services.vsftpd-no-root, services.review-ftp-other]
   - id: U-58
     title: SNMP is off unless needed
     title_ko: SNMP 미사용

@@ -1,0 +1,45 @@
+id: services.vsftpd-tls
+version: 1
+title: vsftpd requires TLS
+title_ko: vsftpd가 TLS를 사용함
+severity: high
+description: >-
+  Checks ssl_enable in vsftpd.conf. Plain FTP sends passwords and files in clear text; with ssl_enable=YES vsftpd offers TLS and, by default, requires it for local logins. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+rationale: >-
+  Plain FTP sends passwords in clear text.
+remediation: >-
+  Set `ssl_enable=YES` with a certificate (`rsa_cert_file`) in vsftpd.conf, or replace FTP by SFTP.
+applies: >-
+  ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+setting:
+  fact: ftp.settings.ssl_enable
+  in: ["YES"]
+  absent: default
+tests:
+  - name: TLS on
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "YES", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: default, root_denied: false, root_denied_by: "/etc/ftpusers"}
+    want: PASS
+  - name: TLS off
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:9"}}, banner: default, root_denied: false, root_denied_by: "/etc/ftpusers"}
+    want: FAIL
+  - name: vsftpd is not started
+    facts:
+      services: {started: []}
+      ftp: {present: true, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: no vsftpd.conf
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: false, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: a file could not be read
+    input: incomplete
+    incomplete: [ftp]
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {ssl_enable: {value: "NO", source: "default"}}, banner: custom, root_denied: true, root_denied_by: /etc/ftpusers}
+    want: ERROR
