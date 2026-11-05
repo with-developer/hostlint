@@ -80,6 +80,15 @@ tests. Each automated check needs a `PASS` case, a `FAIL` case and an absent, un
 incomplete case that does not pass. The fact documents in tests are validated against the fact
 types, so a misspelled field is an error.
 
+- An `expect` check shows the values of the fact paths it reads. When that does not say what is
+  wrong (a long alternative), add `failure:`, one sentence shown first when the check fails.
+- A check that needs a person is `manual`; give it `show:` so the reviewer starts from facts.
+  Keep the automated checks and the review check apart: a control with a MANUAL check never
+  becomes PASS, so a review check that only applies where the automated ones cannot (another
+  mail server, a missing configuration file) uses `applies`.
+- A profile's `revision` goes up with every change to which checks a control maps to. Control
+  waivers written for an older revision stop applying, which is intended.
+
 ### Writing a collector
 
 - Read the host only through `hostfs` (`h.FS`, `h.Runner`), honor the context, and stay within
@@ -89,6 +98,16 @@ types, so a misspelled field is an error.
 - When something cannot be read, return incomplete facts (`Complete: false` with `Skipped`), or
   mark the affected field `Unknown` or `Partial` — never an empty list that would make a check
   pass.
+- A file that can hold a secret (community strings, TSIG keys, credentials) goes on the denylist
+  in `internal/hostfs`, and only a parser in that package reads it (see `ReadSNMPConfig`,
+  `ReadBindConfig`, `ReadShadow`). The parser returns the verdicts a check needs (for a community:
+  well-known, short, which source), never the string, and a test proves that a planted secret
+  appears in no fact.
+- Text files from the host get a fuzz target (`FuzzXxx`) next to their tests: any bytes must give
+  facts or an error, never a panic or a long hang.
+- Say what the collector cannot see (an option on a command line, a second configuration
+  directory) in the rule's description, and make what would change the verdict incomplete when
+  you can detect it (an override in another file).
 
 ## Pull requests
 
