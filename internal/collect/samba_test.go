@@ -21,10 +21,11 @@ func smbConf(text string) *hostfs.MemFS {
 	return hostfs.NewMemFS().AddFile(sambaConfig, text, 0o644, 0, 0)
 }
 
-// The packaged smb.conf of Ubuntu 24.04 defines only the printer shares.
+// The packaged smb.conf of Ubuntu 24.04 defines print$ (a disk share without guests)
+// and the printers template.
 func TestSambaPackagedConfiguration(t *testing.T) {
 	s, complete := collectSamba(t, fixtureFS(t, "ubuntu-24.04"))
-	if !s.Present || !complete || len(s.Shares) != 0 {
+	if !s.Present || !complete || len(s.Shares) != 1 || s.Shares[0].Name != "print$" || s.Shares[0].Guest {
 		t.Errorf("%+v complete %v", s, complete)
 	}
 }
@@ -39,7 +40,12 @@ func TestSambaGuestShares(t *testing.T) {
 		{"other spellings of yes", "[a]\n  Guest   OK = True\n[b]\n  guest ok = 1\n[c]\n  guest ok=on\n", map[string]bool{"a": true, "b": true, "c": true}},
 		{"a share says nothing", "[a]\n  path = /x\n", map[string]bool{"a": false}},
 		{"the global default", "[global]\n  guest ok = yes\n[a]\n  path = /x\n[b]\n  guest ok = no\n", map[string]bool{"a": true, "b": false}},
-		{"the printer sections are not shares", "[global]\n[printers]\n  guest ok = yes\n[print$]\n  guest ok = yes\n", map[string]bool{}},
+		{"the printers template is not a share", "[global]\n[printers]\n  guest ok = yes\n", map[string]bool{}},
+		{"print$ is a disk share", "[print$]\n  path = /var/lib/samba/drivers\n  guest ok = yes\n", map[string]bool{"print$": true}},
+		{"a global default after a share does not reach it", "[a]\n  path = /x\n[global]\n  guest ok = yes\n[b]\n  path = /y\n", map[string]bool{"a": false, "b": true}},
+		{"names ignore case and spaces", "[a]\n  GuestOK = yes\n[b]\n  guest  ok = yes\n", map[string]bool{"a": true, "b": true}},
+		{"a section named twice is one share, the last word wins", "[pub]\n  guest ok = yes\n[other]\n  path = /o\n[pub]\n  guest ok = no\n", map[string]bool{"pub": false, "other": false}},
+		{"carriage returns", "[pub]\r\n  comment = a \\\r\n   b\r\n  guest ok = yes\r\n", map[string]bool{"pub": true}},
 		{"comments and continuation", "; c\n# c\n[pub]\n  comment = a \\\n   long one\n  guest ok = yes\n", map[string]bool{"pub": true}},
 		{"a parameter commented out", "[a]\n  # guest ok = yes\n", map[string]bool{"a": false}},
 	}
@@ -58,6 +64,14 @@ func TestSambaGuestShares(t *testing.T) {
 	}
 }
 
+// The line that opens a share to guests is reported, not the share's header.
+func TestSambaWhere(t *testing.T) {
+	s, _ := collectSamba(t, smbConf("[global]\n  guest ok = yes\n[a]\n  path = /x\n[b]\n  path = /y\n  guest ok = yes\n"))
+	if len(s.Shares) != 2 || !strings.HasSuffix(s.Shares[0].Where, "smb.conf:2") || !strings.HasSuffix(s.Shares[1].Where, "smb.conf:7") {
+		t.Errorf("%+v", s.Shares)
+	}
+}
+
 func TestSambaIncompleteAndAbsent(t *testing.T) {
 	for name, conf := range map[string]string{
 		"an include":         "include = /etc/samba/extra.conf\n[a]\n",
@@ -70,6 +84,10 @@ func TestSambaIncompleteAndAbsent(t *testing.T) {
 				t.Error("the facts must be incomplete")
 			}
 		})
+	}
+	other := smbConf("[a]\n").AddFile("/etc/samba/other.conf", "[a]\n guest ok = yes\n", 0o644, 0, 0)
+	if _, complete := collectSamba(t, other); complete {
+		t.Error("another Samba configuration must make the facts incomplete")
 	}
 	if s, complete := collectSamba(t, hostfs.NewMemFS()); s.Present || !complete {
 		t.Errorf("%+v complete %v", s, complete)

@@ -27,9 +27,9 @@ type Samba struct {
 type SambaShare struct {
 	Name string `json:"name"`
 	// Guest is true when the share is open to guests ("guest ok = yes" or "public
-	// = yes", on the share or as the default in [global]); the guest account is
-	// used for users the server does not know when "map to guest" says so.
-	Guest bool   `json:"guest"`
+	// = yes", on the share or as the default [global] had when the share began).
+	Guest bool `json:"guest"`
+	// Where is the line that opens the share to guests, or the share's own line.
 	Where string `json:"where"`
 }
 
@@ -55,6 +55,15 @@ func (sambaCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, 
 	}
 	s.Present = true
 	skipped := parseSamba(data, s)
+	// smbd can be started with another file (-s): other .conf files next to
+	// smb.conf may be the ones in use.
+	if entries, err := h.FS.ReadDir("/etc/samba"); err == nil {
+		for _, e := range entries {
+			if e.IsRegular() && strings.HasSuffix(e.Path, ".conf") && e.Path != sambaConfig {
+				skipped = append(skipped, fmt.Sprintf("%s: another Samba configuration exists; which one is in use is not seen", e.Path))
+			}
+		}
+	}
 	return engine.Facts{Value: s, Complete: len(skipped) == 0, Skipped: skipped}, nil
 }
 
@@ -74,13 +83,10 @@ func sambaBool(v string) (value, ok bool) {
 // A guest default in [global] applies to every share that does not say. It
 // returns what it could not follow (include files).
 func parseSamba(data []byte, s *Samba) (skipped []string) {
-	type share struct {
-		SambaShare
-		set bool // guest was set on the share itself
-	}
+	type share struct{ SambaShare }
 	var shares []share
 	var section string
-	globalGuest := false
+	globalGuest, globalWhere := false, "" // the default [global] gives the shares that begin after it
 	var pending strings.Builder
 	start := 0
 	handle := func(text string, line int) {
@@ -96,8 +102,20 @@ func parseSamba(data []byte, s *Samba) (skipped []string) {
 			}
 			section = strings.TrimSpace(text[1:end])
 			low := strings.ToLower(section)
-			if low != "global" && low != "printers" && low != "print$" {
-				shares = append(shares, share{SambaShare: SambaShare{Name: section, Where: fmt.Sprintf("%s:%d", sambaConfig, line)}})
+			if low != "global" && low != "printers" {
+				// A section named twice is one share: Samba merges them.
+				found := false
+				for _, sh := range shares {
+					found = found || strings.EqualFold(sh.Name, section)
+				}
+				if !found {
+					shares = append(shares, share{
+						SambaShare: SambaShare{Name: section, Guest: globalGuest, Where: globalWhere},
+					})
+					if globalWhere == "" {
+						shares[len(shares)-1].Where = fmt.Sprintf("%s:%d", sambaConfig, line)
+					}
+				}
 			}
 			return
 		}
@@ -105,19 +123,25 @@ func parseSamba(data []byte, s *Samba) (skipped []string) {
 		if !ok {
 			return
 		}
-		key := strings.Join(strings.Fields(strings.ToLower(name)), " ")
+		// Samba ignores case and spaces in parameter names ("Guest OK", "guestok").
+		key := strings.ToLower(strings.Join(strings.Fields(name), ""))
 		switch key {
-		case "include", "config file":
+		case "include", "configfile":
 			skipped = append(skipped, fmt.Sprintf("%s:%d: %s is not followed", sambaConfig, line, key))
-		case "guest ok", "public":
+		case "guestok", "public":
 			v, ok := sambaBool(value)
+			where := fmt.Sprintf("%s:%d", sambaConfig, line)
 			switch {
 			case !ok:
-				skipped = append(skipped, fmt.Sprintf("%s:%d: %s is not a yes or no value", sambaConfig, line, key))
+				skipped = append(skipped, fmt.Sprintf("%s: %s is not a yes or no value", where, key))
 			case strings.EqualFold(section, "global"):
-				globalGuest = v
-			case len(shares) > 0 && strings.EqualFold(shares[len(shares)-1].Name, section):
-				shares[len(shares)-1].Guest, shares[len(shares)-1].set = v, true
+				globalGuest, globalWhere = v, where
+			default:
+				for i := range shares {
+					if strings.EqualFold(shares[i].Name, section) {
+						shares[i].Guest, shares[i].Where = v, where
+					}
+				}
 			}
 		}
 	}
@@ -130,7 +154,7 @@ func parseSamba(data []byte, s *Samba) (skipped []string) {
 		if pending.Len() == 0 {
 			start = line
 		}
-		if cont, ok := strings.CutSuffix(strings.TrimRight(text, " \t"), "\\"); ok {
+		if cont, ok := strings.CutSuffix(strings.TrimRight(text, " \t\r"), "\\"); ok {
 			pending.WriteString(cont + " ")
 			continue
 		}
@@ -145,9 +169,6 @@ func parseSamba(data []byte, s *Samba) (skipped []string) {
 		skipped = append(skipped, fmt.Sprintf("%s:%d: the rest of the file was not read (%v)", sambaConfig, line+1, err))
 	}
 	for _, sh := range shares {
-		if !sh.set {
-			sh.Guest = globalGuest
-		}
 		s.Shares = append(s.Shares, sh.SambaShare)
 	}
 	return skipped

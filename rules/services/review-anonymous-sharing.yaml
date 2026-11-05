@@ -15,7 +15,7 @@ remediation: >-
 applies: >-
   services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd)$")) ||
   (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))) ||
-  (!samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba"] || s.program.matches("/smbd$")))
+  (!samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba", "samba-ad-dc"] || s.program.matches("/(smbd|samba)$")))
 manual:
   guidance: >-
     Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.

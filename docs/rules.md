@@ -929,7 +929,7 @@ Shows the time synchronization services that are started, to check their servers
 
 No Samba share is open to guests (게스트에게 열린 Samba 공유 없음) — severity high, lists what violates it.
 
-Lists the shares of /etc/samba/smb.conf with "guest ok = yes" or "public = yes", on the share or as the default in [global]. The printer sections are not shares. An include or config file line is not followed and makes the result ERROR. Applies when Samba is started and has an smb.conf; otherwise services.review-anonymous-sharing asks for a review.
+Lists the shares of /etc/samba/smb.conf with "guest ok = yes" or "public = yes", on the share or as the default in [global]. The printer sections are not shares. An include or config file line is not followed and makes the result ERROR, as does another .conf next to smb.conf (smbd may be started with it). Applies when Samba is started and has an smb.conf; otherwise services.review-anonymous-sharing asks for a review.
 
 **Why.** A share open to guests lets anyone who can reach the server read, and sometimes write, its files.
 
