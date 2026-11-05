@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 13 (trixie) (id debian, version 13, family debian, supported true)
-profile kisa-2026 revision 1: MANUAL 11 PASS 36 NOT_APPLICABLE 20
+profile kisa-2026 revision 2: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -30,6 +30,7 @@ U-02 PASS
     - pam.password_quality.settings.enforcing.value = "1"
   accounts.password-max-age PASS
     - "90" (explicit); expected 1–90  [/etc/login.defs:97]
+  accounts.password-max-age-existing PASS
   accounts.password-min-age PASS
     - "1" (explicit); expected 1–99999  [/etc/login.defs:98]
   accounts.password-history PASS

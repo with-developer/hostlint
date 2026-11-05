@@ -7,14 +7,14 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 1)
+## kisa-2026 (revision 2)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
 | Control | Severity | Title | Checks |
 |---|---|---|---|
 | U-01 | high | Restrict direct remote root login (원격에서 root로 직접 로그인하지 못하게 함) | [`ssh.permit-root-login`](#sshpermit-root-login), [`ssh.match-permit-root-login`](#sshmatch-permit-root-login), [`services.review-remote-root-login`](#servicesreview-remote-root-login) |
-| U-02 | high | Password policy (비밀번호 정책) | [`accounts.password-min-length`](#accountspassword-min-length), [`accounts.password-complexity`](#accountspassword-complexity), [`accounts.password-quality-root`](#accountspassword-quality-root), [`accounts.password-max-age`](#accountspassword-max-age), [`accounts.password-min-age`](#accountspassword-min-age), [`accounts.password-history`](#accountspassword-history) |
+| U-02 | high | Password policy (비밀번호 정책) | [`accounts.password-min-length`](#accountspassword-min-length), [`accounts.password-complexity`](#accountspassword-complexity), [`accounts.password-quality-root`](#accountspassword-quality-root), [`accounts.password-max-age`](#accountspassword-max-age), [`accounts.password-max-age-existing`](#accountspassword-max-age-existing), [`accounts.password-min-age`](#accountspassword-min-age), [`accounts.password-history`](#accountspassword-history) |
 | U-03 | high | Account lockout threshold (로그인 실패 시 계정 잠금) | [`accounts.lockout-threshold`](#accountslockout-threshold) |
 | U-04 | high | Protect password hashes (비밀번호 해시 보호) | [`accounts.passwd-no-hashes`](#accountspasswd-no-hashes), [`accounts.shadow-file`](#accountsshadow-file) |
 | U-05 | high | No UID 0 accounts besides root (root 외에 UID 0 계정 없음) | [`accounts.uid0-only-root`](#accountsuid0-only-root) |
@@ -160,6 +160,20 @@ Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new a
 **Why.** A password that never changes stays useful to whoever obtained it.
 
 **Fix.** Set `PASS_MAX_DAYS 90` (or less) in /etc/login.defs; apply it to existing accounts with chage.
+
+**Parameters.**
+
+- `max_days` (int, default `90`, lower is stricter): Maximum password age in days
+
+#### `accounts.password-max-age-existing`
+
+Existing accounts have expiring passwords (기존 계정의 비밀번호가 만료됨) — severity medium, lists what violates it.
+
+Lists accounts with a password whose own maximum age in /etc/shadow is empty, 0 or more than `max_days`. The login.defs value only applies to accounts created after it was set, so an existing account (root keeps 99999 on many systems) can still never expire.
+
+**Why.** A password that never changes stays useful to whoever obtained it.
+
+**Fix.** Run `chage -M 90 account` for each listed account, and set `PASS_MAX_DAYS 90` in /etc/login.defs for new ones.
 
 **Parameters.**
 

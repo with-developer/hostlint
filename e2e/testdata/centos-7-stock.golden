@@ -1,5 +1,5 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 1: FAIL 7 MANUAL 10 PASS 31 NOT_APPLICABLE 19
+profile kisa-2026 revision 2: FAIL 7 MANUAL 10 PASS 31 NOT_APPLICABLE 19
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -31,6 +31,7 @@ U-02 FAIL
     - pam.password_quality.settings.enforcing.value = "1"
   accounts.password-max-age FAIL
     - "99999" (explicit); expected 1–90  [/etc/login.defs:25]
+  accounts.password-max-age-existing PASS
   accounts.password-min-age FAIL
     - "0" (explicit); expected 1–99999  [/etc/login.defs:26]
   accounts.password-history FAIL

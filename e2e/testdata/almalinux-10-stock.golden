@@ -1,5 +1,5 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 1: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
+profile kisa-2026 revision 2: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
 collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
@@ -16,6 +16,7 @@ U-02 FAIL
   accounts.password-quality-root ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
   accounts.password-max-age FAIL
     - "99999" (explicit); expected 1–90  [/etc/login.defs:131]
+  accounts.password-max-age-existing PASS
   accounts.password-min-age FAIL
     - "0" (explicit); expected 1–99999  [/etc/login.defs:132]
   accounts.password-history ERROR: pam: incomplete observation (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere); pam.effective.password_hash: not determined (read /etc/pam.d/system-auth: no such file or directory; read /etc/pam.d/postlogin: no such file or directory; the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere)
