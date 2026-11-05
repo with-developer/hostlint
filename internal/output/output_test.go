@@ -266,3 +266,20 @@ func TestTableListsAttestationsThatDidNotApply(t *testing.T) {
 		t.Errorf("no line %q in:\n%s", want, b.String())
 	}
 }
+
+// A control that has no checks shows its guidance: without it the table would
+// say MANUAL and not what to look at.
+func TestTableShowsGuidanceOfControlsWithoutChecks(t *testing.T) {
+	res := sampleResult()
+	res.Controls = append(res.Controls, engine.ControlResult{
+		Profile: res.Profiles[0].ID, ID: "U-62", Title: "Login banners warn against misuse", Severity: engine.SeverityLow,
+		Status: engine.StatusManual, Reason: "Check the banners\nin /etc/issue.", Checks: []string{},
+	})
+	var b bytes.Buffer
+	if err := Write(&b, res, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "Login banners warn against misuse [low]\n    Check the banners in /etc/issue.\n") {
+		t.Errorf("no guidance under U-62:\n%s", b.String())
+	}
+}
