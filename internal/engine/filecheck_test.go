@@ -319,7 +319,9 @@ func TestExpectEvidence(t *testing.T) {
 		evidence     []string
 	}{
 		{"absent map key", `has(svc.config.foo) && svc.config.foo.value == "x"`, StatusFail,
-			[]string{"svc.config.foo.value: not set"}},
+			[]string{"svc.config.foo: not set"}},
+		{"a setting keeps its source", `svc.config.permitrootlogin.value == "yes"`, StatusFail,
+			[]string{`svc.config.permitrootlogin = "no" (explicit)`}},
 		{"map membership", `"PASS_MAX_DAYS" in svc.config && svc.present`, StatusPass,
 			[]string{"svc.config has PASS_MAX_DAYS, permitrootlogin", "svc.present = true"}},
 	}
@@ -329,6 +331,9 @@ func TestExpectEvidence(t *testing.T) {
 			var texts []string
 			for _, ev := range got.Evidence {
 				texts = append(texts, ev.Text)
+				if tt.name == "a setting keeps its source" && ev.Source != "/etc/svc.conf:3" {
+					t.Errorf("source %q, want /etc/svc.conf:3", ev.Source)
+				}
 			}
 			if got.Status != tt.want || strings.Join(texts, "|") != strings.Join(tt.evidence, "|") {
 				t.Errorf("status %s, evidence %q; want %s, %q", got.Status, texts, tt.want, tt.evidence)

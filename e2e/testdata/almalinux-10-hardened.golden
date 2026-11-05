@@ -11,23 +11,23 @@ U-01 PASS
 U-02 PASS
   accounts.password-min-length PASS
     - pam.password_quality.module = "pam_pwquality.so"
-    - pam.password_quality.settings.dcredit.value = "-1"
-    - pam.password_quality.settings.enforcing.value = "1"
-    - pam.password_quality.settings.lcredit.value = "-1"
-    - pam.password_quality.settings.minlen.value = "8"
-    - pam.password_quality.settings.ocredit.value = "-1"
-    - pam.password_quality.settings.ucredit.value = "-1"
+    - pam.password_quality.settings.dcredit = "-1" (explicit)  [/etc/security/pwquality.conf:2]
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.lcredit = "-1" (explicit)  [/etc/security/pwquality.conf:4]
+    - pam.password_quality.settings.minlen = "8" (explicit)  [/etc/security/pwquality.conf:1]
+    - pam.password_quality.settings.ocredit = "-1" (explicit)  [/etc/security/pwquality.conf:5]
+    - pam.password_quality.settings.ucredit = "-1" (explicit)  [/etc/security/pwquality.conf:3]
   accounts.password-complexity PASS
     - pam.password_quality.module = "pam_pwquality.so"
-    - pam.password_quality.settings.dcredit.value = "-1"
-    - pam.password_quality.settings.enforcing.value = "1"
-    - pam.password_quality.settings.lcredit.value = "-1"
-    - pam.password_quality.settings.minclass.value = "0"
-    - pam.password_quality.settings.ocredit.value = "-1"
-    - pam.password_quality.settings.ucredit.value = "-1"
+    - pam.password_quality.settings.dcredit = "-1" (explicit)  [/etc/security/pwquality.conf:2]
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.lcredit = "-1" (explicit)  [/etc/security/pwquality.conf:4]
+    - pam.password_quality.settings.minclass = "0" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.ocredit = "-1" (explicit)  [/etc/security/pwquality.conf:5]
+    - pam.password_quality.settings.ucredit = "-1" (explicit)  [/etc/security/pwquality.conf:3]
   accounts.password-quality-root PASS
     - pam.password_quality.module = "pam_pwquality.so"
-    - pam.password_quality.settings.enforcing.value = "1"
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
   accounts.password-max-age PASS
     - "90" (explicit); expected 1–90  [/etc/login.defs:131]
   accounts.password-max-age-existing PASS
@@ -35,15 +35,15 @@ U-02 PASS
     - "1" (explicit); expected 1–99999  [/etc/login.defs:132]
   accounts.password-history PASS
     - pam.password_history.module = "pam_pwhistory.so"
-    - pam.password_history.settings.remember.value = "4"
+    - pam.password_history.settings.remember = "4" (explicit)  [/etc/security/pwhistory.conf:1]
 
 U-03 PASS
   accounts.lockout-threshold PASS
     - pam.lockout.login.enforced = true
-    - pam.lockout.login.settings.deny.value = "5"
+    - pam.lockout.login.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
     - pam.lockout.sshd.enforced = true
-    - pam.lockout.sshd.settings.deny.value = "5"
-    - sshd.config.usepam.value = "yes"
+    - pam.lockout.sshd.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
+    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config.d/50-redhat.conf:8]
     - sshd.present = true
 
 U-04 PASS
@@ -92,11 +92,11 @@ U-12 PASS
 
 U-13 PASS
   accounts.password-hash-method PASS
-    - login_defs.settings.ENCRYPT_METHOD.value = "YESCRYPT"
+    - login_defs.settings.ENCRYPT_METHOD = "YESCRYPT" (explicit)  [/etc/login.defs:215]
     - os.family = "rhel"
     - os.id = "almalinux"
     - os.version_major = 10
-    - pam.effective.password_hash.value = "yescrypt"
+    - pam.effective.password_hash = "yescrypt" (explicit)  [/etc/pam.d/system-auth:19]
   accounts.password-hash-strength PASS
   accounts.passwd-no-hashes PASS
 

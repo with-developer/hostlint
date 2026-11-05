@@ -12,23 +12,23 @@ U-01 NOT_APPLICABLE
 U-02 FAIL
   accounts.password-min-length FAIL
     - pam.password_quality.module = ""
-    - pam.password_quality.settings.dcredit.value: not set
-    - pam.password_quality.settings.enforcing.value: not set
-    - pam.password_quality.settings.lcredit.value: not set
-    - pam.password_quality.settings.minlen.value: not set
-    - pam.password_quality.settings.ocredit.value: not set
-    - pam.password_quality.settings.ucredit.value: not set
+    - pam.password_quality.settings.dcredit: not set
+    - pam.password_quality.settings.enforcing: not set
+    - pam.password_quality.settings.lcredit: not set
+    - pam.password_quality.settings.minlen: not set
+    - pam.password_quality.settings.ocredit: not set
+    - pam.password_quality.settings.ucredit: not set
   accounts.password-complexity FAIL
     - pam.password_quality.module = ""
-    - pam.password_quality.settings.dcredit.value: not set
-    - pam.password_quality.settings.enforcing.value: not set
-    - pam.password_quality.settings.lcredit.value: not set
-    - pam.password_quality.settings.minclass.value: not set
-    - pam.password_quality.settings.ocredit.value: not set
-    - pam.password_quality.settings.ucredit.value: not set
+    - pam.password_quality.settings.dcredit: not set
+    - pam.password_quality.settings.enforcing: not set
+    - pam.password_quality.settings.lcredit: not set
+    - pam.password_quality.settings.minclass: not set
+    - pam.password_quality.settings.ocredit: not set
+    - pam.password_quality.settings.ucredit: not set
   accounts.password-quality-root FAIL
     - pam.password_quality.module = ""
-    - pam.password_quality.settings.enforcing.value: not set
+    - pam.password_quality.settings.enforcing: not set
   accounts.password-max-age FAIL
     - "99999" (explicit); expected 1–90  [/etc/login.defs:165]
   accounts.password-max-age-existing PASS
@@ -36,15 +36,15 @@ U-02 FAIL
     - "0" (explicit); expected 1–99999  [/etc/login.defs:166]
   accounts.password-history FAIL
     - pam.password_history.module = ""
-    - pam.password_history.settings.remember.value: not set
+    - pam.password_history.settings.remember: not set
 
 U-03 FAIL
   accounts.lockout-threshold FAIL
     - pam.lockout.login.enforced = false
-    - pam.lockout.login.settings.deny.value: not set
+    - pam.lockout.login.settings.deny: not set
     - pam.lockout.sshd.enforced = false
-    - pam.lockout.sshd.settings.deny.value: not set
-    - sshd.config.usepam.value: not set
+    - pam.lockout.sshd.settings.deny: not set
+    - sshd.config.usepam: not set
     - sshd.present = false
 
 U-04 PASS
@@ -93,11 +93,11 @@ U-12 FAIL
 
 U-13 PASS
   accounts.password-hash-method PASS
-    - login_defs.settings.ENCRYPT_METHOD.value = "SHA512"
+    - login_defs.settings.ENCRYPT_METHOD = "SHA512" (explicit)  [/etc/login.defs:294]
     - os.family = "debian"
     - os.id = "debian"
     - os.version_major = 12
-    - pam.effective.password_hash.value = "yescrypt"
+    - pam.effective.password_hash = "yescrypt" (explicit)  [/etc/pam.d/common-password:25]
   accounts.password-hash-strength PASS
   accounts.passwd-no-hashes PASS
 

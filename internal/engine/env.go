@@ -247,6 +247,11 @@ type factPath struct {
 func factPaths(p *program, known map[string]Collector) []factPath {
 	ast := p.ast.NativeRep()
 	isMap := func(e celast.Expr) bool { return ast.GetType(e.ID()).Kind() == types.MapKind }
+	settingName := celTypeName(reflect.TypeFor[facts.Setting]())
+	isSetting := func(e celast.Expr) bool {
+		t := ast.GetType(e.ID())
+		return t.Kind() == types.StructKind && t.TypeName() == settingName
+	}
 	var walk func(e celast.Expr) (factPath, bool)
 	walk = func(e celast.Expr) (factPath, bool) {
 		switch e.Kind() {
@@ -260,6 +265,11 @@ func factPaths(p *program, known map[string]Collector) []factPath {
 				return factPath{}, false
 			}
 			base, ok := walk(sel.Operand())
+			if sel.FieldName() == "value" && isSetting(sel.Operand()) {
+				// Report the whole setting, so the evidence keeps its source and
+				// whether it was set explicitly.
+				return base, ok
+			}
 			return factPath{base.path + "." + sel.FieldName(), base.mapKey || isMap(sel.Operand())}, ok
 		case celast.CallKind:
 			call := e.AsCall()
