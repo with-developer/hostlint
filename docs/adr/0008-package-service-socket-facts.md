@@ -24,8 +24,10 @@ behind them. Three constraints shape how:
   dpkg: `/var/lib/dpkg/status` plus the journal in `/var/lib/dpkg/updates`, applied in order as
   dpkg does; every state other than `not-installed` and `config-files` counts as installed.
   rpm's SQLite database (EL9 and later) is read directly with a small read-only parser of the
-  SQLite file format and rpm headers. The Berkeley DB of EL7 and EL8 is not read yet: there the
-  `packages` collector fails, so checks that read it are ERROR instead of seeing an empty list.
+  SQLite file format and rpm headers. The Berkeley DB hash file of EL7 and EL8 is read the same
+  way (hash version 9, little-endian; key = package number, value = the header, in overflow pages
+  when large). A format that is not read (SUSE's ndb) makes the `packages` collector fail, so
+  checks that read it are ERROR instead of seeing an empty list.
 - **Services** are read from the files that decide them, the same way live and under `--root`:
   systemd units on the unit search path (enabled through `.wants`, `.requires` and `.upholds`
   links; masked through `/dev/null` links or empty files; aliases; template instances; the

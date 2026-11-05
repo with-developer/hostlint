@@ -44,8 +44,8 @@ const (
 	dpkgUpdates = "/var/lib/dpkg/updates"
 )
 
-// rpmSQLite are where rpm keeps its SQLite database (EL9 and later); the
-// Berkeley DB of EL7 and EL8 (rpmBDB) is not read yet.
+// rpmSQLite are where rpm keeps its SQLite database (EL9 and later); rpmBDB
+// the Berkeley DB of EL7 and EL8. The ndb format of SUSE is not read.
 var (
 	rpmSQLite = []string{"/var/lib/rpm/rpmdb.sqlite", "/usr/lib/sysimage/rpm/rpmdb.sqlite"}
 	rpmBDB    = []string{"/var/lib/rpm/Packages", "/usr/lib/sysimage/rpm/Packages.db"}
@@ -63,8 +63,8 @@ func (packagesCollector) Type() reflect.Type    { return reflect.TypeFor[Package
 
 // Collect reads the package database files directly: running rpm would write
 // to its database (SQLite and Berkeley DB readers update their shared files).
-// The Berkeley DB of EL7 and EL8 is not read yet, so those targets have no
-// package facts and checks that read them are ERROR, never shown an empty
+// A database format that is not read (ndb on SUSE) leaves the targets without
+// package facts, and checks that read them are ERROR, never shown an empty
 // list.
 func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	data, err := h.FS.ReadFile(dpkgStatus)
@@ -77,7 +77,7 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	for _, db := range rpmSQLite {
 		switch _, err := h.FS.Stat(db); {
 		case err == nil:
-			return readRPM(h.FS, db)
+			return readRPM(h.FS, db, readRPMSQLite)
 		case !errors.Is(err, fs.ErrNotExist):
 			return engine.Facts{}, err
 		}
@@ -85,7 +85,10 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	for _, db := range rpmBDB {
 		switch _, err := h.FS.Stat(db); {
 		case err == nil:
-			return engine.Facts{}, fmt.Errorf("%s: reading this rpm database format (Berkeley DB on EL7 and EL8, ndb on SUSE) is not supported yet", db)
+			if path.Base(db) == "Packages" {
+				return readRPM(h.FS, db, readRPMBDB)
+			}
+			return engine.Facts{}, fmt.Errorf("%s: reading this rpm database format (ndb on SUSE) is not supported yet", db)
 		case !errors.Is(err, fs.ErrNotExist):
 			return engine.Facts{}, err
 		}
@@ -93,9 +96,10 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	return engine.Facts{}, errors.New("no dpkg or rpm package database found")
 }
 
-// readRPM reads an rpm SQLite database. Changes still in its write-ahead log
-// or a rollback journal are not in the file yet: the list may be outdated.
-func readRPM(fsys hostfs.FS, db string) (engine.Facts, error) {
+// readRPM reads an rpm database with parse. Changes still in the write-ahead
+// log or a rollback journal of a SQLite database are not in the file yet: the
+// list may be outdated.
+func readRPM(fsys hostfs.FS, db string, parse func([]byte) ([]rpmPackage, error)) (engine.Facts, error) {
 	// rpm may be writing the live database: read it again when its size or
 	// time changed while it was read, so the pages are not from two states.
 	var data []byte
@@ -118,7 +122,7 @@ func readRPM(fsys hostfs.FS, db string) (engine.Facts, error) {
 			return engine.Facts{}, fmt.Errorf("%s: changed while being read (is rpm running?)", db)
 		}
 	}
-	pkgs, err := readRPMSQLite(data)
+	pkgs, err := parse(data)
 	if err != nil {
 		return engine.Facts{}, fmt.Errorf("%s: %w", db, err)
 	}

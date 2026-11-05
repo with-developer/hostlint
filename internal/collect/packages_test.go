@@ -118,7 +118,8 @@ func TestPackagesUnavailable(t *testing.T) {
 		want string
 	}{
 		{"damaged rpm database", hostfs.NewMemFS().AddFile("/var/lib/rpm/rpmdb.sqlite", "", 0o644, 0, 0), "not a SQLite file"},
-		{"Berkeley DB rpm database", hostfs.NewMemFS().AddFile("/var/lib/rpm/Packages", "", 0o644, 0, 0), "is not supported yet"},
+		{"damaged Berkeley DB rpm database", hostfs.NewMemFS().AddFile("/var/lib/rpm/Packages", "", 0o644, 0, 0), "too short for a Berkeley DB file"},
+		{"ndb rpm database", hostfs.NewMemFS().AddFile("/usr/lib/sysimage/rpm/Packages.db", "", 0o644, 0, 0), "is not supported yet"},
 		{"no database", hostfs.NewMemFS(), "no dpkg or rpm package database"},
 		{"unreadable dpkg status", hostfs.NewMemFS().AddFile(dpkgStatus, "", 0o600, 0, 0).SetError(dpkgStatus, os.ErrPermission), "permission"},
 		{"unreadable journal", fixtureFS(t, "debian-12").AddDir(dpkgUpdates, 0o755, 0, 0).SetError(dpkgUpdates, os.ErrPermission), "permission"},

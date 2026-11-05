@@ -1,0 +1,10 @@
+bash	0	4.2.46	34.el7	aarch64
+coreutils	0	8.22	24.el7	aarch64
+filesystem	0	3.2	25.el7	aarch64
+glibc	0	2.17	317.el7	aarch64
+gzip	0	1.5	10.el7	aarch64
+openssl-libs	1	1.0.2k	19.el7	aarch64
+pam	0	1.1.8	23.el7	aarch64
+setup	0	2.8.71	11.el7	noarch
+shadow-utils	2	4.6	5.el7	aarch64
+systemd	0	219	78.el7	aarch64
