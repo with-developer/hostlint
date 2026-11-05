@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -339,6 +340,28 @@ func TestExpectEvidence(t *testing.T) {
 				t.Errorf("status %s, evidence %q; want %s, %q", got.Status, texts, tt.want, tt.evidence)
 			}
 		})
+	}
+}
+
+// A "why" field is evidence only when it says something.
+func TestExpectEvidenceSkipsEmptyWhy(t *testing.T) {
+	for _, tt := range []struct {
+		why  string
+		want []string
+	}{
+		{"", []string{"svc.present = true"}},
+		{"nothing counts a failed login", []string{"svc.present = true", `svc.why = "nothing counts a failed login"`}},
+	} {
+		svc := demoSvc()
+		svc.facts.Why = tt.why
+		got := scanOne(t, &Check{ID: "x.why", Expect: `svc.present && svc.why == ""`}, svc, demoHost())
+		var texts []string
+		for _, ev := range got.Evidence {
+			texts = append(texts, ev.Text)
+		}
+		if !slices.Equal(texts, tt.want) {
+			t.Errorf("why %q: evidence %q, want %q", tt.why, texts, tt.want)
+		}
 	}
 }
 

@@ -386,6 +386,9 @@ func (e *evalEnv) pathEvidence(paths []evidencePath, act cel.Activation) []Evide
 		case types.IsUnknown(v):
 			continue
 		default:
+			if s, ok := v.Value().(string); ok && s == "" && strings.HasSuffix(p.path, ".why") {
+				continue // a "why" says what is wrong, so there is nothing to show without one
+			}
 			item.Text, item.Source = describeValue(p.path, v)
 		}
 		ev = append(ev, item)
