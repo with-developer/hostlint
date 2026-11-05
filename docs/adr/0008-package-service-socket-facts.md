@@ -28,6 +28,10 @@ behind them. Three constraints shape how:
   way (hash version 9, little-endian; key = package number, value = the header, in overflow pages
   when large). A format that is not read (SUSE's ndb) makes the `packages` collector fail, so
   checks that read it are ERROR instead of seeing an empty list.
+  The Berkeley DB reader checks the whole file (every page is a known kind, every overflow
+  page belongs to a package, rpm's counter is present), so a damaged file is an error and never a
+  short list. Pages that rpm holds in its shared cache during a transaction are not in the file;
+  a scan during an rpm transaction can therefore see the list from before it.
 - **Services** are read from the files that decide them, the same way live and under `--root`:
   systemd units on the unit search path (enabled through `.wants`, `.requires` and `.upholds`
   links; masked through `/dev/null` links or empty files; aliases; template instances; the

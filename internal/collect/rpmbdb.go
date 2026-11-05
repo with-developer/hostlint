@@ -2,6 +2,7 @@ package collect
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 )
 
@@ -45,7 +46,7 @@ type bdbFile struct {
 	pages    int // pages in the file that the metadata page counts
 	// seen are the overflow pages read: a chain is a chain, so a page read
 	// twice means a cycle or two values sharing a page, in a damaged file.
-	seen map[uint32]bool
+	seen map[int]bool
 	// payload is the bytes of values read; the values of a valid file fit in
 	// the file.
 	payload int
@@ -59,15 +60,27 @@ func readRPMBDB(data []byte) ([]rpmPackage, error) {
 	}
 	var pkgs []rpmPackage
 	keys := map[uint32]bool{}
-	for pgno := 1; pgno < db.pages; pgno++ {
+	var overflow []int
+	counter := false
+	for pgno := 1; pgno < len(data)/db.pageSize; pgno++ {
 		page := db.page(pgno)
-		if t := page[25]; t != bdbPageHash && t != bdbPageHashUnsorted {
-			continue // overflow data, a free page or another kind of page
+		entries := int(binary.LittleEndian.Uint16(page[20:]))
+		switch t := page[25]; {
+		case t == bdbPageOverflow:
+			overflow = append(overflow, pgno)
+			continue
+		case t == 0 && entries == 0:
+			continue // a free page, or one never used
+		case t != bdbPageHash && t != bdbPageHashUnsorted:
+			// Dropping a page of unknown kind, or a free page that still holds
+			// items, would leave packages out of the list without an error.
+			return nil, fmt.Errorf("%w: page %d has type %d and %d items", errMalformedDB, pgno, t, entries)
+		case pgno >= db.pages:
+			return nil, fmt.Errorf("%w: page %d is past the last page %d the metadata counts", errMalformedDB, pgno, db.pages-1)
 		}
 		if binary.LittleEndian.Uint32(page[8:]) != uint32(pgno) {
 			return nil, fmt.Errorf("%w: page %d carries another page number", errMalformedDB, pgno)
 		}
-		entries := int(binary.LittleEndian.Uint16(page[20:]))
 		if entries%2 != 0 || bdbPageHeader+2*entries > db.pageSize {
 			return nil, fmt.Errorf("%w: page %d has %d items", errMalformedDB, pgno, entries)
 		}
@@ -89,7 +102,8 @@ func readRPMBDB(data []byte) ([]rpmPackage, error) {
 				return nil, fmt.Errorf("page %d: %w", pgno, err)
 			}
 			if num == 0 {
-				continue // rpm's counter of package numbers, not a package
+				counter = true // rpm's counter of package numbers, not a package
+				continue
 			}
 			pkg, err := parseRPMHeader(value)
 			if err != nil {
@@ -97,6 +111,16 @@ func readRPMBDB(data []byte) ([]rpmPackage, error) {
 			}
 			pkgs = append(pkgs, pkg)
 		}
+	}
+	// Every overflow page belongs to a value read above: one that does not is
+	// the value of a page that was dropped. rpm always keeps its counter.
+	for _, pgno := range overflow {
+		if !db.seen[pgno] {
+			return nil, fmt.Errorf("%w: overflow page %d belongs to no package", errMalformedDB, pgno)
+		}
+	}
+	if !counter {
+		return nil, fmt.Errorf("%w: rpm's package counter is missing", errMalformedDB)
 	}
 	return pkgs, nil
 }
@@ -108,7 +132,7 @@ func openBDB(data []byte) (*bdbFile, error) {
 	switch magic := binary.LittleEndian.Uint32(data[12:]); {
 	case magic == bdbHashMagic:
 	case binary.BigEndian.Uint32(data[12:]) == bdbHashMagic:
-		return nil, fmt.Errorf("%w: a big-endian Berkeley DB file is not supported", errMalformedDB)
+		return nil, errors.New("a big-endian Berkeley DB rpm database is not supported")
 	default:
 		return nil, fmt.Errorf("%w: not a Berkeley DB hash file", errMalformedDB)
 	}
@@ -129,7 +153,7 @@ func openBDB(data []byte) (*bdbFile, error) {
 	if last >= int64(len(data)/ps) {
 		return nil, fmt.Errorf("%w: the last page %d is beyond the file", errMalformedDB, last)
 	}
-	return &bdbFile{data: data, pageSize: ps, pages: int(last) + 1, seen: map[uint32]bool{}}, nil
+	return &bdbFile{data: data, pageSize: ps, pages: int(last) + 1, seen: map[int]bool{}}, nil
 }
 
 func (db *bdbFile) page(n int) []byte { return db.data[n*db.pageSize : (n+1)*db.pageSize] }
@@ -177,10 +201,10 @@ func (db *bdbFile) overflow(pgno uint32, total int64) ([]byte, error) {
 	db.payload += int(total)
 	out := make([]byte, 0, total)
 	for pgno != 0 {
-		if int(pgno) >= db.pages || db.seen[pgno] {
+		if int(pgno) >= db.pages || db.seen[int(pgno)] {
 			return nil, fmt.Errorf("%w: overflow page %d", errMalformedDB, pgno)
 		}
-		db.seen[pgno] = true
+		db.seen[int(pgno)] = true
 		page := db.page(int(pgno))
 		if page[25] != bdbPageOverflow || binary.LittleEndian.Uint32(page[8:]) != pgno {
 			return nil, fmt.Errorf("%w: page %d is not an overflow page", errMalformedDB, pgno)

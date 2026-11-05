@@ -127,6 +127,44 @@ func TestReadRPMBDBDamaged(t *testing.T) {
 			binary.LittleEndian.PutUint32(d[o+16:], binary.LittleEndian.Uint32(d[o+8:]))
 			return d
 		}},
+		{"hash page of unknown type", func(d []byte) []byte {
+			d[bdbPageOf(t, d, bdbPageHash)+25] = 1
+			return d
+		}},
+		{"hash page that looks free", func(d []byte) []byte {
+			d[bdbPageOf(t, d, bdbPageHash)+25] = 0
+			return d
+		}},
+		{"hash page past the last page the metadata counts", func(d []byte) []byte {
+			binary.LittleEndian.PutUint32(d[32:], 1)
+			return d
+		}},
+		{"overflow page that no value uses", func(d []byte) []byte {
+			// Point the first off-page value at a one-page chain, orphaning the rest.
+			o := bdbPageOf(t, d, bdbPageHash)
+			n := int(binary.LittleEndian.Uint16(d[o+20:]))
+			for i := 1; i < n; i += 2 {
+				v := o + int(binary.LittleEndian.Uint16(d[o+bdbPageHeader+2*i:]))
+				if d[v] == bdbItemOffPage {
+					binary.LittleEndian.PutUint32(d[v+8:], 10) // a total that ends early
+					return d
+				}
+			}
+			t.Fatal("no off-page item")
+			return d
+		}},
+		{"item over the offset table", func(d []byte) []byte {
+			o := bdbPageOf(t, d, bdbPageHash)
+			binary.LittleEndian.PutUint16(d[o+bdbPageHeader:], bdbPageHeader)
+			return d
+		}},
+		{"package counter missing", func(d []byte) []byte {
+			// Rename key 0 to a package number.
+			o := bdbPageOf(t, d, bdbPageHash)
+			k := o + int(binary.LittleEndian.Uint16(d[o+bdbPageHeader:]))
+			binary.LittleEndian.PutUint32(d[k+1:], 12345)
+			return d
+		}},
 		{"overflow page claiming too much", func(d []byte) []byte {
 			binary.LittleEndian.PutUint16(d[bdbPageOf(t, d, bdbPageOverflow)+22:], uint16(ps))
 			return d
