@@ -121,7 +121,7 @@ Checks that password quality, not in warning-only mode, requires at least one di
 
 New passwords use a strong hash (새 비밀번호가 강한 해시를 씀) — severity medium, evaluates an expression.
 
-Checks that new passwords get a SHA-2 or yescrypt hash: the hashing option of pam_unix in the passwd stack, which overrides login.defs for passwd, and ENCRYPT_METHOD in /etc/login.defs, used by the other shadow-utils tools. ENCRYPT_METHOD YESCRYPT only counts where shadow-utils is built with yescrypt (Debian 12, Ubuntu 24.04, RHEL 10 and their successors); elsewhere, such as RHEL 9 and Ubuntu 22.04, it falls back to DES.
+Checks that new passwords get a SHA-2, yescrypt or bcrypt hash: the hashing option of pam_unix in the passwd stack, which overrides login.defs for passwd, and ENCRYPT_METHOD in /etc/login.defs, used by the other shadow-utils tools. ENCRYPT_METHOD YESCRYPT only counts where shadow-utils is built with yescrypt (Debian 12, Ubuntu 24.04, RHEL 10 and their successors); elsewhere, such as RHEL 9 and Ubuntu 22.04, it falls back to DES.
 
 **Why.** Passwords hashed with DES or MD5 crypt can be cracked quickly once the hash leaks.
 
