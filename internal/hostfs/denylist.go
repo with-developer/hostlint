@@ -24,6 +24,8 @@ var (
 		"/etc/mysql/debian.cnf", "/etc/kubernetes/*.conf", "/etc/kubernetes/pki/*", "/etc/kubernetes/pki/*/*",
 		// net-snmp: community strings and SNMPv3 passphrases (hostfs.ReadSNMPConfig).
 		"/etc/snmp/*.conf", "/etc/snmp/*/*.conf", "/usr/share/snmp/snmpd*.conf", "/var/lib/net-snmp/*", "/var/lib/snmp/*",
+		// BIND: TSIG keys (hostfs.ReadBindConfig).
+		"/etc/bind/named.conf*", "/etc/bind/*.key", "/etc/named.conf", "/etc/named.conf.*", "/etc/named/*.conf", "/etc/named/*.key", "/etc/named.*.key",
 		"/boot/grub/user.cfg", "/boot/grub2/user.cfg",
 		"/var/lib/sss/secrets/*", "/var/lib/sss/db/*", "/var/lib/cloud/instance/user-data*",
 		"/run/credentials/*", "/run/credentials/*/*",

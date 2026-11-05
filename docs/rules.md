@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 6)
+## kisa-2026 (revision 7)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -62,8 +62,8 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-47 | high | The mail server is not an open relay (메일 릴레이 제한) | [`services.postfix-no-open-relay`](#servicespostfix-no-open-relay), [`services.review-mail-relay-other`](#servicesreview-mail-relay-other) |
 | U-48 | medium | SMTP does not reveal accounts (SMTP 계정 확인 명령 제한) | [`services.postfix-no-vrfy`](#servicespostfix-no-vrfy), [`services.review-mail-relay-other`](#servicesreview-mail-relay-other) |
 | U-49 | high | The DNS server is up to date (DNS 서버 버전 관리) | [`services.review-dns-server`](#servicesreview-dns-server) |
-| U-50 | high | DNS zone transfers are restricted (DNS 영역 전송 제한) | [`services.review-dns-server`](#servicesreview-dns-server) |
-| U-51 | medium | DNS dynamic updates are restricted (DNS 동적 업데이트 제한) | [`services.review-dns-server`](#servicesreview-dns-server) |
+| U-50 | high | DNS zone transfers are restricted (DNS 영역 전송 제한) | [`services.bind-restrict-transfer`](#servicesbind-restrict-transfer), [`services.review-dns-other`](#servicesreview-dns-other) |
+| U-51 | medium | DNS dynamic updates are restricted (DNS 동적 업데이트 제한) | [`services.bind-restrict-update`](#servicesbind-restrict-update), [`services.review-dns-other`](#servicesreview-dns-other) |
 | U-52 | medium | Telnet is off (텔넷 미사용) | [`services.no-telnet`](#servicesno-telnet) |
 | U-53 | low | The FTP banner hides the version (FTP 배너 정보 노출 제한) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
 | U-54 | medium | FTP is encrypted or off (암호화되지 않은 FTP 미사용) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
@@ -645,6 +645,26 @@ Lists accounts whose shell startup files (.profile, .bashrc, .bash_profile, ...)
 
 **Fix.** Run `chown <user>` and `chmod go-w` on each listed file, and remove links to missing files.
 
+#### `services.bind-restrict-transfer`
+
+BIND zone transfers are restricted (BIND 존 전송이 제한됨) — severity high, lists what violates it.
+
+Lists the primary and secondary zones of /etc/named.conf (or /etc/bind/named.conf) and the files it includes that any host may transfer: no allow-transfer applies to the zone (BIND then allows everyone), or it contains any. allow-transfer is read from the zone, its view and options, and acl names are followed. The zones every installation defines for the host itself (localhost and the loopback reverse zones) are left out. Applies when BIND is started and has a configuration; another DNS server is services.review-dns-other.
+
+**Why.** A zone transfer hands over every name in the zone, which maps the network for an attacker.
+
+**Fix.** Set `allow-transfer { none; };` in options and list your secondaries (or a TSIG key) in the zones that need it.
+
+#### `services.bind-restrict-update`
+
+BIND dynamic updates are restricted (BIND 동적 업데이트가 제한됨) — severity high, lists what violates it.
+
+Lists the primary zones of /etc/named.conf (or /etc/bind/named.conf) and the files it includes whose allow-update contains any. Dynamic updates are off unless allow-update or update-policy is set; addresses, keys and an update-policy count as restricted. Applies when BIND is started and has a configuration; another DNS server is services.review-dns-other.
+
+**Why.** Whoever can update a zone can point its names at their own hosts.
+
+**Fix.** Allow updates only with a key (`allow-update { key dhcp-updates; };`) or an update-policy, or remove allow-update.
+
 #### `services.ftp-account-shell`
 
 The ftp account cannot log in (ftp 계정 로그인 셸 제한) — severity medium, lists what violates it.
@@ -784,6 +804,16 @@ Applies when a file-sharing service (FTP, NFS or Samba) is started; then shows h
 **Why.** Anonymous access to shared files lets anyone read, and sometimes write, them.
 
 **Fix.** Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
+
+#### `services.review-dns-other`
+
+Review zone transfers and updates of the DNS server (DNS 서버의 존 전송·업데이트 설정 검토) — severity high, a review (`MANUAL`).
+
+Applies when a DNS server other than BIND is started, or BIND is started and has no named.conf at the usual places (BIND with a configuration is checked by services.bind-restrict-transfer and services.bind-restrict-update); then shows how it was started, for a review of its configuration. Not applicable otherwise.
+
+**Why.** Zone transfers map your network for attackers, and open dynamic updates let them change it.
+
+**Fix.** Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.
 
 #### `services.review-dns-server`
 

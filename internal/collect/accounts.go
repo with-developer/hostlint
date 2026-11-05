@@ -21,7 +21,7 @@ import (
 
 // All returns every collector, for engine.New.
 func All() []engine.Collector {
-	return []engine.Collector{accountsCollector{}, shadowCollector{}, loginDefsCollector{}, sshdCollector{}, snmpCollector{}, postfixCollector{}, pamCollector{}, shellEnvCollector{}, packagesCollector{}, servicesCollector{}, socketsCollector{}, filesystemCollector{}, homesCollector{}}
+	return []engine.Collector{accountsCollector{}, shadowCollector{}, loginDefsCollector{}, sshdCollector{}, snmpCollector{}, postfixCollector{}, bindCollector{}, pamCollector{}, shellEnvCollector{}, packagesCollector{}, servicesCollector{}, socketsCollector{}, filesystemCollector{}, homesCollector{}}
 }
 
 // Accounts are the `accounts` facts: /etc/passwd and /etc/group.

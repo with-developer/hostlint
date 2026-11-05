@@ -1,5 +1,5 @@
 os: Ubuntu 22.04.5 LTS (id ubuntu, version 22.04, family debian, supported true)
-profile kisa-2026 revision 6: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
+profile kisa-2026 revision 7: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -279,11 +279,19 @@ U-49 NOT_APPLICABLE
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-52 PASS

@@ -1,5 +1,5 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 6: MANUAL 11 PASS 38 NOT_APPLICABLE 18
+profile kisa-2026 revision 7: MANUAL 11 PASS 38 NOT_APPLICABLE 18
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -283,11 +283,19 @@ U-49 NOT_APPLICABLE
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-52 PASS

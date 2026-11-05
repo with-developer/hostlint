@@ -1,5 +1,5 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 6: FAIL 7 MANUAL 10 PASS 31 NOT_APPLICABLE 19
+profile kisa-2026 revision 7: FAIL 7 MANUAL 10 PASS 31 NOT_APPLICABLE 19
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -284,11 +284,19 @@ U-49 NOT_APPLICABLE
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-50 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-51 NOT_APPLICABLE
-  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-52 PASS

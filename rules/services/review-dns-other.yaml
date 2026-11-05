@@ -1,0 +1,43 @@
+id: services.review-dns-other
+version: 1
+title: Review zone transfers and updates of the DNS server
+title_ko: DNS 서버의 존 전송·업데이트 설정 검토
+severity: high
+description: >-
+  Applies when a DNS server other than BIND is started, or BIND is started and has no named.conf at
+  the usual places (BIND with a configuration is checked by services.bind-restrict-transfer and
+  services.bind-restrict-update); then shows how it was started, for a review of its configuration.
+  Not applicable otherwise.
+rationale: >-
+  Zone transfers map your network for attackers, and open dynamic updates let them change it.
+remediation: >-
+  Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.
+applies: >-
+  services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) ||
+  (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+manual:
+  guidance: >-
+    Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.
+  show: >-
+    services.started.filter(s, s.service in ["named", "bind9", "named-chroot", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+      bind: {present: false, zones: []}
+    want: NOT_APPLICABLE
+  - name: knot
+    facts:
+      services: {started: [{service: knot, name: knot.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/knot.service"}]}
+      bind: {present: false, zones: []}
+    want: MANUAL
+  - name: BIND with a configuration is checked by its own checks
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: true, zones: []}
+    want: NOT_APPLICABLE
+  - name: BIND without a configuration at the usual places
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: false, zones: []}
+    want: MANUAL

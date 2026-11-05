@@ -1,0 +1,55 @@
+id: services.bind-restrict-update
+version: 1
+title: BIND dynamic updates are restricted
+title_ko: BIND 동적 업데이트가 제한됨
+severity: high
+description: >-
+  Lists the primary zones of /etc/named.conf (or /etc/bind/named.conf) and the files it includes whose allow-update contains any. Dynamic updates are off unless allow-update or update-policy is set; addresses, keys and an update-policy count as restricted. Applies when BIND is started and has a configuration; another DNS server is services.review-dns-other.
+rationale: >-
+  Whoever can update a zone can point its names at their own hosts.
+remediation: >-
+  Allow updates only with a key (`allow-update { key dhcp-updates; };`) or an update-policy, or remove allow-update.
+applies: >-
+  bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+violations:
+  over: bind.zones
+  as: z
+  where: >-
+    z.update == "any"
+  key: z.name + "/" + z.view
+  text: >-
+    "zone " + z.name + (z.view != "" ? " (view " + z.view + ")" : "") + " accepts dynamic updates from any host (" + z.where + ")"
+  allow_empty: true
+tests:
+  - name: no updates
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: true, zones: [{name: a.example, type: primary, view: "", transfer: restricted, update: none, local: false, where: "/etc/named.conf:9"}]}
+    want: PASS
+  - name: updates only with a key
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: true, zones: [{name: a.example, type: primary, view: "", transfer: restricted, update: restricted, local: false, where: "/etc/named.conf:9"}]}
+    want: PASS
+  - name: updates from anyone
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: true, zones: [{name: a.example, type: primary, view: "", transfer: restricted, update: any, local: false, where: "/etc/named.conf:9"}]}
+    want: FAIL
+  - name: BIND is not started
+    facts:
+      services: {started: []}
+      bind: {present: true, zones: [{name: a.example, type: primary, view: "", transfer: any, update: any, local: false, where: "/etc/named.conf:9"}]}
+    want: NOT_APPLICABLE
+  - name: no named.conf
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: false, zones: []}
+    want: NOT_APPLICABLE
+  - name: an included file could not be read
+    input: incomplete
+    incomplete: [bind]
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      bind: {present: true, zones: []}
+    want: ERROR
