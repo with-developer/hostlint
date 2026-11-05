@@ -59,9 +59,13 @@ func TestFTPBanner(t *testing.T) {
 		{"the default shows the version", "anonymous_enable=NO\n", nil, "default"},
 		{"a custom text", "ftpd_banner=Authorized users only.\n", nil, "custom"},
 		{"a text with a version", "ftpd_banner=Welcome to vsFTPd 3.0.5\n", nil, "version"},
-		{"a text with a number", "ftpd_banner=Server 2.4 ready\n", nil, "version"},
+		{"a two-part number is not taken for a version", "ftpd_banner=Server 2.4 ready\n", nil, "custom"},
 		{"a banner file", "banner_file=/etc/ftp.banner\n", map[string]string{"/etc/ftp.banner": "Authorized users only.\n"}, "custom"},
 		{"a banner file with a version", "banner_file=/etc/ftp.banner\n", map[string]string{"/etc/ftp.banner": "vsftpd 3.0.5\n"}, "version"},
+		{"the banner file overrides the text", "ftpd_banner=Authorized users only.\nbanner_file=/etc/ftp.banner\n", map[string]string{"/etc/ftp.banner": "vsftpd 3.0.5\n"}, "version"},
+		{"a safe banner file over a text with a version", "ftpd_banner=vsftpd 3.0.5\nbanner_file=/etc/ftp.banner\n", map[string]string{"/etc/ftp.banner": "Authorized users only.\n"}, "custom"},
+		{"an address and a policy number are no version", "ftpd_banner=Authorized users only. Contact 10.0.0.5 or see policy 2.1\n", nil, "custom"},
+		{"a version number of three parts", "ftpd_banner=Server 3.0.5 ready\n", nil, "version"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -93,6 +97,12 @@ func TestFTPRootDenied(t *testing.T) {
 		{"the user list allows", "userlist_enable=YES\nuserlist_deny=NO\n", map[string]string{"/etc/vsftpd.user_list": "root\n"}, false},
 		{"a named user list", "userlist_enable=YES\nuserlist_file=/etc/denied\n", map[string]string{"/etc/denied": "root\n"}, true},
 		{"nothing refuses root", "anonymous_enable=NO\n", nil, false},
+		{"an allow list that does not hold root", "userlist_enable=YES\nuserlist_deny=NO\n", map[string]string{"/etc/vsftpd.user_list": "alice\n"}, true},
+		{"an allow list that holds root", "userlist_enable=YES\nuserlist_deny=NO\n", map[string]string{"/etc/vsftpd.user_list": "root\nalice\n"}, false},
+		{"a bracketed control that dies", "pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": "auth [default=die] pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed\n", "/etc/ftpusers": "root\n"}, true},
+		{"a sufficient rule before pam_listfile may let root skip it", "pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": "auth sufficient pam_succeed_if.so user = root\n" + pamFtpusers, "/etc/ftpusers": "root\n"}, false},
+		{"an include before pam_listfile", "pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": "@include common-auth\n" + pamFtpusers, "/etc/ftpusers": "root\n"}, false},
+		{"an include after pam_listfile", "pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": pamFtpusers + "@include common-auth\n", "/etc/ftpusers": "root\n"}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -101,6 +111,36 @@ func TestFTPRootDenied(t *testing.T) {
 			}
 		})
 	}
+}
+
+// What the checks cannot see makes the facts incomplete.
+func TestFTPIncomplete(t *testing.T) {
+	both := vsftpd("anonymous_enable=NO\n", nil).AddFile("/etc/vsftpd/vsftpd.conf", "anonymous_enable=YES\n", 0o644, 0, 0)
+	if _, complete := collectFTP(t, both); complete {
+		t.Error("two default configurations must make the facts incomplete")
+	}
+	other := hostfs.NewMemFS().AddFile("/etc/vsftpd/vsftpd.conf", "ssl_enable=YES\n", 0o644, 0, 0).AddFile("/etc/vsftpd/ftp-public.conf", "ssl_enable=NO\n", 0o644, 0, 0)
+	if _, complete := collectFTP(t, other); complete {
+		t.Error("another vsftpd configuration must make the facts incomplete")
+	}
+	long := vsftpd("pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": pamFtpusers, "/etc/ftpusers": strings.Repeat("x", 2<<20) + "\nroot\n"})
+	if f, complete := collectFTP(t, long); complete || f.RootDenied {
+		t.Errorf("a too long line must make the facts incomplete (denied %v, complete %v)", f.RootDenied, complete)
+	}
+	forced := collectFTPSettings(t, "ssl_enable=YES\nforce_local_logins_ssl=NO\n")
+	if forced["force_local_logins_ssl"] != "NO" || forced["force_local_data_ssl"] != "YES" {
+		t.Errorf("%+v", forced)
+	}
+}
+
+func collectFTPSettings(t *testing.T, conf string) map[string]string {
+	t.Helper()
+	f, _ := collectFTP(t, vsftpd(conf, nil))
+	out := map[string]string{}
+	for k, v := range f.Settings {
+		out[k] = v.Value
+	}
+	return out
 }
 
 func TestFTPBooleansAndAbsence(t *testing.T) {

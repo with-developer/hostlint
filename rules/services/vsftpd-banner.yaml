@@ -4,7 +4,7 @@ title: The vsftpd banner does not show the version
 title_ko: vsftpd 접속 배너에 버전이 없음
 severity: low
 description: >-
-  Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+  Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
 rationale: >-
   A version banner tells attackers which exploits to try.
 remediation: >-

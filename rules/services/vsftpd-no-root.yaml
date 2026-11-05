@@ -2,9 +2,9 @@ id: services.vsftpd-no-root
 version: 1
 title: root cannot log in to vsftpd
 title_ko: root가 vsftpd에 로그인할 수 없음
-severity: high
+severity: medium
 description: >-
-  Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable and userlist_deny make vsftpd refuse a root that is in its user list. Nested PAM includes are not followed. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+  Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable makes vsftpd refuse root (a user list that holds it with userlist_deny=YES, or one that does not with userlist_deny=NO). Nested PAM includes are not followed, and a PAM rule before pam_listfile that may let root skip it (sufficient, an include) makes the result ERROR. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
 rationale: >-
   A root password sent over FTP, even over TLS, puts the whole host at the mercy of one login.
 remediation: >-

@@ -969,7 +969,7 @@ Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled (as a unit or a
 
 The vsftpd banner does not show the version (vsftpd 접속 배너에 버전이 없음) — severity low, evaluates an expression.
 
-Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
 
 **Why.** A version banner tells attackers which exploits to try.
 
@@ -977,9 +977,9 @@ Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_f
 
 #### `services.vsftpd-no-root`
 
-root cannot log in to vsftpd (root가 vsftpd에 로그인할 수 없음) — severity high, evaluates an expression.
+root cannot log in to vsftpd (root가 vsftpd에 로그인할 수 없음) — severity medium, evaluates an expression.
 
-Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable and userlist_deny make vsftpd refuse a root that is in its user list. Nested PAM includes are not followed. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable makes vsftpd refuse root (a user list that holds it with userlist_deny=YES, or one that does not with userlist_deny=NO). Nested PAM includes are not followed, and a PAM rule before pam_listfile that may let root skip it (sufficient, an include) makes the result ERROR. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
 
 **Why.** A root password sent over FTP, even over TLS, puts the whole host at the mercy of one login.
 
@@ -987,9 +987,9 @@ Checks that root is refused: the FTP service's PAM stack has a pam_listfile line
 
 #### `services.vsftpd-tls`
 
-vsftpd requires TLS (vsftpd가 TLS를 사용함) — severity high, compares one setting.
+vsftpd requires TLS (vsftpd가 TLS를 사용함) — severity medium, evaluates an expression.
 
-Checks ssl_enable in vsftpd.conf. Plain FTP sends passwords and files in clear text; with ssl_enable=YES vsftpd offers TLS and, by default, requires it for local logins. Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+Checks ssl_enable in vsftpd.conf and that local logins are still required to use it (force_local_logins_ssl, YES by default). Plain FTP sends passwords and files in clear text. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
 
 **Why.** Plain FTP sends passwords in clear text.
 
