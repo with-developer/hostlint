@@ -87,7 +87,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
 Accounts lock after repeated login failures (로그인에 여러 번 실패하면 계정이 잠김) — severity high, evaluates an expression.
 
-Checks that the login and (when an SSH server is present) sshd PAM stacks lock an account after at most `max_failures` failed attempts, with pam_faillock or pam_tally2. pam_faillock only locks with an authfail line plus a preauth or account line, and sshd only uses PAM with UsePAM yes.
+Checks that the login and (when an SSH server is present) sshd PAM stacks lock an account after at most `max_failures` failed attempts, with pam_faillock or pam_tally2. pam_faillock only locks with an authfail line plus a preauth or authsucc line, and sshd only uses PAM with UsePAM yes.
 
 **Why.** Without a lockout, an attacker can try passwords against an account indefinitely.
 

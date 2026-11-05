@@ -42,8 +42,10 @@ U-03 FAIL
   accounts.lockout-threshold FAIL
     - pam.lockout.login.enforced = false
     - pam.lockout.login.settings.deny: not set
+    - pam.lockout.login.why = ""
     - pam.lockout.sshd.enforced = false
     - pam.lockout.sshd.settings.deny: not set
+    - pam.lockout.sshd.why = ""
     - sshd.config.usepam: not set
     - sshd.present = false
 

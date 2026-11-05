@@ -41,8 +41,10 @@ U-03 PASS
   accounts.lockout-threshold PASS
     - pam.lockout.login.enforced = true
     - pam.lockout.login.settings.deny = "5" (explicit)  [/etc/pam.d/system-auth:5]
+    - pam.lockout.login.why = ""
     - pam.lockout.sshd.enforced = true
     - pam.lockout.sshd.settings.deny = "5" (explicit)  [/etc/pam.d/password-auth:5]
+    - pam.lockout.sshd.why = ""
     - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config:97]
     - sshd.present = true
 

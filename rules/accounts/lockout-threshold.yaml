@@ -1,12 +1,12 @@
 id: accounts.lockout-threshold
-version: 1
+version: 2
 title: Accounts lock after repeated login failures
 title_ko: 로그인에 여러 번 실패하면 계정이 잠김
 severity: high
 description: >-
   Checks that the login and (when an SSH server is present) sshd PAM stacks lock an account
   after at most `max_failures` failed attempts, with pam_faillock or pam_tally2. pam_faillock
-  only locks with an authfail line plus a preauth or account line, and sshd only uses PAM with
+  only locks with an authfail line plus a preauth or authsucc line, and sshd only uses PAM with
   UsePAM yes.
 rationale: Without a lockout, an attacker can try passwords against an account indefinitely.
 remediation: >-
@@ -16,12 +16,12 @@ remediation: >-
 params:
   max_failures: {type: int, default: 10, stricter: lower, description: Failed attempts before an account locks}
 expect: >-
-  pam.lockout.login.enforced &&
+  pam.lockout.login.enforced && pam.lockout.login.why == "" &&
   int(pam.lockout.login.settings.deny.value) >= 1 &&
   int(pam.lockout.login.settings.deny.value) <= params.max_failures &&
   (!sshd.present ||
    (sshd.config.usepam.value == "yes" &&
-    pam.lockout.sshd.enforced &&
+    pam.lockout.sshd.enforced && pam.lockout.sshd.why == "" &&
     int(pam.lockout.sshd.settings.deny.value) >= 1 &&
     int(pam.lockout.sshd.settings.deny.value) <= params.max_failures))
 tests:
@@ -38,7 +38,7 @@ tests:
   - name: preauth only never counts failures
     facts:
       sshd: {present: false}
-      pam: {lockout: {login: {module: pam_faillock.so, enforced: false, actions: [preauth], settings: {deny: {value: "5"}}}, sshd: {settings: {}}}}
+      pam: {lockout: {login: {module: pam_faillock.so, enforced: false, why: "no pam_faillock line counts a failed login", actions: [preauth], settings: {deny: {value: "5"}}}, sshd: {settings: {}}}}
     want: FAIL
   - name: sshd stack does not lock
     facts:
