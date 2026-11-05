@@ -5,7 +5,7 @@ title_ko: Postfix가 VRFY 명령에 응답하지 않음
 severity: medium
 description: >-
   Checks disable_vrfy_command in /etc/postfix/main.cf. Postfix answers VRFY, which tells whether an
-  address exists, unless it is set to yes. Applies when Postfix is started and has a main.cf; another
+  address exists, unless it is set to yes (or on, true, 1). A master.cf option that overrides it makes the result ERROR. Applies when Postfix is started and has a main.cf; another
   mail server is services.review-mail-relay-other.
 rationale: VRFY lets anyone test which accounts exist on the server.
 remediation: Set `disable_vrfy_command = yes` in /etc/postfix/main.cf and reload Postfix.
