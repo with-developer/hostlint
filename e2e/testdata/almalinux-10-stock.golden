@@ -1,5 +1,5 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 2: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
+profile kisa-2026 revision 3: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
 collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
@@ -190,9 +190,14 @@ U-37 PASS
     - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
   files.cron-spool PASS
     - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-spool-rhel PASS
+    - /var/spool/cron/*: no matching files  [/var/spool/cron/*]
   files.cron-root-spool PASS
     - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
     - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
+  files.at-spool PASS
+    - /var/spool/at/*: no matching files  [/var/spool/at/*]
+    - /var/spool/cron/atjobs/*: no matching files  [/var/spool/cron/atjobs/*]
 
 U-38 PASS
   services.no-dos-prone PASS

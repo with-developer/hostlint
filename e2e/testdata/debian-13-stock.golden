@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 13 (trixie) (id debian, version 13, family debian, supported true)
-profile kisa-2026 revision 2: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
+profile kisa-2026 revision 3: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -223,9 +223,13 @@ U-37 PASS
     - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
   files.cron-spool PASS
     - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-spool-rhel NOT_APPLICABLE: applies to rhel, not debian
   files.cron-root-spool PASS
     - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
     - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
+  files.at-spool PASS
+    - /var/spool/at/*: no matching files  [/var/spool/at/*]
+    - /var/spool/cron/atjobs/*: no matching files  [/var/spool/cron/atjobs/*]
 
 U-38 PASS
   services.no-dos-prone PASS

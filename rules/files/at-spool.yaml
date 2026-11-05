@@ -1,0 +1,38 @@
+id: files.at-spool
+version: 1
+title: Queued at jobs are private
+title_ko: at 작업 큐는 본인만 접근할 수 있음
+severity: high
+description: >-
+  Checks that the queued jobs and sequence file of at (/var/spool/at on the RHEL family,
+  /var/spool/cron/atjobs on Debian and Ubuntu) can be read, written and run by their owner only
+  (mode 0700 or stricter).
+rationale: A job other users can change runs their commands as the job's owner.
+remediation: Run `chmod 700` on each listed job.
+file:
+  paths: [/var/spool/at/*, /var/spool/cron/atjobs/*]
+  mode: "0700"
+  missing: pass
+  no_match: pass
+tests:
+  - name: private jobs
+    files:
+      /var/spool/at/a00001018a2b4c: {mode: "0700", owner: user}
+      /var/spool/at/.SEQ: {mode: "0600"}
+    want: PASS
+  - name: no jobs
+    files: {}
+    want: PASS
+  - name: Debian spool
+    files:
+      /var/spool/cron/atjobs/a00001018a2b4c: {mode: "0700", owner: user}
+    want: PASS
+  - name: a job readable by others
+    files:
+      /var/spool/at/a00001018a2b4c: {mode: "0755", owner: user}
+    want: FAIL
+  - name: spool unreadable
+    input: unavailable
+    files:
+      /var/spool/at: {type: dir, mode: "0700", error: permission}
+    want: ERROR

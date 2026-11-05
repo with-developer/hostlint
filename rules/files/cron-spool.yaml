@@ -7,7 +7,7 @@ description: >-
   Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) can be read and
   written by their owner only (mode 0600 or stricter). Root's crontab, which must also belong
   to root, is files.cron-root-spool. Users' crontabs in /var/spool/cron on the RHEL family are
-  not listed yet (a glob there would also match Debian's crontabs directory).
+  files.cron-spool-rhel.
 rationale: A crontab other users can change runs commands as its owner, root's as root.
 remediation: Run `chmod 600` on each listed crontab.
 file:

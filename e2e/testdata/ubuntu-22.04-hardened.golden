@@ -1,5 +1,5 @@
 os: Ubuntu 22.04.5 LTS (id ubuntu, version 22.04, family debian, supported true)
-profile kisa-2026 revision 2: MANUAL 11 PASS 36 NOT_APPLICABLE 20
+profile kisa-2026 revision 3: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -222,9 +222,13 @@ U-37 PASS
     - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
   files.cron-spool PASS
     - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-spool-rhel NOT_APPLICABLE: applies to rhel, not debian
   files.cron-root-spool PASS
     - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
     - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
+  files.at-spool PASS
+    - /var/spool/at/*: no matching files  [/var/spool/at/*]
+    - /var/spool/cron/atjobs/*: no matching files  [/var/spool/cron/atjobs/*]
 
 U-38 PASS
   services.no-dos-prone PASS

@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 2)
+## kisa-2026 (revision 3)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -49,7 +49,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-34 | high | The finger service is off (finger 서비스 미사용) | [`services.no-finger`](#servicesno-finger) |
 | U-35 | high | No anonymous access to shared files (공유 서비스 익명 접근 제한) | [`services.review-anonymous-sharing`](#servicesreview-anonymous-sharing) |
 | U-36 | high | The r-services are off (r 계열 서비스 미사용) | [`services.no-r-services`](#servicesno-r-services) |
-| U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool), [`files.cron-root-spool`](#filescron-root-spool) |
+| U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool), [`files.cron-spool-rhel`](#filescron-spool-rhel), [`files.cron-root-spool`](#filescron-root-spool), [`files.at-spool`](#filesat-spool) |
 | U-38 | high | Traffic-amplifying services are off (DoS 공격에 취약한 서비스 미사용) | [`services.no-dos-prone`](#servicesno-dos-prone) |
 | U-39 | high | The NFS server is off unless needed (NFS 서버 미사용) | [`services.no-nfs-server`](#servicesno-nfs-server) |
 | U-40 | high | NFS exports are restricted (NFS 접근 통제) | [`services.review-nfs-exports`](#servicesreview-nfs-exports) |
@@ -355,6 +355,16 @@ Lists umask commands in the system-wide and root's startup files that leave writ
 
 **Fix.** Use `umask 022` (or stricter) and remove permissive or symbolic umask commands.
 
+#### `files.at-spool`
+
+Queued at jobs are private (at 작업 큐는 본인만 접근할 수 있음) — severity high, reads file metadata.
+
+Checks that the queued jobs and sequence file of at (/var/spool/at on the RHEL family, /var/spool/cron/atjobs on Debian and Ubuntu) can be read, written and run by their owner only (mode 0700 or stricter).
+
+**Why.** A job other users can change runs their commands as the job's owner.
+
+**Fix.** Run `chmod 700` on each listed job.
+
 #### `files.cron-commands`
 
 Only root and a group can run crontab and at (crontab·at 명령은 일반 사용자 실행 금지) — severity high, reads file metadata.
@@ -399,7 +409,17 @@ Checks that the scripts in /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly a
 
 Users' crontabs are private (사용자 crontab은 본인만 읽고 쓸 수 있음) — severity high, reads file metadata.
 
-Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) can be read and written by their owner only (mode 0600 or stricter). Root's crontab, which must also belong to root, is files.cron-root-spool. Users' crontabs in /var/spool/cron on the RHEL family are not listed yet (a glob there would also match Debian's crontabs directory).
+Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) can be read and written by their owner only (mode 0600 or stricter). Root's crontab, which must also belong to root, is files.cron-root-spool. Users' crontabs in /var/spool/cron on the RHEL family are files.cron-spool-rhel.
+
+**Why.** A crontab other users can change runs commands as its owner, root's as root.
+
+**Fix.** Run `chmod 600` on each listed crontab.
+
+#### `files.cron-spool-rhel`
+
+Users' crontabs on the RHEL family are private (RHEL 계열의 사용자 crontab은 본인만 읽고 쓸 수 있음) — severity high, reads file metadata.
+
+Checks that the crontab files in /var/spool/cron (RHEL family) can be read and written by their owner only (mode 0600 or stricter). Debian and Ubuntu keep them in /var/spool/cron/crontabs, which is files.cron-spool. Root's crontab must also belong to root (files.cron-root-spool).
 
 **Why.** A crontab other users can change runs commands as its owner, root's as root.
 
