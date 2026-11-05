@@ -1,0 +1,14 @@
+id: files.review-log-files
+version: 1
+title: Review who owns the log files
+title_ko: 로그 파일 소유자 검토
+severity: medium
+description: Lists the files and directories under /var/log that root does not own.
+rationale: A log owned by a login account can be rewritten by whoever uses it; one owned by the logging service is expected.
+remediation: Run `chown root` on logs that no service writes as another account.
+manual:
+  guidance: >-
+    Check that each listed log belongs to the service that writes it (syslog, a database, a web
+    server) and not to a person's login account. Logs owned by root are not listed.
+  show: >-
+    filesystem.log_files.map(f, f.path + " " + f.mode + " " + (f.owner != "" ? f.owner : string(f.uid)) + ":" + (f.group != "" ? f.group : string(f.gid)))

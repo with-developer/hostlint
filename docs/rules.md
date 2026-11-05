@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 3)
+## kisa-2026 (revision 4)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -45,7 +45,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-30 | medium | Restrictive umask (umask 설정) | [`env.umask-login-defs`](#envumask-login-defs), [`env.umask-startup-files`](#envumask-startup-files) |
 | U-31 | medium | Home directories are owned by their accounts (홈 디렉터리 소유자·권한) | [`homes.owner-perms`](#homesowner-perms) |
 | U-32 | medium | Home directories exist (홈 디렉터리 존재) | [`homes.exists`](#homesexists) |
-| U-33 | low | Hidden files are reviewed (숨겨진 파일·디렉터리 점검) | review by hand |
+| U-33 | low | Hidden files are reviewed (숨겨진 파일·디렉터리 점검) | [`files.suspicious-hidden-names`](#filessuspicious-hidden-names), [`files.review-hidden-files`](#filesreview-hidden-files) |
 | U-34 | high | The finger service is off (finger 서비스 미사용) | [`services.no-finger`](#servicesno-finger) |
 | U-35 | high | No anonymous access to shared files (공유 서비스 익명 접근 제한) | [`services.review-anonymous-sharing`](#servicesreview-anonymous-sharing) |
 | U-36 | high | The r-services are off (r 계열 서비스 미사용) | [`services.no-r-services`](#servicesno-r-services) |
@@ -79,7 +79,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-64 | high | Security updates are applied (보안 패치 적용) | review by hand |
 | U-65 | medium | Time is synchronized (시각 동기화) | [`services.time-sync`](#servicestime-sync), [`services.review-time-sync`](#servicesreview-time-sync) |
 | U-66 | medium | Logging follows your policy (로그 정책 설정) | review by hand |
-| U-67 | medium | Log files are protected (로그 파일 소유자·권한) | review by hand |
+| U-67 | medium | Log files are protected (로그 파일 소유자·권한) | [`files.log-world-writable`](#fileslog-world-writable), [`files.review-log-files`](#filesreview-log-files) |
 
 ### Checks
 
@@ -465,6 +465,16 @@ Checks that /etc/inetd.conf, /etc/xinetd.conf and the files in /etc/xinetd.d are
 
 **Fix.** Run `chown root` and `chmod 600` on each file.
 
+#### `files.log-world-writable`
+
+Log files cannot be changed by every user (로그 파일을 모든 사용자가 수정할 수 없음) — severity medium, lists what violates it.
+
+Lists files and directories under /var/log that every user can write (directories without the sticky bit). Who owns them is for files.review-log-files.
+
+**Why.** Whoever can change a log can remove the trace of what they did.
+
+**Fix.** Remove write permission for others (`chmod o-w`), or set the sticky bit on a shared directory (`chmod +t`).
+
 #### `files.passwd-perms`
 
 /etc/passwd is owned by root and not writable by others (/etc/passwd는 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
@@ -474,6 +484,26 @@ Checks that /etc/passwd is owned by root with mode 0644 or stricter.
 **Why.** Anyone who can write /etc/passwd can add an account with UID 0.
 
 **Fix.** Run `chown root /etc/passwd` and `chmod 644 /etc/passwd`.
+
+#### `files.review-hidden-files`
+
+Review hidden files and directories (숨김 파일·디렉터리 검토) — severity low, a review (`MANUAL`).
+
+Hidden files (names starting with ".") hold user settings, and also what someone wants out of a listing.
+
+**Why.** Hidden files and directories are where unexpected content goes unnoticed.
+
+**Fix.** Remove the ones that do not belong.
+
+#### `files.review-log-files`
+
+Review who owns the log files (로그 파일 소유자 검토) — severity medium, a review (`MANUAL`).
+
+Lists the files and directories under /var/log that root does not own.
+
+**Why.** A log owned by a login account can be rewritten by whoever uses it; one owned by the logging service is expected.
+
+**Fix.** Run `chown root` on logs that no service writes as another account.
 
 #### `files.review-setid`
 
@@ -544,6 +574,16 @@ Checks that /etc/sudoers and the files in /etc/sudoers.d are owned by root with 
 **Why.** Whoever can change the sudo rules can give themselves root.
 
 **Fix.** Run `chown root` and `chmod 440` on each file (visudo keeps them that way).
+
+#### `files.suspicious-hidden-names`
+
+No files or directories named only of dots and spaces (점과 공백만으로 된 이름의 파일·디렉터리 없음) — severity low, lists what violates it.
+
+Lists files and directories on local filesystems whose name is made only of dots and spaces (other than "." and ".."), such as "..." or ". ". Nothing legitimate needs such a name, and it hides a directory among the entries of a listing.
+
+**Why.** A directory named "..." or ". " is easy to overlook next to "." and "..", which makes it a place to hide files.
+
+**Fix.** Look at what the entry holds, then remove or rename it.
 
 #### `files.syslog-conf-perms`
 

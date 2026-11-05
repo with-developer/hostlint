@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
+	"path"
 	"reflect"
 	"slices"
 	"strconv"
@@ -32,6 +33,13 @@ type Filesystem struct {
 	// DevFiles are regular files under /dev (outside /dev/shm and
 	// /dev/mqueue), where only device nodes and directories belong.
 	DevFiles []FileEntry `json:"dev_files"`
+	// OddNames are files and directories whose name is only dots and spaces
+	// (other than "." and ".."), such as "..." or ". ": a way to hide a
+	// directory in a listing.
+	OddNames []FileEntry `json:"odd_names"`
+	// LogFiles are the files and directories under /var/log that root does not
+	// own.
+	LogFiles []FileEntry `json:"log_files"`
 	// Excluded lists the mount points that were not walked, as
 	// "path (type)".
 	Excluded []string `json:"excluded"`
@@ -83,13 +91,13 @@ var excludedPaths = map[string]string{
 type filesystemCollector struct{}
 
 func (filesystemCollector) Name() string           { return "filesystem" }
-func (filesystemCollector) Version() int           { return 1 }
+func (filesystemCollector) Version() int           { return 2 }
 func (filesystemCollector) Access() engine.Access  { return engine.AccessFilesystem }
 func (filesystemCollector) Type() reflect.Type     { return reflect.TypeFor[Filesystem]() }
 func (filesystemCollector) Timeout() time.Duration { return walkTimeout }
 
 func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, error) {
-	fsf := &Filesystem{SetID: []FileEntry{}, WorldWritable: []FileEntry{}, Unowned: []FileEntry{}, DevFiles: []FileEntry{}, Excluded: []string{}}
+	fsf := &Filesystem{SetID: []FileEntry{}, WorldWritable: []FileEntry{}, Unowned: []FileEntry{}, DevFiles: []FileEntry{}, OddNames: []FileEntry{}, LogFiles: []FileEntry{}, Excluded: []string{}}
 	w := &walker{facts: fsf, partial: map[string]bool{}}
 	w.users, w.groups = w.names(h.FS)
 
@@ -135,7 +143,7 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 	}
 	fsf.Entries = int64(res.Entries)
 	if !res.Complete {
-		w.markPartial(res.Problems, "setid", "world_writable", "unowned")
+		w.markPartial(res.Problems, "setid", "world_writable", "unowned", "odd_names", "log_files")
 	}
 	for _, p := range res.NotEntered {
 		fsf.Excluded = append(fsf.Excluded, p+" (automount)")
@@ -207,6 +215,12 @@ func (w *walker) visit(fi hostfs.FileInfo) error {
 	if (fi.IsRegular() || fi.IsDir()) && perm&0o002 != 0 {
 		w.add(&w.facts.WorldWritable, "world_writable", fi)
 	}
+	if isOddName(path.Base(fi.Path)) {
+		w.add(&w.facts.OddNames, "odd_names", fi)
+	}
+	if fi.UID != 0 && strings.HasPrefix(fi.Path, "/var/log/") && (fi.IsRegular() || fi.IsDir()) {
+		w.add(&w.facts.LogFiles, "log_files", fi)
+	}
 	if w.users != nil && w.groups != nil {
 		_, uok := w.users[fi.UID]
 		_, gok := w.groups[fi.GID]
@@ -215,6 +229,14 @@ func (w *walker) visit(fi hostfs.FileInfo) error {
 		}
 	}
 	return nil
+}
+
+// isOddName reports whether a name is only dots and spaces, and not "." or "..".
+func isOddName(name string) bool {
+	if name == "." || name == ".." || name == "" {
+		return false
+	}
+	return strings.Trim(name, ". ") == ""
 }
 
 // add appends fi to a list, up to walkMaxListed entries; beyond that the

@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 13 (trixie) (id debian, version 13, family debian, supported true)
-profile kisa-2026 revision 3: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
+profile kisa-2026 revision 4: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -193,6 +193,8 @@ U-32 PASS
   homes.exists PASS
 
 U-33 MANUAL
+  files.suspicious-hidden-names PASS
+  files.review-hidden-files MANUAL: Look for unexpected hidden files and directories (names starting with "."), for example with `find / -xdev -name ".*" -type f`, and remove those that do not belong. Names made only of dots and spaces are listed by files.suspicious-hidden-names.
 
 U-34 PASS
   services.no-finger PASS
@@ -344,3 +346,5 @@ U-65 FAIL
 U-66 MANUAL
 
 U-67 MANUAL
+  files.log-world-writable PASS
+  files.review-log-files MANUAL: Check that each listed log belongs to the service that writes it (syslog, a database, a web server) and not to a person's login account. Logs owned by root are not listed.

@@ -78,7 +78,7 @@ func TestFilesystem(t *testing.T) {
 func TestFilesystemIncomplete(t *testing.T) {
 	m := fsTree().SetError("/srv", fs.ErrPermission)
 	f := collectFS(t, hostfs.NewTestHost(m, nil, false))
-	if strings.Join(f.Partial, " ") != "setid unowned world_writable" || f.Complete != true {
+	if strings.Join(f.Partial, " ") != "log_files odd_names setid unowned world_writable" || f.Complete != true {
 		t.Errorf("partial %v, complete %v", f.Partial, f.Complete)
 	}
 	if !strings.Contains(strings.Join(f.Skipped, "; "), "/srv") {
@@ -127,5 +127,42 @@ func TestFilesystemDevInterrupted(t *testing.T) {
 	f, err := filesystemCollector{}.Collect(ctx, hostfs.NewTestHost(fsTree(), nil, false))
 	if err != nil || !slices.Contains(f.Partial, "dev_files") {
 		t.Errorf("partial %v, err %v; want dev_files partial", f.Partial, err)
+	}
+}
+
+// Names made only of dots and spaces, and the files of /var/log that root does
+// not own, are listed; ordinary hidden names and root's logs are not.
+func TestFilesystemOddNamesAndLogFiles(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/passwd", fsPasswd, 0o644, 0, 0).
+		AddFile("/etc/group", fsGroup, 0o644, 0, 0).
+		AddFile("/home/alice/.bashrc", "", 0o644, 1000, 1000).
+		AddDir("/home/alice/...", 0o755, 1000, 1000).
+		AddFile("/var/tmp/. ", "", 0o644, 0, 0).
+		AddFile("/var/tmp/.. ", "", 0o644, 0, 0).
+		AddFile("/var/tmp/.a", "", 0o644, 0, 0).
+		AddFile("/var/tmp/ ", "", 0o644, 0, 0).
+		AddFile("/var/log/syslog", "", 0o640, 0, 0).
+		AddFile("/var/log/app.log", "", 0o640, 1000, 1000).
+		AddDir("/var/log/app", 0o750, 1000, 5)
+	got := collectFS(t, hostfs.NewTestHost(m, nil, false)).Value.(*Filesystem)
+	for _, c := range []struct{ name, got, want string }{
+		{"odd_names", paths(got.OddNames), "/home/alice/... 0755 alice:alice, /var/tmp/  0644 root:root, /var/tmp/.  0644 root:root, /var/tmp/..  0644 root:root"},
+		{"log_files", paths(got.LogFiles), "/var/log/app 0750 alice:tty, /var/log/app.log 0640 alice:alice"},
+	} {
+		if c.got != c.want {
+			t.Errorf("%s:\n got %s\nwant %s", c.name, c.got, c.want)
+		}
+	}
+}
+
+func TestIsOddName(t *testing.T) {
+	for name, want := range map[string]bool{
+		"...": true, "....": true, ". ": true, ".. ": true, " ": true, "  ": true,
+		".": false, "..": false, "": false, ".bashrc": false, "..a": false, ". a": false, "a ": false, "...a": false,
+	} {
+		if got := isOddName(name); got != want {
+			t.Errorf("isOddName(%q) = %v, want %v", name, got, want)
+		}
 	}
 }

@@ -1,0 +1,13 @@
+id: files.review-hidden-files
+version: 1
+title: Review hidden files and directories
+title_ko: 숨김 파일·디렉터리 검토
+severity: low
+description: Hidden files (names starting with ".") hold user settings, and also what someone wants out of a listing.
+rationale: Hidden files and directories are where unexpected content goes unnoticed.
+remediation: Remove the ones that do not belong.
+manual:
+  guidance: >-
+    Look for unexpected hidden files and directories (names starting with "."), for example with
+    `find / -xdev -name ".*" -type f`, and remove those that do not belong. Names made only of
+    dots and spaces are listed by files.suspicious-hidden-names.
