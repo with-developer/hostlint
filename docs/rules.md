@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 8)
+## kisa-2026 (revision 9)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -52,7 +52,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool), [`files.cron-spool-rhel`](#filescron-spool-rhel), [`files.cron-root-spool`](#filescron-root-spool), [`files.at-spool`](#filesat-spool) |
 | U-38 | high | Traffic-amplifying services are off (DoS 공격에 취약한 서비스 미사용) | [`services.no-dos-prone`](#servicesno-dos-prone) |
 | U-39 | high | The NFS server is off unless needed (NFS 서버 미사용) | [`services.no-nfs-server`](#servicesno-nfs-server) |
-| U-40 | high | NFS exports are restricted (NFS 접근 통제) | [`services.review-nfs-exports`](#servicesreview-nfs-exports) |
+| U-40 | high | NFS exports are restricted (NFS 접근 통제) | [`services.nfs-exports-restricted`](#servicesnfs-exports-restricted), [`services.review-nfs-other`](#servicesreview-nfs-other) |
 | U-41 | high | The automounter is off (automount 미사용) | [`services.no-automount`](#servicesno-automount) |
 | U-42 | high | Legacy RPC services are off (불필요한 RPC 서비스 미사용) | [`services.no-rpc`](#servicesno-rpc) |
 | U-43 | high | NIS is not used (NIS 미사용) | [`services.no-nis`](#servicesno-nis) |
@@ -675,6 +675,16 @@ Checks that the ftp account, if it exists, has a shell such as /sbin/nologin or 
 
 **Fix.** Run `usermod -s /sbin/nologin ftp`.
 
+#### `services.nfs-exports-restricted`
+
+NFS exports are limited to the hosts that need them (NFS 공유가 필요한 호스트로 제한됨) — severity high, lists what violates it.
+
+Lists the entries of /etc/exports and /etc/exports.d/*.exports that are open to every host (a client of "*", or only options, as in `/srv (rw)`, which is the usual slip of a space before the parenthesis) and the ones that let a remote root act as root (no_root_squash). An export added at run time with exportfs is not in these files. Applies when an NFS server is started and /etc/exports or /etc/exports.d is there; otherwise services.review-nfs-other asks for a review.
+
+**Why.** An export open to everyone, or without root_squash, hands the shared files to any host on the network.
+
+**Fix.** List the hosts or networks that need each export (`/srv/data 192.0.2.0/24(rw)`), put no space before the parenthesis, and keep root_squash.
+
 #### `services.no-automount`
 
 The automounter is not started (automountd 미사용) — severity high, lists what violates it.
@@ -865,15 +875,15 @@ Lists what decides who can reach the host from the network: the host firewall se
 
 **Fix.** Restrict each service that is not meant for everyone with a host firewall (nftables, iptables, firewalld, ufw) or the service's own access rules (TCP wrappers, allow lists), or bind it to the addresses that need it.
 
-#### `services.review-nfs-exports`
+#### `services.review-nfs-other`
 
 Review the NFS exports (NFS 공유 설정 검토) — severity high, a review (`MANUAL`).
 
-Applies when an NFS server is started; then shows how, for a review of its configuration. Not applicable otherwise.
+Applies when an NFS server is started but /etc/exports and /etc/exports.d are not there (the exports may be made some other way, for example with exportfs at boot); then shows how it was started, for a review. With export files, services.nfs-exports-restricted decides. Not applicable otherwise.
 
 **Why.** An export open to everyone, or without root_squash, hands the shared files to any host on the network.
 
-**Fix.** Check /etc/exports: each export is limited to the hosts that need it, never "*", and uses root_squash.
+**Fix.** Check the exports (`exportfs -v`): each is limited to the hosts that need it, never "*", and uses root_squash.
 
 #### `services.review-remote-root-login`
 

@@ -1,0 +1,65 @@
+id: services.nfs-exports-restricted
+version: 1
+title: NFS exports are limited to the hosts that need them
+title_ko: NFS 공유가 필요한 호스트로 제한됨
+severity: high
+description: >-
+  Lists the entries of /etc/exports and /etc/exports.d/*.exports that are open to every host (a client of
+  "*", or only options, as in `/srv (rw)`, which is the usual slip of a space before the parenthesis) and
+  the ones that let a remote root act as root (no_root_squash). An export added at run time with
+  exportfs is not in these files. Applies when an NFS server is started and /etc/exports or /etc/exports.d is
+  there; otherwise services.review-nfs-other asks for a review.
+rationale: >-
+  An export open to everyone, or without root_squash, hands the shared files to any host on the network.
+remediation: >-
+  List the hosts or networks that need each export (`/srv/data 192.0.2.0/24(rw)`), put no space before the
+  parenthesis, and keep root_squash.
+applies: >-
+  nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+violations:
+  over: nfs.exports
+  as: e
+  where: >-
+    e.everyone || e.no_root_squash
+  key: e.where + " " + e.client
+  text: >-
+    e.path + " for " + (e.everyone ? "every host" : e.client) + (e.no_root_squash ? " with no_root_squash" : "") + " at " + e.where
+  allow_empty: true
+tests:
+  - name: limited, with root squash
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: true, exports: [{path: /srv/homes, client: host1, everyone: false, no_root_squash: false, writable: true, where: "/etc/exports:3"}]}
+    want: PASS
+  - name: open to everyone
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: true, exports: [{path: /pub, client: "*", everyone: true, no_root_squash: false, writable: false, where: "/etc/exports:1"}]}
+    want: FAIL
+  - name: no_root_squash for a host
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: true, exports: [{path: /srv, client: host1, everyone: false, no_root_squash: true, writable: true, where: "/etc/exports:2"}]}
+    want: FAIL
+  - name: no exports
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: true, exports: []}
+    want: PASS
+  - name: the server is not started
+    facts:
+      services: {started: []}
+      nfs: {present: true, exports: [{path: /pub, client: "*", everyone: true, no_root_squash: false, writable: false, where: "/etc/exports:1"}]}
+    want: NOT_APPLICABLE
+  - name: no export files
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: false, exports: []}
+    want: NOT_APPLICABLE
+  - name: a line could not be read
+    input: incomplete
+    incomplete: [nfs]
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: true, exports: []}
+    want: ERROR

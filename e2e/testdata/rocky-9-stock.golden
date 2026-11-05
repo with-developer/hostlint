@@ -1,5 +1,5 @@
 os: Rocky Linux 9.8 (Blue Onyx) (id rocky, version 9.8, family rhel, supported true)
-profile kisa-2026 revision 8: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
+profile kisa-2026 revision 9: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -242,7 +242,11 @@ U-39 PASS
   services.no-nfs-server PASS
 
 U-40 NOT_APPLICABLE
-  services.review-nfs-exports NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+  services.nfs-exports-restricted NOT_APPLICABLE: applies is false: nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+    - nfs.present = true
+    - services.started = []
+  services.review-nfs-other NOT_APPLICABLE: applies is false: !nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+    - nfs.present = true
     - services.started = []
 
 U-41 PASS

@@ -2,7 +2,7 @@
 # (ADR 0007). Control titles are hostlint's own short wording; only the control
 # IDs and importance levels come from the guide.
 id: kisa-2026
-revision: 8
+revision: 9
 title: KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 title_ko: 주요정보통신기반시설 기술적 취약점 분석·평가 상세가이드 (2026) — Unix 서버
 controls:
@@ -214,7 +214,7 @@ controls:
     title: NFS exports are restricted
     title_ko: NFS 접근 통제
     severity: high
-    checks: [services.review-nfs-exports]
+    checks: [services.nfs-exports-restricted, services.review-nfs-other]
   - id: U-41
     title: The automounter is off
     title_ko: automount 미사용

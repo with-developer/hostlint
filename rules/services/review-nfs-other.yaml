@@ -1,0 +1,36 @@
+id: services.review-nfs-other
+version: 1
+title: Review the NFS exports
+title_ko: NFS 공유 설정 검토
+severity: high
+description: >-
+  Applies when an NFS server is started but /etc/exports and /etc/exports.d are not there (the exports may
+  be made some other way, for example with exportfs at boot); then shows how it was started, for a review.
+  With export files, services.nfs-exports-restricted decides. Not applicable otherwise.
+rationale: >-
+  An export open to everyone, or without root_squash, hands the shared files to any host on the network.
+remediation: >-
+  Check the exports (`exportfs -v`): each is limited to the hosts that need it, never "*", and uses root_squash.
+applies: >-
+  !nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+manual:
+  guidance: >-
+    Check the exports (`exportfs -v`): each is limited to the hosts that need it, never "*", and uses root_squash.
+  show: >-
+    services.started.filter(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+tests:
+  - name: not started
+    facts:
+      services: {started: []}
+      nfs: {present: false, exports: []}
+    want: NOT_APPLICABLE
+  - name: started, no export files
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: false, exports: []}
+    want: MANUAL
+  - name: started, with export files
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      nfs: {present: true, exports: []}
+    want: NOT_APPLICABLE
