@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 676596f -->
+<!-- translated from README.md @ dd82afc -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -11,24 +11,31 @@
 
 ```text
 $ sudo hostlint scan
-hostlint v0.1.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+hostlint v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
         "yes" (explicit); expected one of [no]  /etc/ssh/sshd_config:33
+    ? services.review-remote-root-login — Review root login through telnet and other remote terminal services
+        Check that root cannot log in through the service (pam_securetty in its auth stack and no pts/N line in /etc/securetty, where that module exists). Better, turn the service off.
+        telnet (inetd) at /etc/inetd.conf:42
+? MANUAL U-07   Remove unneeded accounts [low]
+    ? accounts.review-login-accounts — Review accounts that can log in
+        Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
+        root (uid 0, /bin/bash)
 ✗ FAIL   U-18   Ownership and permissions of /etc/shadow [high]
     ✗ files.shadow-perms — /etc/shadow is owned by root and readable by root only
         /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400
 ✗ FAIL   U-52   Telnet is off [medium]
     ✗ services.no-telnet — Telnet is not started
-        telnet (inetd, /usr/sbin/telnetd) at /etc/inetd.conf:25
-? MANUAL U-07   Remove unneeded accounts [low]
-    ? accounts.review-login-accounts — Review accounts that can log in
-        root (uid 0, /bin/bash)
+        telnet (inetd, /usr/sbin/telnetd) at /etc/inetd.conf:42
 ...
 
-kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
+kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 ```
+
+위 출력은 `PermitRootLogin yes`와 inetd telnet 서비스를 추가한 Debian 12 컨테이너의 결과를 줄인 것입니다
+(호스트 이름은 줄였습니다).
 
 > 🚧 **초기 릴리스입니다.** v0.1.1이 첫 릴리스입니다(v0.1.0은 태그만 있고, 릴리스 빌드가
 > 실패했습니다. [docs/RELEASING.md](docs/RELEASING.md) 참고). 흔치 않은 환경에서는 거친 부분이 있을
@@ -57,8 +64,8 @@ kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 `cosign`이 있으면 체크섬의 Sigstore 서명도 확인합니다.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.2.0/install.sh
-sh install.sh -v v0.2.0          # 먼저 읽어 보세요. 설치 위치는 -b DIR
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.2.1/install.sh
+sh install.sh -v v0.2.1          # 먼저 읽어 보세요. 설치 위치는 -b DIR
 sudo hostlint scan
 ```
 
@@ -67,7 +74,7 @@ sudo hostlint scan
 (Go 1.26 이상, 바이너리 자체는 의존성이 없습니다):
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.2.0
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.2.1
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -153,7 +160,7 @@ hostlint는 양보하지 않는 몇 가지 원칙 위에 만들어졌습니다. 
 
 hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·
 SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
-패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.2.0이
+패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.2.1이
 최신 릴리스입니다. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.3 계획입니다. [로드맵](docs/ROADMAP.md)을
 참고하세요.
 

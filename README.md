@@ -11,24 +11,31 @@ it.
 
 ```text
 $ sudo hostlint scan
-hostlint v0.1.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+hostlint v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
         "yes" (explicit); expected one of [no]  /etc/ssh/sshd_config:33
+    ? services.review-remote-root-login — Review root login through telnet and other remote terminal services
+        Check that root cannot log in through the service (pam_securetty in its auth stack and no pts/N line in /etc/securetty, where that module exists). Better, turn the service off.
+        telnet (inetd) at /etc/inetd.conf:42
+? MANUAL U-07   Remove unneeded accounts [low]
+    ? accounts.review-login-accounts — Review accounts that can log in
+        Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
+        root (uid 0, /bin/bash)
 ✗ FAIL   U-18   Ownership and permissions of /etc/shadow [high]
     ✗ files.shadow-perms — /etc/shadow is owned by root and readable by root only
         /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400
 ✗ FAIL   U-52   Telnet is off [medium]
     ✗ services.no-telnet — Telnet is not started
-        telnet (inetd, /usr/sbin/telnetd) at /etc/inetd.conf:25
-? MANUAL U-07   Remove unneeded accounts [low]
-    ? accounts.review-login-accounts — Review accounts that can log in
-        root (uid 0, /bin/bash)
+        telnet (inetd, /usr/sbin/telnetd) at /etc/inetd.conf:42
 ...
 
-kisa-2026: 67 controls — 11 FAIL, 10 MANUAL, 29 PASS, 17 NOT_APPLICABLE
+kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 ```
+
+The output above is abridged, from a Debian 12 container with `PermitRootLogin yes` and an inetd
+telnet service added (the host name is shortened).
 
 > 🚧 **Early release.** v0.1.1 is the first release (v0.1.0 exists as a tag only; its release
 > build failed, see [docs/RELEASING.md](docs/RELEASING.md)). Expect rough edges in the less
@@ -57,8 +64,8 @@ Install a release (Linux, amd64 or arm64). `install.sh` verifies the SHA-256 of 
 when `cosign` is installed, the Sigstore signature of the checksums:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.2.0/install.sh
-sh install.sh -v v0.2.0          # read it first; add -b DIR to choose where it goes
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.2.1/install.sh
+sh install.sh -v v0.2.1          # read it first; add -b DIR to choose where it goes
 sudo hostlint scan
 ```
 
@@ -67,7 +74,7 @@ packages, SBOMs and build provenance (`gh attestation verify FILE -R with-develo
 To build instead (Go 1.26 or later; the binary itself has no dependencies):
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.2.0
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.2.1
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -155,7 +162,7 @@ and the [architecture decisions](docs/adr/):
 hostlint is under active development. The KISA 2026 profile (U-01–U-67), the
 collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
 with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`) and a
-container test matrix over every supported distribution are in place, and v0.2.0 is the latest release.
+container test matrix over every supported distribution are in place, and v0.2.1 is the latest release.
 Fleet mode (an agent and a server with a web UI) is planned for
 v0.3. See the [roadmap](docs/ROADMAP.md).
 
