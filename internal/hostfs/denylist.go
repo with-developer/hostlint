@@ -22,6 +22,8 @@ var (
 		"/etc/ssl/private/*/*", "/etc/letsencrypt/archive/*/*", "/etc/letsencrypt/live/*/*",
 		"/etc/wireguard/*", "/etc/ipsec.secrets", "/etc/ipsec.d/private/*", "/etc/ppp/*-secrets",
 		"/etc/mysql/debian.cnf", "/etc/kubernetes/*.conf", "/etc/kubernetes/pki/*", "/etc/kubernetes/pki/*/*",
+		// net-snmp: community strings and SNMPv3 passphrases (hostfs.ReadSNMPConfig).
+		"/etc/snmp/*.conf", "/etc/snmp/*/*.conf", "/usr/share/snmp/snmpd*.conf", "/var/lib/net-snmp/*", "/var/lib/snmp/*",
 		"/boot/grub/user.cfg", "/boot/grub2/user.cfg",
 		"/var/lib/sss/secrets/*", "/var/lib/sss/db/*", "/var/lib/cloud/instance/user-data*",
 		"/run/credentials/*", "/run/credentials/*/*",

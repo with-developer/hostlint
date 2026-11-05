@@ -24,32 +24,32 @@ tests:
   - name: strong strings
     facts:
       services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
-      snmp: {present: true, communities: [{directive: rocommunity, weak: "", unrestricted: false, source: "10.0.0.0/8", where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "", unrestricted: false, source: "10.0.0.0/8", where: "/etc/snmp/snmpd.conf:7"}], listen: [], loopback_only: false}
     want: PASS
   - name: the default name
     facts:
       services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
-      snmp: {present: true, communities: [{directive: com2sec, weak: "a well-known name", unrestricted: true, source: "", where: "/etc/snmp/snmpd.conf:1"}], v3_users: 0, listen: [], loopback_only: false}
+      snmp: {present: true, communities: [{directive: com2sec, weak: "a well-known name", unrestricted: true, source: "", where: "/etc/snmp/snmpd.conf:1"}], listen: [], loopback_only: false}
     want: FAIL
   - name: a short string
     facts:
       services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
-      snmp: {present: true, communities: [{directive: rwcommunity, weak: "shorter than 8 characters", unrestricted: false, source: "localhost", where: "/etc/snmp/snmpd.conf:2"}], v3_users: 0, listen: [], loopback_only: false}
+      snmp: {present: true, communities: [{directive: rwcommunity, weak: "shorter than 8 characters", unrestricted: false, source: "localhost", where: "/etc/snmp/snmpd.conf:2"}], listen: [], loopback_only: false}
     want: FAIL
   - name: the agent is not started
     facts:
       services: {started: []}
-      snmp: {present: true, communities: [{directive: rocommunity, weak: "a well-known name", unrestricted: true, where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "a well-known name", unrestricted: true, where: "/etc/snmp/snmpd.conf:7"}], listen: [], loopback_only: false}
     want: NOT_APPLICABLE
   - name: no configuration at the usual place
     facts:
       services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
-      snmp: {present: false, communities: [], v3_users: 0, listen: [], loopback_only: false}
+      snmp: {present: false, communities: [], listen: [], loopback_only: false}
     want: NOT_APPLICABLE
   - name: an included file could not be read
     input: incomplete
     incomplete: [snmp]
     facts:
       services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
-      snmp: {present: true, communities: [], v3_users: 0, listen: [], loopback_only: false}
+      snmp: {present: true, communities: [], listen: [], loopback_only: false}
     want: ERROR

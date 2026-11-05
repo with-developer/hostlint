@@ -839,7 +839,7 @@ Shows the time synchronization services that are started, to check their servers
 
 SNMP answers only the hosts that need it (SNMP는 필요한 호스트에만 응답) — severity high, lists what violates it.
 
-Lists the community entries of /etc/snmp/snmpd.conf and the files it includes that answer every source address while the agent is not limited to the host itself with agentAddress. A bind address given on the command line (for example in /etc/default/snmpd) is not seen. Applies when the agent is started and the configuration is at its usual place.
+Lists the community entries of /etc/snmp/snmpd.conf and the files it includes that answer every source address while the agent is not limited to the host itself with agentAddress. On a live host, a UDP socket on port 161 that is open to other hosts also counts as not limited, since a listen address on the command line (for example in /etc/default/snmpd) overrides agentAddress. Applies when the agent is started and the configuration is at its usual place.
 
 **Why.** An agent that answers any address with a community string can be asked by anyone who can reach it.
 
@@ -857,9 +857,9 @@ Lists the community strings of /etc/snmp/snmpd.conf and the files it includes th
 
 #### `services.snmp-v3-only`
 
-The SNMP agent accepts only SNMPv3 (SNMP 에이전트는 SNMPv3만 허용) — severity high, lists what violates it.
+The SNMP agent has no SNMPv1 or v2c access (SNMP 에이전트에 SNMPv1·v2c 접근이 없음) — severity high, lists what violates it.
 
-Lists the SNMPv1 and v2c access entries (rocommunity, rwcommunity, authcommunity, com2sec) of /etc/snmp/snmpd.conf and the files it includes. v1 and v2c send their community string in clear text and cannot authenticate a user. Applies when the agent is started and the configuration is at its usual place; otherwise services.review-snmp-agent asks for a review.
+Lists the SNMPv1 and v2c access entries (rocommunity, rwcommunity, authcommunity, com2sec) of /etc/snmp/snmpd.conf and the files it includes. v1 and v2c send their community string in clear text and cannot authenticate a user. The security level of SNMPv3 users (rouser, rwuser) is not judged. Applies when the agent is started and its configuration is at the usual place; otherwise services.review-snmp-agent asks for a review.
 
 **Why.** Whoever sniffs a community string can read, and with rwcommunity change, what the agent exposes.
 
