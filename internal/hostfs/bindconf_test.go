@@ -118,7 +118,7 @@ zone "fwd.example" { type forward; forwarders { 192.0.2.1; }; };
 
 func TestBindIncludesAndLocalZones(t *testing.T) {
 	cfg := readBind(t, map[string]string{
-		"/etc/bind/named.conf": "include \"/etc/bind/zones.conf\";\nzone \"localhost\" { type master; };\n",
+		"/etc/bind/named.conf": "include \"/etc/bind/zones.conf\";\nzone \"localhost\" { type master; file \"/etc/bind/db.local\"; };\n",
 		"/etc/bind/zones.conf": "zone \"Example.COM.\" { type master; allow-transfer { none; }; };\ninclude \"/etc/bind/named.conf\";\n",
 	})
 	if len(cfg.Skipped) != 0 || len(cfg.Zones) != 2 {
@@ -129,6 +129,88 @@ func TestBindIncludesAndLocalZones(t *testing.T) {
 	}
 	if z := zoneOf(t, cfg, "localhost"); !z.Local {
 		t.Errorf("%+v", z)
+	}
+}
+
+func TestBindMoreForms(t *testing.T) {
+	tests := []struct {
+		name, conf, transfer, update string
+	}{
+		{"transfer over TLS", `zone "a" { type master; allow-transfer port 853 transport tls { 192.0.2.1; }; };`, "restricted", "none"},
+		{"update-policy local", `zone "a" { type master; update-policy local; };`, "any", "restricted"},
+		{"an acl defined in a view", `view "v" { acl world { any; }; zone "a" { type master; allow-transfer { world; }; }; };`, "any", "none"},
+		{"a negated nested list grants nothing", `zone "a" { type master; allow-transfer { !{ any; }; }; };`, "none", "none"},
+		{"a negated key", `zone "a" { type master; allow-transfer { ! key k; 192.0.2.1; }; };`, "restricted", "none"},
+		{"geoip", `zone "a" { type master; allow-transfer { geoip country US; }; };`, "restricted", "none"},
+		{"a nested list", `zone "a" { type master; allow-transfer { { 192.0.2.1; }; }; };`, "restricted", "none"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := readBind(t, map[string]string{"/etc/named.conf": tt.conf})
+			if len(cfg.Skipped) != 0 {
+				t.Fatalf("skipped %v", cfg.Skipped)
+			}
+			if z := zoneOf(t, cfg, "a"); z.Transfer != tt.transfer || z.Update != tt.update {
+				t.Errorf("transfer %s update %s, want %s and %s", z.Transfer, z.Update, tt.transfer, tt.update)
+			}
+		})
+	}
+}
+
+// The same file included in two views is read twice; only a cycle is cut.
+func TestBindRepeatedIncludes(t *testing.T) {
+	cfg := readBind(t, map[string]string{
+		"/etc/named.conf":   `view "internal" { include "/etc/zones.common"; }; view "external" { include "/etc/zones.common"; };`,
+		"/etc/zones.common": `zone "shared.example" { type master; allow-transfer { any; }; };`,
+	})
+	if len(cfg.Zones) != 2 || cfg.Zones[0].View != "internal" || cfg.Zones[1].View != "external" || len(cfg.Skipped) != 0 {
+		t.Errorf("zones %+v, skipped %v", cfg.Zones, cfg.Skipped)
+	}
+}
+
+func TestBindRelativeInclude(t *testing.T) {
+	cfg := readBind(t, map[string]string{
+		"/etc/bind/named.conf":       `include "named.conf.local";`,
+		"/etc/bind/named.conf.local": `zone "a" { type master; };`,
+	})
+	if len(cfg.Zones) != 1 || len(cfg.Skipped) != 0 {
+		t.Errorf("zones %+v, skipped %v", cfg.Zones, cfg.Skipped)
+	}
+}
+
+// BIND loads one named.conf: with two, the first is read and the result says it cannot tell.
+func TestBindTwoConfigurations(t *testing.T) {
+	cfg := readBind(t, map[string]string{
+		"/etc/bind/named.conf": `zone "real.example" { type master; };`,
+		"/etc/named.conf":      `options { allow-transfer { none; }; }; zone "stale.example" { type master; };`,
+	})
+	if len(cfg.Zones) != 1 || cfg.Zones[0].Name != "real.example" || cfg.Zones[0].Transfer != "any" {
+		t.Errorf("zones %+v", cfg.Zones)
+	}
+	if len(cfg.Skipped) != 1 || !strings.Contains(cfg.Skipped[0], "both") {
+		t.Errorf("skipped %v", cfg.Skipped)
+	}
+}
+
+// An acl that is not defined cannot be judged: the config is reported incomplete.
+func TestBindUnknownACL(t *testing.T) {
+	cfg := readBind(t, map[string]string{"/etc/named.conf": `zone "a" { type master; allow-transfer { nowhere; }; };`})
+	if len(cfg.Skipped) != 1 || !strings.Contains(cfg.Skipped[0], `"nowhere" is not a known acl`) {
+		t.Errorf("skipped %v", cfg.Skipped)
+	}
+}
+
+// The zones of the host itself are exempt only with the files the packages ship.
+func TestBindLocalZoneNeedsItsStockFile(t *testing.T) {
+	cfg := readBind(t, map[string]string{"/etc/named.conf": `
+zone "localhost" { type master; file "/etc/bind/db.local"; };
+zone "0.in-addr.arpa" { type master; file "internal-reverse.db"; };
+zone "localdomain" { type master; file "db.local"; };`})
+	want := map[string]bool{"localhost": true, "0.in-addr.arpa": false, "localdomain": false}
+	for _, z := range cfg.Zones {
+		if z.Local != want[z.Name] {
+			t.Errorf("%s Local = %v, want %v", z.Name, z.Local, want[z.Name])
+		}
 	}
 }
 
@@ -161,8 +243,13 @@ zone "a" { type master; allow-transfer { key xfer; }; };`})
 }
 
 func TestBindFilesAreDenied(t *testing.T) {
-	m := bindMem(map[string]string{"/etc/bind/named.conf": "x", "/etc/bind/rndc.key": "y", "/etc/named.conf": "z", "/etc/bind/named.conf.local": "w"})
-	for _, name := range []string{"/etc/bind/named.conf", "/etc/bind/rndc.key", "/etc/named.conf", "/etc/bind/named.conf.local"} {
+	files := []string{"/etc/bind/named.conf", "/etc/bind/rndc.key", "/etc/bind/rndc.conf", "/etc/rndc.key", "/etc/rndc.conf",
+		"/etc/named.conf", "/etc/bind/named.conf.local", "/var/named/chroot/etc/named.conf", "/var/named/chroot/etc/rndc.key"}
+	m := NewMemFS()
+	for _, name := range files {
+		m.AddFile(name, "x", 0o644, 0, 0)
+	}
+	for _, name := range files {
 		if _, err := m.ReadFile(name); !errors.Is(err, ErrDenied) {
 			t.Errorf("ReadFile(%s) err = %v, want ErrDenied", name, err)
 		}
