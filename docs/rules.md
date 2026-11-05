@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 7)
+## kisa-2026 (revision 8)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -40,7 +40,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-25 | high | World-writable files are known (모든 사용자 쓰기 가능 파일 점검) | [`files.world-writable`](#filesworld-writable) |
 | U-26 | high | No stray files in /dev (/dev의 일반 파일 점검) | [`files.dev-regular-files`](#filesdev-regular-files) |
 | U-27 | high | No password-less trust through .rhosts or hosts.equiv (.rhosts·hosts.equiv 신뢰 관계 제한) | [`files.rhosts`](#filesrhosts) |
-| U-28 | high | Access is restricted by address and port (접속 IP·포트 제한) | review by hand |
+| U-28 | high | Access is restricted by address and port (접속 IP·포트 제한) | [`services.review-network-access`](#servicesreview-network-access) |
 | U-29 | low | Ownership and permissions of /etc/hosts.lpd (/etc/hosts.lpd 소유자·권한) | [`files.hosts-lpd-perms`](#fileshosts-lpd-perms) |
 | U-30 | medium | Restrictive umask (umask 설정) | [`env.umask-login-defs`](#envumask-login-defs), [`env.umask-startup-files`](#envumask-startup-files) |
 | U-31 | medium | Home directories are owned by their accounts (홈 디렉터리 소유자·권한) | [`homes.owner-perms`](#homesowner-perms) |
@@ -854,6 +854,16 @@ Applies when a mail server is started; then shows how, for a review of its confi
 **Why.** An outdated or open mail server is used to send spam and to probe for accounts.
 
 **Fix.** Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
+
+#### `services.review-network-access`
+
+Review who can reach the services (서비스에 접근할 수 있는 대상 검토) — severity high, a review (`MANUAL`).
+
+Lists what decides who can reach the host from the network: the host firewall services that are enabled (firewalld, ufw, nftables, iptables, netfilter-persistent) and, on a live host, the sockets listening on an address other than loopback.
+
+**Why.** A service open to every address is exposed to everyone who can route to it.
+
+**Fix.** Restrict each service that is not meant for everyone with a host firewall (nftables, iptables, firewalld, ufw) or the service's own access rules (TCP wrappers, allow lists), or bind it to the addresses that need it.
 
 #### `services.review-nfs-exports`
 

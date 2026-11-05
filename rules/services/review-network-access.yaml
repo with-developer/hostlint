@@ -1,0 +1,42 @@
+id: services.review-network-access
+version: 1
+title: Review who can reach the services
+title_ko: 서비스에 접근할 수 있는 대상 검토
+severity: high
+description: >-
+  Lists what decides who can reach the host from the network: the host firewall services that are
+  enabled (firewalld, ufw, nftables, iptables, netfilter-persistent) and, on a live host, the sockets
+  listening on an address other than loopback.
+rationale: A service open to every address is exposed to everyone who can route to it.
+remediation: >-
+  Restrict each service that is not meant for everyone with a host firewall (nftables, iptables,
+  firewalld, ufw) or the service's own access rules (TCP wrappers, allow lists), or bind it to the
+  addresses that need it.
+manual:
+  guidance: >-
+    Check that services accept connections only from the addresses that need them, with a host
+    firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the
+    firewall services that are enabled and the sockets that listen beyond the host itself.
+  show: >-
+    ["firewalld.service", "ufw.service", "nftables.service", "iptables.service", "ip6tables.service", "netfilter-persistent.service"]
+      .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)
+      .map(n, "firewall service enabled: " + n) +
+    (services.units.size() >= 0 && !("firewalld.service" in services.units) && !("ufw.service" in services.units) && !("nftables.service" in services.units) && !("iptables.service" in services.units) && !("netfilter-persistent.service" in services.units) ? ["no firewall service is installed"] : []) +
+    sockets.listening.filter(s, !s.loopback).map(s, "listening: " + s.protocol + " " + s.address + ":" + string(s.port))
+tests:
+  - name: a firewall and an open port
+    facts:
+      services: {units: {"ufw.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/ufw.service}}}
+      sockets: {listening: [{protocol: tcp, address: "0.0.0.0", port: 22, loopback: false}, {protocol: udp, address: "127.0.0.53", port: 53, loopback: true}]}
+    want: MANUAL
+  - name: nothing found
+    facts:
+      services: {units: {}}
+      sockets: {listening: []}
+    want: MANUAL
+  - name: sockets could not be listed
+    input: unavailable
+    unavailable: [sockets]
+    facts:
+      services: {units: {}}
+    want: MANUAL

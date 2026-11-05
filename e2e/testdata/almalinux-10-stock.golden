@@ -1,5 +1,5 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 7: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
+profile kisa-2026 revision 8: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
 collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
@@ -144,6 +144,8 @@ U-27 PASS
     - /root/.rhosts: does not exist  [/root/.rhosts]
 
 U-28 MANUAL
+  services.review-network-access MANUAL: Check that services accept connections only from the addresses that need them, with a host firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the firewall services that are enabled and the sockets that listen beyond the host itself.
+    - no firewall service is installed
 
 U-29 PASS
   files.hosts-lpd-perms PASS

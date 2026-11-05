@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile kisa-2026 revision 7: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
+profile kisa-2026 revision 8: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -177,6 +177,8 @@ U-27 PASS
     - /root/.rhosts: does not exist  [/root/.rhosts]
 
 U-28 MANUAL
+  services.review-network-access MANUAL: Check that services accept connections only from the addresses that need them, with a host firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the firewall services that are enabled and the sockets that listen beyond the host itself.
+    - no firewall service is installed
 
 U-29 PASS
   files.hosts-lpd-perms PASS
