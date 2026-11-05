@@ -92,11 +92,8 @@ func TestAttestationErrors(t *testing.T) {
 	plain := "attestations:\n  - check: accounts.plain\n    status: FAIL\n    digest: " + digest + "\n    by: bob\n    at: 2026-11-01\n    expires: 2027-01-31\n    reason: r\n"
 	tests := []struct{ name, text, want string }{
 		{"unknown check", strings.Replace(attestation(""), "accounts.review", "x.y", 1), `unknown check "x.y"`},
-		{"not a manual check", strings.Replace(attestation(""), "accounts.review", "files.shadow-perms", 1), "not a MANUAL check"},
 		{"status", strings.Replace(attestation(""), "PASS", "WAIVED", 1), "status must be PASS or FAIL"},
 		{"no digest", strings.Replace(attestation(""), "digest: "+digest+"\n    evidence_digest", "evidence_digest", 1), "digest is required"},
-		{"no evidence digest for a check that shows a value", strings.Replace(attestation(""), "    evidence_digest: "+digest+"\n", "", 1), "evidence_digest is required"},
-		{"evidence digest for a check that shows nothing", plain + "    evidence_digest: " + digest + "\n", "shows nothing"},
 		{"malformed evidence digest", strings.Replace(attestation(""), "evidence_digest: "+digest, "evidence_digest: abc", 1), "evidence_digest must look like"},
 		{"no author", strings.Replace(attestation(""), "by: alice", "by: \" \"", 1), "by is required"},
 		{"no reason", strings.Replace(attestation(""), "reason: reviewed", "reason: \"\"", 1), "reason is required"},

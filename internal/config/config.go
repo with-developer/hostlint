@@ -205,16 +205,11 @@ func (f *File) Validate(content *engine.Content, profileID string) error {
 	}
 	for i, a := range f.Attestations {
 		where := fmt.Sprintf("attestations[%d]", i)
-		c := content.Checks[a.Check]
-		switch {
-		case c == nil:
+		// Whether the check is still MANUAL, and whether it shows a value, can
+		// change with a release: that makes the attestation stale at scan
+		// time, and the scan lists it, instead of refusing the whole file.
+		if content.Checks[a.Check] == nil {
 			add("%s: unknown check %q", where, a.Check)
-		case c.Manual == nil:
-			add("%s: %s is not a MANUAL check; only a MANUAL result can be attested", where, a.Check)
-		case c.Manual.Show != "" && a.EvidenceDigest == "":
-			add("%s: %s shows a value, so evidence_digest is required (checks[].evidenceDigest in a JSON result)", where, a.Check)
-		case c.Manual.Show == "" && a.EvidenceDigest != "":
-			add("%s: %s shows nothing, so there is no evidence_digest; the attestation applies until it expires", where, a.Check)
 		}
 		if a.Status != "PASS" && a.Status != "FAIL" {
 			add("%s: status must be PASS or FAIL", where)

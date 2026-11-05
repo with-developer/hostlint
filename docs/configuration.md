@@ -111,7 +111,7 @@ Read both from a scan's JSON result (`hostlint scan --format json`): `checks[].d
 | `check` | Required. A check ID; only a check that is `MANUAL` can be attested |
 | `status` | Required. `PASS` or `FAIL` |
 | `digest` | Required. The check's `digest` |
-| `evidence_digest` | Required for a check that shows a value, otherwise not allowed |
+| `evidence_digest` | Required for a check that shows a value; leave it out for a check that shows nothing |
 | `by` | Required. Who looked |
 | `at` | Required. The day of the verdict, `YYYY-MM-DD` |
 | `expires` | Required. The last day it applies, `YYYY-MM-DD` (UTC) |
@@ -120,8 +120,9 @@ Read both from a scan's JSON result (`hostlint scan --format json`): `checks[].d
 
 - An attestation applies to `MANUAL` results only. If the check is `ERROR`, `FAIL` or `PASS`, it
   is not applied.
-- It stops applying when it expires, when the check changes, when the observed value changes, or
-  when the value could not be fully observed on this host. The scan lists such attestations (below
+- It stops applying when it expires, when the check changes (including when it starts or stops
+  showing a value), when the observed value changes, or when the value could not be fully observed
+  on this host. An attestation dated in the future does not apply yet. The scan lists such attestations (below
   the summary in the table, and under `attestations` in the JSON result), so a stale one is never
   silently ignored.
 - Attestations apply before waivers: an attested `FAIL` can still be waived.

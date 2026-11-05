@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/common/types/ref"
+
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
@@ -14,7 +17,11 @@ import (
 // cannot be computed (x.broken), and a check that FAILs (x.fail).
 func attestScan(t *testing.T, opts Options) *Result {
 	t.Helper()
-	svc := demoSvc()
+	return attestScanOf(t, opts, demoSvc())
+}
+
+func attestScanOf(t *testing.T, opts Options, svc *fakeCollector) *Result {
+	t.Helper()
 	checks := []*Check{
 		{ID: "x.show", Manual: &ManualSpec{Guidance: "look", Show: "svc.users.map(u, u.name)"}},
 		{ID: "x.plain", Manual: &ManualSpec{Guidance: "look"}},
@@ -92,6 +99,9 @@ func TestAttestations(t *testing.T) {
 		}(), "x.show", StatusManual, "observed", "observed value changed"},
 		{"evidence incomplete", attest("x.broken", checkOf(t, base, "x.broken")), "x.broken", StatusManual, "observed", "incomplete"},
 		{"never a result that is not MANUAL", attest("x.fail", fail), "x.fail", StatusFail, "observed", "only a MANUAL result"},
+		{"the check now shows a value", func() Attestation { a := attest("x.show", show); a.EvidenceDigest = ""; return a }(), "x.show", StatusManual, "observed", "now shows a value"},
+		{"the check no longer shows a value", func() Attestation { a := attest("x.plain", plain); a.EvidenceDigest = show.EvidenceDigest; return a }(), "x.plain", StatusManual, "observed", "no longer shows a value"},
+		{"dated in the future", func() Attestation { a := attest("x.show", show); a.At = day("2026-11-04"); return a }(), "x.show", StatusManual, "observed", "in the future"},
 		{"other host", func() Attestation { a := attest("x.show", show); a.Hosts = []string{"db-*"}; return a }(), "x.show", StatusManual, "observed", ""},
 		{"matching host", func() Attestation { a := attest("x.show", show); a.Hosts = []string{"web-*"}; return a }(), "x.show", StatusPass, "attested", ""},
 	}
@@ -141,4 +151,55 @@ func TestAttestations(t *testing.T) {
 			t.Errorf("notes %+v", res.Attestations)
 		}
 	})
+}
+
+// The evidence digest covers the whole value, including where a setting came
+// from: a change a reviewer would care about changes it.
+func TestEvidenceDigestCoversTheWholeValue(t *testing.T) {
+	digest := func(mutate func(*svcFacts)) string {
+		svc := demoSvc()
+		mutate(svc.facts)
+		res := attestScanOf(t, Options{}, svc)
+		return checkOf(t, res, "x.show").EvidenceDigest
+	}
+	base := digest(func(*svcFacts) {})
+	if again := digest(func(*svcFacts) {}); again != base {
+		t.Errorf("the digest changes between scans: %s and %s", base, again)
+	}
+	if digest(func(f *svcFacts) { f.Users = append(f.Users, svcUser{"carol", 1001}) }) == base {
+		t.Error("a new account does not change the digest")
+	}
+}
+
+func TestShowDigestIsFalseWhenPartOfTheValueIsUnknown(t *testing.T) {
+	adapter := types.DefaultTypeAdapter
+	whole := types.NewStringList(adapter, []string{"root", "toor"})
+	if d, ok := showDigest(whole); !ok || !strings.HasPrefix(d, "sha256:") {
+		t.Fatalf("digest %q, ok %v", d, ok)
+	}
+	partial := types.NewRefValList(adapter, []ref.Val{types.String("root"), types.NewUnknown(1, nil)})
+	if d, ok := showDigest(partial); ok {
+		t.Errorf("digest %q of a list with an unknown element", d)
+	}
+	nested := types.NewRefValList(adapter, []ref.Val{whole, partial})
+	if _, ok := showDigest(nested); ok {
+		t.Error("a nested unknown element must make the value incomplete")
+	}
+}
+
+// An attestation covers every instance of its check, and says when it did not.
+func TestAttestationNamesInstancesItDidNotCover(t *testing.T) {
+	manual := func(ref, evidence string) *CheckResult {
+		return &CheckResult{Ref: ref, ID: "x.show", Digest: "sha256:" + strings.Repeat("a", 64), Status: StatusManual, StatusSource: "observed", EvidenceDigest: evidence, shows: true}
+	}
+	checks := map[string]*CheckResult{"x.show#1": manual("x.show#1", "sha256:one"), "x.show#2": manual("x.show#2", "sha256:two")}
+	a := Attestation{Check: "x.show", Status: StatusPass, Digest: "sha256:" + strings.Repeat("a", 64), EvidenceDigest: "sha256:one",
+		By: "alice", At: day("2026-11-01"), Expires: day("2026-12-31"), Note: "n"}
+	notes := attestChecks([]Attestation{a}, checks, "web-01", day("2026-11-03"))
+	if checks["x.show#1"].StatusSource != "attested" || checks["x.show#2"].StatusSource != "observed" {
+		t.Errorf("sources %s and %s", checks["x.show#1"].StatusSource, checks["x.show#2"].StatusSource)
+	}
+	if len(notes) != 1 || !strings.Contains(notes[0].Problem, "observed value changed") {
+		t.Errorf("notes %+v, want one about the second instance", notes)
+	}
 }

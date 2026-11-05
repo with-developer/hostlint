@@ -256,7 +256,7 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 				o.reason += " (evidence unavailable: " + e.unknownReason(b, v) + ")"
 			default:
 				o.evidence, o.omitted = listEvidence("show", v)
-				o.evidenceDigest = showDigest(v)
+				o.evidenceDigest, _ = showDigest(v)
 			}
 		}
 		return o

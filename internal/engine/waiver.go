@@ -38,16 +38,20 @@ type WaiverNote struct {
 
 const dateLayout = "2006-01-02"
 
-// appliesTo reports whether w is for this host.
-func (w Waiver) appliesTo(hostname string) bool {
-	if len(w.Hosts) == 0 {
+// hostMatches reports whether a list of hostname globs covers the host; an
+// empty list covers every host.
+func hostMatches(globs []string, hostname string) bool {
+	if len(globs) == 0 {
 		return true
 	}
-	return slices.ContainsFunc(w.Hosts, func(glob string) bool {
+	return slices.ContainsFunc(globs, func(glob string) bool {
 		ok, _ := path.Match(glob, hostname)
 		return ok
 	})
 }
+
+// appliesTo reports whether w is for this host.
+func (w Waiver) appliesTo(hostname string) bool { return hostMatches(w.Hosts, hostname) }
 
 func (w Waiver) expired(today time.Time) bool { return w.Expires.Before(today) }
 

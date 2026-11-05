@@ -236,6 +236,8 @@ type reportHostCheck struct {
 	Omitted  int              `json:"m,omitempty"`
 	Coverage *engine.Coverage `json:"v,omitempty"`
 	Waiver   *engine.WaiverOf `json:"w,omitempty"`
+	// Attestation is the human verdict behind an attested result.
+	Attestation *engine.AttestationOf `json:"a,omitempty"`
 }
 
 // reportCollector is a collector that failed or saw only part of the host.
@@ -466,7 +468,7 @@ func (b *reportBuilder) addHost(in ReportInput, ambiguous bool) {
 		checkIndex[c.Ref] = len(h.Checks)
 		hc := reportHostCheck{
 			Check: b.check(c), Status: c.Status, Original: c.OriginalStatus, Reason: b.str(c.Reason),
-			Omitted: c.EvidenceOmitted, Coverage: c.Coverage, Waiver: c.Waiver,
+			Omitted: c.EvidenceOmitted, Coverage: c.Coverage, Waiver: c.Waiver, Attestation: c.Attestation,
 		}
 		for _, e := range c.Evidence {
 			hc.Evidence = append(hc.Evidence, [2]int{b.str(e.Text), b.str(e.Source)})

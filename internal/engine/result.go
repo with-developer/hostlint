@@ -162,6 +162,9 @@ type CheckResult struct {
 	Waiver         *WaiverOf      `json:"waiver,omitempty"`
 	Attestation    *AttestationOf `json:"attestation,omitempty"`
 	DurationMs     int64          `json:"durationMs"`
+
+	// shows is true for a MANUAL check with a value to show (not serialized).
+	shows bool
 }
 
 // Evidence is one observation supporting a result.

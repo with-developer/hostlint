@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"path"
 	"slices"
+	"strings"
 	"time"
 
 	"cel.dev/cel-go/common/types"
@@ -54,88 +54,122 @@ type AttestationOf struct {
 	Note    string `json:"note,omitempty"`
 }
 
-func (a Attestation) appliesTo(hostname string) bool {
-	if len(a.Hosts) == 0 {
-		return true
-	}
-	return slices.ContainsFunc(a.Hosts, func(glob string) bool {
-		ok, _ := path.Match(glob, hostname)
-		return ok
-	})
-}
+func (a Attestation) appliesTo(hostname string) bool { return hostMatches(a.Hosts, hostname) }
 
 func (a Attestation) note(problem string) AttestationNote {
 	return AttestationNote{Check: a.Check, By: a.By, Expires: a.Expires.Format(dateLayout), Problem: problem}
 }
 
 // attestChecks applies attestations to the MANUAL check results, before
-// waivers. It returns the attestations that did not apply.
-func attestChecks(atts []Attestation, checks map[string]*CheckResult, shows func(id string) bool, hostname string, today time.Time) []AttestationNote {
+// waivers. It returns the attestations that did not apply, or that did not
+// cover every instance of their check.
+func attestChecks(atts []Attestation, checks map[string]*CheckResult, hostname string, today time.Time) []AttestationNote {
 	var notes []AttestationNote
 	for _, a := range atts {
 		if !a.appliesTo(hostname) {
 			continue
 		}
-		if a.Expires.Before(today) {
+		switch {
+		case a.Expires.Before(today):
 			notes = append(notes, a.note("expired"))
 			continue
+		case a.At.After(today):
+			notes = append(notes, a.note("not applied: dated "+a.At.Format(dateLayout)+", which is in the future"))
+			continue
 		}
-		applied, problem := false, ""
+		var problems []string
+		matched := false
 		for _, ref := range slices.Sorted(maps.Keys(checks)) {
 			cr := checks[ref]
 			if cr.ID != a.Check {
 				continue
 			}
+			matched = true
 			switch {
 			case cr.StatusSource == "attested":
-				problem = "not applied: another attestation already applies"
+				problems = append(problems, "not applied to "+ref+": another attestation already applies")
 			case cr.Status != StatusManual:
-				problem = fmt.Sprintf("not applied: the check is %s, and only a MANUAL result can be attested", cr.Status)
+				problems = append(problems, fmt.Sprintf("not applied to %s: the check is %s, and only a MANUAL result can be attested", ref, cr.Status))
 			case cr.Digest != a.Digest:
-				problem = fmt.Sprintf("stale: the check's logic changed (digest is now %s)", cr.Digest)
-			case shows(cr.ID) && cr.EvidenceDigest == "":
-				problem = "not applied: the evidence the check shows is incomplete on this host"
-			case shows(cr.ID) && cr.EvidenceDigest != a.EvidenceDigest:
-				problem = fmt.Sprintf("stale: the observed value changed (evidence digest is now %s)", cr.EvidenceDigest)
+				problems = append(problems, fmt.Sprintf("stale: the check's logic changed (digest is now %s)", cr.Digest))
+			case cr.shows && cr.EvidenceDigest == "":
+				problems = append(problems, "not applied to "+ref+": the evidence the check shows is incomplete on this host")
+			case cr.shows && a.EvidenceDigest == "":
+				problems = append(problems, "stale: the check now shows a value, so the attestation needs its evidence_digest ("+cr.EvidenceDigest+")")
+			case !cr.shows && a.EvidenceDigest != "":
+				problems = append(problems, "stale: the check no longer shows a value, so the attestation has no evidence to be bound to")
+			case cr.shows && cr.EvidenceDigest != a.EvidenceDigest:
+				problems = append(problems, fmt.Sprintf("stale: the observed value changed (evidence digest is now %s)", cr.EvidenceDigest))
 			default:
 				cr.OriginalStatus, cr.Status, cr.StatusSource = StatusManual, a.Status, "attested"
 				cr.Attestation = &AttestationOf{Status: a.Status, By: a.By, At: a.At.Format(dateLayout), Expires: a.Expires.Format(dateLayout), Note: a.Note}
 				cr.Reason = truncate(fmt.Sprintf("attested %s by %s on %s: %s", a.Status, a.By, a.At.Format(dateLayout), a.Note), maxReasonLen)
-				applied = true
 			}
 		}
-		if !applied {
-			if problem == "" {
-				problem = "not applied: the check is not in the scanned profile"
-			}
-			notes = append(notes, a.note(problem))
+		switch {
+		case !matched:
+			notes = append(notes, a.note("not applied: the check is not in the scanned profile"))
+		case len(problems) > 0:
+			notes = append(notes, a.note(strings.Join(slices.Compact(problems), "; ")))
 		}
 	}
 	return notes
 }
 
-// showDigest is the digest of the full value a manual check shows: its
-// elements as text, in order, not the truncated evidence.
-func showDigest(v ref.Val) string {
-	var items []string
-	if l, ok := v.(traits.Lister); ok {
-		n := int(l.Size().(types.Int))
-		items = make([]string, 0, n)
-		for i := range n {
-			item := l.Get(types.Int(i))
-			text, ok := item.Value().(string)
-			if !ok {
-				text = render(item)
-			}
-			items = append(items, text)
-		}
-	} else {
-		items = []string{render(v)}
+// showDigest is the digest of the full value a manual check shows, not the
+// truncated evidence: the canonical form of every element, with the source and
+// state of a setting. It is false when part of the value is unknown or in error
+// (a collector saw only part of the host), so the evidence cannot be attested.
+func showDigest(v ref.Val) (string, bool) {
+	c, ok := canonical(v)
+	if !ok {
+		return "", false
 	}
-	data, err := json.Marshal(items)
+	data, err := json.Marshal(c)
 	if err != nil {
 		panic(fmt.Sprintf("digest: %v", err))
 	}
 	sum := sha256.Sum256(data)
-	return "sha256:" + hex.EncodeToString(sum[:])
+	return "sha256:" + hex.EncodeToString(sum[:]), true
+}
+
+// canonical turns a CEL value into plain data that encodes the same way every
+// time: lists in order, maps with sorted keys (encoding/json), settings with
+// their value, state and source.
+func canonical(v ref.Val) (any, bool) {
+	if types.IsUnknown(v) || types.IsError(v) {
+		return nil, false
+	}
+	if s, ok := asSetting(v); ok {
+		return map[string]any{"setting": s.Value, "explicit": s.Explicit, "source": s.Source}, true
+	}
+	if l, ok := v.(traits.Lister); ok {
+		n := int(l.Size().(types.Int))
+		out := make([]any, 0, n)
+		for i := range n {
+			item, ok := canonical(l.Get(types.Int(i)))
+			if !ok {
+				return nil, false
+			}
+			out = append(out, item)
+		}
+		return out, true
+	}
+	if m, ok := v.(traits.Mapper); ok {
+		out := map[string]any{}
+		for it := m.Iterator(); it.HasNext() == types.True; {
+			k := it.Next()
+			item, ok := canonical(m.Get(k))
+			if !ok {
+				return nil, false
+			}
+			out[fmt.Sprint(k.Value())] = item
+		}
+		return out, true
+	}
+	switch x := v.Value().(type) {
+	case string, bool, int64, uint64, float64:
+		return x, true
+	}
+	return fmt.Sprintf("%T:%v", v.Value(), v.Value()), true
 }

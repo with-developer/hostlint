@@ -265,6 +265,8 @@
       hc.k.map((k) => check(h.checks[k])));
   }
 
+  const attestation = (a) => el('p', {class: 'waiver'}, 'Attested ' + a.status + ' by ' + a.by + ' on ' + a.at + ', until ' + a.expires + (a.note ? ': ' + a.note : ''));
+
   const waiver = (w) => el('p', {class: 'waiver'}, 'Waived (' + w.scope + (w.errors ? ', including errors' : '') + ') until ' + w.expires + ': ' + w.reason);
 
   function check(hk) {
@@ -274,6 +276,7 @@
       el('div', {class: 'check-head'}, badge(hk.s), ' ', el('code', {}, c.id), ' ', title(c),
         hk.o ? el('span', {class: 'muted'}, ' (was ' + NAME[hk.o] + ')') : null),
       hk.r ? el('p', {class: 'reason'}, str(hk.r)) : null,
+      hk.a ? attestation(hk.a) : null,
       hk.w ? waiver(hk.w) : null,
       c.params ? el('p', {class: 'muted small'}, 'Parameters: ' + JSON.stringify(c.params)) : null,
       hk.v ? el('p', {class: 'muted small'}, 'Looked at ' + plural(hk.v.count, 'item') + ' (' + hk.v.population + ')') : null,
