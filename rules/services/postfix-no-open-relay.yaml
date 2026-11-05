@@ -1,0 +1,54 @@
+id: services.postfix-no-open-relay
+version: 1
+title: Postfix does not relay for everyone
+title_ko: Postfix가 모든 곳의 메일을 중계하지 않음
+severity: high
+description: >-
+  Reads /etc/postfix/main.cf for the two ways to make Postfix an open relay: mynetworks that trusts
+  every address (0.0.0.0/0), and relay restrictions (smtpd_relay_restrictions, or
+  smtpd_recipient_restrictions when the relay list is not set) with a bare permit that no
+  reject_unauth_destination or defer_unauth_destination precedes. The defaults of Postfix 2.10 and
+  later are safe, so only what main.cf sets can fail this check. It does not follow lookup tables or
+  policy services. Applies when Postfix is started and has a main.cf; another mail server is
+  services.review-mail-relay-other.
+rationale: An open relay sends spam for anyone and gets the server blocked.
+remediation: >-
+  Set `mynetworks` to your own networks and end the relay restrictions with
+  `defer_unauth_destination` (or `reject_unauth_destination`), with no bare `permit` before it.
+applies: >-
+  postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+violations:
+  over: postfix.relay_problems
+  as: p
+  where: "true"
+  key: p
+  text: p
+  allow_empty: true
+tests:
+  - name: the defaults
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: true, settings: {}, relay_problems: []}
+    want: PASS
+  - name: a bare permit
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: true, settings: {}, relay_problems: ["smtpd_relay_restrictions permits mail to any destination (/etc/postfix/main.cf:3)"]}
+    want: FAIL
+  - name: Postfix is not started
+    facts:
+      services: {started: []}
+      postfix: {present: true, settings: {}, relay_problems: ["mynetworks trusts every address (/etc/postfix/main.cf:1)"]}
+    want: NOT_APPLICABLE
+  - name: no main.cf
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: false, settings: {}, relay_problems: []}
+    want: NOT_APPLICABLE
+  - name: main.cf could not be read completely
+    input: incomplete
+    incomplete: [postfix]
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: true, settings: {}, relay_problems: []}
+    want: ERROR

@@ -1,5 +1,5 @@
 os: Ubuntu 24.04.5 LTS (id ubuntu, version 24.04, family debian, supported true)
-profile kisa-2026 revision 5: MANUAL 11 PASS 36 NOT_APPLICABLE 20
+profile kisa-2026 revision 6: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -264,11 +264,19 @@ U-46 NOT_APPLICABLE
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-47 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
+  services.postfix-no-open-relay NOT_APPLICABLE: applies is false: postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+    - postfix.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+  services.review-mail-relay-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")) && !(postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
+    - postfix.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-48 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
+  services.postfix-no-vrfy NOT_APPLICABLE: applies is false: postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+    - postfix.present = false
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+  services.review-mail-relay-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")) && !(postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
+    - postfix.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-49 NOT_APPLICABLE

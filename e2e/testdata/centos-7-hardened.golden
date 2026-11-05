@@ -1,5 +1,5 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 5: MANUAL 11 PASS 38 NOT_APPLICABLE 18
+profile kisa-2026 revision 6: MANUAL 11 PASS 38 NOT_APPLICABLE 18
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -263,11 +263,19 @@ U-46 NOT_APPLICABLE
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-47 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
+  services.postfix-no-open-relay NOT_APPLICABLE: applies is false: postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+    - postfix.present = false
+    - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
+  services.review-mail-relay-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")) && !(postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
+    - postfix.present = false
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-48 NOT_APPLICABLE
-  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
+  services.postfix-no-vrfy NOT_APPLICABLE: applies is false: postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+    - postfix.present = false
+    - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
+  services.review-mail-relay-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")) && !(postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
+    - postfix.present = false
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/…
 
 U-49 NOT_APPLICABLE

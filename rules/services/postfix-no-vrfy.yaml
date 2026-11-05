@@ -1,0 +1,40 @@
+id: services.postfix-no-vrfy
+version: 1
+title: Postfix does not answer VRFY
+title_ko: Postfix가 VRFY 명령에 응답하지 않음
+severity: medium
+description: >-
+  Checks disable_vrfy_command in /etc/postfix/main.cf. Postfix answers VRFY, which tells whether an
+  address exists, unless it is set to yes. Applies when Postfix is started and has a main.cf; another
+  mail server is services.review-mail-relay-other.
+rationale: VRFY lets anyone test which accounts exist on the server.
+remediation: Set `disable_vrfy_command = yes` in /etc/postfix/main.cf and reload Postfix.
+applies: >-
+  postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+setting:
+  fact: postfix.settings.disable_vrfy_command
+  in: ["yes"]
+  absent: default
+tests:
+  - name: disabled
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: true, settings: {disable_vrfy_command: {value: "yes", explicit: true, source: "/etc/postfix/main.cf:4"}}, relay_problems: []}
+    want: PASS
+  - name: the default answers VRFY
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: true, settings: {disable_vrfy_command: {value: "no", source: "default (postconf(5))"}}, relay_problems: []}
+    want: FAIL
+  - name: Postfix is not started
+    facts:
+      services: {started: []}
+      postfix: {present: true, settings: {}, relay_problems: []}
+    want: NOT_APPLICABLE
+  - name: main.cf could not be read completely
+    input: incomplete
+    incomplete: [postfix]
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      postfix: {present: true, settings: {}, relay_problems: []}
+    want: ERROR
