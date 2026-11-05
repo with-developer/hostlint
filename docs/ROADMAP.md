@@ -49,10 +49,11 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 16. **Landing page** — project site on GitHub Pages (no custom domain without the owner's
     approval).
 
-## Fleet mode (planned for v0.3)
+## Fleet mode (planned)
 
-The v0.1 and v0.2 releases are the standalone CLI (v0.2.0 added accuracy fixes and new checks, and
-reading the rpm database of EL7 and EL8); fleet mode follows in the next minor version, once it is ready.
+Releases so far (v0.1 and v0.2) are the standalone CLI, and further minor releases of it
+(checks, collectors, outputs) continue while fleet mode is built. Fleet mode ships under the next
+version that is free when it is ready; its design needs its own ADR first.
 
 - `hostlint server`: single binary, embedded web UI (React + Vite + shadcn/ui), SQLite by
   default, PostgreSQL optional.

@@ -165,8 +165,7 @@ hostlint is under active development. The KISA 2026 profile (U-01–U-67), the
 collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
 with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`) and a
 container test matrix over every supported distribution are in place, and v0.2.1 is the latest release.
-Fleet mode (an agent and a server with a web UI) is planned for
-v0.3. See the [roadmap](docs/ROADMAP.md).
+Fleet mode (an agent and a server with a web UI) is planned. See the [roadmap](docs/ROADMAP.md).
 
 ## License
 
