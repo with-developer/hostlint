@@ -56,6 +56,9 @@ type Result struct {
 	// Waivers lists the configured waivers that did not apply (expired,
 	// stale, or blocked by an ERROR), so they are not silently ignored.
 	Waivers []WaiverNote `json:"waivers,omitempty"`
+	// Attestations lists the configured attestations that did not apply
+	// (expired, stale, or for a check that is not MANUAL).
+	Attestations []AttestationNote `json:"attestations,omitempty"`
 }
 
 // ScanInfo describes the scan itself.
@@ -153,8 +156,12 @@ type CheckResult struct {
 	Evidence        []Evidence     `json:"evidence"`
 	EvidenceOmitted int            `json:"evidenceOmitted,omitempty"`
 	Coverage        *Coverage      `json:"coverage,omitempty"`
-	Waiver          *WaiverOf      `json:"waiver,omitempty"`
-	DurationMs      int64          `json:"durationMs"`
+	// EvidenceDigest is the digest of the full value a MANUAL check shows. An
+	// attestation is bound to it, so it stops applying when the value changes.
+	EvidenceDigest string         `json:"evidenceDigest,omitempty"`
+	Waiver         *WaiverOf      `json:"waiver,omitempty"`
+	Attestation    *AttestationOf `json:"attestation,omitempty"`
+	DurationMs     int64          `json:"durationMs"`
 }
 
 // Evidence is one observation supporting a result.

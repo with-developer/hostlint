@@ -194,21 +194,23 @@ type reportCheck struct {
 }
 
 type reportHost struct {
-	Name       string              `json:"name"`
-	File       string              `json:"file"`
-	OS         string              `json:"os"`
-	Supported  bool                `json:"supported"`
-	Kernel     string              `json:"kernel,omitempty"`
-	Arch       string              `json:"arch,omitempty"`
-	Labels     map[string]string   `json:"labels,omitempty"`
-	Scanned    string              `json:"scanned"`
-	Target     string              `json:"target"`
-	Root       bool                `json:"root"`
-	Tool       string              `json:"tool"`
-	Controls   []reportHostControl `json:"controls"`
-	Checks     []reportHostCheck   `json:"checks"`
-	Waivers    []engine.WaiverNote `json:"waivers,omitempty"`
-	Collectors []reportCollector   `json:"collectors,omitempty"`
+	Name      string              `json:"name"`
+	File      string              `json:"file"`
+	OS        string              `json:"os"`
+	Supported bool                `json:"supported"`
+	Kernel    string              `json:"kernel,omitempty"`
+	Arch      string              `json:"arch,omitempty"`
+	Labels    map[string]string   `json:"labels,omitempty"`
+	Scanned   string              `json:"scanned"`
+	Target    string              `json:"target"`
+	Root      bool                `json:"root"`
+	Tool      string              `json:"tool"`
+	Controls  []reportHostControl `json:"controls"`
+	Checks    []reportHostCheck   `json:"checks"`
+	Waivers   []engine.WaiverNote `json:"waivers,omitempty"`
+	// Attestations are the configured attestations that did not apply.
+	Attestations []engine.AttestationNote `json:"attestations,omitempty"`
+	Collectors   []reportCollector        `json:"collectors,omitempty"`
 }
 
 // reportHostControl is a host's result for one control: p and c index the
@@ -450,7 +452,7 @@ func (b *reportBuilder) addHost(in ReportInput, ambiguous bool) {
 		Name: r.Host.Hostname, File: in.Name, OS: osName(r.Host.OS), Supported: r.Host.OS.Supported,
 		Kernel: r.Host.Kernel, Arch: r.Host.Arch, Labels: r.Host.Labels, Scanned: r.Scan.StartedAt,
 		Root: r.Scan.Privileges.EUID == 0, Tool: r.Scan.Tool.Version,
-		Controls: []reportHostControl{}, Checks: []reportHostCheck{}, Waivers: r.Waivers,
+		Controls: []reportHostControl{}, Checks: []reportHostCheck{}, Waivers: r.Waivers, Attestations: r.Attestations,
 	}
 	if ambiguous {
 		h.Name += " (" + in.Name + ")"

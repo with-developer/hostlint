@@ -250,3 +250,19 @@ func TestTableNotesOmittedEvidence(t *testing.T) {
 		t.Errorf("no note about omitted evidence:\n%s", b.String())
 	}
 }
+
+// An attestation that did not apply is listed, like a waiver, so it is not
+// silently ignored.
+func TestTableListsAttestationsThatDidNotApply(t *testing.T) {
+	res := sampleResult()
+	res.Attestations = []engine.AttestationNote{{Check: "accounts.review-login-accounts", By: "alice", Expires: "2027-01-31",
+		Problem: "stale: the observed value changed"}}
+	var b bytes.Buffer
+	if err := Write(&b, res, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	want := "attestation of accounts.review-login-accounts by alice (until 2027-01-31) not applied: stale: the observed value changed"
+	if !strings.Contains(b.String(), want) {
+		t.Errorf("no line %q in:\n%s", want, b.String())
+	}
+}

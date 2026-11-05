@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,6 +31,30 @@ type File struct {
 	Params map[string]map[string]any `yaml:"params"`
 	// Waivers accept results for a reason, until they expire.
 	Waivers []Waiver `yaml:"waivers"`
+	// Attestations are human verdicts for MANUAL checks.
+	Attestations []Attestation `yaml:"attestations"`
+}
+
+// Attestation is a human verdict (PASS or FAIL) for a MANUAL check. It is
+// bound to the check's logic digest and to the digest of the value the check
+// shows, both read from a scan's JSON result (checks[].digest and
+// checks[].evidenceDigest), and stops applying when either changes.
+type Attestation struct {
+	Check  string `yaml:"check"`
+	Status string `yaml:"status"`
+	// Digest is the check's logic digest.
+	Digest string `yaml:"digest"`
+	// EvidenceDigest is the digest of the full value the check shows; leave it
+	// out for a check with nothing to show.
+	EvidenceDigest string `yaml:"evidence_digest"`
+	By             string `yaml:"by"`
+	// At is the day the verdict was given, and Expires the last day it applies,
+	// as YYYY-MM-DD.
+	At      string `yaml:"at"`
+	Expires string `yaml:"expires"`
+	Reason  string `yaml:"reason"`
+	// Hosts limits the attestation to hostnames matching these globs.
+	Hosts []string `yaml:"hosts"`
 }
 
 // Waiver accepts the result of one check or one control.
@@ -178,10 +203,71 @@ func (f *File) Validate(content *engine.Content, profileID string) error {
 			}
 		}
 	}
+	for i, a := range f.Attestations {
+		where := fmt.Sprintf("attestations[%d]", i)
+		c := content.Checks[a.Check]
+		switch {
+		case c == nil:
+			add("%s: unknown check %q", where, a.Check)
+		case c.Manual == nil:
+			add("%s: %s is not a MANUAL check; only a MANUAL result can be attested", where, a.Check)
+		case c.Manual.Show != "" && a.EvidenceDigest == "":
+			add("%s: %s shows a value, so evidence_digest is required (checks[].evidenceDigest in a JSON result)", where, a.Check)
+		case c.Manual.Show == "" && a.EvidenceDigest != "":
+			add("%s: %s shows nothing, so there is no evidence_digest; the attestation applies until it expires", where, a.Check)
+		}
+		if a.Status != "PASS" && a.Status != "FAIL" {
+			add("%s: status must be PASS or FAIL", where)
+		}
+		if !digestRe.MatchString(a.Digest) {
+			add("%s: digest is required (checks[].digest in a JSON result)", where)
+		}
+		if a.EvidenceDigest != "" && !digestRe.MatchString(a.EvidenceDigest) {
+			add("%s: evidence_digest must look like sha256:<64 hex digits>", where)
+		}
+		if strings.TrimSpace(a.By) == "" {
+			add("%s: by is required", where)
+		}
+		if strings.TrimSpace(a.Reason) == "" {
+			add("%s: reason is required", where)
+		}
+		at, atErr := time.Parse("2006-01-02", a.At)
+		expires, expErr := time.Parse("2006-01-02", a.Expires)
+		switch {
+		case atErr != nil:
+			add("%s: at must be a date such as 2026-11-05", where)
+		case expErr != nil:
+			add("%s: expires must be a date such as 2027-06-30", where)
+		case expires.Before(at):
+			add("%s: expires is before at", where)
+		}
+		for _, h := range a.Hosts {
+			if _, err := path.Match(h, ""); err != nil {
+				add("%s: host pattern %q: %v", where, h, err)
+			}
+		}
+	}
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "\n"))
 	}
 	return nil
+}
+
+var digestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// EngineAttestations returns the attestations as engine options. Call it
+// after Validate.
+func (f *File) EngineAttestations() []engine.Attestation {
+	out := make([]engine.Attestation, 0, len(f.Attestations))
+	for _, a := range f.Attestations {
+		at, _ := time.Parse("2006-01-02", a.At)
+		expires, _ := time.Parse("2006-01-02", a.Expires)
+		out = append(out, engine.Attestation{
+			Check: a.Check, Status: engine.Status(a.Status), Digest: a.Digest, EvidenceDigest: a.EvidenceDigest,
+			By: a.By, At: at, Expires: expires, Note: a.Reason, Hosts: a.Hosts,
+		})
+	}
+	return out
 }
 
 // Engine returns the parameter overrides and waivers as engine options.

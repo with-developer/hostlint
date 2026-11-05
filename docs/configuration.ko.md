@@ -1,8 +1,8 @@
-<!-- translated from docs/configuration.md @ 6ec5c6b -->
+<!-- translated from docs/configuration.md @ 4836633 -->
 # 설정
 
 hostlint는 설정 없이 동작합니다. `hostlint.yaml`을 두면 프로파일을 고르고, 점검을 더 엄격하게 만들고,
-받아들이기로 한 결과를 예외(waiver)로 처리할 수 있습니다.
+받아들이기로 한 결과를 예외(waiver)로 처리하고, 사람만 판단할 수 있는 점검에는 판정을 기록(attestation)할 수 있습니다.
 
 [English](configuration.md)
 
@@ -26,6 +26,17 @@ waivers:
     revision: 2
     reason: Accepted by the security team (SEC-142)
     expires: 2027-01-31
+
+# MANUAL 점검에 사람이 내린 판정의 기록
+attestations:
+  - check: accounts.review-login-accounts
+    status: PASS
+    digest: sha256:527ee5b7d83f8…           # JSON 결과의 checks[].digest
+    evidence_digest: sha256:c415c5c4f23ba…  # 같은 결과의 checks[].evidenceDigest
+    by: alice
+    at: 2026-11-05
+    expires: 2027-02-01
+    reason: Reviewed the login accounts with the team
 ```
 
 ## 찾는 위치
@@ -77,5 +88,38 @@ waivers:
 - 만료되었거나 리비전이 맞지 않는 예외는 적용되지 않습니다. 점검 결과에 그 목록이 나옵니다. 표에서는
   요약 아래에, JSON 결과에서는 `waivers` 아래에 나옵니다.
 
-`MANUAL` 점검에 사람의 판정을 기록하는 증명(attestation)은 계획되어 있습니다
-([#33](https://github.com/with-developer/hostlint/issues/33)).
+## 증명(attestation)
+
+어떤 점검은 사람이 판단해야 할 대상만 나열합니다(로그인할 수 있는 계정, 사용 중인 시간 서버 등). 이런 점검은
+`MANUAL`입니다. 내용을 확인한 뒤 증명으로 판정(`PASS` 또는 `FAIL`)을 기록하면 컨트롤이 그 판정을 따릅니다.
+결과에는 `originalStatus: MANUAL`, `statusSource: attested`와 함께 누가, 언제, 왜 증명했는지가 남습니다.
+
+증명은 무조건적인 예외가 아니라, 확인한 대상에 묶여 있습니다.
+
+- `digest`는 점검 로직의 다이제스트입니다. hostlint 릴리스에서 점검이 바뀌면 달라집니다.
+- `evidence_digest`는 점검이 보여 주는 전체 값(보고서에 잘려 나오는 증거가 아닌)의 다이제스트입니다.
+  나열된 계정, 서버, 파일이 바뀌면 달라집니다.
+
+두 값은 스캔의 JSON 결과(`hostlint scan --format json`)에서 해당 점검의 `checks[].digest`와
+`checks[].evidenceDigest`로 읽습니다. 보여 줄 값이 없는 점검에는 `evidenceDigest`가 없으니
+`evidence_digest`를 생략하면, 증명은 만료될 때까지 적용됩니다.
+
+| 키 | 의미 |
+|---|---|
+| `check` | 필수. 점검 ID. `MANUAL`인 점검만 증명할 수 있음 |
+| `status` | 필수. `PASS` 또는 `FAIL` |
+| `digest` | 필수. 점검의 `digest` |
+| `evidence_digest` | 값을 보여 주는 점검은 필수, 그 밖에는 쓸 수 없음 |
+| `by` | 필수. 확인한 사람 |
+| `at` | 필수. 판정한 날, `YYYY-MM-DD` |
+| `expires` | 필수. 적용되는 마지막 날, `YYYY-MM-DD` (UTC) |
+| `reason` | 필수. 무엇을 확인했고 왜 그 판정이 맞는지 |
+| `hosts` | `web-*` 같은 호스트 이름 글롭. 생략하면 모든 호스트 |
+
+- 증명은 `MANUAL` 결과에만 적용됩니다. 점검이 `ERROR`, `FAIL`, `PASS`이면 적용되지 않습니다.
+- 만료되었거나, 점검이 바뀌었거나, 관찰한 값이 바뀌었거나, 이 호스트에서 값을 끝까지 관찰하지 못했으면
+  적용이 멈춥니다. 스캔은 이런 증명을 표의 요약 아래와 JSON 결과의 `attestations`에 나열하므로, 오래된
+  증명이 조용히 무시되는 일은 없습니다.
+- 증명은 예외보다 먼저 적용됩니다. 증명된 `FAIL`도 예외로 받아들일 수 있습니다.
+- 예외와 마찬가지로 결과를 가리는 수단이므로, 파일은 root 또는 실행한 사용자 소유여야 하고 다른 사용자가
+  쓸 수 없어야 합니다.

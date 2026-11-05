@@ -77,6 +77,8 @@ type Options struct {
 	Params map[string]map[string]any
 	// Waivers accept results for a reason, until they expire.
 	Waivers []Waiver
+	// Attestations are human verdicts for MANUAL checks (ADR 0006 §6).
+	Attestations []Attestation
 }
 
 // instance is one check evaluated with one set of parameters.
@@ -185,6 +187,11 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 	}
 	res.Host = hostInfo(hostc, env.os, opts.Labels)
 	today := now().UTC().Truncate(24 * time.Hour)
+	shows := func(id string) bool {
+		c := e.content.Checks[id]
+		return c != nil && c.Manual != nil && c.Manual.Show != ""
+	}
+	res.Attestations = attestChecks(opts.Attestations, checks, shows, res.Host.Hostname, today)
 	notes := waiveChecks(opts.Waivers, checks, res.Host.Hostname, today)
 	summary := ProfileSummary{Controls: map[Status]int{}, Checks: map[Status]int{}}
 	for i, ctl := range profile.Controls {
@@ -242,7 +249,7 @@ func (e *Engine) checkResult(in *instance, o outcome) *CheckResult {
 		Ref: in.ref, ID: c.ID, Version: c.Version, Digest: checkDigest(c),
 		Title: c.Title, TitleKo: c.TitleKo, Severity: c.Severity,
 		Status: o.status, StatusSource: "observed", Reason: truncate(o.reason, maxReasonLen),
-		Evidence: ev, EvidenceOmitted: omitted, Coverage: o.coverage,
+		Evidence: ev, EvidenceOmitted: omitted, Coverage: o.coverage, EvidenceDigest: o.evidenceDigest,
 	}
 	if len(in.params) > 0 {
 		cr.Params = in.params

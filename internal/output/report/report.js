@@ -229,6 +229,10 @@
       out.push(el('div', {class: 'callout warn'}, el('strong', {}, 'Waivers that did not apply'),
         el('ul', {}, h.waivers.map((w) => el('li', {}, w.scope + ' ' + w.id + ' (until ' + w.expires + '): ' + w.problem + ' — ' + w.reason)))));
     }
+    if (h.attestations && h.attestations.length) {
+      out.push(el('div', {class: 'callout warn'}, el('strong', {}, 'Attestations that did not apply'),
+        el('ul', {}, h.attestations.map((a) => el('li', {}, a.check + ' by ' + a.by + ' (until ' + a.expires + '): ' + a.problem)))));
+    }
     if (h.collectors && h.collectors.length) {
       out.push(el('div', {class: 'callout'}, el('strong', {}, 'Collectors that saw only part of the host'),
         el('ul', {}, h.collectors.map((c) => el('li', {}, el('code', {}, c.name), ' ' + c.status,

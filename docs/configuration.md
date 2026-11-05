@@ -1,7 +1,8 @@
 # Configuration
 
 hostlint runs without configuration. A `hostlint.yaml` lets you pick the profile, make checks
-stricter, and accept findings you have decided to live with (waivers).
+stricter, accept findings you have decided to live with (waivers), and record a human verdict for
+checks only a person can judge (attestations).
 
 [한국어](configuration.ko.md)
 
@@ -25,6 +26,17 @@ waivers:
     revision: 2
     reason: Accepted by the security team (SEC-142)
     expires: 2027-01-31
+
+# A recorded human verdict for a MANUAL check.
+attestations:
+  - check: accounts.review-login-accounts
+    status: PASS
+    digest: sha256:527ee5b7d83f8…           # checks[].digest of a JSON result
+    evidence_digest: sha256:c415c5c4f23ba…  # checks[].evidenceDigest of the same result
+    by: alice
+    at: 2026-11-05
+    expires: 2027-02-01
+    reason: Reviewed the login accounts with the team
 ```
 
 ## Where hostlint looks
@@ -77,5 +89,41 @@ reported as `WAIVED` with the reason, and keeps its original status and evidence
 - Expired and stale waivers stop applying. The scan lists them: below the summary in the table,
   and under `waivers` in the JSON result.
 
-Attestations, a recorded human verdict for `MANUAL` checks, are planned
-([#33](https://github.com/with-developer/hostlint/issues/33)).
+## Attestations
+
+Some checks only list what a person has to judge (the accounts that can log in, the time
+servers in use). They are `MANUAL`. After you have looked, an attestation records your verdict,
+`PASS` or `FAIL`, and the control follows it. The result keeps `originalStatus: MANUAL`, says
+`statusSource: attested`, and carries who attested, when, and why.
+
+An attestation is not a blanket exception. It is bound to what you looked at:
+
+- `digest` is the digest of the check's logic. It changes when a hostlint release changes the check.
+- `evidence_digest` is the digest of the full value the check shows (not the truncated evidence in
+  the report). It changes when the accounts, servers or files it lists change.
+
+Read both from a scan's JSON result (`hostlint scan --format json`): `checks[].digest` and
+`checks[].evidenceDigest` of the check. A check that shows nothing has no `evidenceDigest`; leave
+`evidence_digest` out, and the attestation applies until it expires.
+
+| Key | Meaning |
+|---|---|
+| `check` | Required. A check ID; only a check that is `MANUAL` can be attested |
+| `status` | Required. `PASS` or `FAIL` |
+| `digest` | Required. The check's `digest` |
+| `evidence_digest` | Required for a check that shows a value, otherwise not allowed |
+| `by` | Required. Who looked |
+| `at` | Required. The day of the verdict, `YYYY-MM-DD` |
+| `expires` | Required. The last day it applies, `YYYY-MM-DD` (UTC) |
+| `reason` | Required. What you checked and why the verdict holds |
+| `hosts` | Hostname globs such as `web-*`; every host when omitted |
+
+- An attestation applies to `MANUAL` results only. If the check is `ERROR`, `FAIL` or `PASS`, it
+  is not applied.
+- It stops applying when it expires, when the check changes, when the observed value changes, or
+  when the value could not be fully observed on this host. The scan lists such attestations (below
+  the summary in the table, and under `attestations` in the JSON result), so a stale one is never
+  silently ignored.
+- Attestations apply before waivers: an attested `FAIL` can still be waived.
+- Like waivers, they hide findings, so the file must be owned by root or the invoking user and
+  not writable by others.

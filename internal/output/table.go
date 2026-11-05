@@ -107,6 +107,9 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 	for _, w := range res.Waivers {
 		fmt.Fprintf(&b, "%s\n", p.paint(yellow, fmt.Sprintf("waiver for %s %s (until %s) not applied: %s", w.Scope, w.ID, w.Expires, oneLine(w.Problem))))
 	}
+	for _, a := range res.Attestations {
+		fmt.Fprintf(&b, "%s\n", p.paint(yellow, fmt.Sprintf("attestation of %s by %s (until %s) not applied: %s", a.Check, a.By, a.Expires, oneLine(a.Problem))))
+	}
 	if !opts.Verbose {
 		b.WriteString(p.paint(dim, "Passing and not-applicable controls are hidden; use --verbose to list them.") + "\n")
 	}

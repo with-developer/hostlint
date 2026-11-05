@@ -16,6 +16,8 @@ func content() *engine.Content {
 				"max_days": {Type: "int", Default: 90, Stricter: "lower"}, "label": {Type: "string", Default: "x"},
 			}},
 			"files.shadow-perms": {ID: "files.shadow-perms"},
+			"accounts.review":    {ID: "accounts.review", Manual: &engine.ManualSpec{Guidance: "g", Show: "accounts.users"}},
+			"accounts.plain":     {ID: "accounts.plain", Manual: &engine.ManualSpec{Guidance: "g"}},
 		},
 		Profiles: map[string]*engine.Profile{"kisa-2026": {ID: "kisa-2026", Revision: 1, Controls: []engine.Control{{ID: "U-18"}}}},
 	}
@@ -59,6 +61,69 @@ func TestLoadAndValidate(t *testing.T) {
 	params, waivers := f.Engine()
 	if params["accounts.password-max-age"]["max_days"] != 60 || len(waivers) != 2 || waivers[0].Expires.Format("2006-01-02") != "2027-06-30" || waivers[1].Revision != 1 {
 		t.Errorf("params %v, waivers %+v", params, waivers)
+	}
+}
+
+const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+func attestation(extra string) string {
+	return "attestations:\n  - check: accounts.review\n    status: PASS\n    digest: " + digest + "\n    evidence_digest: " + digest +
+		"\n    by: alice\n    at: 2026-11-01\n    expires: 2027-01-31\n    reason: reviewed\n" + extra
+}
+
+func TestAttestations(t *testing.T) {
+	p := write(t, t.TempDir(), "hostlint.yaml", attestation("    hosts: [\"web-*\"]\n"), 0o644)
+	f, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Validate(content(), "kisa-2026"); err != nil {
+		t.Fatal(err)
+	}
+	got := f.EngineAttestations()
+	if len(got) != 1 || got[0].Check != "accounts.review" || got[0].Status != engine.StatusPass || got[0].By != "alice" ||
+		got[0].Expires.Format("2006-01-02") != "2027-01-31" || got[0].At.Format("2006-01-02") != "2026-11-01" ||
+		got[0].Note != "reviewed" || got[0].EvidenceDigest != digest || got[0].Digest != digest || got[0].Hosts[0] != "web-*" {
+		t.Errorf("attestations %+v", got)
+	}
+}
+
+func TestAttestationErrors(t *testing.T) {
+	plain := "attestations:\n  - check: accounts.plain\n    status: FAIL\n    digest: " + digest + "\n    by: bob\n    at: 2026-11-01\n    expires: 2027-01-31\n    reason: r\n"
+	tests := []struct{ name, text, want string }{
+		{"unknown check", strings.Replace(attestation(""), "accounts.review", "x.y", 1), `unknown check "x.y"`},
+		{"not a manual check", strings.Replace(attestation(""), "accounts.review", "files.shadow-perms", 1), "not a MANUAL check"},
+		{"status", strings.Replace(attestation(""), "PASS", "WAIVED", 1), "status must be PASS or FAIL"},
+		{"no digest", strings.Replace(attestation(""), "digest: "+digest+"\n    evidence_digest", "evidence_digest", 1), "digest is required"},
+		{"no evidence digest for a check that shows a value", strings.Replace(attestation(""), "    evidence_digest: "+digest+"\n", "", 1), "evidence_digest is required"},
+		{"evidence digest for a check that shows nothing", plain + "    evidence_digest: " + digest + "\n", "shows nothing"},
+		{"malformed evidence digest", strings.Replace(attestation(""), "evidence_digest: "+digest, "evidence_digest: abc", 1), "evidence_digest must look like"},
+		{"no author", strings.Replace(attestation(""), "by: alice", "by: \" \"", 1), "by is required"},
+		{"no reason", strings.Replace(attestation(""), "reason: reviewed", "reason: \"\"", 1), "reason is required"},
+		{"no expiry", strings.Replace(attestation(""), "expires: 2027-01-31", "expires: never", 1), "expires must be a date"},
+		{"expires before at", strings.Replace(attestation(""), "expires: 2027-01-31", "expires: 2026-10-01", 1), "expires is before at"},
+		{"bad host glob", attestation("    hosts: [\"[\"]\n"), "host pattern"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := write(t, t.TempDir(), "hostlint.yaml", tt.text, 0o644)
+			f, err := Load(p)
+			if err == nil {
+				err = f.Validate(content(), "kisa-2026")
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("err = %v, want one mentioning %q", err, tt.want)
+			}
+		})
+	}
+	// A check that shows nothing is attested without an evidence digest.
+	p := write(t, t.TempDir(), "hostlint.yaml", plain, 0o644)
+	f, err := Load(p)
+	if err == nil {
+		err = f.Validate(content(), "kisa-2026")
+	}
+	if err != nil {
+		t.Errorf("an attestation of a check that shows nothing: %v", err)
 	}
 }
 

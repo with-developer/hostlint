@@ -42,6 +42,21 @@
         }
       }
     },
+    "attestations": {
+      "description": "Configured attestations that did not apply: expired, stale (the check or the observed value changed), or for a result that is not MANUAL.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check", "by", "expires", "problem"],
+        "additionalProperties": false,
+        "properties": {
+          "check": {"$ref": "#/$defs/checkId"},
+          "by": {"type": "string", "minLength": 1},
+          "expires": {"$ref": "#/$defs/date"},
+          "problem": {"type": "string"}
+        }
+      }
+    },
     "collectors": {
       "description": "Collector runs, sorted by name.",
       "type": "array",
@@ -225,6 +240,10 @@
             "population": {"type": "string", "description": "Fact path of the population, e.g. accounts.users."},
             "count": {"type": "integer", "minimum": 0}
           }
+        },
+        "evidenceDigest": {
+          "description": "Digest of the full value a MANUAL check shows; an attestation is bound to it.",
+          "$ref": "#/$defs/digest"
         },
         "waiver": {"$ref": "#/$defs/waiver"},
         "attestation": {"$ref": "#/$defs/attestation"},

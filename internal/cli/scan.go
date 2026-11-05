@@ -106,6 +106,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 			return fmt.Errorf("%s:\n%w", cfgPath, err)
 		}
 		opts.Params, opts.Waivers = cfg.Engine()
+		opts.Attestations = cfg.EngineAttestations()
 	}
 	e, err := engine.New(content, collect.All()...)
 	if err != nil {

@@ -47,6 +47,8 @@ type outcome struct {
 	evidence []Evidence
 	omitted  int // evidence items not built
 	coverage *Coverage
+	// evidenceDigest is the digest of the full value a MANUAL check shows.
+	evidenceDigest string
 	// showErr is a runtime error in a manual check's show expression; the
 	// reason mentions it, and rule tests treat it as a failure.
 	showErr string
@@ -254,6 +256,7 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 				o.reason += " (evidence unavailable: " + e.unknownReason(b, v) + ")"
 			default:
 				o.evidence, o.omitted = listEvidence("show", v)
+				o.evidenceDigest = showDigest(v)
 			}
 		}
 		return o
