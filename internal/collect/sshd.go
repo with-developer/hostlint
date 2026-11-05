@@ -86,14 +86,24 @@ func (sshdCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts,
 			}
 			s.Config[key] = set
 		}
-	case errors.Is(err, hostfs.ErrUnavailable) || errors.Is(err, hostfs.ErrNotInstalled):
-		// A mounted root, or no server program: only explicit values are known.
+	case errors.Is(err, hostfs.ErrUnavailable) || errors.Is(err, hostfs.ErrNotInstalled) || errors.Is(err, errSSHDNeverStarted):
+		// A mounted root, no server program, or a server that has not run yet:
+		// only explicit values are known.
 		s.Config = p.global
 	default:
 		return engine.Facts{}, err
 	}
 	return engine.Facts{Value: s, Complete: len(p.skipped) == 0, Skipped: p.skipped}, nil
 }
+
+// errSSHDNeverStarted marks an installed server that has not run yet, so the
+// things it creates at its first start are missing and sshd -T refuses to
+// print: no host keys (RHEL family) or no privilege separation directory
+// (Debian and Ubuntu). It says nothing about the configuration files, so
+// their explicit values still count; defaults stay unknown.
+var errSSHDNeverStarted = errors.New("sshd has not started yet")
+
+var sshdNeverStartedMessages = []string{"no hostkeys available", "missing privilege separation directory"}
 
 // sshdEffective runs `sshd -T` and parses its "keyword value" lines.
 func sshdEffective(ctx context.Context, h *hostfs.Host) (map[string]string, error) {
@@ -105,6 +115,11 @@ func sshdEffective(ctx context.Context, h *hostfs.Host) (map[string]string, erro
 		msg := strings.TrimSpace(string(out.Stderr))
 		if len(msg) > 200 {
 			msg = msg[:200]
+		}
+		for _, notReady := range sshdNeverStartedMessages {
+			if strings.Contains(strings.ToLower(msg), notReady) {
+				return nil, fmt.Errorf("%w: sshd -T exited with %d: %s", errSSHDNeverStarted, out.ExitCode, msg)
+			}
 		}
 		return nil, fmt.Errorf("sshd -T exited with %d: %s", out.ExitCode, msg)
 	}

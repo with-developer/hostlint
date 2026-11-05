@@ -117,10 +117,40 @@ func TestSSHDNotInstalled(t *testing.T) {
 	}
 }
 
+// A server that has not started yet has no host keys, or no privilege
+// separation directory, and sshd -T refuses to print: the explicit values of the
+// files still count, and the defaults stay unknown.
+func TestSSHDNeverStarted(t *testing.T) {
+	for _, stderr := range []string{
+		"sshd: no hostkeys available -- exiting.",
+		"Missing privilege separation directory: /run/sshd",
+	} {
+		h := hostfs.NewTestHost(sshdFixture(), hostfs.RecordedRunner{"sshd -T": {ExitCode: 255, Stderr: stderr}}, true)
+		f, err := sshdCollector{}.Collect(context.Background(), h)
+		if err != nil {
+			t.Fatalf("%q: %v", stderr, err)
+		}
+		s := f.Value.(*SSHD)
+		if s.Config["permitrootlogin"].Value != "no" || !s.Config["permitrootlogin"].Explicit || !f.Complete {
+			t.Errorf("%q: permitrootlogin = %+v, complete %v", stderr, s.Config["permitrootlogin"], f.Complete)
+		}
+		if _, ok := s.Config["pubkeyauthentication"]; ok {
+			t.Errorf("%q: a default must stay unknown without sshd -T", stderr)
+		}
+	}
+}
+
+// Any other failure of sshd -T (an invalid configuration, a crash) fails the
+// collector: its output would have decided the values.
 func TestSSHDCommandFailure(t *testing.T) {
-	h := hostfs.NewTestHost(sshdFixture(), hostfs.RecordedRunner{"sshd -T": {ExitCode: 255, Stderr: "sshd: no hostkeys available -- exiting."}}, true)
-	if _, err := (sshdCollector{}).Collect(context.Background(), h); err == nil {
-		t.Error("a failing sshd -T must fail the collector, not fall back to guesses")
+	for _, stderr := range []string{
+		"/etc/ssh/sshd_config line 3: Bad configuration option: Foo",
+		"sshd: Could not load host key: /etc/ssh/ssh_host_rsa_key",
+	} {
+		h := hostfs.NewTestHost(sshdFixture(), hostfs.RecordedRunner{"sshd -T": {ExitCode: 255, Stderr: stderr}}, true)
+		if _, err := (sshdCollector{}).Collect(context.Background(), h); err == nil {
+			t.Errorf("%q: a failing sshd -T must fail the collector, not fall back to guesses", stderr)
+		}
 	}
 }
 
