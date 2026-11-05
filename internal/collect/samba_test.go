@@ -1,0 +1,89 @@
+package collect
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/with-developer/hostlint/internal/hostfs"
+)
+
+func collectSamba(t *testing.T, m *hostfs.MemFS) (*Samba, bool) {
+	t.Helper()
+	f, err := sambaCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f.Value.(*Samba), f.Complete
+}
+
+func smbConf(text string) *hostfs.MemFS {
+	return hostfs.NewMemFS().AddFile(sambaConfig, text, 0o644, 0, 0)
+}
+
+// The packaged smb.conf of Ubuntu 24.04 defines only the printer shares.
+func TestSambaPackagedConfiguration(t *testing.T) {
+	s, complete := collectSamba(t, fixtureFS(t, "ubuntu-24.04"))
+	if !s.Present || !complete || len(s.Shares) != 0 {
+		t.Errorf("%+v complete %v", s, complete)
+	}
+}
+
+func TestSambaGuestShares(t *testing.T) {
+	tests := []struct {
+		name, conf string
+		want       map[string]bool
+	}{
+		{"guest ok on a share", "[global]\n  workgroup = X\n[pub]\n  path = /srv/pub\n  guest ok = yes\n[priv]\n  path = /srv/priv\n  guest ok = no\n", map[string]bool{"pub": true, "priv": false}},
+		{"public is a synonym", "[pub]\n  public = yes\n", map[string]bool{"pub": true}},
+		{"other spellings of yes", "[a]\n  Guest   OK = True\n[b]\n  guest ok = 1\n[c]\n  guest ok=on\n", map[string]bool{"a": true, "b": true, "c": true}},
+		{"a share says nothing", "[a]\n  path = /x\n", map[string]bool{"a": false}},
+		{"the global default", "[global]\n  guest ok = yes\n[a]\n  path = /x\n[b]\n  guest ok = no\n", map[string]bool{"a": true, "b": false}},
+		{"the printer sections are not shares", "[global]\n[printers]\n  guest ok = yes\n[print$]\n  guest ok = yes\n", map[string]bool{}},
+		{"comments and continuation", "; c\n# c\n[pub]\n  comment = a \\\n   long one\n  guest ok = yes\n", map[string]bool{"pub": true}},
+		{"a parameter commented out", "[a]\n  # guest ok = yes\n", map[string]bool{"a": false}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, complete := collectSamba(t, smbConf(tt.conf))
+			if !complete || len(s.Shares) != len(tt.want) {
+				t.Fatalf("shares %+v complete %v, want %v", s.Shares, complete, tt.want)
+			}
+			for _, sh := range s.Shares {
+				if sh.Guest != tt.want[sh.Name] {
+					t.Errorf("%s guest = %v, want %v", sh.Name, sh.Guest, tt.want[sh.Name])
+				}
+			}
+		})
+	}
+}
+
+func TestSambaIncompleteAndAbsent(t *testing.T) {
+	for name, conf := range map[string]string{
+		"an include":         "include = /etc/samba/extra.conf\n[a]\n",
+		"a config file":      "[global]\n  config file = /etc/samba/%m.conf\n",
+		"a value not a bool": "[a]\n  guest ok = maybe\n",
+		"an open bracket":    "[a\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, complete := collectSamba(t, smbConf(conf)); complete {
+				t.Error("the facts must be incomplete")
+			}
+		})
+	}
+	if s, complete := collectSamba(t, hostfs.NewMemFS()); s.Present || !complete {
+		t.Errorf("%+v complete %v", s, complete)
+	}
+	bad := smbConf("[a]\n").SetError(sambaConfig, fsErrPermission)
+	if _, err := (sambaCollector{}).Collect(context.Background(), hostfs.NewTestHost(bad, nil, false)); err == nil || !strings.Contains(err.Error(), "run hostlint as root") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func FuzzSambaConfig(f *testing.F) {
+	f.Add([]byte(loadTree(f, "ubuntu-24.04")["/etc/samba/smb.conf"]))
+	f.Add([]byte("[a]\n guest ok = yes \\\n"))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		_, _ = sambaCollector{}.Collect(context.Background(), hostfs.NewTestHost(smbConf(string(data)), nil, false))
+	})
+}

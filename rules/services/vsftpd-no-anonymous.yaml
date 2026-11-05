@@ -1,0 +1,42 @@
+id: services.vsftpd-no-anonymous
+version: 1
+title: vsftpd allows no anonymous login
+title_ko: vsftpd가 익명 로그인을 허용하지 않음
+severity: high
+description: >-
+  Checks anonymous_enable in vsftpd.conf. vsftpd allows anonymous logins unless it is set to NO (the packaged
+  configurations set it). Only the default vsftpd.conf is read (a second default file or another .conf next to
+  it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; otherwise
+  services.review-anonymous-sharing asks for a review.
+rationale: >-
+  Anonymous FTP lets anyone read, and sometimes write, the files it shares.
+remediation: Set `anonymous_enable=NO` in vsftpd.conf and reload vsftpd.
+applies: >-
+  ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+setting:
+  fact: ftp.settings.anonymous_enable
+  in: ["NO"]
+  absent: default
+tests:
+  - name: anonymous logins are off
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {anonymous_enable: {value: "NO", explicit: true, source: "/etc/vsftpd.conf:25"}}, banner: default, root_denied: false, root_denied_by: ""}
+    want: PASS
+  - name: the default allows them
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {anonymous_enable: {value: "YES", source: "default (vsftpd.conf(5))"}}, banner: default, root_denied: false, root_denied_by: ""}
+    want: FAIL
+  - name: vsftpd is not started
+    facts:
+      services: {started: []}
+      ftp: {present: true, settings: {}, banner: default, root_denied: false, root_denied_by: ""}
+    want: NOT_APPLICABLE
+  - name: vsftpd.conf could not be read completely
+    input: incomplete
+    incomplete: [ftp]
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true, settings: {anonymous_enable: {value: "NO", source: "default"}}, banner: default, root_denied: false, root_denied_by: ""}
+    want: ERROR

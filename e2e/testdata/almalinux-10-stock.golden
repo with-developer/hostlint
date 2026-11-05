@@ -1,5 +1,5 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 10: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
+profile kisa-2026 revision 11: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
 collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
@@ -170,7 +170,15 @@ U-34 PASS
   services.no-finger PASS
 
 U-35 NOT_APPLICABLE
-  services.review-anonymous-sharing NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "smb", "smbd", "samba"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd|smbd)$"))
+  services.vsftpd-no-anonymous NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
+  services.samba-no-guest NOT_APPLICABLE: applies is false: samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba"] || s.program.matches("/smbd$"))
+    - samba.present = false
+    - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
+  services.review-anonymous-sharing NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))) || (!samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba"] || s.program.matches("/smbd$")))
+    - ftp.present = false
+    - samba.present = false
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
 U-36 PASS

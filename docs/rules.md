@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 10)
+## kisa-2026 (revision 11)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -47,7 +47,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-32 | medium | Home directories exist (홈 디렉터리 존재) | [`homes.exists`](#homesexists) |
 | U-33 | low | Hidden files are reviewed (숨겨진 파일·디렉터리 점검) | [`files.suspicious-hidden-names`](#filessuspicious-hidden-names), [`files.review-hidden-files`](#filesreview-hidden-files) |
 | U-34 | high | The finger service is off (finger 서비스 미사용) | [`services.no-finger`](#servicesno-finger) |
-| U-35 | high | No anonymous access to shared files (공유 서비스 익명 접근 제한) | [`services.review-anonymous-sharing`](#servicesreview-anonymous-sharing) |
+| U-35 | high | No anonymous access to shared files (공유 서비스 익명 접근 제한) | [`services.vsftpd-no-anonymous`](#servicesvsftpd-no-anonymous), [`services.samba-no-guest`](#servicessamba-no-guest), [`services.review-anonymous-sharing`](#servicesreview-anonymous-sharing) |
 | U-36 | high | The r-services are off (r 계열 서비스 미사용) | [`services.no-r-services`](#servicesno-r-services) |
 | U-37 | high | cron and at are restricted (cron·at 사용 제한) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool), [`files.cron-spool-rhel`](#filescron-spool-rhel), [`files.cron-root-spool`](#filescron-root-spool), [`files.at-spool`](#filesat-spool) |
 | U-38 | high | Traffic-amplifying services are off (DoS 공격에 취약한 서비스 미사용) | [`services.no-dos-prone`](#servicesno-dos-prone) |
@@ -809,7 +809,7 @@ Checks disable_vrfy_command in /etc/postfix/main.cf. Postfix answers VRFY, which
 
 Review anonymous access to file-sharing services (파일 공유 서비스 익명 접근 검토) — severity high, a review (`MANUAL`).
 
-Applies when a file-sharing service (FTP, NFS or Samba) is started; then shows how, for a review of its configuration. Not applicable otherwise.
+Applies when a file-sharing service the other checks do not read is started: NFS, an FTP server other than vsftpd, vsftpd or Samba without their configuration file (vsftpd with a vsftpd.conf is services.vsftpd-no-anonymous, Samba with an smb.conf is services.samba-no-guest); then shows how, for a review of its configuration. Not applicable otherwise.
 
 **Why.** Anonymous access to shared files lets anyone read, and sometimes write, them.
 
@@ -925,6 +925,16 @@ Shows the time synchronization services that are started, to check their servers
 
 **Fix.** Point the service at the time servers your organization approves (`server` or `pool` lines).
 
+#### `services.samba-no-guest`
+
+No Samba share is open to guests (게스트에게 열린 Samba 공유 없음) — severity high, lists what violates it.
+
+Lists the shares of /etc/samba/smb.conf with "guest ok = yes" or "public = yes", on the share or as the default in [global]. The printer sections are not shares. An include or config file line is not followed and makes the result ERROR. Applies when Samba is started and has an smb.conf; otherwise services.review-anonymous-sharing asks for a review.
+
+**Why.** A share open to guests lets anyone who can reach the server read, and sometimes write, its files.
+
+**Fix.** Set `guest ok = no` on the share (and remove `public = yes`), and give the users that need it Samba accounts.
+
 #### `services.snmp-access-restricted`
 
 SNMP answers only the hosts that need it (SNMP는 필요한 호스트에만 응답) — severity high, lists what violates it.
@@ -974,6 +984,16 @@ Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_f
 **Why.** A version banner tells attackers which exploits to try.
 
 **Fix.** Set `ftpd_banner=Authorized users only.` in vsftpd.conf, with no version number and not the name vsftpd.
+
+#### `services.vsftpd-no-anonymous`
+
+vsftpd allows no anonymous login (vsftpd가 익명 로그인을 허용하지 않음) — severity high, compares one setting.
+
+Checks anonymous_enable in vsftpd.conf. vsftpd allows anonymous logins unless it is set to NO (the packaged configurations set it). Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; otherwise services.review-anonymous-sharing asks for a review.
+
+**Why.** Anonymous FTP lets anyone read, and sometimes write, the files it shares.
+
+**Fix.** Set `anonymous_enable=NO` in vsftpd.conf and reload vsftpd.
 
 #### `services.vsftpd-no-root`
 

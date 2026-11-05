@@ -4,14 +4,18 @@ title: Review anonymous access to file-sharing services
 title_ko: 파일 공유 서비스 익명 접근 검토
 severity: high
 description: >-
-  Applies when a file-sharing service (FTP, NFS or Samba) is started; then shows how, for a review of its configuration. Not
-  applicable otherwise.
+  Applies when a file-sharing service the other checks do not read is started: NFS, an FTP server other than
+  vsftpd, vsftpd or Samba without their configuration file (vsftpd with a vsftpd.conf is
+  services.vsftpd-no-anonymous, Samba with an smb.conf is services.samba-no-guest); then shows how, for a review
+  of its configuration. Not applicable otherwise.
 rationale: >-
   Anonymous access to shared files lets anyone read, and sometimes write, them.
 remediation: >-
   Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
 applies: >-
-  services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "smb", "smbd", "samba"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd|smbd)$"))
+  services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd)$")) ||
+  (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))) ||
+  (!samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba"] || s.program.matches("/smbd$")))
 manual:
   guidance: >-
     Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
@@ -21,8 +25,36 @@ tests:
   - name: not started
     facts:
       services: {started: []}
+      ftp: {present: false}
+      samba: {present: false}
     want: NOT_APPLICABLE
-  - name: started
+  - name: NFS
+    facts:
+      services: {started: [{service: nfs-server, name: nfs-server.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/nfs-server.service"}]}
+      ftp: {present: false}
+      samba: {present: false}
+    want: MANUAL
+  - name: vsftpd with a configuration is checked by its own check
     facts:
       services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: true}
+      samba: {present: false}
+    want: NOT_APPLICABLE
+  - name: vsftpd without a configuration
+    facts:
+      services: {started: [{service: vsftpd, name: vsftpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/vsftpd.service"}]}
+      ftp: {present: false}
+      samba: {present: false}
     want: MANUAL
+  - name: Samba without a configuration
+    facts:
+      services: {started: [{service: smbd, name: smbd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/smbd.service"}]}
+      ftp: {present: false}
+      samba: {present: false}
+    want: MANUAL
+  - name: Samba with a configuration is checked by its own check
+    facts:
+      services: {started: [{service: smbd, name: smbd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/smbd.service"}]}
+      ftp: {present: false}
+      samba: {present: true}
+    want: NOT_APPLICABLE

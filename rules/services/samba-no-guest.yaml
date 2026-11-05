@@ -1,0 +1,53 @@
+id: services.samba-no-guest
+version: 1
+title: No Samba share is open to guests
+title_ko: 게스트에게 열린 Samba 공유 없음
+severity: high
+description: >-
+  Lists the shares of /etc/samba/smb.conf with "guest ok = yes" or "public = yes", on the share or as the
+  default in [global]. The printer sections are not shares. An include or config file line is not followed and
+  makes the result ERROR. Applies when Samba is started and has an smb.conf; otherwise
+  services.review-anonymous-sharing asks for a review.
+rationale: >-
+  A share open to guests lets anyone who can reach the server read, and sometimes write, its files.
+remediation: >-
+  Set `guest ok = no` on the share (and remove `public = yes`), and give the users that need it Samba accounts.
+applies: >-
+  samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba"] || s.program.matches("/smbd$"))
+violations:
+  over: samba.shares
+  as: s
+  where: >-
+    s.guest
+  key: s.name
+  text: >-
+    "share [" + s.name + "] is open to guests at " + s.where
+  allow_empty: true
+tests:
+  - name: no guest shares
+    facts:
+      services: {started: [{service: smbd, name: smbd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/smbd.service"}]}
+      samba: {present: true, shares: [{name: data, guest: false, where: "/etc/samba/smb.conf:12"}]}
+    want: PASS
+  - name: a guest share
+    facts:
+      services: {started: [{service: smbd, name: smbd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/smbd.service"}]}
+      samba: {present: true, shares: [{name: pub, guest: true, where: "/etc/samba/smb.conf:20"}]}
+    want: FAIL
+  - name: Samba is not started
+    facts:
+      services: {started: []}
+      samba: {present: true, shares: [{name: pub, guest: true, where: "/etc/samba/smb.conf:20"}]}
+    want: NOT_APPLICABLE
+  - name: no smb.conf
+    facts:
+      services: {started: [{service: smbd, name: smbd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/smbd.service"}]}
+      samba: {present: false, shares: []}
+    want: NOT_APPLICABLE
+  - name: smb.conf could not be read completely
+    input: incomplete
+    incomplete: [samba]
+    facts:
+      services: {started: [{service: smbd, name: smbd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/smbd.service"}]}
+      samba: {present: true, shares: []}
+    want: ERROR
