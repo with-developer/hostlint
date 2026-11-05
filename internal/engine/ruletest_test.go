@@ -142,3 +142,25 @@ func TestRuleTestAccountFiles(t *testing.T) {
 		t.Errorf("failures: %v", got)
 	}
 }
+
+// A show expression that fails at run time still leaves the check MANUAL, so a
+// rule test has to report the error itself.
+func TestRuleTestReportsShowErrors(t *testing.T) {
+	rule := `id: x.y
+version: 1
+title: T
+severity: low
+manual:
+  guidance: look
+  show: svc.users.map(u, int(u.name))
+tests:
+  - name: shows
+    facts:
+      svc: {users: [{name: root, uid: 0}]}
+    want: MANUAL
+`
+	got := ruleFailures(t, rule)
+	if len(got) != 1 || !strings.Contains(got[0], "show:") {
+		t.Errorf("failures %q, want one about show", got)
+	}
+}

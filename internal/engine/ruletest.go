@@ -140,6 +140,9 @@ func (e *Engine) runCase(ctx context.Context, cc *compiledCheck, tc TestCase) (S
 		params[name] = v
 	}
 	o := env.evaluate(cc, params)
+	if o.showErr != "" {
+		return "", "", fmt.Errorf("show: %s", o.showErr)
+	}
 	detail := o.reason
 	for _, ev := range o.evidence {
 		detail += "; " + ev.Text

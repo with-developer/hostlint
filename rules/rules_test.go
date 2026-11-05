@@ -2,6 +2,8 @@ package rules_test
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/with-developer/hostlint/internal/collect"
@@ -38,6 +40,30 @@ func TestBuiltinContent(t *testing.T) {
 	for id := range content.Checks {
 		if !used[id] {
 			t.Errorf("check %s is not mapped to any profile control", id)
+		}
+	}
+}
+
+// TestRuleFilesAreEmbedded fails on a file under rules/ that go:embed would
+// silently leave out (a .yml file, a nested directory), which would drop a
+// check from the binary without any error.
+func TestRuleFilesAreEmbedded(t *testing.T) {
+	areas, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, area := range areas {
+		if !area.IsDir() {
+			continue
+		}
+		files, err := os.ReadDir(area.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files {
+			if f.IsDir() || !strings.HasSuffix(f.Name(), ".yaml") {
+				t.Errorf("rules/%s/%s is not embedded: a rule is rules/<area>/<name>.yaml", area.Name(), f.Name())
+			}
 		}
 	}
 }

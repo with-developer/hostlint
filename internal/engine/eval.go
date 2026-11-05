@@ -47,6 +47,9 @@ type outcome struct {
 	evidence []Evidence
 	omitted  int // evidence items not built
 	coverage *Coverage
+	// showErr is a runtime error in a manual check's show expression; the
+	// reason mentions it, and rule tests treat it as a failure.
+	showErr string
 }
 
 func errorOutcome(format string, args ...any) outcome {
@@ -246,6 +249,7 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 			switch {
 			case err != nil:
 				o.reason += " (evidence unavailable: " + err.Error() + ")"
+				o.showErr = err.Error()
 			case types.IsUnknown(v):
 				o.reason += " (evidence unavailable: " + e.unknownReason(b, v) + ")"
 			default:
