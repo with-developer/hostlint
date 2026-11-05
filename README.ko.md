@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 8009548 -->
+<!-- translated from README.md @ 676596f -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -153,8 +153,8 @@ hostlint는 양보하지 않는 몇 가지 원칙 위에 만들어졌습니다. 
 
 hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·
 SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
-패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.2.0가
-릴리스되었습니다. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.2 계획입니다. [로드맵](docs/ROADMAP.md)을
+패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스가 갖춰졌고, v0.2.0이
+최신 릴리스입니다. 플릿 모드(에이전트와 웹 UI가 있는 서버)는 v0.3 계획입니다. [로드맵](docs/ROADMAP.md)을
 참고하세요.
 
 ## 라이선스
