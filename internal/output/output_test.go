@@ -283,3 +283,28 @@ func TestTableShowsGuidanceOfControlsWithoutChecks(t *testing.T) {
 		t.Errorf("no guidance under U-62:\n%s", b.String())
 	}
 }
+
+// A check that does not apply says nothing about why its control fails: the
+// table leaves it out unless --verbose asks for everything.
+func TestTableHidesNotApplicableChecksUnlessVerbose(t *testing.T) {
+	res := sampleResult()
+	var na string
+	for _, c := range res.Checks {
+		if c.Status == engine.StatusNotApplicable {
+			na = c.ID
+		}
+	}
+	if na == "" {
+		t.Skip("the sample has no NOT_APPLICABLE check")
+	}
+	for _, verbose := range []bool{false, true} {
+		var b bytes.Buffer
+		if err := Write(&b, res, "table", Options{Verbose: verbose}); err != nil {
+			t.Fatal(err)
+		}
+		// Only a control that is shown can show its checks: look for the check line.
+		if got := strings.Contains(b.String(), "- "+na); got != verbose {
+			t.Errorf("verbose %v: %s listed = %v\n%s", verbose, na, got, b.String())
+		}
+	}
+}

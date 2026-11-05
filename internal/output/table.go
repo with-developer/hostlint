@@ -87,7 +87,9 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 		}
 		for _, ref := range ctl.Checks {
 			c, ok := checks[ref]
-			if !ok || (!opts.Verbose && c.Status == engine.StatusPass) {
+			// Checks that pass or do not apply say nothing about why the control
+			// fails; --verbose lists them.
+			if !ok || (!opts.Verbose && (c.Status == engine.StatusPass || c.Status == engine.StatusNotApplicable)) {
 				continue
 			}
 			writeCheck(&b, p, c)
