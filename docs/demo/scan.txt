@@ -1,0 +1,19 @@
+hostlint v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+
+✗ FAIL   U-01   Restrict direct remote root login [high]
+    ✗ ssh.permit-root-login — SSH does not allow direct root login
+        "yes" (explicit); expected one of [no]  /etc/ssh/sshd_config:33
+    ? services.review-remote-root-login — Review root login through telnet and other remote terminal services
+        Check that root cannot log in through the service (pam_securetty in its auth stack and no pts/N line in /etc/securetty, where that module exists). Better, turn the service off.
+        telnet (inetd) at /etc/inetd.conf:42
+✗ FAIL   U-18   Ownership and permissions of /etc/shadow [high]
+    ✗ files.shadow-perms — /etc/shadow is owned by root and readable by root only
+        /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400
+✗ FAIL   U-20   Ownership and permissions of inetd and xinetd configuration [high]
+    ✗ files.inetd-conf-perms — inetd and xinetd configuration is owned by root and private
+        /etc/inetd.conf: root:root 0644 — mode 0644 exceeds 0600
+✗ FAIL   U-52   Telnet is off [medium]
+    ✗ services.no-telnet — Telnet is not started
+        telnet (inetd, /usr/sbin/telnetd) at /etc/inetd.conf:42
+
+kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE

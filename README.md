@@ -9,6 +9,8 @@ it.
 
 [한국어](README.ko.md)
 
+![Animated terminal: hostlint scan lists failed controls with the evidence behind each](docs/demo/scan.gif)
+
 ```text
 $ sudo hostlint scan
 hostlint v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))

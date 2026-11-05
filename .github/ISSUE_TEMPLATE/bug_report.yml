@@ -1,0 +1,35 @@
+name: Bug report
+description: A wrong result, an ERROR that should not be one, or a crash
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. A vulnerability (a scan that changes the host, leaks a secret or
+        reports a false PASS) goes through [private reporting](https://github.com/with-developer/hostlint/security/advisories/new), not here.
+  - type: input
+    id: version
+    attributes:
+      label: hostlint version
+      description: Output of `hostlint version`
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Scanned system
+      description: Distribution and version, and whether it is a live host or a mounted root (`--root`)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command, the result you got (a control and check ID, with its evidence), and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Relevant configuration
+      description: The lines of the file the check reads (sshd_config, a PAM stack, login.defs, ...). Remove secrets first.

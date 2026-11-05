@@ -1,0 +1,16 @@
+name: Check or feature request
+description: A new check, a standard to map, or a change to the output
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What should hostlint do
+      description: For a check, name the setting or file and the value that should pass. Reference a control ID, but do not paste text from CIS or KISA documents.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The risk it covers, or the workflow it fits

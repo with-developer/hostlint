@@ -1,4 +1,4 @@
-<!-- translated from README.md @ dd82afc -->
+<!-- translated from README.md @ e14195b -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -8,6 +8,8 @@
 컨트롤마다 결과와 그 근거를 함께 보여 줍니다.
 
 [English](README.md)
+
+![터미널 애니메이션: hostlint scan이 실패한 컨트롤과 그 근거를 보여 줍니다](docs/demo/scan.gif)
 
 ```text
 $ sudo hostlint scan
