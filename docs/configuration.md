@@ -23,7 +23,7 @@ waivers:
     hosts: ["web-*"]
   # Accept a control of the profile.
   - control: U-18
-    revision: 4
+    revision: 5
     reason: Accepted by the security team (SEC-142)
     expires: 2027-01-31
 

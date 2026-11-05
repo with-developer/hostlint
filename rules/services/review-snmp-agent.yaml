@@ -4,14 +4,16 @@ title: Review the SNMP agent
 title_ko: SNMP 에이전트 설정 검토
 severity: high
 description: >-
-  Applies when an SNMP agent is started; then shows how, for a review of its configuration. Not
-  applicable otherwise.
+  Applies when an SNMP agent is started but /etc/snmp/snmpd.conf is not there (it may take its
+  configuration from elsewhere); then shows how it was started, for a review of its
+  configuration. When the file is there, services.snmp-v3-only, services.snmp-community-strong and
+  services.snmp-access-restricted decide. Not applicable otherwise.
 rationale: >-
   SNMP v1/v2c communities travel in clear text and default ones are the first thing scanners try.
 remediation: >-
   Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, uses no default or guessable community, and answers only the management hosts that need it.
 applies: >-
-  services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
 manual:
   guidance: >-
     Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, uses no default or guessable community, and answers only the management hosts that need it.
@@ -21,8 +23,15 @@ tests:
   - name: not started
     facts:
       services: {started: []}
+      snmp: {present: false}
     want: NOT_APPLICABLE
-  - name: started
+  - name: started, no configuration at the usual place
     facts:
       services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: false}
     want: MANUAL
+  - name: started, and the configuration was read
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true}
+    want: NOT_APPLICABLE

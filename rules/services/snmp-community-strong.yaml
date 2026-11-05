@@ -1,0 +1,55 @@
+id: services.snmp-community-strong
+version: 1
+title: SNMP community strings are not guessable
+title_ko: SNMP community 문자열은 추측하기 어려움
+severity: high
+description: >-
+  Lists the community strings of /etc/snmp/snmpd.conf and the files it includes that are a well-known name (public, private, ...) or shorter than 8 characters. The strings themselves are never read into the result. Applies when the agent is started and the configuration is at its usual place.
+rationale: >-
+  Default community names are the first thing scanners try; a short one falls to guessing.
+remediation: >-
+  Choose a community of at least 8 random characters, or move to SNMPv3 (services.snmp-v3-only).
+applies: >-
+  snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+violations:
+  over: snmp.communities
+  as: c
+  where: >-
+    c.weak != ""
+  key: c.where
+  text: >-
+    c.directive + " at " + c.where + ": the community is " + c.weak
+  allow_empty: true
+tests:
+  - name: strong strings
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "", unrestricted: false, source: "10.0.0.0/8", where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+    want: PASS
+  - name: the default name
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: com2sec, weak: "a well-known name", unrestricted: true, source: "", where: "/etc/snmp/snmpd.conf:1"}], v3_users: 0, listen: [], loopback_only: false}
+    want: FAIL
+  - name: a short string
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: rwcommunity, weak: "shorter than 8 characters", unrestricted: false, source: "localhost", where: "/etc/snmp/snmpd.conf:2"}], v3_users: 0, listen: [], loopback_only: false}
+    want: FAIL
+  - name: the agent is not started
+    facts:
+      services: {started: []}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "a well-known name", unrestricted: true, where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+    want: NOT_APPLICABLE
+  - name: no configuration at the usual place
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: false, communities: [], v3_users: 0, listen: [], loopback_only: false}
+    want: NOT_APPLICABLE
+  - name: an included file could not be read
+    input: incomplete
+    incomplete: [snmp]
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [], v3_users: 0, listen: [], loopback_only: false}
+    want: ERROR

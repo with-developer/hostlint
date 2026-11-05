@@ -138,9 +138,10 @@ The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 editio
   home directories — including a bounded walk of local filesystems.
 - **Services, patching and logging (U-34–U-67):** finger, r-services, telnet, tftp, NFS, NIS,
   SNMP and other legacy services (enabled units, running units, init scripts, inetd and xinetd),
-  cron and sudoers permissions, time synchronization.
+  SNMP community strings and access (read from `snmpd.conf`, never copied into the result), cron and
+  sudoers permissions, time synchronization.
 
-Controls that need configuration parsers not written yet (mail, DNS, FTP and SNMP settings,
+Controls that need configuration parsers not written yet (mail, DNS and FTP settings,
 banners, logging policy) are `MANUAL` with guidance, and `NOT_APPLICABLE` where the software is
 not running. Supported targets: Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10
 (Rocky Linux, AlmaLinux), and CentOS/RHEL 7 best-effort; other versions are scanned

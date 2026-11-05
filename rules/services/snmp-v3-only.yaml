@@ -1,0 +1,50 @@
+id: services.snmp-v3-only
+version: 1
+title: The SNMP agent accepts only SNMPv3
+title_ko: SNMP 에이전트는 SNMPv3만 허용
+severity: high
+description: >-
+  Lists the SNMPv1 and v2c access entries (rocommunity, rwcommunity, authcommunity, com2sec) of /etc/snmp/snmpd.conf and the files it includes. v1 and v2c send their community string in clear text and cannot authenticate a user. Applies when the agent is started and the configuration is at its usual place; otherwise services.review-snmp-agent asks for a review.
+rationale: >-
+  Whoever sniffs a community string can read, and with rwcommunity change, what the agent exposes.
+remediation: >-
+  Remove the community lines, create SNMPv3 users (`net-snmp-create-v3-user`) and give them rouser or rwuser lines with `authPriv`.
+applies: >-
+  snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+violations:
+  over: snmp.communities
+  as: c
+  where: >-
+    true
+  key: c.where
+  text: >-
+    c.directive + " at " + c.where + " allows SNMP v1 and v2c"
+  allow_empty: true
+tests:
+  - name: only v3
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [], v3_users: 1, listen: [], loopback_only: false}
+    want: PASS
+  - name: a v2c community
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "", unrestricted: false, source: "10.0.0.0/8", where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+    want: FAIL
+  - name: the agent is not started
+    facts:
+      services: {started: []}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "a well-known name", unrestricted: true, where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+    want: NOT_APPLICABLE
+  - name: no configuration at the usual place
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: false, communities: [], v3_users: 0, listen: [], loopback_only: false}
+    want: NOT_APPLICABLE
+  - name: an included file could not be read
+    input: incomplete
+    incomplete: [snmp]
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [], v3_users: 0, listen: [], loopback_only: false}
+    want: ERROR

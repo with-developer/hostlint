@@ -1,5 +1,5 @@
 os: Ubuntu 24.04.5 LTS (id ubuntu, version 24.04, family debian, supported true)
-profile kisa-2026 revision 4: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
+profile kisa-2026 revision 5: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -305,16 +305,28 @@ U-58 PASS
   services.no-snmp PASS
 
 U-59 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-v3-only NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+    - snmp.present = false
 
 U-60 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-community-strong NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+    - snmp.present = false
 
 U-61 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-access-restricted NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
+    - snmp.present = false
 
 U-62 MANUAL
 

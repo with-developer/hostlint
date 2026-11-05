@@ -1,0 +1,55 @@
+id: services.snmp-access-restricted
+version: 1
+title: SNMP answers only the hosts that need it
+title_ko: SNMP는 필요한 호스트에만 응답
+severity: high
+description: >-
+  Lists the community entries of /etc/snmp/snmpd.conf and the files it includes that answer every source address while the agent is not limited to the host itself with agentAddress. A bind address given on the command line (for example in /etc/default/snmpd) is not seen. Applies when the agent is started and the configuration is at its usual place.
+rationale: >-
+  An agent that answers any address with a community string can be asked by anyone who can reach it.
+remediation: >-
+  Give each community the management network as its source (`rocommunity name 10.0.0.0/8`), or set `agentAddress udp:127.0.0.1:161` if only the host itself needs it.
+applies: >-
+  snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+violations:
+  over: snmp.communities
+  as: c
+  where: >-
+    c.unrestricted && !snmp.loopback_only
+  key: c.where
+  text: >-
+    c.directive + " at " + c.where + " answers every address, and the agent is not limited to the host"
+  allow_empty: true
+tests:
+  - name: limited by source
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "", unrestricted: false, source: "10.0.0.0/8", where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+    want: PASS
+  - name: open, but only the host can reach the agent
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "a well-known name", unrestricted: true, source: "", where: "/etc/snmp/snmpd.conf:71"}], v3_users: 1, listen: ["127.0.0.1", "[::1]"], loopback_only: true}
+    want: PASS
+  - name: open to every address
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [{directive: com2sec, weak: "a well-known name", unrestricted: true, source: "", where: "/etc/snmp/snmpd.conf:1"}], v3_users: 0, listen: [], loopback_only: false}
+    want: FAIL
+  - name: the agent is not started
+    facts:
+      services: {started: []}
+      snmp: {present: true, communities: [{directive: rocommunity, weak: "a well-known name", unrestricted: true, where: "/etc/snmp/snmpd.conf:7"}], v3_users: 0, listen: [], loopback_only: false}
+    want: NOT_APPLICABLE
+  - name: no configuration at the usual place
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: false, communities: [], v3_users: 0, listen: [], loopback_only: false}
+    want: NOT_APPLICABLE
+  - name: an included file could not be read
+    input: incomplete
+    incomplete: [snmp]
+    facts:
+      services: {started: [{service: snmpd, name: snmpd.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/snmpd.service"}]}
+      snmp: {present: true, communities: [], v3_users: 0, listen: [], loopback_only: false}
+    want: ERROR

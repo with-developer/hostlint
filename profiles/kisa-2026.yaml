@@ -2,7 +2,7 @@
 # (ADR 0007). Control titles are hostlint's own short wording; only the control
 # IDs and importance levels come from the guide.
 id: kisa-2026
-revision: 4
+revision: 5
 title: KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 title_ko: 주요정보통신기반시설 기술적 취약점 분석·평가 상세가이드 (2026) — Unix 서버
 controls:
@@ -311,17 +311,17 @@ controls:
     title: SNMP uses version 3
     title_ko: SNMP v3 사용
     severity: high
-    checks: [services.review-snmp-agent]
+    checks: [services.snmp-v3-only, services.review-snmp-agent]
   - id: U-60
     title: SNMP communities are not guessable
     title_ko: SNMP 커뮤니티 문자열 복잡성
     severity: medium
-    checks: [services.review-snmp-agent]
+    checks: [services.snmp-community-strong, services.review-snmp-agent]
   - id: U-61
     title: SNMP access is restricted
     title_ko: SNMP 접근 제어
     severity: high
-    checks: [services.review-snmp-agent]
+    checks: [services.snmp-access-restricted, services.review-snmp-agent]
   - id: U-62
     title: Login banners warn against misuse
     title_ko: 로그인 경고 메시지

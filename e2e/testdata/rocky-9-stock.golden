@@ -1,5 +1,5 @@
 os: Rocky Linux 9.8 (Blue Onyx) (id rocky, version 9.8, family rhel, supported true)
-profile kisa-2026 revision 4: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
+profile kisa-2026 revision 5: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -309,16 +309,28 @@ U-58 PASS
   services.no-snmp PASS
 
 U-59 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-v3-only NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = []
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = []
+    - snmp.present = false
 
 U-60 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-community-strong NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = []
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = []
+    - snmp.present = false
 
 U-61 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-access-restricted NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = []
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = []
+    - snmp.present = false
 
 U-62 MANUAL
 

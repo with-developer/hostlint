@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 4)
+## kisa-2026 (revision 5)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -71,9 +71,9 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-56 | low | FTP access is restricted by address (FTP 접근 제어) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
 | U-57 | medium | root cannot log in to FTP (FTP root 접속 제한) | [`services.review-ftp-server`](#servicesreview-ftp-server) |
 | U-58 | medium | SNMP is off unless needed (SNMP 미사용) | [`services.no-snmp`](#servicesno-snmp) |
-| U-59 | high | SNMP uses version 3 (SNMP v3 사용) | [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
-| U-60 | medium | SNMP communities are not guessable (SNMP 커뮤니티 문자열 복잡성) | [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
-| U-61 | high | SNMP access is restricted (SNMP 접근 제어) | [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
+| U-59 | high | SNMP uses version 3 (SNMP v3 사용) | [`services.snmp-v3-only`](#servicessnmp-v3-only), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
+| U-60 | medium | SNMP communities are not guessable (SNMP 커뮤니티 문자열 복잡성) | [`services.snmp-community-strong`](#servicessnmp-community-strong), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
+| U-61 | high | SNMP access is restricted (SNMP 접근 제어) | [`services.snmp-access-restricted`](#servicessnmp-access-restricted), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
 | U-62 | low | Login banners warn against misuse (로그인 경고 메시지) | review by hand |
 | U-63 | medium | sudoers files are protected (sudoers 파일 권한) | [`files.sudoers-perms`](#filessudoers-perms) |
 | U-64 | high | Security updates are applied (보안 패치 적용) | review by hand |
@@ -819,7 +819,7 @@ Applies when telnet or rlogin is started; then shows how, for a review of whethe
 
 Review the SNMP agent (SNMP 에이전트 설정 검토) — severity high, a review (`MANUAL`).
 
-Applies when an SNMP agent is started; then shows how, for a review of its configuration. Not applicable otherwise.
+Applies when an SNMP agent is started but /etc/snmp/snmpd.conf is not there (it may take its configuration from elsewhere); then shows how it was started, for a review of its configuration. When the file is there, services.snmp-v3-only, services.snmp-community-strong and services.snmp-access-restricted decide. Not applicable otherwise.
 
 **Why.** SNMP v1/v2c communities travel in clear text and default ones are the first thing scanners try.
 
@@ -834,6 +834,36 @@ Shows the time synchronization services that are started, to check their servers
 **Why.** A synchronized clock is only as good as the servers it follows.
 
 **Fix.** Point the service at the time servers your organization approves (`server` or `pool` lines).
+
+#### `services.snmp-access-restricted`
+
+SNMP answers only the hosts that need it (SNMP는 필요한 호스트에만 응답) — severity high, lists what violates it.
+
+Lists the community entries of /etc/snmp/snmpd.conf and the files it includes that answer every source address while the agent is not limited to the host itself with agentAddress. A bind address given on the command line (for example in /etc/default/snmpd) is not seen. Applies when the agent is started and the configuration is at its usual place.
+
+**Why.** An agent that answers any address with a community string can be asked by anyone who can reach it.
+
+**Fix.** Give each community the management network as its source (`rocommunity name 10.0.0.0/8`), or set `agentAddress udp:127.0.0.1:161` if only the host itself needs it.
+
+#### `services.snmp-community-strong`
+
+SNMP community strings are not guessable (SNMP community 문자열은 추측하기 어려움) — severity high, lists what violates it.
+
+Lists the community strings of /etc/snmp/snmpd.conf and the files it includes that are a well-known name (public, private, ...) or shorter than 8 characters. The strings themselves are never read into the result. Applies when the agent is started and the configuration is at its usual place.
+
+**Why.** Default community names are the first thing scanners try; a short one falls to guessing.
+
+**Fix.** Choose a community of at least 8 random characters, or move to SNMPv3 (services.snmp-v3-only).
+
+#### `services.snmp-v3-only`
+
+The SNMP agent accepts only SNMPv3 (SNMP 에이전트는 SNMPv3만 허용) — severity high, lists what violates it.
+
+Lists the SNMPv1 and v2c access entries (rocommunity, rwcommunity, authcommunity, com2sec) of /etc/snmp/snmpd.conf and the files it includes. v1 and v2c send their community string in clear text and cannot authenticate a user. Applies when the agent is started and the configuration is at its usual place; otherwise services.review-snmp-agent asks for a review.
+
+**Why.** Whoever sniffs a community string can read, and with rwcommunity change, what the agent exposes.
+
+**Fix.** Remove the community lines, create SNMPv3 users (`net-snmp-create-v3-user`) and give them rouser or rwuser lines with `authPriv`.
 
 #### `services.time-sync`
 

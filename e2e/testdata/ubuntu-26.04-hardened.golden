@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile kisa-2026 revision 4: MANUAL 11 PASS 36 NOT_APPLICABLE 20
+profile kisa-2026 revision 5: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -309,16 +309,28 @@ U-58 PASS
   services.no-snmp PASS
 
 U-59 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-v3-only NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+    - snmp.present = false
 
 U-60 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-community-strong NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+    - snmp.present = false
 
 U-61 NOT_APPLICABLE
-  services.review-snmp-agent NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+  services.snmp-access-restricted NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
+    - snmp.present = false
 
 U-62 MANUAL
 
