@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 87c3947 -->
+<!-- translated from README.md @ 169e6a0 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -93,6 +93,10 @@ sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 
 # 여러 호스트를 HTML 보고서 하나로: 네트워크 요청을 하지 않는 파일 하나
 hostlint report results/*.json --output report.html
+
+# 지난 스캔 이후 무엇이 바뀌었나: 새로 실패한 것, 해결된 것, 그 원인이 된 점검
+hostlint diff before.json after.json
+hostlint diff baseline.json current.json --fail-on-regression   # 컨트롤이 나빠지면 종료 코드 1
 
 # 프로파일을 고르고, 기준을 더 엄격하게 하고, 안고 가기로 한 발견을 예외로 처리
 sudo hostlint scan --config hostlint.yaml

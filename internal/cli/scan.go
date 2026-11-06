@@ -27,9 +27,14 @@ var failOnLevels = []string{"low", "medium", "high", "none"}
 type findingsError struct {
 	controls  int
 	threshold string
+	// regressions is set by `hostlint diff --fail-on-regression`: controls that got worse.
+	regressions int
 }
 
 func (e *findingsError) Error() string {
+	if e.regressions > 0 {
+		return fmt.Sprintf("%d control(s) regressed since the earlier scan", e.regressions)
+	}
 	return fmt.Sprintf("%d control(s) failed or could not be checked at severity %s or above", e.controls, e.threshold)
 }
 

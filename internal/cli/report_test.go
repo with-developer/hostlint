@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,5 +72,38 @@ func TestDisplayName(t *testing.T) {
 	}
 	if got := displayName("c/web.json", all); got != "web.json" {
 		t.Errorf("unique name: %q", got)
+	}
+}
+
+func TestDiffCommand(t *testing.T) {
+	ctx := context.Background()
+	fixtures := filepath.Join("..", "output", "testdata", "report")
+	older, newer := filepath.Join(fixtures, "web-01-old.json"), filepath.Join(fixtures, "web-01.json")
+
+	if code, stdout, stderr := run(ctx, t, "diff", older, newer); code != ExitOK || !strings.Contains(stdout, "Regressed (1)") || stderr != "" {
+		t.Errorf("code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	// A regression only fails the command when asked to.
+	if code, _, stderr := run(ctx, t, "diff", older, newer, "--fail-on-regression"); code != ExitFail || !strings.Contains(stderr, "1 control(s) regressed") {
+		t.Errorf("code %d, stderr %q", code, stderr)
+	}
+	if code, _, _ := run(ctx, t, "diff", newer, older, "--fail-on-regression"); code != ExitOK {
+		t.Errorf("a fix failed the command: %d", code)
+	}
+	out := filepath.Join(t.TempDir(), "diff.json")
+	if code, stdout, _ := run(ctx, t, "diff", older, newer, "-f", "json", "-o", out); code != ExitOK || stdout != "" {
+		t.Errorf("code %d, stdout %q", code, stdout)
+	}
+	if data, err := os.ReadFile(out); err != nil || !json.Valid(data) {
+		t.Errorf("diff file: %v", err)
+	}
+	for name, args := range map[string][]string{
+		"one file":       {"diff", older},
+		"unknown format": {"diff", older, newer, "-f", "yaml"},
+		"missing file":   {"diff", older, filepath.Join(t.TempDir(), "nope.json")},
+	} {
+		if code, _, _ := run(ctx, t, args...); code != ExitError {
+			t.Errorf("%s: code %d, want %d", name, code, ExitError)
+		}
 	}
 }
