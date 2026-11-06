@@ -7,7 +7,7 @@ only when direction changes (record why in an ADR).
 
 **Goal:** download one binary, run `hostlint scan`, get a trustworthy per-control report.
 **Scope:** Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10 (Rocky Linux,
-AlmaLinux), and CentOS/RHEL 7 (best-effort: past end-of-life, but still common among Korean
+AlmaLinux), Amazon Linux 2023, and CentOS/RHEL 7 (best-effort: past end-of-life, but still common among Korean
 compliance targets); KISA CII Unix profile, 2026 edition (U-01–U-67, see ADR 0007). Other
 versions of these families are scanned best-effort and marked as such in results. CentOS 6 is
 out of reach — Go binaries need Linux 3.2 or later.
@@ -63,5 +63,5 @@ version that is free when it is ready; its design needs its own ADR first.
 ## Later
 
 - CIS mapping overlays (control IDs only), custom policy packs.
-- More distros (Amazon Linux, SUSE); scanning a container image without mounting it (`--root` scans a mounted root).
+- More distros (SUSE); scanning a container image without mounting it (`--root` scans a mounted root).
 - Remediation hints, scheduled scans, notifications.

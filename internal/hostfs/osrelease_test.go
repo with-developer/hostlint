@@ -45,6 +45,11 @@ ID_LIKE=debian
 			want:  OS{ID: "almalinux", IDLike: []string{"rhel", "centos", "fedora"}, VersionID: "10.0", VersionMajor: 10, Family: FamilyRHEL, Supported: true},
 		},
 		{
+			name:  "Amazon Linux 2023",
+			files: map[string]string{"/etc/os-release": "NAME=\"Amazon Linux\"\nID=\"amzn\"\nID_LIKE=\"fedora\"\nVERSION_ID=\"2023\"\n"},
+			want:  OS{ID: "amzn", IDLike: []string{"fedora"}, VersionID: "2023", VersionMajor: 2023, VersionKnown: true, Name: "Amazon Linux", Family: FamilyRHEL, Supported: true},
+		},
+		{
 			name:  "CentOS 7",
 			files: map[string]string{"/etc/os-release": "NAME=\"CentOS Linux\"\nVERSION=\"7 (Core)\"\nID=\"centos\"\nID_LIKE=\"rhel fedora\"\nVERSION_ID=\"7\"\n"},
 			want:  OS{ID: "centos", IDLike: []string{"rhel", "fedora"}, VersionID: "7", VersionMajor: 7, Name: "CentOS Linux 7 (Core)", Family: FamilyRHEL, Supported: true},

@@ -47,6 +47,7 @@ var supported = map[string][]string{
 	"rocky":     {"9", "10"},
 	"almalinux": {"9", "10"},
 	"centos":    {"7"},
+	"amzn":      {"2023"},
 }
 
 // DetectOS identifies the target's operating system from /etc/os-release,
@@ -188,7 +189,7 @@ func family(id string, like []string) string {
 		switch name {
 		case "debian", "ubuntu":
 			return FamilyDebian
-		case "rhel", "centos", "rocky", "almalinux", "ol":
+		case "rhel", "centos", "rocky", "almalinux", "ol", "amzn", "fedora":
 			return FamilyRHEL
 		}
 	}

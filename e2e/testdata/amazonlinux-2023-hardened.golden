@@ -1,0 +1,420 @@
+os: Amazon Linux 2023.12.20261102 (id amzn, version 2023, family rhel, supported true)
+profile kisa-2026 revision 15: MANUAL 11 PASS 37 NOT_APPLICABLE 19
+
+U-01 PASS
+  ssh.permit-root-login PASS
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:1]
+  ssh.match-permit-root-login PASS
+  services.review-remote-root-login NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["telnet", "telnetd", "rlogin", "rlogind", "krlogind", "ktelnet", "ktelnetd"] || (s.service == "login" && s.kind in ["inetd", "xinetd"]) || s.program.matches("/((in\\.)?(telnetd|rlogind)|k(telnetd|rlogind))$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-02 PASS
+  accounts.password-min-length PASS
+    - pam.password_quality.module = "pam_pwquality.so"
+    - pam.password_quality.settings.dcredit = "-1" (explicit)  [/etc/security/pwquality.conf:2]
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.lcredit = "-1" (explicit)  [/etc/security/pwquality.conf:4]
+    - pam.password_quality.settings.minlen = "8" (explicit)  [/etc/security/pwquality.conf:1]
+    - pam.password_quality.settings.ocredit = "-1" (explicit)  [/etc/security/pwquality.conf:5]
+    - pam.password_quality.settings.ucredit = "-1" (explicit)  [/etc/security/pwquality.conf:3]
+  accounts.password-complexity PASS
+    - pam.password_quality.module = "pam_pwquality.so"
+    - pam.password_quality.settings.dcredit = "-1" (explicit)  [/etc/security/pwquality.conf:2]
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.lcredit = "-1" (explicit)  [/etc/security/pwquality.conf:4]
+    - pam.password_quality.settings.minclass = "0" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.ocredit = "-1" (explicit)  [/etc/security/pwquality.conf:5]
+    - pam.password_quality.settings.ucredit = "-1" (explicit)  [/etc/security/pwquality.conf:3]
+  accounts.password-quality-root PASS
+    - pam.password_quality.module = "pam_pwquality.so"
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+  accounts.password-max-age PASS
+    - "90" (explicit); expected 1–90  [/etc/login.defs:131]
+  accounts.password-max-age-existing PASS
+  accounts.password-min-age PASS
+    - "1" (explicit); expected 1–99999  [/etc/login.defs:132]
+  accounts.password-history PASS
+    - pam.password_history.module = "pam_pwhistory.so"
+    - pam.password_history.settings.remember = "4" (explicit)  [/etc/pam.d/system-auth:15]
+
+U-03 PASS
+  accounts.lockout-threshold PASS
+    - pam.lockout.login.enforced = true
+    - pam.lockout.login.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
+    - pam.lockout.sshd.enforced = true
+    - pam.lockout.sshd.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
+    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config.d/50-redhat.conf:15]
+    - sshd.present = true
+
+U-04 PASS
+  accounts.passwd-no-hashes PASS
+  accounts.shadow-file PASS
+    - shadow.present = true
+
+U-05 PASS
+  accounts.uid0-only-root PASS
+
+U-06 PASS
+  accounts.su-wheel-only PASS
+    - "restricted" (explicit); expected one of [restricted]  [/etc/pam.d/su:6]
+
+U-07 MANUAL
+  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
+    - root (uid 0, /bin/bash)
+
+U-08 MANUAL
+  accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
+    - root: root (primary group), sync (primary group), shutdown (primary group), halt (primary group), operator (primary group)
+    - wheel: (no members)
+
+U-09 MANUAL
+  accounts.review-empty-groups MANUAL: Confirm whether each listed group is still needed; many belong to installed software and own files or devices.
+    - sys (gid 3)
+    - tty (gid 5)
+    - disk (gid 6)
+    - mem (gid 8)
+    - kmem (gid 9)
+    - wheel (gid 10)
+    - cdrom (gid 11)
+    - man (gid 15)
+    - …
+
+U-10 PASS
+  accounts.unique-uids PASS
+
+U-11 PASS
+  accounts.system-account-shells PASS
+
+U-12 PASS
+  accounts.session-timeout-set PASS
+    - "600" (explicit); expected a value matching [1-9][0-9]*  [/etc/profile.d/tmout.sh:1]
+  accounts.session-timeout-value PASS
+
+U-13 PASS
+  accounts.password-hash-method PASS
+    - login_defs.settings.ENCRYPT_METHOD = "YESCRYPT" (explicit)  [/etc/login.defs:205]
+    - os.family = "rhel"
+    - os.id = "amzn"
+    - os.version_major = 2023
+    - pam.effective.password_hash = "yescrypt" (explicit)  [/etc/pam.d/system-auth:16]
+  accounts.password-hash-strength PASS
+  accounts.passwd-no-hashes PASS
+
+U-14 PASS
+  env.path-current-dir PASS
+
+U-15 PASS
+  files.unowned PASS
+
+U-16 PASS
+  files.passwd-perms PASS
+    - /etc/passwd: root:root 0644  [/etc/passwd]
+
+U-17 PASS
+  files.startup-scripts PASS
+    - /etc/init.d: does not exist  [/etc/init.d]
+    - /etc/init.d/*: no matching files  [/etc/init.d/*]
+    - /etc/rc.d/init.d: root:root 0755  [/etc/rc.d/init.d]
+    - /etc/rc.d/init.d/README: root:root 0644  [/etc/rc.d/init.d/README]
+    - /etc/rc.d/rc.local: does not exist  [/etc/rc.d/rc.local]
+    - /etc/rc.local: does not exist  [/etc/rc.local]
+    - /etc/systemd/system: root:root 0755  [/etc/systemd/system]
+    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
+    - …
+
+U-18 PASS
+  files.shadow-perms PASS
+    - /etc/shadow: root:root 0400  [/etc/shadow]
+
+U-19 PASS
+  files.hosts-perms PASS
+    - /etc/hosts: root:root 0644  [/etc/hosts]
+
+U-20 NOT_APPLICABLE
+  files.inetd-conf-perms NOT_APPLICABLE: no matching files exist
+    - /etc/inetd.conf: does not exist  [/etc/inetd.conf]
+    - /etc/xinetd.conf: does not exist  [/etc/xinetd.conf]
+    - /etc/xinetd.d/*: no matching files  [/etc/xinetd.d/*]
+
+U-21 NOT_APPLICABLE
+  files.syslog-conf-perms NOT_APPLICABLE: no matching files exist
+    - /etc/rsyslog.conf: does not exist  [/etc/rsyslog.conf]
+    - /etc/rsyslog.d/*.conf: no matching files  [/etc/rsyslog.d/*.conf]
+    - /etc/syslog-ng/conf.d/*.conf: no matching files  [/etc/syslog-ng/conf.d/*.conf]
+    - /etc/syslog-ng/syslog-ng.conf: does not exist  [/etc/syslog-ng/syslog-ng.conf]
+    - /etc/syslog.conf: does not exist  [/etc/syslog.conf]
+
+U-22 PASS
+  files.services-perms PASS
+    - /etc/services: root:root 0644  [/etc/services]
+
+U-23 MANUAL
+  files.setid-outside-system-dirs PASS
+  files.review-setid MANUAL: Check that every listed program needs its set-ID bit.
+    - /usr/bin/chage 4755 root
+    - /usr/bin/gpasswd 4755 root
+    - /usr/bin/mount 4755 root
+    - /usr/bin/newgrp 4755 root
+    - /usr/bin/passwd 4755 root
+    - /usr/bin/su 4755 root
+    - /usr/bin/umount 4755 root
+    - /usr/bin/write 2755 root
+    - …
+
+U-24 PASS
+  homes.startup-files PASS
+
+U-25 PASS
+  files.world-writable PASS
+
+U-26 PASS
+  files.dev-regular-files PASS
+
+U-27 PASS
+  files.rhosts PASS
+    - /etc/hosts.equiv: does not exist  [/etc/hosts.equiv]
+    - /root/.rhosts: does not exist  [/root/.rhosts]
+  files.rhosts-homes PASS
+    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
+
+U-28 MANUAL
+  services.review-network-access MANUAL: Check that services accept connections only from the addresses that need them, with a host firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the firewall services that are enabled and the sockets that listen beyond the host itself.
+    - no firewall service is installed
+
+U-29 PASS
+  files.hosts-lpd-perms PASS
+    - /etc/hosts.lpd: does not exist  [/etc/hosts.lpd]
+
+U-30 PASS
+  env.umask-login-defs PASS
+    - "022" (explicit); expected a value matching 0*[0-7]?[2367][2367]  [/etc/login.defs:117]
+  env.umask-startup-files PASS
+
+U-31 PASS
+  homes.owner-perms PASS
+
+U-32 PASS
+  homes.exists PASS
+
+U-33 MANUAL
+  files.suspicious-hidden-names PASS
+  files.review-hidden-files MANUAL: Look for unexpected hidden files and directories (names starting with "."), for example with `find / -xdev -name ".*" -type f`, and remove those that do not belong. Names made only of dots and spaces are listed by files.suspicious-hidden-names.
+
+U-34 PASS
+  services.no-finger PASS
+
+U-35 NOT_APPLICABLE
+  services.vsftpd-no-anonymous NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.samba-no-guest NOT_APPLICABLE: applies is false: samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba", "samba-ad-dc"] || s.program.matches("/(smbd|samba)$"))
+    - samba.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-anonymous-sharing NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))) || (!samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba", "samba-ad-dc"] || s.program.matches("/(smbd|samba)$")))
+    - ftp.present = false
+    - samba.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-36 PASS
+  services.no-r-services PASS
+
+U-37 PASS
+  files.cron-commands PASS
+    - /usr/bin/at: does not exist  [/usr/bin/at]
+    - /usr/bin/crontab: does not exist  [/usr/bin/crontab]
+  files.cron-files PASS
+    - /etc/at.allow: does not exist  [/etc/at.allow]
+    - /etc/at.deny: does not exist  [/etc/at.deny]
+    - /etc/cron.allow: does not exist  [/etc/cron.allow]
+    - /etc/cron.d/*: no matching files  [/etc/cron.d/*]
+    - /etc/cron.deny: does not exist  [/etc/cron.deny]
+    - /etc/crontab: does not exist  [/etc/crontab]
+  files.cron-scripts PASS
+    - /etc/cron.daily: does not exist  [/etc/cron.daily]
+    - /etc/cron.daily/*: no matching files  [/etc/cron.daily/*]
+    - /etc/cron.hourly: does not exist  [/etc/cron.hourly]
+    - /etc/cron.hourly/*: no matching files  [/etc/cron.hourly/*]
+    - /etc/cron.monthly: does not exist  [/etc/cron.monthly]
+    - /etc/cron.monthly/*: no matching files  [/etc/cron.monthly/*]
+    - /etc/cron.weekly: does not exist  [/etc/cron.weekly]
+    - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
+  files.cron-spool PASS
+    - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-spool-rhel PASS
+    - /var/spool/cron/*: no matching files  [/var/spool/cron/*]
+  files.cron-root-spool PASS
+    - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
+    - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
+  files.at-spool PASS
+    - /var/spool/at/*: no matching files  [/var/spool/at/*]
+    - /var/spool/cron/atjobs/*: no matching files  [/var/spool/cron/atjobs/*]
+
+U-38 PASS
+  services.no-dos-prone PASS
+
+U-39 PASS
+  services.no-nfs-server PASS
+
+U-40 NOT_APPLICABLE
+  services.nfs-exports-restricted NOT_APPLICABLE: applies is false: nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+    - nfs.present = true
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-nfs-other NOT_APPLICABLE: applies is false: !nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
+    - nfs.present = true
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-41 PASS
+  services.no-automount PASS
+
+U-42 PASS
+  services.no-rpc PASS
+
+U-43 PASS
+  services.no-nis PASS
+
+U-44 PASS
+  services.no-tftp-talk PASS
+
+U-45 NOT_APPLICABLE
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-46 NOT_APPLICABLE
+  services.review-mail-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-47 NOT_APPLICABLE
+  services.postfix-no-open-relay NOT_APPLICABLE: applies is false: postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+    - postfix.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-mail-relay-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || (!s.program.contains("/postfix/") && s.program.matches("/(sendmail|exim4?|smtpd)$"))) || (!postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
+    - postfix.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-48 NOT_APPLICABLE
+  services.postfix-no-vrfy NOT_APPLICABLE: applies is false: postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
+    - postfix.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-mail-relay-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || (!s.program.contains("/postfix/") && s.program.matches("/(sendmail|exim4?|smtpd)$"))) || (!postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
+    - postfix.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-49 NOT_APPLICABLE
+  services.review-dns-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-50 NOT_APPLICABLE
+  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-51 NOT_APPLICABLE
+  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
+    - bind.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
+    - bind.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-52 PASS
+  services.no-telnet PASS
+
+U-53 NOT_APPLICABLE
+  services.vsftpd-banner NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-ftp-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-54 NOT_APPLICABLE
+  services.vsftpd-tls NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-ftp-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-55 PASS
+  services.ftp-account-shell PASS
+
+U-56 NOT_APPLICABLE
+  services.review-ftp-server NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-57 NOT_APPLICABLE
+  services.vsftpd-no-root NOT_APPLICABLE: applies is false: ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+  services.review-ftp-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
+    - ftp.present = false
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+
+U-58 PASS
+  services.no-snmp PASS
+
+U-59 NOT_APPLICABLE
+  services.snmp-v3-only NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+    - snmp.present = false
+
+U-60 NOT_APPLICABLE
+  services.snmp-community-strong NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+    - snmp.present = false
+
+U-61 NOT_APPLICABLE
+  services.snmp-access-restricted NOT_APPLICABLE: applies is false: snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+    - snmp.present = false
+  services.review-snmp-agent NOT_APPLICABLE: applies is false: !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
+    - services.started = [{chrony-config chrony-config.service unit /usr/sbin/amazon-chrony-config /etc/systemd/system/chronyd.service.wants/chrony-config.service}, {chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/sy…
+    - snmp.present = false
+
+U-62 MANUAL
+  files.review-login-banners MANUAL: Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your organization's warning and no system details. The list shows what each file starts with.
+    - /etc/issue: \S (shows system details, for example \S)
+    - /etc/issue.net: \S (shows system details, for example \S)
+    - /etc/motd: empty
+    - sshd Banner: none
+
+U-63 NOT_APPLICABLE
+  files.sudoers-perms NOT_APPLICABLE: no matching files exist
+    - /etc/sudoers: does not exist  [/etc/sudoers]
+    - /etc/sudoers.d/*: no matching files  [/etc/sudoers.d/*]
+
+U-64 MANUAL
+  services.review-security-updates MANUAL: Check that security updates are applied regularly (for example `apt list --upgradable` or `dnf updateinfo list --security`) and that the release is still supported. The list shows the release and the automatic update services that are enabled.
+    - release Amazon Linux 2023.12.20261102 (amzn 2023)
+
+U-65 MANUAL
+  services.time-sync PASS
+    - services.active is empty
+    - services.sysv["chrony"].enabled: not set
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
+    - services.units["chrony.service"].enabled: not set
+    - services.units["chrony.service"].masked: not set
+    - services.units["chronyd.service"].enabled = true
+    - …
+  services.review-time-sync MANUAL: Check that the time service uses your approved servers (chrony.conf, ntp.conf or timesyncd.conf).
+    - chronyd.service (unit)
+
+U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
+    - logging service enabled: systemd-journald.service
+
+U-67 MANUAL
+  files.log-world-writable PASS
+  files.review-log-files MANUAL: Check that each listed log belongs to the service that writes it (syslog, a database, a web server) and not to a person's login account. Logs owned by root are not listed.
+    - /var/log/chrony 0750 chrony:chrony

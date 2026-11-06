@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 4293973 -->
+<!-- translated from README.md @ 10c63e5 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -147,7 +147,7 @@ sudo hostlint scan --config hostlint.yaml
 사람의 판단이 필요한 컨트롤(남길 계정, 배너, 로그 정책, 패치 수준, 서비스 접근 범위)과 설정을 아직 읽지 않는
 서버(Postfix 외의 메일 서버, BIND 외의 DNS 서버, vsftpd 외의 FTP 서버)의 설정은 `MANUAL`이고, 검토할 사실이
 함께 나열됩니다. 해당 소프트웨어가 실행되지 않으면 `NOT_APPLICABLE`입니다. 지원 대상: Ubuntu 22.04/24.04/26.04,
-Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), CentOS/RHEL 7(최선 노력). 다른 버전도 최선
+Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentOS/RHEL 7(최선 노력). 다른 버전도 최선
 노력으로 점검하고 결과에 그렇게 표시합니다.
 
 제목과 설명은 hostlint가 직접 작성했고, 프로파일은 컨트롤 ID만 참조합니다.

@@ -149,7 +149,7 @@ Controls that need a person's judgment (accounts to keep, banners, logging polic
 reach a service) and the settings of servers whose configuration is not parsed yet (mail servers other
 than Postfix, DNS servers other than BIND, FTP servers other than vsftpd) are `MANUAL`, with the facts to
 review listed under them, and `NOT_APPLICABLE` where the software is not running. Supported targets: Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10
-(Rocky Linux, AlmaLinux), and CentOS/RHEL 7 best-effort; other versions are scanned
+(Rocky Linux, AlmaLinux), Amazon Linux 2023, and CentOS/RHEL 7 best-effort; other versions are scanned
 best-effort and marked as such.
 
 Titles and descriptions are hostlint's own; profiles reference control IDs only.

@@ -100,8 +100,17 @@ rhel)
 		done
 	else
 		profile=minimal
-		[ "$major" -ge 10 ] && profile=local
-		authselect select "$profile" with-faillock with-pwhistory --force >/dev/null
+		# EL 10 renamed the profile; Amazon Linux 2023 keeps minimal.
+		[ "$ID" != amzn ] && [ "$major" -ge 10 ] && profile=local
+		if [ "$ID" = amzn ]; then
+			# Amazon Linux 2023 has no with-pwhistory feature, and its PAM does not read pwhistory.conf: the module is added by hand.
+			authselect select "$profile" with-faillock --force >/dev/null
+			for f in /etc/pam.d/system-auth /etc/pam.d/password-auth; do
+				sed -i '/^password.*pam_pwquality.so/a password    requisite     pam_pwhistory.so remember=4 enforce_for_root use_authtok' "$f"
+			done
+		else
+			authselect select "$profile" with-faillock with-pwhistory --force >/dev/null
+		fi
 		printf 'deny = 5\nunlock_time = 900\n' >/etc/security/faillock.conf
 		printf 'remember = 4\nenforce_for_root\n' >/etc/security/pwhistory.conf
 	fi
