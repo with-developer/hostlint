@@ -15,3 +15,13 @@ manual:
     login shell, which they should not have.
   show: >-
     accounts.users.filter(u, u.login_shell).map(u, u.name + " (uid " + string(u.uid) + ", " + (u.shell == "" ? "/bin/sh, empty field" : u.shell) + ")")
+tests:
+  - name: accounts with a login shell
+    facts:
+      accounts:
+        users: [{name: root, uid: 0, shell: /bin/bash, login_shell: true}, {name: daemon, uid: 1, shell: /usr/sbin/nologin, login_shell: false}, {name: odd, uid: 1001, shell: "", login_shell: true}]
+    want: MANUAL
+  - name: evidence unavailable still asks for the review
+    input: unavailable
+    unavailable: [accounts]
+    want: MANUAL

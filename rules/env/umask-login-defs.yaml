@@ -5,7 +5,9 @@ title_ko: 기본 umask가 그룹·기타 사용자의 쓰기를 막음 (login.de
 severity: medium
 description: >-
   Checks that UMASK in /etc/login.defs removes write permission for group and others (022 or
-  stricter). shadow-utils and pam_umask use it for new sessions and home directories.
+  stricter). shadow-utils and pam_umask use it for new sessions and home directories. The
+  check reads UMASK only: with `USERGROUPS_ENAB yes` (the default of Debian and Red Hat family
+  systems) users whose primary group is their own private group get group write added to it.
 rationale: A permissive umask makes new files writable by other users.
 remediation: Set `UMASK 022` (or `027`) in /etc/login.defs.
 setting:

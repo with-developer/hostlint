@@ -16,3 +16,20 @@ manual:
       .map(g, g.name + ": " + (
         size(accounts.users.filter(u, u.gid == g.gid)) + size(g.members) == 0 ? "(no members)" :
         (accounts.users.filter(u, u.gid == g.gid).map(u, u.name + " (primary group)") + g.members).join(", ")))
+tests:
+  - name: members listed
+    facts:
+      accounts:
+        users: [{name: root, uid: 0, gid: 0}, {name: alice, uid: 1000, gid: 1000}]
+        groups: [{name: root, gid: 0, members: []}, {name: sudo, gid: 27, members: [alice]}, {name: staff, gid: 50, members: [bob]}]
+    want: MANUAL
+  - name: a group without members
+    facts:
+      accounts:
+        users: []
+        groups: [{name: wheel, gid: 10, members: []}]
+    want: MANUAL
+  - name: evidence unavailable still asks for the review
+    input: unavailable
+    unavailable: [accounts]
+    want: MANUAL

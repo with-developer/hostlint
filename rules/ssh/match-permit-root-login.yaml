@@ -35,6 +35,10 @@ tests:
     facts:
       sshd: {present: true, match: [{criteria: "Address 10.0.0.0/8", settings: {permitrootlogin: {value: "yes", explicit: true}}, source: "/etc/ssh/sshd_config:40"}]}
     want: FAIL
+  - name: no OpenSSH server
+    facts:
+      sshd: {present: false, match: []}
+    want: NOT_APPLICABLE
   - name: an unreadable include could hold a Match block
     input: incomplete
     incomplete: [sshd]

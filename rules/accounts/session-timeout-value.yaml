@@ -1,5 +1,5 @@
 id: accounts.session-timeout-value
-version: 1
+version: 2
 title: The idle timeout is short enough
 title_ko: 유휴 시간 제한이 충분히 짧음
 severity: low
@@ -17,7 +17,7 @@ violations:
     t.unset || t.value == "" || int(t.value) < 1 || int(t.value) > params.max_seconds
   key: t.source
   text: >-
-    (t.unset ? "unset TMOUT" : "TMOUT=" + t.value) + (t.conditional ? " (conditional)" : "") + " at " + t.source
+    (t.unset ? "unset TMOUT" : t.value == "" ? "TMOUT is empty or not a plain number (an expansion?): review it" : "TMOUT=" + t.value) + (t.conditional ? " (conditional)" : "") + " at " + t.source
   allow_empty: true
 tests:
   - name: ten minutes

@@ -329,17 +329,17 @@ Lists accounts that share a UID with another account.
 
 PATH does not search the current directory first (PATH에서 현재 디렉터리를 먼저 찾지 않음) — severity high, lists what violates it.
 
-Lists PATH assignments in the system-wide and root's startup files that put the current directory (".", or an empty entry) anywhere but last.
+Lists PATH assignments in the system-wide and root's startup files that put the current directory (".", an empty entry, or a relative one such as "./bin" or "bin") anywhere but last.
 
 **Why.** With the current directory early in PATH, a program named like a system command in the directory you are in runs instead of it, as you.
 
-**Fix.** Remove "." and empty entries from PATH, or move them to the end.
+**Fix.** Remove "." , empty and relative entries from PATH, or move them to the end.
 
 #### `env.umask-login-defs`
 
 The default umask keeps new files unwritable by group and others (기본 umask가 그룹·기타 사용자의 쓰기를 막음 (login.defs)) — severity medium, compares one setting.
 
-Checks that UMASK in /etc/login.defs removes write permission for group and others (022 or stricter). shadow-utils and pam_umask use it for new sessions and home directories.
+Checks that UMASK in /etc/login.defs removes write permission for group and others (022 or stricter). shadow-utils and pam_umask use it for new sessions and home directories. The check reads UMASK only: with `USERGROUPS_ENAB yes` (the default of Debian and Red Hat family systems) users whose primary group is their own private group get group write added to it.
 
 **Why.** A permissive umask makes new files writable by other users.
 

@@ -1,20 +1,20 @@
 id: env.path-current-dir
-version: 1
+version: 2
 title: PATH does not search the current directory first
 title_ko: PATH에서 현재 디렉터리를 먼저 찾지 않음
 severity: high
 description: >-
   Lists PATH assignments in the system-wide and root's startup files that put the current
-  directory (".", or an empty entry) anywhere but last.
+  directory (".", an empty entry, or a relative one such as "./bin" or "bin") anywhere but last.
 rationale: >-
   With the current directory early in PATH, a program named like a system command in the
   directory you are in runs instead of it, as you.
-remediation: Remove "." and empty entries from PATH, or move them to the end.
+remediation: Remove "." , empty and relative entries from PATH, or move them to the end.
 violations:
   over: shell_env.path
   as: p
   where: >-
-    p.value.split(":").slice(0, p.value.split(":").size() - 1).exists(e, e == "." || e == "")
+    p.value.split(":").slice(0, p.value.split(":").size() - 1).exists(e, e == "" || !(e.startsWith("/") || e.startsWith("$") || e.startsWith("~")))
   key: p.source
   text: >-
     "PATH=" + p.value + (p.conditional ? " (conditional)" : "") + " at " + p.source
@@ -36,6 +36,14 @@ tests:
     facts:
       shell_env: {path: [{value: "/usr/bin::/bin", source: "/etc/profile:4"}]}
     want: FAIL
+  - name: a relative directory first
+    facts:
+      shell_env: {path: [{value: "./bin:/usr/bin", source: "/root/.bashrc:9"}]}
+    want: FAIL
+  - name: variable and home entries are absolute
+    facts:
+      shell_env: {path: [{value: "$HOME/bin:~/tools:${PATH}:/usr/bin", source: "/root/.bashrc:9"}]}
+    want: PASS
   - name: startup files incomplete
     input: incomplete
     incomplete: [shell_env]

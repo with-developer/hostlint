@@ -1,5 +1,5 @@
 id: accounts.unique-uids
-version: 1
+version: 2
 title: Every account has its own UID
 title_ko: 계정마다 UID가 다름
 severity: medium
@@ -13,7 +13,8 @@ violations:
   key: u.name
   text: >-
     u.name + " shares UID " + string(u.uid) + " with " +
-    accounts.duplicate_uids.filter(d, d.uid == u.uid)[0].users.filter(n, n != u.name).join(", ")
+    (accounts.duplicate_uids.filter(d, d.uid == u.uid)[0].users.filter(n, n != u.name).size() == 0 ? "another entry of the same name" :
+     accounts.duplicate_uids.filter(d, d.uid == u.uid)[0].users.filter(n, n != u.name).join(", "))
 tests:
   - name: unique
     facts:
