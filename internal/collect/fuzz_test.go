@@ -109,3 +109,46 @@ func FuzzPasswd(f *testing.F) {
 func FuzzInetdConf(f *testing.F) {
 	fuzzCollector(f, servicesCollector{}, "/etc/inetd.conf", "debian-12")
 }
+
+func FuzzGroup(f *testing.F) {
+	fuzzCollector(f, accountsCollector{}, "/etc/group", "debian-12", "rocky-9")
+}
+
+func FuzzHomesPasswd(f *testing.F) {
+	fuzzCollector(f, homesCollector{}, "/etc/passwd", "debian-12", "rocky-9")
+}
+
+func FuzzXinetdConf(f *testing.F) {
+	f.Add([]byte("defaults\n{\n\tdisabled = telnet\n}\nincludedir /etc/xinetd.d\ninclude /etc/xinetd.extra\nservice telnet\n{\n\tdisable = no\n\tserver = /usr/sbin/in.telnetd\n}\n"))
+	fuzzCollector(f, servicesCollector{}, "/etc/xinetd.conf", "debian-12")
+}
+
+func FuzzDpkgStatus(f *testing.F) {
+	f.Add([]byte("Package: bash\nStatus: install ok installed\nArchitecture: amd64\nVersion: 5.2\n\nPackage: x\nStatus: deinstall ok config-files\n"))
+	f.Add([]byte("Package: \nStatus:\n\n\n\nPackage"))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		_, _ = parseDpkg("/var/lib/dpkg/status", data)
+	})
+}
+
+func FuzzProcNet(f *testing.F) {
+	f.Add([]byte("  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n   0: 00000000:0016 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 12345 1 0000000000000000 100 0 0 10 0\n"))
+	f.Add([]byte("header\n0: 0100007F:1F90 00000000:0000 07 x x x x 0 0 1\n"))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		_, _ = parseProcNet("/proc/net/tcp", "tcp", data)
+		_, _ = parseProcNet("/proc/net/udp6", "udp", data)
+	})
+}
+
+func FuzzMountinfo(f *testing.F) {
+	f.Add([]byte(mountinfoSeed))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		_, _ = hostfs.ParseMountinfo(data, "/")
+		_, _ = hostfs.ParseMountinfo(data, "/scan")
+	})
+}
+
+const mountinfoSeed = `596 433 0:69 / / rw,relatime master:179 - overlay overlay rw,lowerdir=/a:/b
+605 596 254:1 /docker/volumes/data /srv/my\040data rw,relatime - ext4 /dev/vda1 rw
+606 596 0:80 / /mnt/share rw,relatime - nfs4 server:/export rw,vers=4.2
+`
