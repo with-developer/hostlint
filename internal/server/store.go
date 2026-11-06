@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"io/fs"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	_ "modernc.org/sqlite" // the pure-Go SQLite driver: the binary stays static
 
@@ -38,7 +40,10 @@ type Store struct {
 // OpenStore opens (and creates) the database at path and applies the migrations.
 // path ":memory:" gives a private in-memory database, for tests.
 func OpenStore(path string) (*Store, error) {
-	dsn := "file:" + path + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_pragma=synchronous(NORMAL)"
+	// Write transactions start with BEGIN IMMEDIATE (_txlock): the server and the command
+	// line share the file, and a transaction that reads and then writes must not fail
+	// halfway on another process's commit.
+	dsn := "file:" + path + "?_txlock=immediate&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_pragma=synchronous(NORMAL)"
 	if path != ":memory:" {
 		dsn += "&_pragma=journal_mode(WAL)"
 	}
@@ -74,8 +79,11 @@ func (s *Store) migrate(ctx context.Context) error {
 		names = append(names, e.Name())
 	}
 	sort.Strings(names)
-	for i, name := range names {
-		version := i + 1
+	for _, name := range names {
+		version, err := migrationVersion(name)
+		if err != nil {
+			return err
+		}
 		var done int
 		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM schema_migrations WHERE version = ?`, version).Scan(&done); err != nil {
 			return err
@@ -111,12 +119,22 @@ func (s *Store) migrate(ctx context.Context) error {
 	return nil
 }
 
+// migrationVersion is the number at the start of a migration file name ("0001_init.sql").
+func migrationVersion(name string) (int, error) {
+	digits, _, _ := strings.Cut(name, "_")
+	n, err := strconv.Atoi(digits)
+	if err != nil || n < 1 {
+		return 0, fmt.Errorf("migration file %q does not start with its version number", name)
+	}
+	return n, nil
+}
+
 func (s *Store) stamp() string { return s.now().UTC().Format(time.RFC3339Nano) }
 
 // Errors of an ingest that the caller answers with a status.
 var (
-	// ErrDuplicate means the scan was received before (a replay or a retry).
-	ErrDuplicate = errors.New("this scan was already received")
+	// ErrDuplicate means a scan with this ID was received for the host before, with other content.
+	ErrDuplicate = errors.New("a scan with this ID was already received with different content")
 	// ErrIdentity means the result claims a host the credential, or the known hosts, do not allow.
 	ErrIdentity = errors.New("host identity conflict")
 )
@@ -127,12 +145,15 @@ type IngestResult struct {
 	HostRow    int64
 	ReceivedAt string
 	Digest     string
+	// Duplicate is true when the same document was received before: a retry. Nothing was stored.
+	Duplicate bool
 }
 
 // IngestScan stores a validated result. raw is the document as received (kept
 // unchanged next to the rows derived from it). It enforces the host identity rules of
 // ADR 0010: a bound credential speaks for one host name and host ID; a known name never
-// gets a second host ID; a scan ID is stored once per host.
+// gets a second host ID; a scan ID is stored once per host. The same document sent again
+// is a retry and is acknowledged without being stored twice.
 func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Result, raw []byte, remote string) (*IngestResult, error) {
 	sum := sha256.Sum256(raw)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
@@ -145,7 +166,7 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 		return nil, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTx(ctx, nil) // BEGIN IMMEDIATE: what is read here is still true when written
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +177,17 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 		if name != cred.BoundName {
 			return nil, fmt.Errorf("%w: the token is for host %q, the result is of %q", ErrIdentity, cred.BoundName, name)
 		}
-		// The first result pins the host ID; after that it must match.
-		if cred.BoundHostID != "" && hostID != cred.BoundHostID {
-			return nil, fmt.Errorf("%w: the host ID differs from the one this token was first used with", ErrIdentity)
+		// The first result pins the host ID; after that it must match. The pin is read in
+		// this transaction, not taken from the request's earlier look at the credential.
+		var pinned sql.NullString
+		if err := tx.QueryRowContext(ctx, `SELECT bound_host_id FROM credentials WHERE id = ?`, cred.ID).Scan(&pinned); err != nil {
+			return nil, err
 		}
-		if cred.BoundHostID == "" && hostID != "" {
-			if _, err := tx.ExecContext(ctx, `UPDATE credentials SET bound_host_id = ? WHERE id = ?`, hostID, cred.ID); err != nil {
+		switch {
+		case pinned.String != "" && hostID != pinned.String:
+			return nil, fmt.Errorf("%w: the host ID differs from the one this token was first used with", ErrIdentity)
+		case pinned.String == "" && hostID != "":
+			if _, err := tx.ExecContext(ctx, `UPDATE credentials SET bound_host_id = ? WHERE id = ? AND bound_host_id IS NULL`, hostID, cred.ID); err != nil {
 				return nil, err
 			}
 		}
@@ -171,13 +197,19 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM hosts WHERE name = ? AND host_id != ? AND host_id != ''`, name, hostID).Scan(&other); err != nil {
 		return nil, err
 	}
-	if other > 0 && hostID != "" {
+	switch {
+	case other > 0 && hostID != "":
 		return nil, fmt.Errorf("%w: the name %q is known with another host ID", ErrIdentity, name)
-	}
-	if other > 0 && hostID == "" {
+	case other > 0:
 		return nil, fmt.Errorf("%w: the name %q is known with a host ID and this result has none", ErrIdentity, name)
 	}
 	received := s.stamp()
+	if hostID != "" {
+		// A host that first sent no ID and now sends one is the same host: its row takes the ID.
+		if _, err := tx.ExecContext(ctx, `UPDATE hosts SET host_id = ? WHERE name = ? AND host_id = ''`, hostID, name); err != nil {
+			return nil, err
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO hosts (name, host_id, created_at) VALUES (?, ?, ?)`, name, hostID, received); err != nil {
 		return nil, err
 	}
@@ -186,31 +218,51 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 		return nil, err
 	}
 	r, err := tx.ExecContext(ctx,
-		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT (host_row, scan_id) DO NOTHING`,
 		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes())
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed: scans.host_row, scans.scan_id") {
+		return nil, err
+	}
+	if n, err := r.RowsAffected(); err != nil {
+		return nil, err
+	} else if n == 0 {
+		// Received before: the same document is a retry (acknowledged, not stored again), another is a conflict.
+		var rowID int64
+		var storedDigest, storedAt string
+		if err := tx.QueryRowContext(ctx, `SELECT id, digest, received_at FROM scans WHERE host_row = ? AND scan_id = ?`, hostRow, res.Scan.ID).Scan(&rowID, &storedDigest, &storedAt); err != nil {
+			return nil, err
+		}
+		if storedDigest != digest {
 			return nil, ErrDuplicate
 		}
-		return nil, err
+		return &IngestResult{ScanRow: rowID, HostRow: hostRow, ReceivedAt: storedAt, Digest: digest, Duplicate: true}, nil
 	}
 	scanRow, err := r.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
+	insControl, err := tx.PrepareContext(ctx, `INSERT INTO scan_controls (scan_row, profile, control_id, severity, status) VALUES (?, ?, ?, ?, ?)`)
+	if err != nil {
+		return nil, err
+	}
+	defer insControl.Close()
 	for _, c := range res.Controls {
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO scan_controls (scan_row, profile, control_id, severity, status) VALUES (?, ?, ?, ?, ?)`,
-			scanRow, c.Profile, c.ID, string(c.Severity), string(c.Status)); err != nil {
+		if _, err := insControl.ExecContext(ctx, scanRow, c.Profile, c.ID, string(c.Severity), string(c.Status)); err != nil {
 			return nil, err
 		}
 	}
+	insCheck, err := tx.PrepareContext(ctx, `INSERT INTO scan_checks (scan_row, ref, severity, status) VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return nil, err
+	}
+	defer insCheck.Close()
 	for _, c := range res.Checks {
 		// Passing checks can be read from the stored document; the rows are for what needs a look.
 		if c.Status == engine.StatusPass || c.Status == engine.StatusNotApplicable {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO scan_checks (scan_row, ref, severity, status) VALUES (?, ?, ?, ?)`,
-			scanRow, c.Ref, string(c.Severity), string(c.Status)); err != nil {
+		if _, err := insCheck.ExecContext(ctx, scanRow, c.Ref, string(c.Severity), string(c.Status)); err != nil {
 			return nil, err
 		}
 	}
@@ -262,9 +314,13 @@ func appendAudit(ctx context.Context, tx *sql.Tx, at string, credentialID int64,
 	return err
 }
 
+// truncate cuts s to at most n bytes without splitting a character.
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
 	}
 	return s[:n]
 }

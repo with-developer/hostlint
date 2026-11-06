@@ -110,12 +110,6 @@ linters:
         linters:
           - forbidigo
         text: (read the host through internal/hostfs|raw system calls belong)
-      # The fleet server keeps its own data (database, generated certificate) and listens;
-      # the push client reads the file the user names and connects out. Neither scans.
-      - path: internal/(server|push)/
-        linters:
-          - forbidigo
-        text: (hostlint must not modify the host|read the host through internal/hostfs|scanning makes no network|v0.1 makes no network)
       # The end-to-end tests drive Docker on the developer's machine or CI; they
       # are not part of hostlint.
       - path: e2e/

@@ -52,9 +52,10 @@ func TestPushEndToEnd(t *testing.T) {
 	if err != nil || got.Digest == "" {
 		t.Fatalf("send: %v, %+v", err, got)
 	}
-	// The same result again is a conflict, with the server's reason.
-	if _, err := push.Send(ctx, doc, push.Options{URL: ts.URL, Token: tok, Pin: pin}); err == nil || !strings.Contains(err.Error(), "409") || !strings.Contains(err.Error(), "already received") {
-		t.Errorf("a replay: %v", err)
+	// The same result again is a retry: acknowledged, not an error.
+	again, err := push.Send(ctx, doc, push.Options{URL: ts.URL, Token: tok, Pin: pin})
+	if err != nil || !again.Duplicate || again.Digest != got.Digest {
+		t.Errorf("a retry: %v, %+v", err, again)
 	}
 }
 

@@ -76,7 +76,7 @@ func (s *Server) Serve(ctx context.Context, lc ListenConfig, onReady func(addr, 
 		pin = SPKIPin(leaf)
 		srv.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
 	}
-	ln, err := net.Listen("tcp", lc.Addr)
+	ln, err := net.Listen("tcp", lc.Addr) //nolint:forbidigo // the fleet server listens; scanning packages cannot import this one (ADR 0010)
 	if err != nil {
 		return err
 	}
@@ -158,10 +158,10 @@ func generateCertificate(addr, crtPath, keyPath string) (tls.Certificate, error)
 	}
 	crtPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-	if err := os.WriteFile(keyPath, keyPEM, 0o600); err != nil {
+	if err := os.WriteFile(keyPath, keyPEM, 0o600); err != nil { //nolint:forbidigo // the server writes its own certificate, not the scanned host
 		return tls.Certificate{}, fmt.Errorf("writing the certificate key: %w", err)
 	}
-	if err := os.WriteFile(crtPath, crtPEM, 0o644); err != nil { //nolint:gosec // a public certificate
+	if err := os.WriteFile(crtPath, crtPEM, 0o644); err != nil { //nolint:forbidigo,gosec // the server writes its own public certificate
 		return tls.Certificate{}, fmt.Errorf("writing the certificate: %w", err)
 	}
 	return tls.X509KeyPair(crtPEM, keyPEM)

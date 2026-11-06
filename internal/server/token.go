@@ -66,9 +66,16 @@ func (s *Store) CreateCredential(ctx context.Context, scope, name, boundName str
 	if boundName != "" {
 		bound = boundName
 	}
-	r, err := s.db.ExecContext(ctx,
+	// The token and its audit row are one transaction: no credential exists without its record.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	at := s.stamp()
+	r, err := tx.ExecContext(ctx,
 		`INSERT INTO credentials (kind, scope, name, prefix, hash, bound_name, created_at, expires_at) VALUES ('token', ?, ?, ?, ?, ?, ?, ?)`,
-		scope, name, token[:len(prefix)+4], hashToken(token), bound, s.stamp(), expiresAt)
+		scope, name, token[:len(prefix)+4], hashToken(token), bound, at, expiresAt)
 	if err != nil {
 		return "", 0, err
 	}
@@ -76,7 +83,10 @@ func (s *Store) CreateCredential(ctx context.Context, scope, name, boundName str
 	if err != nil {
 		return "", 0, err
 	}
-	if err := s.Audit(ctx, id, "cli", "token-created", fmt.Sprintf("%s token %q for %s", scope, name, orAny(boundName))); err != nil {
+	if err := appendAudit(ctx, tx, at, id, "cli", "token-created", fmt.Sprintf("%s token %q for %s", scope, truncate(name, 100), orAny(boundName)), ""); err != nil {
+		return "", 0, err
+	}
+	if err := tx.Commit(); err != nil {
 		return "", 0, err
 	}
 	return token, id, nil
@@ -144,7 +154,13 @@ func (s *Store) ListCredentials(ctx context.Context) ([]Credential, error) {
 
 // RevokeCredential revokes a token. It reports whether there was one to revoke.
 func (s *Store) RevokeCredential(ctx context.Context, id int64) (bool, error) {
-	r, err := s.db.ExecContext(ctx, `UPDATE credentials SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, s.stamp(), id)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	at := s.stamp()
+	r, err := tx.ExecContext(ctx, `UPDATE credentials SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, at, id)
 	if err != nil {
 		return false, err
 	}
@@ -152,5 +168,8 @@ func (s *Store) RevokeCredential(ctx context.Context, id int64) (bool, error) {
 	if err != nil || n == 0 {
 		return false, err
 	}
-	return true, s.Audit(ctx, id, "cli", "token-revoked", fmt.Sprintf("token %d", id))
+	if err := appendAudit(ctx, tx, at, id, "cli", "token-revoked", fmt.Sprintf("token %d", id), ""); err != nil {
+		return false, err
+	}
+	return true, tx.Commit()
 }

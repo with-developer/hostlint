@@ -123,8 +123,10 @@ func TestIngestRefusals(t *testing.T) {
 	if n := count(t, store, `SELECT COUNT(*) FROM scans`); n != 0 {
 		t.Errorf("%d scans stored from refused requests", n)
 	}
-	if n := count(t, store, `SELECT COUNT(*) FROM audit WHERE action LIKE 'reject%'`); n < len(tests) {
-		t.Errorf("%d refusals audited", n)
+	// Refusals of a request with a valid token are audited; those without one are not (anyone could
+	// fill the table).
+	if n := count(t, store, `SELECT COUNT(*) FROM audit WHERE action LIKE 'reject%'`); n != 3 {
+		t.Errorf("%d refusals audited, want 3 (not a result, another host, too large)", n)
 	}
 }
 
@@ -145,8 +147,20 @@ func TestIngestReplayAndIdentity(t *testing.T) {
 	if code, _ := post(t, srv, wild, variant("aaaa", "scan-1")); code != http.StatusCreated {
 		t.Fatalf("first: %d", code)
 	}
-	if code, out := post(t, srv, wild, variant("aaaa", "scan-1")); code != http.StatusConflict {
-		t.Errorf("replay: %d %v", code, out)
+	// The same document again is a retry: acknowledged, not stored twice.
+	if code, out := post(t, srv, wild, variant("aaaa", "scan-1")); code != http.StatusOK || out["duplicate"] != true {
+		t.Errorf("retry: %d %v", code, out)
+	}
+	if n := count(t, store, `SELECT COUNT(*) FROM scans`); n != 1 {
+		t.Errorf("%d scans after a retry, want 1", n)
+	}
+	// Another document under the same scan ID is a conflict.
+	changed := bytes.ReplaceAll(variant("aaaa", "scan-1"), []byte(`"SSH does not allow direct root login"`), []byte(`"edited"`))
+	if bytes.Equal(changed, variant("aaaa", "scan-1")) {
+		t.Fatal("the fixture does not hold the text this test edits")
+	}
+	if code, out := post(t, srv, wild, changed); code != http.StatusConflict || !strings.Contains(out["error"].(string), "different content") {
+		t.Errorf("scan ID reused with other content: %d %v", code, out)
 	}
 	if code, out := post(t, srv, wild, variant("aaaa", "scan-2")); code != http.StatusCreated {
 		t.Errorf("a new scan of the same host: %d %v", code, out)
@@ -281,5 +295,57 @@ func TestPlainHTTPOnlyOnLoopback(t *testing.T) {
 	err := srv.Serve(context.Background(), ListenConfig{Addr: "0.0.0.0:0", PlainHTTP: true}, nil)
 	if err == nil || !strings.Contains(err.Error(), "loopback") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+// A host that first sent no ID and later sends one is the same host.
+func TestHostIDIsAdoptedByTheNameKnownWithout(t *testing.T) {
+	srv, store := newTestServer(t)
+	wild := token(t, store, ScopeIngest, "")
+	web := fixture(t, "web-01.json")
+	if code, _ := post(t, srv, wild, web); code != http.StatusCreated {
+		t.Fatalf("without an ID: %d", code)
+	}
+	with := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "web-01", "hostId": "aaaa"`))
+	with = bytes.ReplaceAll(with, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte("scan-2"))
+	if code, out := post(t, srv, wild, with); code != http.StatusCreated {
+		t.Fatalf("with an ID: %d %v", code, out)
+	}
+	if n := count(t, store, `SELECT COUNT(*) FROM hosts`); n != 1 {
+		t.Errorf("%d host rows, want 1", n)
+	}
+	if n := count(t, store, `SELECT COUNT(*) FROM hosts WHERE host_id = 'aaaa'`); n != 1 {
+		t.Errorf("the host did not take the ID")
+	}
+}
+
+// Text that would forge a log line is refused, not stored.
+func TestIngestRefusesUnprintableIdentifiers(t *testing.T) {
+	srv, store := newTestServer(t)
+	wild := token(t, store, ScopeIngest, "")
+	body := bytes.ReplaceAll(fixture(t, "web-01.json"), []byte(`"hostname": "web-01"`), []byte(`"hostname": "web-01\nINFO forged"`))
+	if code, out := post(t, srv, wild, body); code != http.StatusUnprocessableEntity {
+		t.Errorf("%d %v", code, out)
+	}
+	if n := count(t, store, `SELECT COUNT(*) FROM hosts`); n != 0 {
+		t.Errorf("%d hosts stored", n)
+	}
+}
+
+// Anyone can send requests with a bad token; they are throttled and leave nothing in the database.
+func TestBadTokensAreThrottledAndNotAudited(t *testing.T) {
+	store, _ := OpenStore(":memory:")
+	t.Cleanup(func() { _ = store.Close() })
+	srv := New(Config{Store: store, Rate: 5, Now: func() time.Time { return testNow }})
+	codes := map[int]int{}
+	for range 30 {
+		code, _ := post(t, srv, "hlt_ing_nope", []byte("{}"))
+		codes[code]++
+	}
+	if codes[http.StatusUnauthorized] != 10 || codes[http.StatusTooManyRequests] != 20 {
+		t.Errorf("codes = %v, want 10 x 401 then 429", codes)
+	}
+	if n := count(t, store, `SELECT COUNT(*) FROM audit`); n != 0 {
+		t.Errorf("%d audit rows from bad requests", n)
 	}
 }

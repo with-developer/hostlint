@@ -38,9 +38,12 @@ type Response struct {
 	Host       int64  `json:"host"`
 	ReceivedAt string `json:"receivedAt"`
 	Digest     string `json:"digest"`
+	// Duplicate is true when the server had this very document already: a retry.
+	Duplicate bool `json:"duplicate"`
 }
 
-// Send posts a result document. A response other than 201 is an error carrying the
+// Send posts a result document. The server answers 201 for a result it stored and 200 for
+// one it already had (a retry is not an error); any other response is an error carrying the
 // server's message.
 func Send(ctx context.Context, doc []byte, opts Options) (*Response, error) {
 	u, err := url.Parse(strings.TrimRight(opts.URL, "/"))
@@ -94,7 +97,7 @@ func Send(ctx context.Context, doc []byte, opts Options) (*Response, error) {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		var e struct {
 			Error string `json:"error"`
 		}

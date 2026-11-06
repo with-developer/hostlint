@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/output"
@@ -60,7 +62,7 @@ func New(cfg Config) *Server {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
-	return &Server{cfg: cfg, limiter: newLimiter(cfg.Rate, cfg.Now)}
+	return &Server{cfg: cfg, limiter: newLimiter(cfg.Now)}
 }
 
 // Handler returns the HTTP handler of the API.
@@ -115,9 +117,17 @@ func remoteAddr(r *http.Request) string {
 func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	remote := remoteAddr(r)
+	// Requests that have not proven anything are throttled per address, and are logged but
+	// not audited: an audit row per bad request would let anyone fill the database.
+	if !s.limiter.allow("ip:"+remote, s.cfg.Rate*2) {
+		s.cfg.Logger.Warn("request refused", "reason", "address rate limit", "remote", remote)
+		w.Header().Set("Retry-After", "60")
+		writeError(w, http.StatusTooManyRequests, "too many requests from this address")
+		return
+	}
 	cred, err := s.cfg.Store.Authenticate(ctx, bearer(r), ScopeIngest)
 	if errors.Is(err, ErrUnauthorized) {
-		s.reject(ctx, 0, remote, "bad token", "")
+		s.cfg.Logger.Warn("request refused", "reason", "bad token", "remote", remote)
 		w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
 		writeError(w, http.StatusUnauthorized, "a valid ingest token is required")
 		return
@@ -126,8 +136,8 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
-	if !s.limiter.allow(cred.ID) {
-		s.reject(ctx, cred.ID, remote, "rate limit", "")
+	if !s.limiter.allow(fmt.Sprintf("cred:%d", cred.ID), s.cfg.Rate) {
+		s.cfg.Logger.Warn("request refused", "reason", "token rate limit", "remote", remote, "credential", cred.ID)
 		w.Header().Set("Retry-After", "60")
 		writeError(w, http.StatusTooManyRequests, "too many results from this token")
 		return
@@ -157,7 +167,7 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	got, err := s.cfg.Store.IngestScan(ctx, cred, res, raw, remote)
 	switch {
 	case errors.Is(err, ErrDuplicate):
-		s.reject(ctx, cred.ID, remote, "duplicate", res.Scan.ID)
+		s.reject(ctx, cred.ID, remote, "duplicate", "scan "+res.Scan.ID)
 		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, ErrIdentity):
 		s.reject(ctx, cred.ID, remote, "identity", err.Error())
@@ -165,8 +175,12 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, err)
 	default:
-		writeJSON(w, http.StatusCreated, map[string]any{
-			"scan": got.ScanRow, "host": got.HostRow, "receivedAt": got.ReceivedAt, "digest": got.Digest,
+		status := http.StatusCreated
+		if got.Duplicate {
+			status = http.StatusOK // a retry of a result that was stored: nothing to do again
+		}
+		writeJSON(w, status, map[string]any{
+			"scan": got.ScanRow, "host": got.HostRow, "receivedAt": got.ReceivedAt, "digest": got.Digest, "duplicate": got.Duplicate,
 		})
 	}
 }
@@ -196,6 +210,12 @@ func checkLimits(res *engine.Result, now time.Time) error {
 	case res.Scan.ID == "":
 		return errors.New("the result has no scan ID")
 	}
+	// What is shown and logged later must not carry line breaks or escape sequences.
+	for what, v := range map[string]string{"host name": res.Host.Hostname, "host ID": res.Host.HostID, "scan ID": res.Scan.ID, "tool version": res.Scan.Tool.Version} {
+		if !printable(v) {
+			return fmt.Errorf("the %s has characters that are not printable", what)
+		}
+	}
 	for _, c := range res.Controls {
 		if len(c.ID) > 64 || len(c.Profile) > 64 || len(c.Title) > maxText || len(c.Reason) > maxText {
 			return fmt.Errorf("control %.40q has text that is too long", c.ID)
@@ -220,12 +240,16 @@ func checkLimits(res *engine.Result, now time.Time) error {
 	return nil
 }
 
-// limiter is a token bucket per credential.
+// printable reports whether s is valid UTF-8 without control characters.
+func printable(s string) bool {
+	return utf8.ValidString(s) && !strings.ContainsFunc(s, unicode.IsControl)
+}
+
+// limiter is a token bucket per key (a credential, an address).
 type limiter struct {
 	mu      sync.Mutex
-	per     int
 	now     func() time.Time
-	buckets map[int64]*bucket
+	buckets map[string]*bucket
 }
 
 type bucket struct {
@@ -233,20 +257,34 @@ type bucket struct {
 	at     time.Time
 }
 
-func newLimiter(perMinute int, now func() time.Time) *limiter {
-	return &limiter{per: perMinute, now: now, buckets: map[int64]*bucket{}}
+const maxBuckets = 10000
+
+func newLimiter(now func() time.Time) *limiter {
+	return &limiter{now: now, buckets: map[string]*bucket{}}
 }
 
-func (l *limiter) allow(id int64) bool {
+// allow takes one of the perMinute results the key may send each minute.
+func (l *limiter) allow(key string, perMinute int) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
-	b, ok := l.buckets[id]
-	if !ok {
-		b = &bucket{tokens: float64(l.per), at: now}
-		l.buckets[id] = b
+	if len(l.buckets) >= maxBuckets {
+		// Forget what is full again; if that is not enough, start over (the table is bounded).
+		for k, b := range l.buckets {
+			if now.Sub(b.at) > time.Minute {
+				delete(l.buckets, k)
+			}
+		}
+		if len(l.buckets) >= maxBuckets {
+			clear(l.buckets)
+		}
 	}
-	b.tokens = min(float64(l.per), b.tokens+now.Sub(b.at).Minutes()*float64(l.per))
+	b, ok := l.buckets[key]
+	if !ok {
+		b = &bucket{tokens: float64(perMinute), at: now}
+		l.buckets[key] = b
+	}
+	b.tokens = min(float64(perMinute), b.tokens+now.Sub(b.at).Minutes()*float64(perMinute))
 	b.at = now
 	if b.tokens < 1 {
 		return false

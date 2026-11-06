@@ -42,19 +42,23 @@ result is refused here.`,
 			if serverURL == "" {
 				return errors.New("--server is required")
 			}
+			// Every file is tried: one that fails does not keep the others from being sent.
+			var failed []string
 			for _, name := range args {
-				doc, err := os.ReadFile(name) //nolint:forbidigo,gosec // a result file the user named, not the scanned host (G304)
+				got, err := pushFile(cmd, name, serverURL, token, pin)
 				if err != nil {
-					return err
+					fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: %s: %v\n", name, err)
+					failed = append(failed, name)
+					continue
 				}
-				if _, err := output.ReadResult(strings.NewReader(string(doc))); err != nil {
-					return fmt.Errorf("%s: %w", name, err)
+				state := "received"
+				if got.Duplicate {
+					state = "already received"
 				}
-				got, err := push.Send(cmd.Context(), doc, push.Options{URL: serverURL, Token: token, Pin: pin})
-				if err != nil {
-					return fmt.Errorf("%s: %w", name, err)
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: received (scan %d, %s)\n", name, got.Scan, got.Digest)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s (scan %d, %s)\n", name, state, got.Scan, got.Digest)
+			}
+			if len(failed) > 0 {
+				return fmt.Errorf("%d of %d results were not sent", len(failed), len(args))
 			}
 			return nil
 		},
@@ -64,4 +68,15 @@ result is refused here.`,
 	fl.StringVar(&pin, "pin", "", `trust this public key ("sha256/<base64>") instead of the system roots`)
 	fl.StringVar(&tokenFile, "token-file", "", "read the token from this file")
 	return cmd
+}
+
+func pushFile(cmd *cobra.Command, name, serverURL, token, pin string) (*push.Response, error) {
+	doc, err := os.ReadFile(name) //nolint:forbidigo,gosec // a result file the user named, not the scanned host (G304)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := output.ReadResult(strings.NewReader(string(doc))); err != nil {
+		return nil, err
+	}
+	return push.Send(cmd.Context(), doc, push.Options{URL: serverURL, Token: token, Pin: pin})
 }
