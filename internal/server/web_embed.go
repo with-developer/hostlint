@@ -17,5 +17,9 @@ func webAssets() fs.FS {
 	if err != nil {
 		return nil
 	}
+	// Built with the tag but without the dashboard (make web was not run): say so at run time.
+	if _, err := fs.Stat(sub, "index.html"); err != nil {
+		return nil
+	}
 	return sub
 }

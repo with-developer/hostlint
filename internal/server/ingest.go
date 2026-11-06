@@ -120,6 +120,19 @@ func bearer(r *http.Request) string {
 	return ""
 }
 
+// remote is the client's address. Behind a proxy the peer is the proxy, so the last address the
+// proxy added to X-Forwarded-For is used, when the server was told to trust it (--behind-proxy).
+func (s *Server) remote(r *http.Request) string {
+	if s.cfg.BehindProxy {
+		if parts := strings.Split(r.Header.Get("X-Forwarded-For"), ","); len(parts) > 0 {
+			if ip := strings.TrimSpace(parts[len(parts)-1]); net.ParseIP(ip) != nil {
+				return ip
+			}
+		}
+	}
+	return remoteAddr(r)
+}
+
 func remoteAddr(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -130,7 +143,7 @@ func remoteAddr(r *http.Request) string {
 
 func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	remote := remoteAddr(r)
+	remote := s.remote(r)
 	// Requests that have not proven anything are throttled per address, and are logged but
 	// not audited: an audit row per bad request would let anyone fill the database.
 	if !s.limiter.allow("ip:"+remote, s.cfg.Rate*2) {

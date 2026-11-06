@@ -52,6 +52,17 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/scans/ID` | A stored result, exactly as received |
 | `GET /api/v1/diff?old=ID&new=ID` | What changed between two scans, as `hostlint diff` |
 
+### Dashboard sessions
+
+The dashboard exchanges a read token for a session once: `POST /api/v1/login` with
+`{"token": "hlt_api_..."}` (content type `application/json`) sets the `hl_session` cookie
+(`HttpOnly`, `SameSite=Strict`, and `Secure` over TLS), `POST /api/v1/logout` ends it, and
+`GET /api/v1/session` says whether it is still good. A session ends after 8 hours without use or 24
+hours in all, or when its token is revoked or expires; a token keeps at most 20 sessions. The cookie
+authenticates `GET` requests only. Logins are limited to 10 a minute per address. Behind a TLS proxy
+(`--plain-http --behind-proxy`) the server trusts `X-Forwarded-Proto` for the `Secure` attribute and
+the last `X-Forwarded-For` address as the client: only turn it on when a proxy really sits in front.
+
 The score is PASS ÷ (PASS + FAIL + ERROR + MANUAL): results that are not decided count against it, and
 NOT_APPLICABLE and WAIVED are left out of the ratio and listed beside it. A host is stale when it has
 not reported for `staleDays`.

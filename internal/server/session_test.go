@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -162,7 +163,6 @@ func TestDashboardFiles(t *testing.T) {
 		"assets/a.js":   {Data: []byte("console.log(1)")},
 		"assets/a.css":  {Data: []byte("body{}")},
 		"favicon.svg":   {Data: []byte("<svg/>")},
-		"secret/../x":   {Data: []byte("x")},
 		"assets/b.json": {Data: []byte("{}")},
 	}
 	srv := New(Config{Store: store, Web: web})
@@ -187,8 +187,25 @@ func TestDashboardFiles(t *testing.T) {
 	if rec := get("/api/v1/nothing"); rec.Code != 404 || !strings.Contains(rec.Body.String(), "no such endpoint") {
 		t.Errorf("unknown api path: %d %s", rec.Code, rec.Body)
 	}
-	if rec := get("/..%2f..%2fetc/passwd"); rec.Code == 200 && !strings.Contains(rec.Body.String(), "<!doctype") {
-		t.Errorf("path traversal: %d %s", rec.Code, rec.Body)
+	for _, p := range []string{"/..%2f..%2fetc/passwd", "/../../etc/passwd", "/assets/../../etc/passwd"} {
+		if rec := get(p); strings.Contains(rec.Body.String(), "root:") {
+			t.Errorf("path traversal %s: %d %s", p, rec.Code, rec.Body)
+		}
+	}
+	// Directories and bare paths of the API or the assets are not the application.
+	for _, p := range []string{"/assets/", "/assets", "/assets/nothing", "/api", "/api/"} {
+		if rec := get(p); rec.Code != 404 {
+			t.Errorf("%s: %d, want 404", p, rec.Code)
+		}
+	}
+	// A POST-only endpoint reached with GET says so.
+	if rec := get("/api/v1/results"); rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "POST" {
+		t.Errorf("GET on the ingest URL: %d %v", rec.Code, rec.Header())
+	}
+	// Types the system may not know.
+	web["font.woff2"] = &fstest.MapFile{Data: []byte("w")}
+	if rec := get("/font.woff2"); rec.Header().Get("Content-Type") != "font/woff2" {
+		t.Errorf("woff2: %q", rec.Header().Get("Content-Type"))
 	}
 	// Without a dashboard in the build the server says so and still serves the API.
 	bare := New(Config{Store: store, Web: nil})
@@ -197,5 +214,118 @@ func TestDashboardFiles(t *testing.T) {
 	bare.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	if rec.Code != 404 || !strings.Contains(rec.Body.String(), "no dashboard") {
 		t.Errorf("a build without the dashboard: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestSessionExpiryAndLimits(t *testing.T) {
+	f := newAPIFixture(t)
+	_, c := login(t, f, f.api)
+	// A session in use still ends after a day.
+	for range 25 {
+		f.clock = f.clock.Add(time.Hour)
+		code := f.getWithCookie("/api/v1/overview", c, http.MethodGet)
+		if f.clock.Sub(testNow) > 3*time.Hour+24*time.Hour && code != http.StatusUnauthorized {
+			t.Fatalf("a session passed its absolute limit: %d", code)
+		}
+	}
+	if code := f.getWithCookie("/api/v1/overview", c, http.MethodGet); code != http.StatusUnauthorized {
+		t.Errorf("after 25 hours of use: %d", code)
+	}
+
+	// The token's own expiry ends its sessions.
+	tok, _, err := f.store.CreateCredential(context.Background(), ScopeAPI, "short", "", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.store.now = func() time.Time { return f.clock }
+	_, c2 := login(t, f, tok)
+	if c2 == nil {
+		t.Fatal("no cookie")
+	}
+	f.clock = f.clock.Add(2 * time.Hour)
+	if code := f.getWithCookie("/api/v1/overview", c2, http.MethodGet); code != http.StatusUnauthorized {
+		t.Errorf("a session outlived its token's expiry: %d", code)
+	}
+
+	// A token keeps at most maxSessions sessions; the oldest end.
+	f.clock = f.clock.Add(time.Minute)
+	var first *http.Cookie
+	for i := range maxSessions + 5 {
+		f.srv.limiter = newLimiter(func() time.Time { return f.clock }) // not what this test is about
+		_, ck := login(t, f, f.api)
+		if i == 0 {
+			first = ck
+		}
+	}
+	if n := count(t, f.store, `SELECT COUNT(*) FROM sessions WHERE credential_id = (SELECT id FROM credentials WHERE hash = '`+hashToken(f.api)+`')`); n != maxSessions {
+		t.Errorf("%d sessions, want %d", n, maxSessions)
+	}
+	if code := f.getWithCookie("/api/v1/overview", first, http.MethodGet); code != http.StatusUnauthorized {
+		t.Errorf("the oldest session survived the cap: %d", code)
+	}
+}
+
+func TestSessionRequestRules(t *testing.T) {
+	f := newAPIFixture(t)
+	_, c := login(t, f, f.api)
+	// HEAD works with the cookie, as GET does.
+	if code := f.getWithCookie("/api/v1/overview", c, http.MethodHead); code != http.StatusOK {
+		t.Errorf("HEAD: %d", code)
+	}
+	// A bearer header that is not valid is not rescued by a valid cookie.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/overview", nil)
+	req.Header.Set("Authorization", "Bearer hlt_api_wrong")
+	req.AddCookie(c)
+	rec := httptest.NewRecorder()
+	f.srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("cookie with a bad bearer: %d", rec.Code)
+	}
+	// Logout needs JSON too.
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/logout", nil)
+	req.AddCookie(c)
+	rec = httptest.NewRecorder()
+	f.srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Errorf("logout without JSON: %d", rec.Code)
+	}
+	// Using the dashboard counts as using the token.
+	var last string
+	if err := f.store.db.QueryRow(`SELECT COALESCE(last_used_at, '') FROM credentials WHERE scope = 'api'`).Scan(&last); err != nil || last == "" {
+		t.Errorf("last_used_at after a login: %q %v", last, err)
+	}
+}
+
+// Behind a proxy every request comes from the proxy: the address in X-Forwarded-For is the client,
+// but only when the server was told to trust the proxy.
+func TestClientAddressBehindProxy(t *testing.T) {
+	f := newAPIFixture(t)
+	attempt := func(xff string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/login", strings.NewReader(`{"token":"hlt_api_nope"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Forwarded-For", xff)
+		rec := httptest.NewRecorder()
+		f.srv.Handler().ServeHTTP(rec, req)
+		return rec.Code
+	}
+	// Not trusted: the header changes nothing, one client is throttled whatever it says.
+	throttled := false
+	for i := range 15 {
+		throttled = throttled || attempt("10.1.1."+strconv.Itoa(i)) == http.StatusTooManyRequests
+	}
+	if !throttled {
+		t.Error("a spoofed X-Forwarded-For escaped the limit without --behind-proxy")
+	}
+	// Trusted: another client behind the same proxy is not locked out by the first.
+	f.srv.cfg.BehindProxy = true
+	f.srv.limiter = newLimiter(func() time.Time { return f.clock })
+	for range 12 {
+		attempt("10.2.2.2")
+	}
+	if code := attempt("10.2.2.2"); code != http.StatusTooManyRequests {
+		t.Errorf("the noisy client: %d", code)
+	}
+	if code := attempt("10.3.3.3"); code != http.StatusUnauthorized {
+		t.Errorf("another client behind the proxy: %d, want 401 (a bad token, not throttled)", code)
 	}
 }

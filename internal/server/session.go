@@ -13,6 +13,7 @@ import (
 const (
 	sessionIdle     = 8 * time.Hour
 	sessionAbsolute = 24 * time.Hour
+	maxSessions     = 20 // per token
 	// SessionCookie is the name of the session cookie.
 	SessionCookie = "hl_session"
 )
@@ -38,6 +39,11 @@ func (s *Store) CreateSession(ctx context.Context, credentialID int64) (string, 
 	at := now.Format(stampLayout)
 	if _, err := tx.ExecContext(ctx, `INSERT INTO sessions (hash, credential_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)`,
 		hashToken(value), credentialID, at, at); err != nil {
+		return "", err
+	}
+	// A token keeps at most maxSessions sessions: the oldest end first.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE credential_id = ? AND id NOT IN (SELECT id FROM sessions WHERE credential_id = ? ORDER BY created_at DESC, id DESC LIMIT ?)`,
+		credentialID, credentialID, maxSessions); err != nil {
 		return "", err
 	}
 	return value, tx.Commit()
@@ -67,13 +73,11 @@ func (s *Store) AuthenticateSession(ctx context.Context, value string) (*Credent
 	now := s.now().UTC()
 	createdAt, err1 := time.Parse(stampLayout, created)
 	seenAt, err2 := time.Parse(stampLayout, seen)
-	if err1 != nil || err2 != nil || now.Sub(createdAt) > sessionAbsolute || now.Sub(seenAt) > sessionIdle || c.Scope != ScopeAPI || c.RevokedAt != "" {
+	if err1 != nil || err2 != nil || now.Sub(createdAt) > sessionAbsolute || now.Sub(seenAt) > sessionIdle || !s.usable(&c, ScopeAPI) {
 		return nil, ErrUnauthorized
 	}
-	if c.ExpiresAt != "" {
-		if t, err := time.Parse(time.RFC3339, c.ExpiresAt); err != nil || !now.Before(t) {
-			return nil, ErrUnauthorized
-		}
+	if err := s.touch(ctx, &c); err != nil {
+		return nil, err
 	}
 	if now.Sub(seenAt) > time.Minute {
 		if _, err := s.db.ExecContext(ctx, `UPDATE sessions SET last_seen_at = ? WHERE id = ?`, s.stamp(), sid); err != nil {

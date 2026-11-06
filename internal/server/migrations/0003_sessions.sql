@@ -6,3 +6,7 @@ CREATE TABLE sessions (
   created_at    TEXT NOT NULL,
   last_seen_at  TEXT NOT NULL
 );
+;;
+CREATE INDEX sessions_by_credential ON sessions (credential_id, created_at);
+;;
+CREATE INDEX sessions_by_seen ON sessions (last_seen_at);

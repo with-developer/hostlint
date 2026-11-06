@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ c7c51f1 -->
+<!-- translated from docs/fleet.md @ fb1f5cc -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -52,6 +52,16 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/hosts/ID` | 호스트 하나: 최신 컨트롤과 이력 |
 | `GET /api/v1/scans/ID` | 받은 그대로의 저장된 결과 |
 | `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이의 변화(`hostlint diff`와 같음) |
+
+### 대시보드 세션
+
+대시보드는 조회 토큰을 세션으로 한 번 교환합니다. `POST /api/v1/login`에 `{"token": "hlt_api_..."}`를
+(`application/json`으로) 보내면 `hl_session` 쿠키(`HttpOnly`, `SameSite=Strict`, TLS에서는 `Secure`)가
+설정되고, `POST /api/v1/logout`이 끝내며, `GET /api/v1/session`이 아직 유효한지 알려 줍니다. 세션은 8시간
+동안 쓰지 않거나 모두 합쳐 24시간이 지나면, 또는 토큰이 폐기·만료되면 끝나고, 토큰 하나는 세션을 최대
+20개 가집니다. 쿠키는 `GET` 요청만 인증합니다. 로그인은 주소당 분당 10회로 제한됩니다. TLS 프록시 뒤
+(`--plain-http --behind-proxy`)에서는 서버가 `Secure` 속성을 위해 `X-Forwarded-Proto`를, 클라이언트 주소로는
+마지막 `X-Forwarded-For` 주소를 신뢰합니다. 실제로 프록시가 앞에 있을 때만 켜세요.
 
 점수는 PASS ÷ (PASS + FAIL + ERROR + MANUAL)입니다. 판정되지 않은 결과는 점수에 불리하게 작용하고,
 NOT_APPLICABLE과 WAIVED는 비율에서 빼고 옆에 따로 표시합니다. `staleDays` 동안 보고하지 않은 호스트는

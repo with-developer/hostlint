@@ -117,22 +117,37 @@ func (s *Store) Authenticate(ctx context.Context, token, scope string) (*Credent
 		return nil, err
 	}
 	c.BoundName, c.BoundHostID, c.LastUsedAt, c.ExpiresAt, c.RevokedAt = bound.String, boundID.String, last.String, expires.String, revoked.String
-	if c.Scope != scope || c.RevokedAt != "" {
+	if !s.usable(&c, scope) {
 		return nil, ErrUnauthorized
+	}
+	if err := s.touch(ctx, &c); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// usable is the one place that decides whether a credential may be used now: its scope, that it
+// is not revoked and that it has not expired. A token and a session opened with it both ask.
+func (s *Store) usable(c *Credential, scope string) bool {
+	if c.Scope != scope || c.RevokedAt != "" {
+		return false
 	}
 	if c.ExpiresAt != "" {
 		if t, err := time.Parse(time.RFC3339, c.ExpiresAt); err != nil || !s.now().Before(t) {
-			return nil, ErrUnauthorized
+			return false
 		}
 	}
-	// Recording the use is a write: once a minute is enough for "last used", and a read does
-	// not wait for the database's writer on every request.
-	if last, err := time.Parse(stampLayout, c.LastUsedAt); err != nil || s.now().Sub(last) > time.Minute {
-		if _, err := s.db.ExecContext(ctx, `UPDATE credentials SET last_used_at = ? WHERE id = ?`, s.stamp(), c.ID); err != nil {
-			return nil, err
-		}
+	return true
+}
+
+// touch records that a credential was used. That is a write: once a minute is enough for "last
+// used", and a read does not wait for the database's writer on every request.
+func (s *Store) touch(ctx context.Context, c *Credential) error {
+	if last, err := time.Parse(stampLayout, c.LastUsedAt); err == nil && s.now().Sub(last) <= time.Minute {
+		return nil
 	}
-	return &c, nil
+	_, err := s.db.ExecContext(ctx, `UPDATE credentials SET last_used_at = ? WHERE id = ?`, s.stamp(), c.ID)
+	return err
 }
 
 // ListCredentials returns every credential, newest first. Hashes are never returned.

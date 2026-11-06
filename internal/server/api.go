@@ -22,7 +22,7 @@ type apiHandler func(w http.ResponseWriter, r *http.Request)
 // and a per-token limit. Nothing is written to the database for a refused request.
 func (s *Server) readAPI(next apiHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		remote := remoteAddr(r)
+		remote := s.remote(r)
 		if !s.limiter.allow("rip:"+remote, s.cfg.Rate*10) {
 			w.Header().Set("Retry-After", "60")
 			writeError(w, http.StatusTooManyRequests, "too many requests from this address")
@@ -30,9 +30,9 @@ func (s *Server) readAPI(next apiHandler) http.HandlerFunc {
 		}
 		cred, err := s.readCredential(r)
 		if errors.Is(err, ErrUnauthorized) {
-			s.cfg.Logger.Warn("request refused", "reason", "bad token", "remote", remote)
+			s.cfg.Logger.Info("request refused", "reason", "no valid read credential", "remote", remote)
 			w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
-			writeError(w, http.StatusUnauthorized, "a valid read token is required")
+			writeError(w, http.StatusUnauthorized, "a valid read token or session is required")
 			return
 		}
 		if err != nil {
@@ -54,7 +54,7 @@ func (s *Server) readCredential(r *http.Request) (*Credential, error) {
 	if tok := bearer(r); tok != "" {
 		return s.cfg.Store.Authenticate(r.Context(), tok, ScopeAPI)
 	}
-	if ck, err := r.Cookie(SessionCookie); err == nil && r.Method == http.MethodGet {
+	if ck, err := r.Cookie(SessionCookie); err == nil && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
 		return s.cfg.Store.AuthenticateSession(r.Context(), ck.Value)
 	}
 	return nil, ErrUnauthorized
@@ -263,7 +263,7 @@ func jsonRequest(r *http.Request) bool {
 
 // handleLogin exchanges a read token for a session cookie.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	remote := remoteAddr(r)
+	remote := s.remote(r)
 	if !jsonRequest(r) {
 		writeError(w, http.StatusUnsupportedMediaType, "send application/json")
 		return
