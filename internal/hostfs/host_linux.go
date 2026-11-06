@@ -17,7 +17,10 @@ func Open(root string) (*Host, error) {
 	// hostlint's own mount table: for a mounted root it also lists what is
 	// mounted inside the root (a chroot's /proc, a bind-mounted /dev).
 	if data, err := os.ReadFile("/proc/self/mountinfo"); err == nil {
-		h.Mounts, _ = ParseMountinfo(data, o.root)
+		mounts, err := ParseMountinfo(data, o.root)
+		if err == nil {
+			h.Mounts = mounts // a partial list is not kept: nil means unknown
+		}
 	}
 	if o.live {
 		h.Runner = execRunner{}

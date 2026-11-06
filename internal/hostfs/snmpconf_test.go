@@ -167,3 +167,25 @@ func FuzzSNMPConfig(f *testing.F) {
 		_, _ = ReadSNMPConfig(snmpMem(text))
 	})
 }
+
+// A symbolic link to a .conf file in an include directory is followed, as net-snmp does.
+func TestSNMPIncludeDirFollowsLinks(t *testing.T) {
+	m := snmpMem("includeDir /etc/snmp/snmpd.conf.d\n").
+		AddDir("/etc/snmp/snmpd.conf.d", 0o755, 0, 0).
+		AddFile("/srv/cfg/site.conf", "rocommunity public\n", 0o644, 0, 0).
+		AddSymlink("/etc/snmp/snmpd.conf.d/site.conf", "/srv/cfg/site.conf")
+	cfg := readSNMP(t, m)
+	if len(cfg.Communities) != 1 || cfg.Communities[0].Weak != "a well-known name" {
+		t.Errorf("communities %+v, skipped %v", cfg.Communities, cfg.Skipped)
+	}
+}
+
+// A path a configuration names is read as any file is: the denylist applies to it.
+func TestSNMPIncludeOfASecretFileIsRefused(t *testing.T) {
+	m := snmpMem("includeFile /etc/ssh/ssh_host_rsa_key\n").
+		AddFile("/etc/ssh/ssh_host_rsa_key", "rocommunity public\n", 0o600, 0, 0)
+	cfg := readSNMP(t, m)
+	if len(cfg.Communities) != 0 || len(cfg.Skipped) != 1 {
+		t.Errorf("communities %+v, skipped %v", cfg.Communities, cfg.Skipped)
+	}
+}

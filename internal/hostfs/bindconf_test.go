@@ -301,3 +301,24 @@ func FuzzBindConfig(f *testing.F) {
 		_, _ = ReadBindConfig(bindMem(map[string]string{"/etc/named.conf": text}))
 	})
 }
+
+func TestBindIncludeOfASecretFileIsRefused(t *testing.T) {
+	cfg := readBind(t, map[string]string{
+		"/etc/named.conf":           "include \"/etc/ssh/ssh_host_rsa_key\";\nzone \"a\" { type master; };\n",
+		"/etc/ssh/ssh_host_rsa_key": "zone \"x\" { type master; };\n",
+	})
+	if len(cfg.Zones) != 1 || len(cfg.Skipped) == 0 {
+		t.Errorf("zones %+v, skipped %v", cfg.Zones, cfg.Skipped)
+	}
+}
+
+// Only whether a second configuration exists matters; its statements are not used.
+func TestBindSecondConfigurationIsNotRead(t *testing.T) {
+	cfg := readBind(t, map[string]string{
+		"/etc/bind/named.conf": "zone \"real\" { type master; };\n",
+		"/etc/named.conf":      "include \"/etc/missing.conf\"; zone \"stale\" { type master; };\n",
+	})
+	if len(cfg.Zones) != 1 || len(cfg.Skipped) != 1 || !strings.Contains(cfg.Skipped[0], "both") {
+		t.Errorf("zones %+v, skipped %v", cfg.Zones, cfg.Skipped)
+	}
+}

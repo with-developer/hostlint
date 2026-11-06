@@ -60,7 +60,7 @@ func (sambaCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, 
 	// smb.conf may be the ones in use.
 	if entries, err := h.FS.ReadDir("/etc/samba"); err == nil {
 		for _, e := range entries {
-			if e.IsRegular() && strings.HasSuffix(e.Path, ".conf") && e.Path != sambaConfig && !included[e.Path] {
+			if hostfs.RegularFile(h.FS, e) && strings.HasSuffix(e.Path, ".conf") && e.Path != sambaConfig && !included[e.Path] {
 				skipped = append(skipped, fmt.Sprintf("%s: another Samba configuration exists; which one is in use is not seen", e.Path))
 			}
 		}

@@ -2,6 +2,7 @@ package hostfs
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -41,5 +42,14 @@ func TestParseMountinfo(t *testing.T) {
 		if _, err := ParseMountinfo([]byte(bad), "/"); err == nil {
 			t.Errorf("ParseMountinfo(%q) succeeded", bad)
 		}
+	}
+}
+
+// A line longer than the scanner's limit gives the mounts before it and an error.
+func TestParseMountinfoErrorKeepsWhatWasParsed(t *testing.T) {
+	good := "36 35 98:0 / /mnt1 rw,noatime master:1 - ext3 /dev/root rw,errors=continue\n"
+	mounts, err := ParseMountinfo([]byte(good+strings.Repeat("x", 2<<20)+"\n"), "/")
+	if err == nil || len(mounts) != 1 {
+		t.Errorf("mounts %+v, err %v", mounts, err)
 	}
 }

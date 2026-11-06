@@ -67,7 +67,7 @@ func (nfsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 		skipped = append(skipped, fmt.Sprintf("%s: %v", nfsExportsDir, err))
 	default:
 		for _, e := range entries {
-			if e.IsRegular() && strings.HasSuffix(path.Base(e.Path), ".exports") {
+			if hostfs.RegularFile(h.FS, e) && strings.HasSuffix(path.Base(e.Path), ".exports") {
 				files = append(files, e.Path)
 			}
 		}

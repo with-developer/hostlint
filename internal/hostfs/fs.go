@@ -136,3 +136,16 @@ func ReadLargeFile(fsys FS, name string, limit int64) ([]byte, error) {
 func IsMissing(err error) bool {
 	return errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR)
 }
+
+// RegularFile reports whether fi is a regular file, or a symbolic link to one:
+// the programs these files configure follow the link.
+func RegularFile(fsys FS, fi FileInfo) bool {
+	if fi.IsRegular() {
+		return true
+	}
+	if fi.IsSymlink() {
+		st, err := fsys.Stat(fi.Path)
+		return err == nil && st.IsRegular()
+	}
+	return false
+}

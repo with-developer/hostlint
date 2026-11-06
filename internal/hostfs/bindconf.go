@@ -81,10 +81,17 @@ func ReadBindConfig(fsys FS) (*BindConfig, error) {
 	if !ok {
 		return nil, &fs.PathError{Op: "read", Path: bindConfigFiles[0], Err: errors.ErrUnsupported}
 	}
-	p := &bindParser{read: sr.readSensitive, stack: map[string]bool{}}
+	p := &bindParser{fsys: fsys, read: sr.readSensitive, stack: map[string]bool{}}
 	cfg := &BindConfig{}
 	found := 0
 	for _, name := range bindConfigFiles {
+		if found > 0 {
+			// Only whether a second file exists matters: it is not read.
+			if _, err := fsys.Stat(name); err == nil {
+				found++
+			}
+			continue
+		}
 		stmts, err := p.file(name, 0)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
@@ -93,10 +100,8 @@ func ReadBindConfig(fsys FS) (*BindConfig, error) {
 			return nil, err
 		}
 		found++
-		if found == 1 {
-			cfg.Present = true
-			p.top = stmts
-		}
+		cfg.Present = true
+		p.top = stmts
 	}
 	if found > 1 {
 		// named loads one of them, and which depends on how it was started.
@@ -109,6 +114,7 @@ func ReadBindConfig(fsys FS) (*BindConfig, error) {
 }
 
 type bindParser struct {
+	fsys    FS
 	read    func(string) ([]byte, error)
 	stack   map[string]bool // the files being read: an include of one of them is a cycle
 	reads   int
@@ -134,7 +140,13 @@ func (p *bindParser) file(name string, depth int) ([]bindStmt, error) {
 	p.reads++
 	p.stack[name] = true
 	defer delete(p.stack, name)
-	data, err := p.read(name)
+	// Only BIND's own files are read past the denylist: a path an include names is
+	// read as any other file is, so it cannot be used to reach a secret elsewhere.
+	read := p.read
+	if !bindOwnFile(name) {
+		read = p.fsys.ReadFile
+	}
+	data, err := read(name)
 	if err != nil {
 		return nil, err
 	}
@@ -257,10 +269,9 @@ func bindTokens(name string, data []byte, count *int) ([]bindTok, error) {
 			toks = append(toks, bindTok{text: string(data[i:j]), file: name, line: line})
 			i = j
 		}
-		*count++
-		if *count > bindMaxTokens {
-			return nil, fmt.Errorf("%s: too large", name)
-		}
+	}
+	if *count += len(toks); *count > bindMaxTokens {
+		return nil, fmt.Errorf("%s: too large", name)
 	}
 	return toks, nil
 }
@@ -431,9 +442,6 @@ func interpretBind(stmts []bindStmt) ([]BindZone, []string) {
 					continue // hint, forward, stub, static-stub, redirect: nothing to transfer
 				}
 				z.Transfer = viewTransfer
-				if view == "" {
-					z.Transfer = globalTransfer
-				}
 				if v, ok := option(s.block, "allow-transfer"); ok {
 					z.Transfer = v
 				}
@@ -456,4 +464,15 @@ func bindAddress(w string) bool {
 	}
 	_, _, err := net.ParseCIDR(w)
 	return err == nil
+}
+
+// bindOwnFile reports whether name is one of BIND's own configuration files (the ones
+// on the denylist because they can hold keys).
+func bindOwnFile(name string) bool {
+	for _, pattern := range []string{"/etc/bind/named.conf*", "/etc/bind/*.key", "/etc/bind/rndc.*", "/etc/rndc.*", "/etc/named.conf", "/etc/named.conf.*", "/etc/named/*.conf", "/etc/named/*.key", "/etc/named.*.key", "/var/named/chroot/etc/*", "/var/named/chroot/etc/*/*", "/var/named/*.key"} {
+		if ok, _ := path.Match(pattern, name); ok {
+			return true
+		}
+	}
+	return false
 }

@@ -111,7 +111,13 @@ func (p *snmpParser) file(name string, depth int) error {
 		return nil
 	}
 	p.seen[name] = true
-	data, err := p.read(name)
+	// Only the agent's own files are read past the denylist: a path a configuration names
+	// is read as any other file is, so it cannot be used to reach a secret elsewhere.
+	read := p.read
+	if !snmpOwnFile(name) {
+		read = p.fsys.ReadFile
+	}
+	data, err := read(name)
 	if err != nil {
 		return err
 	}
@@ -218,7 +224,7 @@ func (p *snmpParser) include(name string, depth int, dir bool) {
 			}
 			found = true
 			for _, e := range entries {
-				if e.IsRegular() && strings.HasSuffix(path.Base(e.Path), ".conf") {
+				if RegularFile(p.fsys, e) && strings.HasSuffix(path.Base(e.Path), ".conf") {
 					p.includeOne(e.Path, depth)
 				}
 			}
@@ -345,4 +351,15 @@ func snmpLoopback(addr string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// snmpOwnFile reports whether name is one of the agent's own configuration files
+// (the ones on the denylist because they hold community strings).
+func snmpOwnFile(name string) bool {
+	for _, pattern := range []string{"/etc/snmp/*.conf", "/etc/snmp/*/*.conf", "/usr/share/snmp/snmpd*.conf", "/var/lib/net-snmp/*", "/var/lib/snmp/*"} {
+		if ok, _ := path.Match(pattern, name); ok {
+			return true
+		}
+	}
+	return false
 }

@@ -101,7 +101,7 @@ func (ftpCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 	// other configurations next to the default one may be the ones in use.
 	if entries, err := h.FS.ReadDir("/etc/vsftpd"); err == nil {
 		for _, e := range entries {
-			if e.IsRegular() && strings.HasSuffix(path.Base(e.Path), ".conf") && path.Base(e.Path) != "vsftpd.conf" {
+			if hostfs.RegularFile(h.FS, e) && strings.HasSuffix(path.Base(e.Path), ".conf") && path.Base(e.Path) != "vsftpd.conf" {
 				skipped = append(skipped, fmt.Sprintf("%s: another vsftpd configuration exists; which one is in use is not seen", e.Path))
 			}
 		}
