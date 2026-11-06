@@ -185,6 +185,7 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 	s.read[name] = true
 
 	depthBlocks := 0
+	var openers []string // the line that opened each block still open
 	lines := s.logicalLines(name, data)
 	for idx, l := range lines {
 		code := l.code
@@ -193,9 +194,16 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 		// A command may not run inside a block, on a line that opens one,
 		// after && or ||, or in a subshell.
 		lineCond := cond || depthBlocks > 0 || opens > 0 || hasControlOperator(code)
+		// The files a loop over /etc/profile.d sources run under the guards around the
+		// loop: the stock ones hold in a login shell, any other makes them conditional.
+		loopCond := cond || hasControlOperator(code) || !stockGuards(openers) || guardedOnLine(code)
 		s.scanLine(code, src, lineCond)
-		s.follow(code, src, lineCond, depth, func() string { return loopBody(lines, idx) })
+		s.follow(code, src, lineCond, loopCond, depth, func() string { return loopBody(lines, idx) })
 		depthBlocks = max(depthBlocks+opens-closes, 0)
+		openers = openers[:max(len(openers)-closes, 0)]
+		for range opens {
+			openers = append(openers, strings.TrimSpace(code))
+		}
 	}
 }
 
@@ -385,18 +393,18 @@ func (s *shellScanner) scanLine(code, src string, cond bool) {
 
 // follow scans the files a line sources: ". file" and "source file", and
 // the /etc/profile.d loop of /etc/profile.
-func (s *shellScanner) follow(code, src string, cond bool, depth int, body func() string) {
+func (s *shellScanner) follow(code, src string, cond, loopCond bool, depth int, body func() string) {
 	rest := code
 	switch m := runPartsLoopRe.FindStringSubmatch(code); {
 	case m != nil:
 		after := code[len(m[0]):]
 		hasRegex := strings.Contains(m[0], "--regex")
 		if loopSourcesItems(code, body) {
-			s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth)
+			s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth, loopCond)
 		}
 		rest = s.afterLoop(src, after)
 	case forRe.MatchString(code) && mentionsProfileD(code):
-		rest = s.profileLoop(code, src, depth, loopSourcesItems(code, body))
+		rest = s.profileLoop(code, src, depth, loopCond, loopSourcesItems(code, body))
 	case forAnywhereRe.MatchString(code) && mentionsProfileD(code):
 		// A loop behind a condition or another command.
 		s.unknownLoop(src)
@@ -441,7 +449,7 @@ func (s *shellScanner) afterLoop(src, after string) string {
 // source every readable file they list. A loop whose list is not literal
 // paths and globs leaves the facts incomplete: what it sources is unknown,
 // not absent.
-func (s *shellScanner) profileLoop(code, src string, depth int, sources bool) string {
+func (s *shellScanner) profileLoop(code, src string, depth int, cond, sources bool) string {
 	list, rest, ok := loopList(code)
 	var files []string
 	listed := ok // the loop lists literal paths or globs
@@ -474,7 +482,7 @@ func (s *shellScanner) profileLoop(code, src string, depth int, sources bool) st
 		return rest // the loop never uses what it lists
 	}
 	for _, f := range files {
-		s.file(f, false, depth+1)
+		s.file(f, cond, depth+1)
 	}
 	return rest
 }
@@ -517,7 +525,7 @@ func loopRest(s string) string {
 // them, whose names match, in C-locale order. Root's `[ -r $i ]` always
 // holds, so each is sourced. hasRegex is true for an option given even when
 // its value is empty (that matches every name).
-func (s *shellScanner) runParts(expr string, hasRegex, doubleQuoted bool, src string, depth int) {
+func (s *shellScanner) runParts(expr string, hasRegex, doubleQuoted bool, src string, depth int, cond bool) {
 	re := runPartsNameRe
 	if hasRegex {
 		if why := notERE(expr, doubleQuoted); why != "" {
@@ -569,7 +577,7 @@ func (s *shellScanner) runParts(expr string, hasRegex, doubleQuoted bool, src st
 			mode = fi.Mode
 		}
 		if mode.IsRegular() {
-			s.file(p, false, depth+1)
+			s.file(p, cond, depth+1)
 		}
 	}
 }
@@ -776,4 +784,30 @@ func readonlyPrefix(prefix string) bool {
 		return strings.Contains(flags, "r")
 	}
 	return false
+}
+
+// stockGuardRe are the conditions around the stock profile.d loops, which hold in
+// a login shell: the directory exists, the file is readable, bash is
+// interactive.
+var stockGuardRe = regexp.MustCompile(`^if \[ (-d /etc/profile\.d|-r "?\$i"?|"\$\{-#\*i\}" != "\$-"|-n "\$PS1"|"\$PS1") \]\s*;\s*then\s*$`)
+
+// stockGuards reports whether every block around a line was opened by a stock guard.
+func stockGuards(openers []string) bool {
+	for _, o := range openers {
+		if !stockGuardRe.MatchString(o) {
+			return false
+		}
+	}
+	return true
+}
+
+// guardedOnLine reports whether a loop's own line puts a condition before it
+// ("if cond; then for ...", "cond && for ...").
+func guardedOnLine(code string) bool {
+	i := strings.Index(code, "for ")
+	if i < 0 {
+		return false
+	}
+	before := code[:i]
+	return regexp.MustCompile(`(^|[\s;])(if|while|until|case)\s`).MatchString(before) || strings.Contains(before, "&&") || strings.Contains(before, "||")
 }

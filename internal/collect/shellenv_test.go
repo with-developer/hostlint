@@ -486,3 +486,29 @@ func TestShellEnvLoopBodyDecidesWhatIsSourced(t *testing.T) {
 		})
 	}
 }
+
+// The files a profile.d loop sources run under the conditions around the loop: the
+// stock guards hold in a login shell, any other makes what they set conditional.
+func TestShellEnvProfileLoopGuards(t *testing.T) {
+	loop := "  for i in /etc/profile.d/*.sh; do\n    if [ -r \"$i\" ]; then\n      . \"$i\"\n    fi\n  done\n"
+	tests := []struct {
+		name, profile string
+		conditional   bool
+	}{
+		{"no guard (the RHEL form)", "for i in /etc/profile.d/*.sh; do\n  if [ -r \"$i\" ]; then\n    . \"$i\"\n  fi\ndone\n", false},
+		{"the Debian guard", "if [ -d /etc/profile.d ]; then\n" + loop + "  unset i\nfi\n", false},
+		{"two stock guards", "if [ -d /etc/profile.d ]; then\n  if [ \"$PS1\" ]; then\n" + loop + "  fi\nfi\n", false},
+		{"another condition", "if [ \"$ENABLE_PROFILE_D\" = yes ]; then\n" + loop + "fi\n", true},
+		{"a stock guard inside another condition", "if [ \"$X\" ]; then\n  if [ -d /etc/profile.d ]; then\n" + loop + "  fi\nfi\n", true},
+		{"a loop that is itself inside a loop", "for k in 1 2; do\n" + loop + "done\n", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := hostfs.NewMemFS().AddFile("/etc/profile", tt.profile, 0o644, 0, 0).AddFile("/etc/profile.d/t.sh", "TMOUT=600\n", 0o644, 0, 0)
+			env := shellEnv(t, m)
+			if len(env.TMOUT) != 1 || env.TMOUT[0].Value != "600" || env.TMOUT[0].Conditional != tt.conditional {
+				t.Errorf("TMOUT %+v, want one value 600, conditional %v", env.TMOUT, tt.conditional)
+			}
+		})
+	}
+}
