@@ -47,6 +47,7 @@ linters:
             - "$all"
             - "!**/internal/server/**"
             - "!**/internal/push/**"
+            - "!**/internal/cli/*_test.go" # tests of `scan --push` run a test server
           deny:
             - pkg: net/http
               desc: scanning makes no network connections (ADR 0004); only internal/server and internal/push do (ADR 0010)
