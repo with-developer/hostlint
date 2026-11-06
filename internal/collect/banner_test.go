@@ -53,6 +53,13 @@ func TestBannerFiles(t *testing.T) {
 	}
 }
 
+func TestBannerPercentEscapes(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/etc/issue.net", "%s %r on %h. 100%% sure\n", 0o644, 0, 0)
+	if f := collectBanner(t, m)["/etc/issue.net"]; strings.Join(f.SystemDetails, " ") != "%s %r %h" {
+		t.Errorf("%+v", f)
+	}
+}
+
 func TestBannerUnreadable(t *testing.T) {
 	m := hostfs.NewMemFS().AddFile("/etc/issue", "x", 0o644, 0, 0).SetError("/etc/issue", fsErrPermission)
 	if _, err := (bannerCollector{}).Collect(context.Background(), hostfs.NewTestHost(m, nil, false)); err == nil {

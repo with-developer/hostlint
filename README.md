@@ -141,9 +141,10 @@ The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 editio
   SNMP community strings and access (read from `snmpd.conf`, never copied into the result), Postfix
   open relay and VRFY, BIND zone transfers and updates, NFS exports, vsftpd banner, TLS, root login and anonymous access, Samba guest shares, cron and sudoers permissions, time synchronization.
 
-Controls that need configuration parsers not written yet (mail servers other than Postfix, DNS servers other than BIND, FTP servers other than vsftpd,
-banners, logging policy) are `MANUAL` with guidance, and `NOT_APPLICABLE` where the software is
-not running. Supported targets: Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10
+Controls that need a person's judgment (accounts to keep, banners, logging policy, patch level, who may
+reach a service) and the settings of servers whose configuration is not parsed yet (mail servers other
+than Postfix, DNS servers other than BIND, FTP servers other than vsftpd) are `MANUAL`, with the facts to
+review listed under them, and `NOT_APPLICABLE` where the software is not running. Supported targets: Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10
 (Rocky Linux, AlmaLinux), and CentOS/RHEL 7 best-effort; other versions are scanned
 best-effort and marked as such.
 

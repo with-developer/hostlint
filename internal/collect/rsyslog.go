@@ -46,7 +46,7 @@ var (
 	rsyslogAction = regexp.MustCompile(`action\s*\(([^)]*)\)`)
 	rsyslogFile   = regexp.MustCompile(`file\s*=\s*"([^"]*)"`)
 	rsyslogType   = regexp.MustCompile(`type\s*=\s*"([^"]*)"`)
-	rsyslogInc    = regexp.MustCompile(`(?i)^include\s*\(\s*file\s*=\s*"([^"]*)"`)
+	rsyslogInc    = regexp.MustCompile(`(?i)^include\s*\(.*\bfile\s*=\s*"([^"]*)"`)
 )
 
 type rsyslogCollector struct{}
@@ -81,7 +81,10 @@ type rsyslogParser struct {
 
 func (p *rsyslogParser) file(name string, depth int) error {
 	switch {
-	case depth > 8 || p.seen[name]:
+	case p.seen[name]:
+		return nil
+	case depth > 8:
+		p.skipped = append(p.skipped, name+": included too deeply")
 		return nil
 	case len(p.seen) >= rsyslogMaxFiles:
 		if !slices.Contains(p.skipped, "too many included files") {
@@ -162,7 +165,11 @@ func rsyslogTarget(action string) string {
 		return "action"
 	}
 	// A legacy module action carries its arguments after the module name
-	// (:ommysql:host,database,user,password): only the module is kept.
+	// (:ommysql:host,database,user,password, or >host,database,user,password for
+	// MySQL): only the module is kept.
+	if strings.HasPrefix(action, ">") {
+		return ">" // the legacy MySQL action
+	}
 	if strings.HasPrefix(action, ":") {
 		if end := strings.Index(action[1:], ":"); end >= 0 {
 			return action[:end+2]

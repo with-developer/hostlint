@@ -139,7 +139,7 @@ func (ftpCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 		}
 	}
 	f.Banner = ftpBanner(h.FS, raw, &skipped)
-	f.RootDenied, f.RootDeniedBy = ftpRootDenied(h.FS, f.Settings, raw, &skipped)
+	f.RootDenied, f.RootDeniedBy = ftpRootDenied(h.FS, conf, f.Settings, raw, &skipped)
 	return engine.Facts{Value: f, Complete: len(skipped) == 0, Skipped: skipped}, nil
 }
 
@@ -180,7 +180,7 @@ func ftpBanner(fsys hostfs.FS, raw map[string]string, skipped *[]string) string 
 // ftpRootDenied decides whether root is refused: by the users file of a
 // pam_listfile line in the FTP service's PAM stack, or by vsftpd's own user
 // list (a deny list that holds root, or an allow list that does not).
-func ftpRootDenied(fsys hostfs.FS, settings map[string]facts.Setting, raw map[string]string, skipped *[]string) (bool, string) {
+func ftpRootDenied(fsys hostfs.FS, conf string, settings map[string]facts.Setting, raw map[string]string, skipped *[]string) (bool, string) {
 	// lists reports whether the file has a line "root"; ok is false when it
 	// cannot be read completely.
 	lists := func(file string) (listed, ok bool) {
@@ -233,7 +233,8 @@ func ftpRootDenied(fsys hostfs.FS, settings map[string]facts.Setting, raw map[st
 			}
 			refuses := control == "required" || control == "requisite" ||
 				(strings.HasPrefix(control, "[") && (strings.Contains(control, "default=die") || strings.Contains(control, "default=bad")))
-			if !refuses || args["item"] != "user" || args["sense"] != "deny" || args["file"] == "" {
+			// apply=user or apply=@group limits the rule to some users: it may not cover root.
+			if !refuses || args["item"] != "user" || args["sense"] != "deny" || args["file"] == "" || args["apply"] != "" {
 				continue
 			}
 			if listed, ok := lists(args["file"]); ok && listed {
@@ -249,7 +250,11 @@ func ftpRootDenied(fsys hostfs.FS, settings map[string]facts.Setting, raw map[st
 		*skipped = append(*skipped, fmt.Sprintf("/etc/pam.d/%s: %v", pamName, err))
 	}
 	if settings["userlist_enable"].Value == "YES" {
-		files := []string{"/etc/vsftpd.user_list", "/etc/vsftpd/user_list"}
+		// vsftpd uses one default file, the one its packaging puts next to its configuration.
+		files := []string{"/etc/vsftpd.user_list"}
+		if conf == "/etc/vsftpd/vsftpd.conf" {
+			files = []string{"/etc/vsftpd/user_list"}
+		}
 		if f, ok := raw["userlist_file"]; ok {
 			files = []string{f}
 		}

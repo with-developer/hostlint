@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"path"
 	"reflect"
 	"slices"
@@ -113,13 +114,14 @@ func parseExports(name string, data []byte, n *NFS) (problems []string) {
 		}
 		for _, c := range clients {
 			host, opts, hasOpts := strings.Cut(c, "(")
-			e := NFSExport{Path: dir, Client: host, Everyone: host == "" || host == "*", Where: where}
+			e := NFSExport{Path: dir, Client: host, Everyone: host == "" || host == "*" || nfsMatchesEverything(host), Where: where}
 			if host == "" {
 				e.Client = "*"
 			}
 			if hasOpts {
 				list := strings.Split(strings.TrimSuffix(opts, ")"), ",")
-				e.NoRootSquash = slices.Contains(list, "no_root_squash")
+				// all_squash maps root to the anonymous user too.
+				e.NoRootSquash = slices.Contains(list, "no_root_squash") && !slices.Contains(list, "all_squash")
 				e.Writable = slices.Contains(list, "rw")
 			}
 			n.Exports = append(n.Exports, e)
@@ -158,4 +160,21 @@ func nfsWord(s string) (word, rest string, ok bool) {
 		word, rest = word[:i], word[i+1:]+" "+rest
 	}
 	return word, rest, true
+}
+
+// nfsMatchesEverything reports whether a client is a network with a prefix of
+// length 0 (0.0.0.0/0, ::/0, 0.0.0.0/0.0.0.0), which matches every address.
+func nfsMatchesEverything(client string) bool {
+	addr, mask, ok := strings.Cut(client, "/")
+	if !ok {
+		return false
+	}
+	if ip := net.ParseIP(strings.Trim(addr, "[]")); ip == nil {
+		return false
+	}
+	if mask == "0" {
+		return true
+	}
+	m := net.ParseIP(mask)
+	return m != nil && m.IsUnspecified()
 }

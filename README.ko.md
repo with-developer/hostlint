@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 5022b03 -->
+<!-- translated from README.md @ 7481401 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -140,8 +140,9 @@ sudo hostlint scan --config hostlint.yaml
   서비스(활성화된 유닛, 실행 중인 유닛, init 스크립트, inetd·xinetd), SNMP community 문자열과 접근
   범위(`snmpd.conf`를 읽되 결과에는 담지 않음), Postfix 오픈 릴레이와 VRFY, BIND 존 전송·업데이트, NFS 공유, vsftpd 배너·TLS·root 로그인·익명 접근, Samba 게스트 공유, cron과 sudoers 권한, 시각 동기화.
 
-아직 설정 파서가 없는 컨트롤(Postfix 외의 메일 서버, BIND 외의 DNS 서버, vsftpd 외의 FTP 서버, 배너, 로그 정책)은 안내와 함께 `MANUAL`이고,
-해당 소프트웨어가 실행되지 않으면 `NOT_APPLICABLE`입니다. 지원 대상: Ubuntu 22.04/24.04/26.04,
+사람의 판단이 필요한 컨트롤(남길 계정, 배너, 로그 정책, 패치 수준, 서비스 접근 범위)과 설정을 아직 읽지 않는
+서버(Postfix 외의 메일 서버, BIND 외의 DNS 서버, vsftpd 외의 FTP 서버)의 설정은 `MANUAL`이고, 검토할 사실이
+함께 나열됩니다. 해당 소프트웨어가 실행되지 않으면 `NOT_APPLICABLE`입니다. 지원 대상: Ubuntu 22.04/24.04/26.04,
 Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), CentOS/RHEL 7(최선 노력). 다른 버전도 최선
 노력으로 점검하고 결과에 그렇게 표시합니다.
 

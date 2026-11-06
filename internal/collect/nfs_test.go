@@ -37,6 +37,10 @@ func TestNFSExports(t *testing.T) {
 		{"hosts with options", "/srv/homes host1(rw,sync,no_subtree_check) host2(ro,sync)\n", []NFSExport{
 			{Path: "/srv/homes", Client: "host1", Writable: true}, {Path: "/srv/homes", Client: "host2"}}},
 		{"everyone", "/pub *(ro)\n", []NFSExport{{Path: "/pub", Client: "*", Everyone: true}}},
+		{"every address as a network", "/a 0.0.0.0/0(rw) ::/0(ro) 0.0.0.0/0.0.0.0(ro) 10.0.0.0/8(ro)\n", []NFSExport{
+			{Path: "/a", Client: "0.0.0.0/0", Everyone: true, Writable: true}, {Path: "/a", Client: "::/0", Everyone: true},
+			{Path: "/a", Client: "0.0.0.0/0.0.0.0", Everyone: true}, {Path: "/a", Client: "10.0.0.0/8"}}},
+		{"all_squash maps root too", "/a h1(rw,all_squash,no_root_squash)\n", []NFSExport{{Path: "/a", Client: "h1", Writable: true}}},
 		{"a network", "/data 192.0.2.0/24(rw,no_root_squash)\n", []NFSExport{{Path: "/data", Client: "192.0.2.0/24", Writable: true, NoRootSquash: true}}},
 		{"no client", "/pub\n", []NFSExport{{Path: "/pub", Client: "*", Everyone: true}}},
 		{"only options", "/pub (rw)\n", []NFSExport{{Path: "/pub", Client: "*", Everyone: true, Writable: true}}},

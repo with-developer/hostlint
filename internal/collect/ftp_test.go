@@ -97,6 +97,8 @@ func TestFTPRootDenied(t *testing.T) {
 		{"the user list allows", "userlist_enable=YES\nuserlist_deny=NO\n", map[string]string{"/etc/vsftpd.user_list": "root\n"}, false},
 		{"a named user list", "userlist_enable=YES\nuserlist_file=/etc/denied\n", map[string]string{"/etc/denied": "root\n"}, true},
 		{"nothing refuses root", "anonymous_enable=NO\n", nil, false},
+		{"apply limits pam_listfile to some users", "pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": "auth required pam_listfile.so item=user sense=deny file=/etc/ftpusers apply=@ftpguests onerr=succeed\n", "/etc/ftpusers": "root\n"}, false},
+		{"only the default user list of this packaging counts", "userlist_enable=YES\n", map[string]string{"/etc/vsftpd/user_list": "root\n"}, false},
 		{"an allow list that does not hold root", "userlist_enable=YES\nuserlist_deny=NO\n", map[string]string{"/etc/vsftpd.user_list": "alice\n"}, true},
 		{"an allow list that holds root", "userlist_enable=YES\nuserlist_deny=NO\n", map[string]string{"/etc/vsftpd.user_list": "root\nalice\n"}, false},
 		{"a bracketed control that dies", "pam_service_name=vsftpd\n", map[string]string{"/etc/pam.d/vsftpd": "auth [default=die] pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed\n", "/etc/ftpusers": "root\n"}, true},

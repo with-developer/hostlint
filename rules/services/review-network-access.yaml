@@ -21,7 +21,7 @@ manual:
     ["firewalld.service", "ufw.service", "nftables.service", "iptables.service", "ip6tables.service", "netfilter-persistent.service"]
       .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)
       .map(n, "firewall service enabled: " + n) +
-    (services.units.size() >= 0 && !("firewalld.service" in services.units) && !("ufw.service" in services.units) && !("nftables.service" in services.units) && !("iptables.service" in services.units) && !("netfilter-persistent.service" in services.units) ? ["no firewall service is installed"] : []) +
+    (!("firewalld.service" in services.units) && !("ufw.service" in services.units) && !("nftables.service" in services.units) && !("iptables.service" in services.units) && !("netfilter-persistent.service" in services.units) ? ["no firewall service is installed"] : []) +
     sockets.listening.filter(s, !s.loopback).map(s, "listening: " + s.protocol + " " + s.address + ":" + string(s.port))
 tests:
   - name: a firewall and an open port

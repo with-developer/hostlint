@@ -34,7 +34,9 @@ type BannerFile struct {
 
 var bannerFiles = []string{"/etc/issue", "/etc/issue.net", "/etc/motd"}
 
-var bannerEscape = regexp.MustCompile(`\\[SsrvmnNo]`)
+// \S \s \r \v \m \n are getty escapes (/etc/issue); %s %r %v %m %h are the ones of
+// login and telnetd (/etc/issue.net).
+var bannerEscape = regexp.MustCompile(`\\[SsrvmnNo]|%[srvmh]`)
 
 const bannerMaxRead = 16 << 10
 

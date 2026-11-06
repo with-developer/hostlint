@@ -3,6 +3,7 @@ package collect
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -58,6 +59,23 @@ input(type="imudp" port="514")
 	}
 }
 
+func TestRsyslogIncludeForms(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile(rsyslogConf, "include(mode=\"optional\" file=\"/etc/extra.conf\")\n", 0o644, 0, 0).
+		AddFile("/etc/extra.conf", "mail.* /var/log/mail.log\n", 0o644, 0, 0)
+	if r, complete := collectRsyslog(t, m); !complete || rules(r) != "mail.* -> /var/log/mail.log" {
+		t.Errorf("%s (complete %v)", rules(r), complete)
+	}
+	// A chain deeper than the limit is reported, not dropped silently.
+	deep := hostfs.NewMemFS().AddFile(rsyslogConf, "$IncludeConfig /etc/r1.conf\n", 0o644, 0, 0)
+	for i := 1; i <= 10; i++ {
+		deep.AddFile(fmt.Sprintf("/etc/r%d.conf", i), fmt.Sprintf("$IncludeConfig /etc/r%d.conf\n", i+1), 0o644, 0, 0)
+	}
+	if _, complete := collectRsyslog(t, deep); complete {
+		t.Error("a too deep include chain must make the facts incomplete")
+	}
+}
+
 func TestRsyslogIncludes(t *testing.T) {
 	m := hostfs.NewMemFS().
 		AddFile(rsyslogConf, "$IncludeConfig /etc/rsyslog.d/*.conf\ninclude(file=\"/etc/extra.conf\" mode=\"optional\")\ninclude(file=\"/etc/rsyslog.conf\")\n", 0o644, 0, 0).
@@ -90,8 +108,8 @@ func FuzzRsyslogConfig(f *testing.F) {
 
 // A legacy module action can carry a password in its arguments: only the module is kept.
 func TestRsyslogKeepsNoActionArguments(t *testing.T) {
-	r, _ := collectRsyslog(t, hostfs.NewMemFS().AddFile(rsyslogConf, "*.* :ommysql:dbhost,Syslog,rsyslog,Sup3r-Secret-Pw\n*.emerg :omusrmsg:*\nauth.* action(type=\"omelasticsearch\" uid=\"u\" pwd=\"Sup3r-Secret-Pw\")\n", 0o644, 0, 0))
-	if rules(r) != "*.* -> :ommysql:; *.emerg -> :omusrmsg:; auth.* -> action omelasticsearch" {
+	r, _ := collectRsyslog(t, hostfs.NewMemFS().AddFile(rsyslogConf, "*.* :ommysql:dbhost,Syslog,rsyslog,Sup3r-Secret-Pw\n*.emerg :omusrmsg:*\nauth.* action(type=\"omelasticsearch\" uid=\"u\" pwd=\"Sup3r-Secret-Pw\")\nkern.* >dbhost,Syslog,rsyslog,Sup3r-Secret-Pw;tpl\n", 0o644, 0, 0))
+	if rules(r) != "*.* -> :ommysql:; *.emerg -> :omusrmsg:; auth.* -> action omelasticsearch; kern.* -> >" {
 		t.Errorf("rules %s", rules(r))
 	}
 	data, _ := json.Marshal(r)
