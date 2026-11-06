@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -37,7 +38,13 @@ type Config struct {
 	Logger  *slog.Logger
 	// Rate is how many results one token may send per minute (60 when 0).
 	Rate int
-	Now  func() time.Time
+	// BehindProxy trusts X-Forwarded-Proto from a TLS proxy in front of the server (for the
+	// Secure attribute of the session cookie).
+	BehindProxy bool
+	Now         func() time.Time
+	// Web holds the dashboard's files (index.html and assets/). Nil means the build has none
+	// and the server answers with the API only; the `web` build tag embeds the real one.
+	Web fs.FS
 }
 
 // Server handles the HTTP API.
@@ -59,6 +66,9 @@ func New(cfg Config) *Server {
 	} else {
 		cfg.Store.now = cfg.Now
 	}
+	if cfg.Web == nil {
+		cfg.Web = webAssets()
+	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
@@ -70,6 +80,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/results", s.handleIngest)
 	s.routesRead(mux)
+	mux.Handle("GET /{path...}", s.webHandler())
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -82,7 +93,9 @@ func secure(next http.Handler) http.Handler {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Cache-Control", "no-store")
-		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/healthz" {
+			h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		}
 		h.Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})
@@ -285,7 +298,8 @@ func (l *limiter) allow(key string, perMinute int) bool {
 		b = &bucket{tokens: float64(perMinute), at: now}
 		l.buckets[key] = b
 	}
-	b.tokens = min(float64(perMinute), b.tokens+now.Sub(b.at).Minutes()*float64(perMinute))
+	// A clock that steps back must not take tokens away.
+	b.tokens = min(float64(perMinute), b.tokens+max(0, now.Sub(b.at).Minutes())*float64(perMinute))
 	b.at = now
 	if b.tokens < 1 {
 		return false

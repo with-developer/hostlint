@@ -55,7 +55,7 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 			defer store.Close()
 			lc.GeneratedDir = filepath.Dir(*dbPath)
 			logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
-			srv := server.New(server.Config{Store: store, MaxBody: maxBody, Rate: rate, Logger: logger})
+			srv := server.New(server.Config{Store: store, MaxBody: maxBody, Rate: rate, Logger: logger, BehindProxy: lc.BehindProxy})
 			out := cmd.OutOrStdout()
 			return srv.Serve(cmd.Context(), lc, func(addr, pin string) {
 				if pin != "" {

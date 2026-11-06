@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,7 +28,7 @@ func (s *Server) readAPI(next apiHandler) http.HandlerFunc {
 			writeError(w, http.StatusTooManyRequests, "too many requests from this address")
 			return
 		}
-		cred, err := s.cfg.Store.Authenticate(r.Context(), bearer(r), ScopeAPI)
+		cred, err := s.readCredential(r)
 		if errors.Is(err, ErrUnauthorized) {
 			s.cfg.Logger.Warn("request refused", "reason", "bad token", "remote", remote)
 			w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
@@ -47,7 +48,22 @@ func (s *Server) readAPI(next apiHandler) http.HandlerFunc {
 	}
 }
 
+// readCredential authenticates a read request: a read token in the Authorization header, or
+// the session cookie of the dashboard. A session is only ever used for GET.
+func (s *Server) readCredential(r *http.Request) (*Credential, error) {
+	if tok := bearer(r); tok != "" {
+		return s.cfg.Store.Authenticate(r.Context(), tok, ScopeAPI)
+	}
+	if ck, err := r.Cookie(SessionCookie); err == nil && r.Method == http.MethodGet {
+		return s.cfg.Store.AuthenticateSession(r.Context(), ck.Value)
+	}
+	return nil, ErrUnauthorized
+}
+
 func (s *Server) routesRead(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/v1/login", s.handleLogin)
+	mux.HandleFunc("POST /api/v1/logout", s.handleLogout)
+	mux.HandleFunc("GET /api/v1/session", s.readAPI(s.handleSession))
 	mux.HandleFunc("GET /api/v1/overview", s.readAPI(s.handleOverview))
 	mux.HandleFunc("GET /api/v1/hosts", s.readAPI(s.handleHosts))
 	mux.HandleFunc("GET /api/v1/hosts/{id}", s.readAPI(s.handleHost))
@@ -230,4 +246,80 @@ func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
 		scans[i] = scan{fmt.Sprintf("scan %d", id), res}
 	}
 	writeJSON(w, http.StatusOK, output.DiffResults(scans[0].name, scans[0].result, scans[1].name, scans[1].result))
+}
+
+// secureCookie reports whether the session cookie gets the Secure attribute: when the
+// connection is TLS, or a TLS proxy in front says so (only if the server was told to trust it).
+func (s *Server) secureCookie(r *http.Request) bool {
+	return r.TLS != nil || (s.cfg.BehindProxy && strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https"))
+}
+
+// jsonRequest requires a JSON content type: a browser cannot send one cross-site without a
+// preflight, so a page on another site cannot log a user in or out.
+func jsonRequest(r *http.Request) bool {
+	ct, _, _ := strings.Cut(r.Header.Get("Content-Type"), ";")
+	return strings.EqualFold(strings.TrimSpace(ct), "application/json")
+}
+
+// handleLogin exchanges a read token for a session cookie.
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	remote := remoteAddr(r)
+	if !jsonRequest(r) {
+		writeError(w, http.StatusUnsupportedMediaType, "send application/json")
+		return
+	}
+	if !s.limiter.allow("login:"+remote, 10) {
+		w.Header().Set("Retry-After", "60")
+		writeError(w, http.StatusTooManyRequests, "too many login attempts from this address")
+		return
+	}
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "send {\"token\": \"hlt_api_...\"}")
+		return
+	}
+	cred, err := s.cfg.Store.Authenticate(r.Context(), strings.TrimSpace(body.Token), ScopeAPI)
+	if errors.Is(err, ErrUnauthorized) {
+		s.cfg.Logger.Warn("login refused", "remote", remote)
+		writeError(w, http.StatusUnauthorized, "that is not a valid read token")
+		return
+	}
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	value, err := s.cfg.Store.CreateSession(r.Context(), cred.ID)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows the connection: a loopback http server cannot set it
+		Name: SessionCookie, Value: value, Path: "/", MaxAge: int(sessionAbsolute.Seconds()),
+		HttpOnly: true, Secure: s.secureCookie(r), SameSite: http.SameSiteStrictMode,
+	})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "name": cred.Name})
+}
+
+// handleLogout ends the session of the request's cookie.
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if !jsonRequest(r) {
+		writeError(w, http.StatusUnsupportedMediaType, "send application/json")
+		return
+	}
+	if ck, err := r.Cookie(SessionCookie); err == nil {
+		if err := s.cfg.Store.DeleteSession(r.Context(), ck.Value); err != nil {
+			s.fail(w, err)
+			return
+		}
+	}
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", MaxAge: -1, //nolint:gosec // Secure follows the connection, as at login
+		HttpOnly: true, Secure: s.secureCookie(r), SameSite: http.SameSiteStrictMode})
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// handleSession tells the dashboard whether its cookie is still good.
+func (s *Server) handleSession(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
 }
