@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 11)
+## kisa-2026 (revision 12)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -76,7 +76,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-61 | high | SNMP access is restricted (SNMP 접근 제어) | [`services.snmp-access-restricted`](#servicessnmp-access-restricted), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
 | U-62 | low | Login banners warn against misuse (로그인 경고 메시지) | review by hand |
 | U-63 | medium | sudoers files are protected (sudoers 파일 권한) | [`files.sudoers-perms`](#filessudoers-perms) |
-| U-64 | high | Security updates are applied (보안 패치 적용) | review by hand |
+| U-64 | high | Security updates are applied (보안 패치 적용) | [`services.review-security-updates`](#servicesreview-security-updates) |
 | U-65 | medium | Time is synchronized (시각 동기화) | [`services.time-sync`](#servicestime-sync), [`services.review-time-sync`](#servicesreview-time-sync) |
 | U-66 | medium | Logging follows your policy (로그 정책 설정) | review by hand |
 | U-67 | medium | Log files are protected (로그 파일 소유자·권한) | [`files.log-world-writable`](#fileslog-world-writable), [`files.review-log-files`](#filesreview-log-files) |
@@ -904,6 +904,16 @@ Applies when telnet or rlogin is started; then shows how, for a review of whethe
 **Why.** A telnet or rlogin server lets root log in remotely unless its login stack refuses it, and it sends the password in clear text.
 
 **Fix.** Turn the service off (services.no-telnet, services.no-r-services) and use SSH. If it must run, keep root out of it: on systems that still ship pam_securetty (older distributions), put `auth required pam_securetty.so` in its PAM login stack and remove every pts/N line from /etc/securetty; elsewhere, the service must refuse root by other means.
+
+#### `services.review-security-updates`
+
+Review how security updates are applied (보안 패치 적용 방식 검토) — severity high, a review (`MANUAL`).
+
+Shows what the host has for applying updates: the release and whether it is in the tested matrix, and the automatic update services that are enabled (unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron). Whether the updates are actually applied on time is for a person to check.
+
+**Why.** An unpatched host is attacked with exploits that already have a fix.
+
+**Fix.** Apply security updates on a schedule (`unattended-upgrades` on Debian and Ubuntu, `dnf-automatic` on the RHEL family) or through your patch process, and move off a release that no longer gets updates.
 
 #### `services.review-snmp-agent`
 

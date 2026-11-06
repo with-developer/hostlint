@@ -1,0 +1,33 @@
+id: services.review-security-updates
+version: 1
+title: Review how security updates are applied
+title_ko: 보안 패치 적용 방식 검토
+severity: high
+description: >-
+  Shows what the host has for applying updates: the release and whether it is in the tested matrix, and the
+  automatic update services that are enabled (unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron).
+  Whether the updates are actually applied on time is for a person to check.
+rationale: An unpatched host is attacked with exploits that already have a fix.
+remediation: >-
+  Apply security updates on a schedule (`unattended-upgrades` on Debian and Ubuntu, `dnf-automatic` on the RHEL
+  family) or through your patch process, and move off a release that no longer gets updates.
+manual:
+  guidance: >-
+    Check that security updates are applied regularly (for example `apt list --upgradable` or
+    `dnf updateinfo list --security`) and that the release is still supported. The list shows the release and
+    the automatic update services that are enabled.
+  show: >-
+    ["release " + os.name + " (" + os.id + " " + os.version_id + ")" + (os.supported ? "" : ", not in the tested matrix")] +
+    ["unattended-upgrades.service", "apt-daily-upgrade.timer", "dnf-automatic.timer", "dnf-automatic-install.timer", "dnf-automatic-notifyonly.timer", "yum-cron.service"]
+      .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)
+      .map(n, "automatic updates: " + n + " is enabled")
+tests:
+  - name: automatic updates on
+    facts:
+      os: {id: ubuntu, version_id: "24.04", version_major: 24, name: "Ubuntu 24.04 LTS", family: debian, supported: true}
+      services: {units: {"unattended-upgrades.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/unattended-upgrades.service}}}
+    want: MANUAL
+  - name: none
+    facts:
+      services: {units: {}}
+    want: MANUAL

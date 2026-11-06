@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 13 (trixie) (id debian, version 13, family debian, supported true)
-profile kisa-2026 revision 11: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
+profile kisa-2026 revision 12: FAIL 6 MANUAL 10 PASS 30 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -382,6 +382,9 @@ U-63 NOT_APPLICABLE
     - /etc/sudoers.d/*: no matching files  [/etc/sudoers.d/*]
 
 U-64 MANUAL
+  services.review-security-updates MANUAL: Check that security updates are applied regularly (for example `apt list --upgradable` or `dnf updateinfo list --security`) and that the release is still supported. The list shows the release and the automatic update services that are enabled.
+    - release Debian GNU/Linux 13 (trixie) (debian 13)
+    - automatic updates: apt-daily-upgrade.timer is enabled
 
 U-65 FAIL
   services.time-sync FAIL

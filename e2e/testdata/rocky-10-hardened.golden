@@ -1,5 +1,5 @@
 os: Rocky Linux 10.2 (Red Quartz) (id rocky, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 11: MANUAL 11 PASS 37 NOT_APPLICABLE 19
+profile kisa-2026 revision 12: MANUAL 11 PASS 37 NOT_APPLICABLE 19
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -381,6 +381,8 @@ U-63 NOT_APPLICABLE
     - /etc/sudoers.d/*: no matching files  [/etc/sudoers.d/*]
 
 U-64 MANUAL
+  services.review-security-updates MANUAL: Check that security updates are applied regularly (for example `apt list --upgradable` or `dnf updateinfo list --security`) and that the release is still supported. The list shows the release and the automatic update services that are enabled.
+    - release Rocky Linux 10.2 (Red Quartz) (rocky 10.2)
 
 U-65 MANUAL
   services.time-sync PASS
