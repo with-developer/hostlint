@@ -49,16 +49,18 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 16. **Landing page** — project site on GitHub Pages (no custom domain without the owner's
     approval).
 
-## Fleet mode (planned)
+## Fleet mode
 
-Releases so far (v0.1 through v0.6) are the standalone CLI, and further minor releases of it
-(checks, collectors, outputs) continue while fleet mode is built. Fleet mode ships under the next
-version that is free when it is ready; its design needs its own ADR first.
+**Phase 1 shipped (v0.8, v0.9; [ADR 0010](adr/0010-fleet-server-and-dashboard.md)):** `hostlint server`
+(SQLite, tokens, a hash-chained audit table, sessions) with an embedded web dashboard, `hostlint push`
+and `hostlint scan --push` (hosts send results; the server has no channel to them), `hostlint diff`,
+retention, backup, host administration, `hostlint server demo`.
 
-- `hostlint server`: single binary, embedded web UI (React + Vite + shadcn/ui), SQLite by
-  default, PostgreSQL optional.
-- `hostlint agent`: dials out over a gRPC bidirectional stream with mutual TLS; enrollment flow.
-- Scan history, drift between scans, waivers managed in the UI.
+**Next:**
+- Signed results (a per-host key), so the stored records are evidence even against a compromised server.
+- An outgoing webhook for regressions and hosts that stopped reporting; roles and OIDC for the dashboard.
+- Phase 2: `hostlint agent`, which dials out over a gRPC stream with mutual TLS for scheduled and
+  on-demand scans (its own ADR); PostgreSQL as an option; waivers managed in the UI.
 
 ## Later
 

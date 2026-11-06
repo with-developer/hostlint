@@ -26,6 +26,7 @@ pre{background:var(--code);color:var(--codefg);padding:16px;border-radius:8px;ov
 code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 footer{margin-top:48px;color:var(--mut);font-size:.9rem;border-top:1px solid var(--line);padding-top:16px}
 nav{text-align:right;padding-top:16px;font-size:.9rem}
+img.shot{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;margin:12px 0}
 </style>
 </head>
 <body>
@@ -60,6 +61,10 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
         … and 10 more
 
 kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
+<h2>플릿 전체를 위한 대시보드</h2>
+<p>호스트가 스스로 스캔하고 결과를 <code>hostlint server</code>로 보내면, 서버가 이력을 보관하고 플릿을 보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스, 각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 호스트 없이도 <code>hostlint server demo</code>로 써 볼 수 있습니다.</p>
+<img class="shot" src="../img/dashboard-overview.png" alt="hostlint 대시보드 개요: 통과율, 상태 분포, 호스트, 가장 많이 실패하는 컨트롤, 최근 악화" width="1360" height="900" loading="lazy">
+<img class="shot" src="../img/dashboard-matrix.png" alt="모든 호스트의 모든 컨트롤 매트릭스(다크 테마)" width="1360" height="900" loading="lazy">
 <h2>지원 대상</h2>
 <p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux·AlmaLinux 9, 10 · Amazon Linux 2023 · CentOS/RHEL 7(최선 노력). 첫 프로파일은 KISA 주요정보통신기반시설 기술적 취약점 분석·평가 가이드 2026년판(Unix, U-01–U-67)이고, 다른 기준은 같은 점검 위에 프로파일로 추가합니다.</p>
 <h2 id="start">빠른 시작</h2>

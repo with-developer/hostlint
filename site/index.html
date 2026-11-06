@@ -26,6 +26,7 @@ pre{background:var(--code);color:var(--codefg);padding:16px;border-radius:8px;ov
 code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 footer{margin-top:48px;color:var(--mut);font-size:.9rem;border-top:1px solid var(--line);padding-top:16px}
 nav{text-align:right;padding-top:16px;font-size:.9rem}
+img.shot{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;margin:12px 0}
 </style>
 </head>
 <body>
@@ -60,6 +61,10 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
         … and 10 more
 
 kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
+<h2>A dashboard for the whole fleet</h2>
+<p>Hosts scan themselves and push the result to <code>hostlint server</code>, which keeps the history and shows the fleet: pass rate, the controls that fail most, regressions since the last scan, a matrix of every control on every host, and the evidence behind each result. The server never connects to a host. Try it with no host at all: <code>hostlint server demo</code>.</p>
+<img class="shot" src="img/dashboard-overview.png" alt="The overview of the hostlint dashboard: pass rate, status distribution, hosts, the controls that fail most and recent regressions" width="1360" height="900" loading="lazy">
+<img class="shot" src="img/dashboard-matrix.png" alt="The matrix of every control on every host, in the dark theme" width="1360" height="900" loading="lazy">
 <h2>Supported targets</h2>
 <p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux and AlmaLinux 9, 10 · Amazon Linux 2023 · CentOS/RHEL 7 (best effort). The first profile is the KISA CII technical vulnerability assessment guide, 2026 edition (Unix, U-01–U-67); other baselines are added as profiles over the same checks.</p>
 <h2 id="start">Quick start</h2>
@@ -69,7 +74,10 @@ sudo "$(go env GOPATH)/bin/hostlint" scan
 
 # many hosts, one report
 sudo hostlint scan --format json --output web-01.json
-hostlint report *.json --output report.html</pre>
+hostlint report *.json --output report.html
+
+# or a server with a dashboard (try it: hostlint server demo)
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443</pre>
 <p>Docs: <a href="https://github.com/with-developer/hostlint/blob/main/README.md">README</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.md">hostlint.yaml</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/RELEASING.md">Releasing</a> · <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">Security</a></p>
 <footer>Apache-2.0 licensed. <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></footer>
 </main>
