@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +41,11 @@ type Store struct {
 // OpenStore opens (and creates) the database at path and applies the migrations.
 // path ":memory:" gives a private in-memory database, for tests.
 func OpenStore(path string) (*Store, error) {
+	if path != ":memory:" {
+		if err := securePath(path); err != nil {
+			return nil, err
+		}
+	}
 	// Write transactions start with BEGIN IMMEDIATE (_txlock): the server and the command
 	// line share the file, and a transaction that reads and then writes must not fail
 	// halfway on another process's commit.
@@ -60,6 +66,26 @@ func OpenStore(path string) (*Store, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return s, nil
+}
+
+// securePath makes sure the database is private: the file is created with mode 0600 (SQLite
+// gives its -wal and -shm files the same mode), and one that others can read is refused. It
+// holds the raw results of the whole fleet.
+func securePath(path string) error {
+	fi, err := os.Stat(path) //nolint:forbidigo // the server's own database, not the scanned host
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:forbidigo,gosec // the server creates its own database (G304: --db)
+		if err != nil {
+			return err
+		}
+		return f.Close()
+	case err != nil:
+		return err
+	case fi.Mode().Perm()&0o077 != 0:
+		return fmt.Errorf("%s can be read by other users (mode %04o): run chmod 600 on it", path, fi.Mode().Perm())
+	}
+	return nil
 }
 
 // Close closes the database.

@@ -349,3 +349,31 @@ func TestBadTokensAreThrottledAndNotAudited(t *testing.T) {
 		t.Errorf("%d audit rows from bad requests", n)
 	}
 }
+
+// The database holds the raw results of the fleet: it is created private, and one that others can read is refused.
+func TestDatabaseFileIsPrivate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "h.db")
+	st, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.db.Exec(`INSERT INTO hosts (name, created_at) VALUES ('a', 'x')`); err != nil {
+		t.Fatal(err)
+	}
+	_ = st.Close()
+	for _, name := range []string{path, path + "-wal", path + "-shm"} {
+		fi, err := os.Stat(name)
+		if err != nil {
+			continue // the WAL files are removed when the last connection closes
+		}
+		if fi.Mode().Perm()&0o077 != 0 {
+			t.Errorf("%s has mode %04o", name, fi.Mode().Perm())
+		}
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenStore(path); err == nil || !strings.Contains(err.Error(), "can be read by other users") {
+		t.Errorf("a world-readable database was opened: %v", err)
+	}
+}
