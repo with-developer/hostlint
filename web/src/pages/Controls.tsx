@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { compareControls } from "../lib/format";
+import { compareControls, ctitle } from "../lib/format";
 import { Avatar, Await, Empty, PageHeader, Severity, Skeleton, StatusBadge, StatusBar } from "../components/ui";
 import { IconSearch } from "../components/icons";
 import { STATUSES, type Status } from "../lib/types";
@@ -16,10 +16,9 @@ export function ControlsPage() {
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (state.data?.controls ?? [])
-      .filter((c) => (!failing || (c.counts.FAIL ?? 0) > 0) && (!needle || c.id.toLowerCase().includes(needle) || c.title.toLowerCase().includes(needle)))
+      .filter((c) => (!failing || (c.counts.FAIL ?? 0) > 0) && (!needle || c.id.toLowerCase().includes(needle) || c.title.toLowerCase().includes(needle) || (c.titleKo ?? "").toLowerCase().includes(needle)))
       .sort((a, b) => (b.counts.FAIL ?? 0) - (a.counts.FAIL ?? 0) || compareControls({ status: "PASS", severity: a.severity, id: a.id }, { status: "PASS", severity: b.severity, id: b.id }));
   }, [state.data, q, failing]);
-  void lang;
   return (
     <>
       <PageHeader title={t("controls.title")} subtitle={t("controls.subtitle")} />
@@ -49,7 +48,7 @@ export function ControlsPage() {
                     <tr>
                       <th>ID</th>
                       <th>{t("controls.title")}</th>
-                      <th>{t("host.passRate")}</th>
+                      <th>{t("controls.hosts")}</th>
                       <th className="num">{t("status.FAIL")}</th>
                     </tr>
                   </thead>
@@ -62,7 +61,7 @@ export function ControlsPage() {
                           </a>
                         </td>
                         <td>
-                          {c.title} <Severity value={c.severity} />
+                          {ctitle(c, lang)} <Severity value={c.severity} />
                         </td>
                         <td className="bar-cell">
                           <StatusBar counts={c.counts} thin />
@@ -105,7 +104,7 @@ export function ControlPage({ profile, id }: { profile: string; id: string }) {
               <header className="card">
                 <div className="titlebar">
                   <h1>
-                    <span className="mono">{c.id}</span> {lang === "ko" && info?.titleKo ? info.titleKo : c.title}
+                    <span className="mono">{c.id}</span> {ctitle({ title: c.title, titleKo: c.titleKo ?? info?.titleKo }, lang)}
                   </h1>
                   <Severity value={c.severity} />
                 </div>

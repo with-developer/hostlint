@@ -409,3 +409,24 @@ func TestControlsAndControl(t *testing.T) {
 		t.Errorf("without a token: %d", code)
 	}
 }
+
+// With the profiles loaded, the answers carry the Korean title of each control.
+func TestKoreanTitlesFromTheProfiles(t *testing.T) {
+	f := newAPIFixture(t)
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.srv.cfg.Content = content
+	for _, path := range []string{"/api/v1/controls", "/api/v1/matrix", "/api/v1/overview", "/api/v1/hosts/1"} {
+		code, body := f.get(t, f.api, path)
+		if code != http.StatusOK || !strings.Contains(string(body), `"titleKo":"`) {
+			t.Errorf("%s: %d, no titleKo in %.300s", path, code, body)
+		}
+	}
+	// Without the profiles there is none, and nothing breaks.
+	f.srv.cfg.Content = nil
+	if _, body := f.get(t, f.api, "/api/v1/controls"); strings.Contains(string(body), "titleKo") {
+		t.Errorf("titleKo without profiles: %.200s", body)
+	}
+}

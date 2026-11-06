@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { Await, Empty, PageHeader, Skeleton } from "../components/ui";
+import { ctitle } from "../lib/format";
 import { STATUSES, type Matrix, type Status } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
 
@@ -23,7 +24,7 @@ export function MatrixPage() {
 }
 
 function Heatmap({ matrix }: { matrix: Matrix }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [rows, setRows] = useState(ROWS);
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
   const hosts = useMemo(() => matrix.hosts.slice(0, rows), [matrix.hosts, rows]);
@@ -35,7 +36,7 @@ function Heatmap({ matrix }: { matrix: Matrix }) {
     const c = matrix.controls[Number(cell.dataset.c)];
     const status = LETTER[h.statuses[Number(cell.dataset.c)]];
     const rect = cell.getBoundingClientRect();
-    setTip({ x: rect.left + rect.width / 2, y: rect.top, text: `${h.name} · ${c.id} ${c.title} · ${status === "-" ? "–" : t(`status.${status}`)}` });
+    setTip({ x: rect.left + rect.width / 2, y: rect.top, text: `${h.name} · ${c.id} ${ctitle(c, lang)} · ${status === "-" ? "–" : t(`status.${status}`)}` });
   }
   function click(e: React.MouseEvent<HTMLTableElement>) {
     const cell = (e.target as HTMLElement).closest<HTMLElement>("td[data-r]");
@@ -59,7 +60,7 @@ function Heatmap({ matrix }: { matrix: Matrix }) {
               <th className="corner" />
               {matrix.controls.map((c) => (
                 <th key={`${c.profile}/${c.id}`} className="col">
-                  <a href={`#/controls/${c.profile}/${c.id}`} title={c.title}>
+                  <a href={`#/controls/${c.profile}/${c.id}`} title={ctitle(c, lang)}>
                     <span>{c.id}</span>
                   </a>
                 </th>

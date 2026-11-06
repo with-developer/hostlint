@@ -1,14 +1,14 @@
 import { api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago } from "../lib/format";
+import { ago, ctitle } from "../lib/format";
 import { Avatar, Await, Donut, Empty, Gauge, PageHeader, Severity, StatusBadge, StatusBar, Stat } from "../components/ui";
 import { IconAlert, IconClock, IconServer } from "../components/icons";
 
 export const STALE_DAYS = 7;
 
 export function OverviewPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const now = useNow();
   const state = useAsync(() => api.overview(STALE_DAYS), []);
   const stale = useAsync(() => api.hosts({ status: "stale", sort: "last", limit: 5, staleDays: STALE_DAYS }), []);
@@ -50,7 +50,7 @@ export function OverviewPage() {
                             <a className="mono id" href={`#/controls/${c.profile}/${c.id}`}>
                               {c.id}
                             </a>
-                            <span className="ranked-title">{c.title}</span>
+                            <span className="ranked-title">{ctitle(c, lang)}</span>
                             <Severity value={c.severity} />
                             <strong className="num">
                               {c.hosts}
@@ -78,7 +78,7 @@ export function OverviewPage() {
                           <li key={`${r.hostId}/${r.profile}/${r.id}`}>
                             <span className="timeline-dot s-FAIL" />
                             <div>
-                              <a href={`#/hosts/${r.hostId}`}>{r.host}</a> <span className="mono id">{r.id}</span> {r.title} <StatusBadge status={r.status} />
+                              <a href={`#/hosts/${r.hostId}`}>{r.host}</a> <span className="mono id">{r.id}</span> {ctitle(r, lang)} <StatusBadge status={r.status} />
                               <div className="muted small">{ago(r.receivedAt, now, t)}</div>
                             </div>
                           </li>

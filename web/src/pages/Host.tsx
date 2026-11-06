@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago, compareControls } from "../lib/format";
+import { ago, compareControls, ctitle } from "../lib/format";
 import { Avatar, Await, Empty, Gauge, ScorePill, Severity, Sparkline, StatusBadge, StatusBar } from "../components/ui";
 import { IconChevron, IconSearch } from "../components/icons";
 import { STATUSES, type ControlChange, type ControlRow, type Diff, type ScanDoc, type ScanRow, type Status } from "../lib/types";
@@ -56,7 +56,7 @@ export function HostPage({ id }: { id: number }) {
 }
 
 function Controls({ controls, scanId }: { controls: ControlRow[]; scanId: number }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [q, setQ] = useState("");
   const [shown, setShown] = useState<Set<Status>>(new Set(["FAIL", "ERROR", "MANUAL", "WAIVED"]));
   const [open, setOpen] = useState<string | null>(null);
@@ -66,7 +66,7 @@ function Controls({ controls, scanId }: { controls: ControlRow[]; scanId: number
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return controls.filter((c) => shown.has(c.status) && (!needle || c.id.toLowerCase().includes(needle) || c.title.toLowerCase().includes(needle))).sort(compareControls);
+    return controls.filter((c) => shown.has(c.status) && (!needle || c.id.toLowerCase().includes(needle) || c.title.toLowerCase().includes(needle) || (c.titleKo ?? "").toLowerCase().includes(needle))).sort(compareControls);
   }, [controls, q, shown]);
 
   if (controls.length === 0) return <Empty>{t("host.noControls")}</Empty>;
@@ -122,7 +122,7 @@ function Controls({ controls, scanId }: { controls: ControlRow[]; scanId: number
                 >
                   <IconChevron open={expanded} />
                   <span className="mono id">{c.id}</span>
-                  <span className="control-title">{c.title}</span>
+                  <span className="control-title">{ctitle(c, lang)}</span>
                   <Severity value={c.severity} />
                   <StatusBadge status={c.status} />
                 </div>
@@ -224,7 +224,7 @@ function History({ scans }: { scans: ScanRow[] }) {
 }
 
 function DiffView({ diff }: { diff: Diff }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const section = (title: string, tone: string, list: ControlChange[]) =>
     !list || list.length === 0 ? null : (
       <div key={title} className={`diffgroup ${tone}`}>
@@ -235,7 +235,7 @@ function DiffView({ diff }: { diff: Diff }) {
           {list.map((c) => (
             <li key={`${c.profile}/${c.id}`}>
               <div>
-                <span className="mono id">{c.id}</span> {c.title} <StatusBadge status={c.old} />
+                <span className="mono id">{c.id}</span> {ctitle(c, lang)} <StatusBadge status={c.old} />
                 {c.old === c.new ? <span className="muted small"> {t("diff.checksChanged")}</span> : <> → <StatusBadge status={c.new} /></>}
               </div>
               {c.checks.length > 0 && (

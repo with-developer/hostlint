@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, compareControls, hue, parseRoute, percent, score, total } from "./format";
+import { ago, compareControls, ctitle, hue, parseRoute, percent, score, total } from "./format";
 
 const t = (key: string, n?: number) => `${key}:${n ?? ""}`;
 
@@ -35,6 +35,14 @@ describe("compareControls", () => {
       { status: "FAIL", severity: "high", id: "U-2" },
     ] as const;
     expect([...rows].sort(compareControls).map((r) => r.id)).toEqual(["U-2", "U-09", "U-10", "U-02"]);
+  });
+});
+
+describe("ctitle", () => {
+  it("uses the Korean title for Korean and falls back to English", () => {
+    expect(ctitle({ title: "Password policy", titleKo: "비밀번호 정책" }, "ko")).toBe("비밀번호 정책");
+    expect(ctitle({ title: "Password policy", titleKo: "비밀번호 정책" }, "en")).toBe("Password policy");
+    expect(ctitle({ title: "Password policy" }, "ko")).toBe("Password policy");
   });
 });
 

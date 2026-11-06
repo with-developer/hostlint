@@ -35,6 +35,11 @@ export function compareControls(a: { status: Status; severity: string; id: strin
   );
 }
 
+/** The title of a control in the language of the page; the English one when there is no translation. */
+export function ctitle(c: { title: string; titleKo?: string }, lang: string): string {
+  return lang === "ko" && c.titleKo ? c.titleKo : c.title;
+}
+
 /** A route of the hash-based router: "#/hosts/3" → ["hosts", "3"]. */
 export function parseRoute(hash: string): string[] {
   return hash

@@ -103,6 +103,12 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	for i := range o.TopFailing {
+		o.TopFailing[i].TitleKo = s.titleKo(o.TopFailing[i].Profile, o.TopFailing[i].ID)
+	}
+	for i := range o.RecentRegression {
+		o.RecentRegression[i].TitleKo = s.titleKo(o.RecentRegression[i].Profile, o.RecentRegression[i].ControlID)
+	}
 	writeJSON(w, http.StatusOK, o)
 }
 
@@ -194,6 +200,9 @@ func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, err)
 	default:
+		for i := range d.Controls {
+			d.Controls[i].TitleKo = s.titleKo(d.Controls[i].Profile, d.Controls[i].ID)
+		}
 		writeJSON(w, http.StatusOK, d)
 	}
 }
@@ -342,6 +351,9 @@ func (s *Server) handleMatrix(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	for i := range m.Controls {
+		m.Controls[i].TitleKo = s.titleKo(m.Controls[i].Profile, m.Controls[i].ID)
+	}
 	writeJSON(w, http.StatusOK, m)
 }
 
@@ -350,6 +362,9 @@ func (s *Server) handleControls(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.fail(w, err)
 		return
+	}
+	for i := range list {
+		list[i].TitleKo = s.titleKo(list[i].Profile, list[i].ID)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"controls": list})
 }
@@ -415,6 +430,22 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, err)
 	default:
+		d.TitleKo = s.titleKo(profile, id)
 		writeJSON(w, http.StatusOK, map[string]any{"control": d, "info": s.controlInfo(profile, id)})
 	}
+}
+
+// titleKo is the Korean title of a control from the profiles the server has, or "".
+func (s *Server) titleKo(profile, id string) string {
+	if s.cfg.Content == nil {
+		return ""
+	}
+	if p := s.cfg.Content.Profiles[profile]; p != nil {
+		for _, c := range p.Controls {
+			if c.ID == id {
+				return c.TitleKo
+			}
+		}
+	}
+	return ""
 }

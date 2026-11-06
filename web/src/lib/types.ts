@@ -13,17 +13,17 @@ export interface HostSummary {
   score: number | null;
   stale: boolean;
 }
-export interface ControlRow { profile: string; id: string; title: string; severity: string; status: Status }
+export interface ControlRow { profile: string; id: string; title: string; titleKo?: string; severity: string; status: Status }
 export interface ScanRow { id: number; receivedAt: string; startedAt: string; toolVersion: string; counts: Counts; score: number | null }
 export interface HostDetail extends HostSummary { controls: ControlRow[]; scans: ScanRow[] }
-export interface FailingControl { profile: string; id: string; title: string; severity: string; hosts: number }
-export interface RegressedControl { hostId: number; host: string; profile: string; id: string; title: string; severity: string; status: Status; receivedAt: string }
+export interface FailingControl { profile: string; id: string; title: string; titleKo?: string; severity: string; hosts: number }
+export interface RegressedControl { hostId: number; host: string; profile: string; id: string; title: string; titleKo?: string; severity: string; status: Status; receivedAt: string }
 export interface Overview {
   hosts: number; hostsFailing: number; hostsStale: number; counts: Counts; score: number | null;
   topFailing: FailingControl[]; recentRegressions: RegressedControl[]; staleAfterDays: number;
 }
 export interface CheckChange { ref: string; title: string; old: Status | ""; new: Status | "" }
-export interface ControlChange { profile: string; id: string; title: string; severity: string; old: Status | ""; new: Status | ""; checks: CheckChange[] }
+export interface ControlChange { profile: string; id: string; title: string; titleKo?: string; severity: string; old: Status | ""; new: Status | ""; checks: CheckChange[] }
 export interface Diff {
   old: { file: string; scanned: string }; new: { file: string; scanned: string }; notes: string[];
   regressed: ControlChange[]; fixed: ControlChange[]; changed: ControlChange[]; added: ControlChange[]; removed: ControlChange[]; unchanged: number;
@@ -34,11 +34,11 @@ export interface DocCheck { ref: string; title: string; status: Status; reason?:
 export interface DocControl { profile: string; id: string; reason?: string; checks: string[]; waiver?: { reason: string; expires: string } }
 export interface ScanDoc { controls: DocControl[]; checks: DocCheck[] }
 
-export interface ControlSummary { profile: string; id: string; title: string; severity: string; counts: Counts }
+export interface ControlSummary { profile: string; id: string; title: string; titleKo?: string; severity: string; counts: Counts }
 export interface ControlHost { hostId: number; host: string; status: Status; stale: boolean }
 export interface CheckInfo { id: string; title: string; titleKo?: string; description: string; rationale: string; remediation: string }
 export interface ControlInfo { titleKo?: string; manual?: string; checks: CheckInfo[] }
 export interface ControlDetail extends ControlSummary { hosts: ControlHost[] }
-export interface MatrixControl { profile: string; id: string; title: string; severity: string }
+export interface MatrixControl { profile: string; id: string; title: string; titleKo?: string; severity: string }
 export interface MatrixHost { id: number; name: string; stale: boolean; statuses: string }
 export interface Matrix { controls: MatrixControl[]; hosts: MatrixHost[] }

@@ -33,6 +33,7 @@ type ControlChange struct {
 	Profile  string          `json:"profile"`
 	ID       string          `json:"id"`
 	Title    string          `json:"title"`
+	TitleKo  string          `json:"titleKo,omitempty"`
 	Severity engine.Severity `json:"severity"`
 	Old      engine.Status   `json:"old"`
 	New      engine.Status   `json:"new"`
@@ -114,7 +115,7 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 	for _, nc := range newer.Controls {
 		seen[key(nc)] = true
 		oc, existed := oldControls[key(nc)]
-		change := ControlChange{Profile: nc.Profile, ID: nc.ID, Title: nc.Title, Severity: nc.Severity, New: nc.Status, Checks: []CheckChange{}}
+		change := ControlChange{Profile: nc.Profile, ID: nc.ID, Title: nc.Title, TitleKo: nc.TitleKo, Severity: nc.Severity, New: nc.Status, Checks: []CheckChange{}}
 		if !existed {
 			d.Added = append(d.Added, change)
 			continue
@@ -145,7 +146,7 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 	}
 	for _, oc := range older.Controls {
 		if !seen[key(oc)] {
-			d.Removed = append(d.Removed, ControlChange{Profile: oc.Profile, ID: oc.ID, Title: oc.Title, Severity: oc.Severity, Old: oc.Status, Checks: []CheckChange{}})
+			d.Removed = append(d.Removed, ControlChange{Profile: oc.Profile, ID: oc.ID, Title: oc.Title, TitleKo: oc.TitleKo, Severity: oc.Severity, Old: oc.Status, Checks: []CheckChange{}})
 		}
 	}
 	for _, list := range [][]ControlChange{d.Regressed, d.Fixed, d.Changed, d.Added, d.Removed} {

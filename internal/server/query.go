@@ -181,6 +181,7 @@ type ControlRow struct {
 	Profile  string `json:"profile"`
 	ID       string `json:"id"`
 	Title    string `json:"title"`
+	TitleKo  string `json:"titleKo,omitempty"`
 	Severity string `json:"severity"`
 	Status   string `json:"status"`
 }
@@ -297,6 +298,7 @@ type RegressedControl struct {
 	Profile    string `json:"profile"`
 	ControlID  string `json:"id"`
 	Title      string `json:"title"`
+	TitleKo    string `json:"titleKo,omitempty"`
 	Severity   string `json:"severity"`
 	Status     string `json:"status"`
 	ReceivedAt string `json:"receivedAt"`
@@ -307,6 +309,7 @@ type FailingControl struct {
 	Profile  string `json:"profile"`
 	ID       string `json:"id"`
 	Title    string `json:"title"`
+	TitleKo  string `json:"titleKo,omitempty"`
 	Severity string `json:"severity"`
 	Hosts    int    `json:"hosts"`
 }
@@ -401,6 +404,7 @@ type MatrixControl struct {
 	Profile  string `json:"profile"`
 	ID       string `json:"id"`
 	Title    string `json:"title"`
+	TitleKo  string `json:"titleKo,omitempty"`
 	Severity string `json:"severity"`
 }
 
@@ -526,6 +530,7 @@ type ControlSummary struct {
 	Profile  string `json:"profile"`
 	ID       string `json:"id"`
 	Title    string `json:"title"`
+	TitleKo  string `json:"titleKo,omitempty"`
 	Severity string `json:"severity"`
 	Counts   Counts `json:"counts"`
 }
