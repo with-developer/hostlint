@@ -227,10 +227,16 @@ it elsewhere, and a later run shows whether history was changed or cut off.`,
 			if !rep.OK() {
 				var problems []string
 				if len(rep.Mismatched) > 0 {
-					problems = append(problems, fmt.Sprintf("%d stored scans do not match their signature%s: the database was changed after they were received", len(rep.Mismatched), idList(rep.Mismatched)))
+					problems = append(problems, fmt.Sprintf("%d stored scans differ from what was recorded when they were received (document, signature or key)%s: the database was changed afterwards", len(rep.Mismatched), idList(rep.Mismatched)))
 				}
 				if len(rep.Downgraded) > 0 {
 					problems = append(problems, fmt.Sprintf("%d scans have no signature although their host had signed before%s: they were stored unsigned or their signature was removed", len(rep.Downgraded), idList(rep.Downgraded)))
+				}
+				if len(rep.Derived) > 0 {
+					problems = append(problems, fmt.Sprintf("%d scans show other controls or another host than their stored document says%s", len(rep.Derived), idList(rep.Derived)))
+				}
+				if len(rep.Unrecorded) > 0 {
+					problems = append(problems, fmt.Sprintf("%d scans have no ingest record in the audit chain%s", len(rep.Unrecorded), idList(rep.Unrecorded)))
 				}
 				return errors.New(strings.Join(problems, "; "))
 			}

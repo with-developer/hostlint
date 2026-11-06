@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"compress/flate"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/with-developer/hostlint/internal/output"
 	"github.com/with-developer/hostlint/internal/signing"
 )
 
@@ -123,7 +127,7 @@ func (s *Store) DeleteHost(ctx context.Context, id int64) (bool, error) {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts WHERE id = ?`, id); err != nil {
 		return false, err
 	}
-	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-deleted", fmt.Sprintf("host %d %s with %d scans", id, name, scans), ""); err != nil {
+	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-deleted", fmt.Sprintf("host %d %s with %d scans", id, name, scans)); err != nil {
 		return false, err
 	}
 	return true, tx.Commit()
@@ -137,33 +141,61 @@ func (s *Store) HostList(ctx context.Context) ([]HostSummary, error) {
 // SignatureReport is what VerifySignatures found.
 type SignatureReport struct {
 	Signed, Unsigned int
-	// Mismatched are the signed scans whose stored document does not match its signature.
+	// Mismatched are the scans whose stored document, signature or key does not match what the audit chain
+	// recorded when they were received: a changed document, a removed or replaced signature.
 	Mismatched []int64
-	// Downgraded are the unsigned scans received after the host's first signed one: a host that
-	// signs does not stop, so a scan without a signature there was stored without one or had it removed.
+	// Derived are the scans whose rows shown by the dashboard (controls, host) differ from the stored document.
+	Derived []int64
+	// Unrecorded are the scans that no ingest audit row accounts for (not received through the server).
+	Unrecorded []int64
+	// Downgraded are the unsigned scans received after the host's first signed one.
 	Downgraded []int64
 }
 
-// OK reports whether every stored signature verifies and no host went back to unsigned.
-func (r SignatureReport) OK() bool { return len(r.Mismatched) == 0 && len(r.Downgraded) == 0 }
+// OK reports whether every check passed.
+func (r SignatureReport) OK() bool {
+	return len(r.Mismatched)+len(r.Derived)+len(r.Unrecorded)+len(r.Downgraded) == 0
+}
 
-// VerifySignatures checks every stored signed scan against the signature and key it arrived with: a
-// document changed in the database afterwards does not verify. A database error is an error, not a
-// finding; a stored document that cannot be read back (corrupt) is a mismatch.
+// VerifySignatures checks every stored scan against what the hash-chained audit table recorded at its
+// ingest (the digest of the document and the key it was signed with), against its signature, and
+// against the rows derived from it. Whoever changes a stored document, strips or replaces its signature,
+// moves a scan to another host or edits what the dashboard shows has to rewrite the audit chain too,
+// which the hash kept elsewhere ("hostlint server verify" prints it) exposes. A database error is an
+// error, not a finding; a document that cannot be read back (corrupt) is a mismatch.
 func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 	var rep SignatureReport
-	rs, err := s.db.QueryContext(ctx, `SELECT id, host_row, pubkey, signature FROM scans ORDER BY id`)
+	type ingest struct{ key string }
+	recorded := map[string]ingest{} // digest of a document → what its ingest recorded
+	ar, err := s.db.QueryContext(ctx, `SELECT digest, key FROM audit WHERE action = 'ingest'`)
+	if err != nil {
+		return rep, err
+	}
+	for ar.Next() {
+		var digest, key string
+		if err := ar.Scan(&digest, &key); err != nil {
+			_ = ar.Close()
+			return rep, err
+		}
+		recorded[digest] = ingest{key}
+	}
+	if err := ar.Err(); err != nil {
+		return rep, err
+	}
+	_ = ar.Close()
+
+	rs, err := s.db.QueryContext(ctx, `SELECT s.id, s.host_row, s.digest, s.pubkey, s.signature, h.name, h.host_id FROM scans s JOIN hosts h ON h.id = s.host_row ORDER BY s.id`)
 	if err != nil {
 		return rep, err
 	}
 	type row struct {
-		id, host int64
-		key, sig string
+		id, host                    int64
+		digest, key, sig, name, hid string
 	}
 	var rows []row
 	for rs.Next() {
 		var r row
-		if err := rs.Scan(&r.id, &r.host, &r.key, &r.sig); err != nil {
+		if err := rs.Scan(&r.id, &r.host, &r.digest, &r.key, &r.sig, &r.name, &r.hid); err != nil {
 			_ = rs.Close()
 			return rep, err
 		}
@@ -173,7 +205,7 @@ func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 		return rep, err
 	}
 	_ = rs.Close()
-	firstSigned := map[int64]int64{} // host → id of its first signed scan
+	firstSigned := map[int64]int64{}
 	for _, r := range rows {
 		if r.sig != "" && firstSigned[r.host] == 0 {
 			firstSigned[r.host] = r.id
@@ -185,21 +217,67 @@ func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 			if first := firstSigned[r.host]; first != 0 && r.id > first {
 				rep.Downgraded = append(rep.Downgraded, r.id)
 			}
+		} else {
+			rep.Signed++
+		}
+		rec, ok := recorded[r.digest]
+		if !ok {
+			rep.Unrecorded = append(rep.Unrecorded, r.id)
 			continue
 		}
-		rep.Signed++
 		doc, err := s.ScanDoc(ctx, r.id)
 		var corrupt flate.CorruptInputError
 		switch {
 		case errors.Is(err, gzip.ErrHeader), errors.Is(err, gzip.ErrChecksum), errors.Is(err, io.ErrUnexpectedEOF), errors.As(err, &corrupt):
 			rep.Mismatched = append(rep.Mismatched, r.id)
+			continue
 		case err != nil:
 			return rep, fmt.Errorf("scan %d: %w", r.id, err)
-		case signing.Verify(r.key, r.sig, doc) != nil:
+		}
+		sum := sha256.Sum256(doc)
+		switch {
+		case "sha256:"+hex.EncodeToString(sum[:]) != r.digest,
+			(r.sig != "") != (rec.key != ""),
+			r.sig != "" && (signing.Fingerprint(r.key) != rec.key || signing.Verify(r.key, r.sig, doc) != nil):
 			rep.Mismatched = append(rep.Mismatched, r.id)
+			continue
+		}
+		if !s.derivedMatches(ctx, r.id, r.name, r.hid, doc) {
+			rep.Derived = append(rep.Derived, r.id)
 		}
 	}
 	return rep, nil
+}
+
+// derivedMatches reports whether the controls stored for a scan, and the host it is filed under, are
+// what its document says.
+func (s *Store) derivedMatches(ctx context.Context, scanRow int64, name, hostID string, doc []byte) bool {
+	res, err := output.ReadResult(bytes.NewReader(doc))
+	if err != nil || res.Host.Hostname != name || res.Host.HostID != hostID {
+		return false
+	}
+	rs, err := s.db.QueryContext(ctx, `SELECT profile, control_id, status FROM scan_controls WHERE scan_row = ?`, scanRow)
+	if err != nil {
+		return false
+	}
+	defer rs.Close()
+	got := map[string]string{}
+	for rs.Next() {
+		var p, id, st string
+		if err := rs.Scan(&p, &id, &st); err != nil {
+			return false
+		}
+		got[p+"\x00"+id] = st
+	}
+	if rs.Err() != nil || len(got) != len(res.Controls) {
+		return false
+	}
+	for _, c := range res.Controls {
+		if got[c.Profile+"\x00"+c.ID] != string(c.Status) {
+			return false
+		}
+	}
+	return true
 }
 
 // ResetHostKey replaces the key registered for a host. newKey "" forgets it, so that the next signed
@@ -229,7 +307,7 @@ func (s *Store) ResetHostKey(ctx context.Context, id int64, newKey string) (bool
 	if newKey != "" {
 		detail = fmt.Sprintf("host %d %s, key %s replaced by %s", id, name, signing.Fingerprint(key), signing.Fingerprint(newKey))
 	}
-	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-key-reset", detail, ""); err != nil {
+	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-key-reset", detail); err != nil {
 		return false, err
 	}
 	return true, tx.Commit()

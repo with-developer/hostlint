@@ -188,6 +188,8 @@ by an operator when names differ).
   (v0.10): an Ed25519 key per host (`hostlint key generate`), the signature over the raw result
   document (domain-separated) sent in two headers, the public key registered at the host's first signed
   result, later results of that host required to be signed with it, `hostlint server verify`
-  re-checking stored results, `host reset-key` for a replaced key. The key is trusted on first use: a
+  re-checking stored scans against their ingest audit rows (the audit hash covers the key fingerprint),
+  signed results refused unless newer than the host's latest scan (replay), `host reset-key` for a replaced
+  key. The key is trusted on first use: a
   database controlled by an attacker can replace a result with its signature and key, which is why the
   fingerprints and the audit hash are meant to be kept elsewhere.

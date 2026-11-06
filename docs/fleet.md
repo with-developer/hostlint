@@ -175,9 +175,13 @@ create it: `hostlint server token create --name web-01 --host web-01 --key <publ
 accepts nothing but results signed with that key. From then on the server refuses that host's
 results that are unsigned or signed with another key (a stolen token alone is no longer enough),
 and the dashboard shows the host as signed with the key's fingerprint. `hostlint server verify` also
-checks every stored signed result against its signature, so a result changed in the database
-afterwards is found. It also reports a scan stored without a signature after its host had started
-signing. If a key was replaced on purpose (a re-installed machine), `hostlint server host reset-key ID --key
+checks every stored scan against what the hash-chained audit log recorded when it was received (the
+digest of the document and the key it was signed with) and against its signature, so a result changed in
+the database afterwards, a signature that was removed or replaced, controls shown by the dashboard that
+differ from the stored document, a scan moved to another host, and a scan with no ingest record are all
+found. A host that signs does not go back in time: a signed result that does not start after the host's
+latest scan is refused (a captured result cannot be replayed once the original was pruned), while a retry
+of a stored scan is still answered as before. If a key was replaced on purpose (a re-installed machine), `hostlint server host reset-key ID --key
 <new public key>` replaces the registered one at once (without `--key` it is forgotten, and until the next
 signed result registers a key unsigned results are accepted). The key file is refused if other users can read it.
 

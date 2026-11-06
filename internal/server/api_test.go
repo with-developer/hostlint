@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -476,7 +477,7 @@ func TestSignedResults(t *testing.T) {
 	web := fixture(t, "web-01.json") // web-01 already has unsigned scans in the fixture; use another host
 	doc := func(id string) []byte {
 		out := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "signer"`))
-		return bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id))
+		return laterScan(bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id)), scanNumber(id))
 	}
 	d1 := doc("s-1")
 	k, s := signedDoc(t, keyA, d1)
@@ -564,6 +565,17 @@ func TestSignedResults(t *testing.T) {
 	}
 }
 
+// laterScan gives a copy of a fixture document the start time of its n-th scan, one minute apart: a signed
+// host does not accept a scan that is not newer than its latest one.
+func laterScan(doc []byte, n int) []byte {
+	return bytes.ReplaceAll(doc, []byte(`"startedAt": "2026-11-02T12:00:00Z"`), []byte(fmt.Sprintf(`"startedAt": "2026-11-02T12:%02d:00Z"`, n)))
+}
+
+func scanNumber(id string) int {
+	n, _ := strconv.Atoi(id[strings.LastIndex(id, "-")+1:])
+	return n
+}
+
 // An unsigned host has no key and no fingerprint; replacing a key with a given one leaves no gap.
 func TestUnsignedHostsHaveNoFingerprintAndKeysCanBeReplaced(t *testing.T) {
 	f := newAPIFixture(t)
@@ -583,7 +595,7 @@ func TestUnsignedHostsHaveNoFingerprintAndKeysCanBeReplaced(t *testing.T) {
 	web := fixture(t, "web-01.json")
 	doc := func(id string) []byte {
 		out := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "rotating"`))
-		return bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id))
+		return laterScan(bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id)), scanNumber(id))
 	}
 	kA, sA := signedDoc(t, filepath.Join(dir, "a"), doc("k-1"))
 	if kA != pubA {
@@ -623,7 +635,7 @@ func TestTokenBoundToAKey(t *testing.T) {
 	web := fixture(t, "web-01.json")
 	doc := func(id string) []byte {
 		out := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "keyed"`))
-		return bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id))
+		return laterScan(bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id)), scanNumber(id))
 	}
 	d := doc("b-1")
 	if code, out := postSigned(t, f, tok, d, "", ""); code != http.StatusConflict || !strings.Contains(out["error"].(string), "only accepts") {
@@ -648,5 +660,78 @@ func TestTokenBoundToAKey(t *testing.T) {
 	}
 	if !found {
 		t.Error("the bound key is not on the credential")
+	}
+}
+
+// A signed host does not go back in time (a captured result cannot be replayed), a retry of its latest
+// scan still succeeds, and verification finds what was changed behind the server's back.
+func TestSignedReplayAndTampering(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	key := filepath.Join(t.TempDir(), "k")
+	if _, err := signing.Generate(key); err != nil {
+		t.Fatal(err)
+	}
+	web := fixture(t, "web-01.json")
+	doc := func(n int) []byte {
+		out := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "replayed"`))
+		return laterScan(bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(fmt.Sprintf("r-%d", n))), n)
+	}
+	for _, n := range []int{1, 2, 3} {
+		k, s := signedDoc(t, key, doc(n))
+		if code, out := postSigned(t, f, ingest, doc(n), k, s); code != http.StatusCreated {
+			t.Fatalf("scan %d: %d %v", n, code, out)
+		}
+	}
+	// An older signed result (one captured earlier) is refused; the latest one sent again is a retry.
+	k, s := signedDoc(t, key, doc(2))
+	if code, out := postSigned(t, f, ingest, laterScan(doc(2), 2), k, s); code != http.StatusOK {
+		t.Errorf("a retry of an earlier scan that is stored: %d %v", code, out)
+	}
+	old := bytes.ReplaceAll(doc(1), []byte("r-1"), []byte("r-0"))
+	k, s = signedDoc(t, key, old)
+	if code, out := postSigned(t, f, ingest, old, k, s); code != http.StatusConflict || !strings.Contains(out["error"].(string), "newer") {
+		t.Errorf("a replayed older result: %d %v", code, out)
+	}
+	k, s = signedDoc(t, key, doc(3))
+	if code, out := postSigned(t, f, ingest, doc(3), k, s); code != http.StatusOK {
+		t.Errorf("a retry of the latest: %d %v", code, out)
+	}
+
+	ctx := context.Background()
+	if rep, err := f.store.VerifySignatures(ctx); err != nil || !rep.OK() || rep.Signed != 3 {
+		t.Fatalf("verify: %+v %v", rep, err)
+	}
+	var id, host int64
+	if err := f.store.db.QueryRow(`SELECT s.id, s.host_row FROM scans s JOIN hosts h ON h.id = s.host_row WHERE h.name = 'replayed' ORDER BY s.id LIMIT 1`).Scan(&id, &host); err != nil {
+		t.Fatal(err)
+	}
+	// The controls the dashboard shows are changed, the document is not.
+	if _, err := f.store.db.Exec(`UPDATE scan_controls SET status = 'PASS' WHERE scan_row = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	if rep, _ := f.store.VerifySignatures(ctx); len(rep.Derived) != 1 || rep.Derived[0] != id {
+		t.Errorf("changed controls went unnoticed: %+v", rep)
+	}
+	// A scan moved to another host.
+	var other int64
+	if err := f.store.db.QueryRow(`SELECT id FROM hosts WHERE id != ? LIMIT 1`, host).Scan(&other); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.db.Exec(`UPDATE scans SET host_row = ? WHERE id = ?`, other, id); err != nil {
+		t.Fatal(err)
+	}
+	if rep, _ := f.store.VerifySignatures(ctx); len(rep.Derived) == 0 || rep.OK() {
+		t.Errorf("a moved scan went unnoticed: %+v", rep)
+	}
+	// A scan the server never received: no ingest record accounts for it.
+	if _, err := f.store.db.Exec(`UPDATE audit SET digest = 'sha256:00' WHERE action = 'ingest' AND detail LIKE '%r-3'`); err != nil {
+		t.Fatal(err)
+	}
+	if rep, _ := f.store.VerifySignatures(ctx); len(rep.Unrecorded) != 1 {
+		t.Errorf("a scan without an ingest record went unnoticed: %+v", rep)
+	}
+	if _, _, err := f.store.VerifyAudit(ctx); err == nil {
+		t.Error("an edited audit row went unnoticed")
 	}
 }

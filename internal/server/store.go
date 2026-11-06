@@ -27,6 +27,7 @@ import (
 	_ "modernc.org/sqlite" // the pure-Go SQLite driver: the binary stays static
 
 	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 //go:embed migrations/*.sql
@@ -330,7 +331,23 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET last_scan_at = ? WHERE id = ?`, received, hostRow); err != nil {
 		return nil, err
 	}
-	if err := appendAudit(ctx, tx, received, cred.ID, remote, "ingest", fmt.Sprintf("host %s scan %s", name, res.Scan.ID), digest); err != nil {
+	// A host that signs does not go back in time: a signed result older than the latest scan of the
+	// host is a replay of one captured earlier (the scan ID alone would be accepted again after the
+	// original was pruned).
+	if in.key != "" {
+		var latest sql.NullString
+		if err := tx.QueryRowContext(ctx, `SELECT MAX(started_at) FROM scans WHERE host_row = ? AND id != ?`, hostRow, scanRow).Scan(&latest); err != nil {
+			return nil, err
+		}
+		if latest.Valid {
+			prev, err1 := time.Parse(time.RFC3339, latest.String)
+			cur, err2 := time.Parse(time.RFC3339, res.Scan.StartedAt)
+			if err1 == nil && err2 == nil && !cur.After(prev) {
+				return nil, fmt.Errorf("%w: a signed result must be newer than the host's latest scan (started %s)", ErrIdentity, latest.String)
+			}
+		}
+	}
+	if err := appendAuditKey(ctx, tx, received, cred.ID, remote, "ingest", fmt.Sprintf("host %s scan %s", name, res.Scan.ID), digest, signing.Fingerprint(in.key)); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -346,7 +363,7 @@ func (s *Store) Audit(ctx context.Context, credentialID int64, remote, action, d
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := appendAudit(ctx, tx, s.stamp(), credentialID, remote, action, detail, ""); err != nil {
+	if err := appendAudit(ctx, tx, s.stamp(), credentialID, remote, action, detail); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -355,13 +372,22 @@ func (s *Store) Audit(ctx context.Context, credentialID int64, remote, action, d
 const genesisHash = "0000000000000000000000000000000000000000000000000000000000000000"
 
 // auditHash chains an audit row to the one before it.
-func auditHash(prev, at string, credentialID int64, remote, action, detail, digest string) string {
+func auditHash(prev, at string, credentialID int64, remote, action, detail, digest, key string) string {
 	h := sha256.New()
 	fmt.Fprintf(h, "%s\n%s\n%d\n%s\n%s\n%s\n%s", prev, at, credentialID, remote, action, detail, digest)
+	if key != "" { // rows without a key hash as they always did
+		fmt.Fprintf(h, "\n%s", key)
+	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func appendAudit(ctx context.Context, tx *sql.Tx, at string, credentialID int64, remote, action, detail, digest string) error {
+func appendAudit(ctx context.Context, tx *sql.Tx, at string, credentialID int64, remote, action, detail string) error {
+	return appendAuditKey(ctx, tx, at, credentialID, remote, action, detail, "", "")
+}
+
+// appendAuditKey also records the fingerprint of the key a result was signed with: the chain then
+// vouches for whether a stored scan was signed, and with what.
+func appendAuditKey(ctx context.Context, tx *sql.Tx, at string, credentialID int64, remote, action, detail, digest, key string) error {
 	prev := genesisHash
 	err := tx.QueryRowContext(ctx, `SELECT hash FROM audit ORDER BY seq DESC LIMIT 1`).Scan(&prev)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -370,8 +396,8 @@ func appendAudit(ctx context.Context, tx *sql.Tx, at string, credentialID int64,
 	// Text from a result or a request is bounded before it is kept.
 	detail = truncate(detail, 512)
 	remote = truncate(remote, 128)
-	_, err = tx.ExecContext(ctx, `INSERT INTO audit (at, credential_id, remote, action, detail, digest, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		at, credentialID, remote, action, detail, digest, prev, auditHash(prev, at, credentialID, remote, action, detail, digest))
+	_, err = tx.ExecContext(ctx, `INSERT INTO audit (at, credential_id, remote, action, detail, digest, key, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		at, credentialID, remote, action, detail, digest, key, prev, auditHash(prev, at, credentialID, remote, action, detail, digest, key))
 	return err
 }
 
@@ -389,7 +415,7 @@ func truncate(s string, n int) string {
 // VerifyAudit checks the hash chain of the audit table and returns the hash of the last
 // row (to keep elsewhere: a changed or removed row breaks the chain from there on).
 func (s *Store) VerifyAudit(ctx context.Context) (rows int, last string, err error) {
-	rs, err := s.db.QueryContext(ctx, `SELECT seq, at, credential_id, remote, action, detail, digest, prev_hash, hash FROM audit ORDER BY seq`)
+	rs, err := s.db.QueryContext(ctx, `SELECT seq, at, credential_id, remote, action, detail, digest, key, prev_hash, hash FROM audit ORDER BY seq`)
 	if err != nil {
 		return 0, "", err
 	}
@@ -397,11 +423,11 @@ func (s *Store) VerifyAudit(ctx context.Context) (rows int, last string, err err
 	prev := genesisHash
 	for rs.Next() {
 		var seq, cred int64
-		var at, remote, action, detail, digest, prevHash, hash string
-		if err := rs.Scan(&seq, &at, &cred, &remote, &action, &detail, &digest, &prevHash, &hash); err != nil {
+		var at, remote, action, detail, digest, key, prevHash, hash string
+		if err := rs.Scan(&seq, &at, &cred, &remote, &action, &detail, &digest, &key, &prevHash, &hash); err != nil {
 			return rows, prev, err
 		}
-		if prevHash != prev || hash != auditHash(prev, at, cred, remote, action, detail, digest) {
+		if prevHash != prev || hash != auditHash(prev, at, cred, remote, action, detail, digest, key) {
 			return rows, prev, fmt.Errorf("the audit chain breaks at row %d", seq)
 		}
 		prev = hash

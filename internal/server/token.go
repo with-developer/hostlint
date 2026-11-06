@@ -88,7 +88,7 @@ func (s *Store) CreateCredential(ctx context.Context, scope, name, boundName str
 	if err != nil {
 		return "", 0, err
 	}
-	if err := appendAudit(ctx, tx, at, id, "cli", "token-created", fmt.Sprintf("%s token %q for %s", scope, truncate(name, 100), orAny(boundName)), ""); err != nil {
+	if err := appendAudit(ctx, tx, at, id, "cli", "token-created", fmt.Sprintf("%s token %q for %s", scope, truncate(name, 100), orAny(boundName))); err != nil {
 		return "", 0, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -201,7 +201,7 @@ func (s *Store) RevokeCredential(ctx context.Context, id int64) (bool, error) {
 	if err != nil || n == 0 {
 		return false, err
 	}
-	if err := appendAudit(ctx, tx, at, id, "cli", "token-revoked", fmt.Sprintf("token %d", id), ""); err != nil {
+	if err := appendAudit(ctx, tx, at, id, "cli", "token-revoked", fmt.Sprintf("token %d", id)); err != nil {
 		return false, err
 	}
 	return true, tx.Commit()

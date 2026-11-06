@@ -119,6 +119,7 @@ func TestPushSigned(t *testing.T) {
 		t.Fatalf("signed: %v", err)
 	}
 	other := bytes.ReplaceAll(doc, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte("another-scan"))
+	other = bytes.ReplaceAll(other, []byte(`"startedAt": "2026-11-02T12:00:00Z"`), []byte(`"startedAt": "2026-11-02T12:30:00Z"`))
 	if _, err := push.Send(ctx, other, push.Options{URL: ts.URL, Token: tok}); err == nil || !strings.Contains(err.Error(), "not signed") {
 		t.Errorf("an unsigned result of a signing host: %v", err)
 	}
