@@ -1,5 +1,5 @@
 id: files.log-world-writable
-version: 1
+version: 2
 title: Log files cannot be changed by every user
 title_ko: 로그 파일을 모든 사용자가 수정할 수 없음
 severity: medium
@@ -12,7 +12,7 @@ violations:
   over: filesystem.world_writable
   as: f
   where: >-
-    f.path.startsWith("/var/log/") && (f.type == "file" || (f.type == "dir" && !f.mode.matches("^[1357]")))
+    (f.path == "/var/log" || f.path.startsWith("/var/log/")) && (f.type == "file" || (f.type == "dir" && !f.mode.matches("^[1357]")))
   key: f.path
   text: >-
     f.path + " (" + f.type + ", " + f.mode + ")"
@@ -22,9 +22,17 @@ tests:
     facts:
       filesystem: {world_writable: [{path: /tmp, type: dir, mode: "1777"}, {path: /srv/open.txt, type: file, mode: "0666"}]}
     want: PASS
+  - name: the log directory itself is open
+    facts:
+      filesystem: {world_writable: [{path: /var/log, type: dir, mode: "0777"}]}
+    want: FAIL
   - name: a world-writable log
     facts:
       filesystem: {world_writable: [{path: /var/log/app.log, type: file, mode: "0666"}]}
+    want: FAIL
+  - name: the log directory itself is open
+    facts:
+      filesystem: {world_writable: [{path: /var/log, type: dir, mode: "0777"}]}
     want: FAIL
   - name: a world-writable log directory without the sticky bit
     facts:

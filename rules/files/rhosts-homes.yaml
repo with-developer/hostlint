@@ -1,0 +1,32 @@
+id: files.rhosts-homes
+version: 1
+title: Users' .rhosts files are private
+title_ko: 사용자의 .rhosts는 비공개
+severity: high
+description: >-
+  Checks that the .rhosts files of the home directories under /home are private (mode 0600 or
+  stricter). The owner is not compared with the home's user: a user's own file is the normal
+  case. Such files should not exist unless the r-services are needed.
+rationale: A .rhosts file lets hosts and users log in through rlogin and rsh without a password.
+remediation: Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
+file:
+  paths: [/home/*/.rhosts]
+  mode: "0600"
+  missing: pass
+  no_match: pass
+tests:
+  - name: none
+    want: PASS
+  - name: a user's own private file
+    files:
+      /home/alice/.rhosts: {mode: "0600", owner: user}
+    want: PASS
+  - name: readable by all
+    files:
+      /home/alice/.rhosts: {mode: "0644"}
+    want: FAIL
+  - name: /home unreadable
+    input: unavailable
+    files:
+      /home: {type: dir, mode: "0700", error: permission}
+    want: ERROR

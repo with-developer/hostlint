@@ -144,11 +144,12 @@ func TestFilesystemOddNamesAndLogFiles(t *testing.T) {
 		AddFile("/var/tmp/ ", "", 0o644, 0, 0).
 		AddFile("/var/log/syslog", "", 0o640, 0, 0).
 		AddFile("/var/log/app.log", "", 0o640, 1000, 1000).
-		AddDir("/var/log/app", 0o750, 1000, 5)
+		AddDir("/var/log/app", 0o750, 1000, 5).
+		SetOwner("/var/log", 1000, 1000)
 	got := collectFS(t, hostfs.NewTestHost(m, nil, false)).Value.(*Filesystem)
 	for _, c := range []struct{ name, got, want string }{
 		{"odd_names", paths(got.OddNames), "/home/alice/... 0755 alice:alice, /var/tmp/  0644 root:root, /var/tmp/.  0644 root:root, /var/tmp/..  0644 root:root"},
-		{"log_files", paths(got.LogFiles), "/var/log/app 0750 alice:tty, /var/log/app.log 0640 alice:alice"},
+		{"log_files", paths(got.LogFiles), "/var/log 0755 alice:alice, /var/log/app 0750 alice:tty, /var/log/app.log 0640 alice:alice"},
 	} {
 		if c.got != c.want {
 			t.Errorf("%s:\n got %s\nwant %s", c.name, c.got, c.want)

@@ -1,5 +1,5 @@
 id: files.setid-outside-system-dirs
-version: 1
+version: 2
 title: No set-ID programs outside the system program directories
 title_ko: 시스템 디렉터리 밖의 SUID·SGID 파일 없음
 severity: high
@@ -15,7 +15,7 @@ violations:
   over: filesystem.setid
   as: f
   where: >-
-    !f.path.matches("^/(usr/)?(bin|sbin|lib|lib64|libexec)/")
+    !f.path.matches("^/(usr/)?(bin|sbin|lib|lib32|lib64|libx32|libexec)/")
   key: f.path
   text: >-
     f.path + " (" + f.mode + ", " + (f.owner != "" ? f.owner : string(f.uid)) + ")"

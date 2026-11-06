@@ -1,5 +1,5 @@
 id: services.review-dns-other
-version: 1
+version: 3
 title: Review zone transfers and updates of the DNS server
 title_ko: DNS 서버의 존 전송·업데이트 설정 검토
 severity: high
@@ -13,8 +13,8 @@ rationale: >-
 remediation: >-
   Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.
 applies: >-
-  services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) ||
-  (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+  services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) ||
+  (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
 manual:
   guidance: >-
     Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.

@@ -91,7 +91,7 @@ var excludedPaths = map[string]string{
 type filesystemCollector struct{}
 
 func (filesystemCollector) Name() string           { return "filesystem" }
-func (filesystemCollector) Version() int           { return 3 }
+func (filesystemCollector) Version() int           { return 4 }
 func (filesystemCollector) Access() engine.Access  { return engine.AccessFilesystem }
 func (filesystemCollector) Type() reflect.Type     { return reflect.TypeFor[Filesystem]() }
 func (filesystemCollector) Timeout() time.Duration { return walkTimeout }
@@ -221,7 +221,7 @@ func (w *walker) visit(fi hostfs.FileInfo) error {
 	if isOddName(path.Base(fi.Path)) {
 		w.add(&w.facts.OddNames, "odd_names", fi)
 	}
-	if fi.UID != 0 && strings.HasPrefix(fi.Path, "/var/log/") && (fi.IsRegular() || fi.IsDir()) {
+	if fi.UID != 0 && (fi.Path == "/var/log" || strings.HasPrefix(fi.Path, "/var/log/")) && (fi.IsRegular() || fi.IsDir()) {
 		w.add(&w.facts.LogFiles, "log_files", fi)
 	}
 	if w.users != nil && w.groups != nil {

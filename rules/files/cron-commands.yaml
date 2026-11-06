@@ -1,22 +1,26 @@
 id: files.cron-commands
-version: 1
+version: 2
 title: Only root and a group can run crontab and at
 title_ko: crontab·at 명령은 일반 사용자 실행 금지
 severity: high
 description: >-
-  Checks that /usr/bin/crontab and /usr/bin/at are owned by root and cannot be run by other
-  users (no execute permission for others; mode 6750 or stricter).
+  Checks that /usr/bin/crontab and /usr/bin/at are owned by root (or daemon, which owns at on
+  Debian and Ubuntu) and cannot be run by other users (no execute permission for others; mode 6750 or stricter).
 rationale: Scheduled jobs keep running after a user is gone; letting every user schedule them widens what an intruder can persist.
 remediation: Run `chmod o-x /usr/bin/crontab /usr/bin/at`, and let users who need them in through the file's group.
 file:
   paths: [/usr/bin/crontab, /usr/bin/at]
-  owner: [root]
+  owner: [root, daemon]
   mode: "6750"
   missing: pass
 tests:
   - name: restricted
     files:
       /usr/bin/crontab: {mode: "2750"}
+    want: PASS
+  - name: at owned by daemon as on Debian
+    files:
+      /usr/bin/at: {mode: "6750", owner: daemon}
     want: PASS
   - name: distribution default
     files:

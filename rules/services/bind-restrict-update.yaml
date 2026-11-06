@@ -1,5 +1,5 @@
 id: services.bind-restrict-update
-version: 1
+version: 2
 title: BIND dynamic updates are restricted
 title_ko: BIND 동적 업데이트가 제한됨
 severity: high
@@ -10,7 +10,7 @@ rationale: >-
 remediation: >-
   Allow updates only with a key (`allow-update { key dhcp-updates; };`) or an update-policy, or remove allow-update.
 applies: >-
-  bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+  bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
 violations:
   over: bind.zones
   as: z

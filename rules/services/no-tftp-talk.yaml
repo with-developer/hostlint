@@ -1,5 +1,5 @@
 id: services.no-tftp-talk
-version: 1
+version: 3
 title: tftp and talk are not started
 title_ko: tftp, talk 서비스 미사용
 severity: high
@@ -14,7 +14,7 @@ violations:
   over: services.started
   as: s
   where: >-
-    s.service in ["tftp", "tftpd", "tftpd-hpa", "talk", "ntalk", "talkd"] || s.program.matches("/(in\\.)?(tftpd|talkd|ntalkd)$")
+    s.service in ["tftp", "tftpd", "tftpd-hpa", "atftpd", "talk", "ntalk", "talkd"] || s.program.matches("/(in\\.)?(a?tftpd|talkd|ntalkd)$")
   key: s.kind + ":" + s.name
   text: >-
     s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
@@ -34,3 +34,7 @@ tests:
     facts:
       services: {started: []}
     want: ERROR
+  - name: atftpd
+    facts:
+      services: {started: [{service: atftpd, name: atftpd.service, kind: unit, program: /usr/sbin/atftpd, source: "/etc/systemd/system/multi-user.target.wants/atftpd.service"}]}
+    want: FAIL

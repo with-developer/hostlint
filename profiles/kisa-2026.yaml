@@ -2,7 +2,7 @@
 # (ADR 0007). Control titles are hostlint's own short wording; only the control
 # IDs and importance levels come from the guide.
 id: kisa-2026
-revision: 14
+revision: 15
 title: KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 title_ko: 주요정보통신기반시설 기술적 취약점 분석·평가 상세가이드 (2026) — Unix 서버
 controls:
@@ -149,7 +149,7 @@ controls:
     title: No password-less trust through .rhosts or hosts.equiv
     title_ko: .rhosts·hosts.equiv 신뢰 관계 제한
     severity: high
-    checks: [files.rhosts]
+    checks: [files.rhosts, files.rhosts-homes]
   - id: U-28
     title: Access is restricted by address and port
     title_ko: 접속 IP·포트 제한

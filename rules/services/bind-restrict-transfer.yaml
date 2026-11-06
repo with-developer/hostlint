@@ -1,5 +1,5 @@
 id: services.bind-restrict-transfer
-version: 1
+version: 2
 title: BIND zone transfers are restricted
 title_ko: BIND 존 전송이 제한됨
 severity: high
@@ -10,7 +10,7 @@ rationale: >-
 remediation: >-
   Set `allow-transfer { none; };` in options and list your secondaries (or a TSIG key) in the zones that need it.
 applies: >-
-  bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+  bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
 violations:
   over: bind.zones
   as: z

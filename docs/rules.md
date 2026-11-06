@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 14)
+## kisa-2026 (revision 15)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -39,7 +39,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-24 | high | Users' startup files are protected (사용자 시작 파일 소유자·권한) | [`homes.startup-files`](#homesstartup-files) |
 | U-25 | high | World-writable files are known (모든 사용자 쓰기 가능 파일 점검) | [`files.world-writable`](#filesworld-writable) |
 | U-26 | high | No stray files in /dev (/dev의 일반 파일 점검) | [`files.dev-regular-files`](#filesdev-regular-files) |
-| U-27 | high | No password-less trust through .rhosts or hosts.equiv (.rhosts·hosts.equiv 신뢰 관계 제한) | [`files.rhosts`](#filesrhosts) |
+| U-27 | high | No password-less trust through .rhosts or hosts.equiv (.rhosts·hosts.equiv 신뢰 관계 제한) | [`files.rhosts`](#filesrhosts), [`files.rhosts-homes`](#filesrhosts-homes) |
 | U-28 | high | Access is restricted by address and port (접속 IP·포트 제한) | [`services.review-network-access`](#servicesreview-network-access) |
 | U-29 | low | Ownership and permissions of /etc/hosts.lpd (/etc/hosts.lpd 소유자·권한) | [`files.hosts-lpd-perms`](#fileshosts-lpd-perms) |
 | U-30 | medium | Restrictive umask (umask 설정) | [`env.umask-login-defs`](#envumask-login-defs), [`env.umask-startup-files`](#envumask-startup-files) |
@@ -369,7 +369,7 @@ Checks that the queued jobs and sequence file of at (/var/spool/at on the RHEL f
 
 Only root and a group can run crontab and at (crontab·at 명령은 일반 사용자 실행 금지) — severity high, reads file metadata.
 
-Checks that /usr/bin/crontab and /usr/bin/at are owned by root and cannot be run by other users (no execute permission for others; mode 6750 or stricter).
+Checks that /usr/bin/crontab and /usr/bin/at are owned by root (or daemon, which owns at on Debian and Ubuntu) and cannot be run by other users (no execute permission for others; mode 6750 or stricter).
 
 **Why.** Scheduled jobs keep running after a user is gone; letting every user schedule them widens what an intruder can persist.
 
@@ -399,11 +399,11 @@ Checks that root's crontab (/var/spool/cron/crontabs/root on Debian and Ubuntu, 
 
 Scheduled script directories are owned by root and not writable by others (cron 스크립트 디렉터리는 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
 
-Checks that the scripts in /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly and /etc/cron.monthly are owned by root and writable by no one else (mode 0755 or stricter).
+Checks that /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly and /etc/cron.monthly and the scripts in them are owned by root and writable by no one else (mode 0755 or stricter).
 
 **Why.** These scripts run as root on a schedule; whoever can change one gets root at the next run.
 
-**Fix.** Run `chown root` and `chmod go-w` on each listed script.
+**Fix.** Run `chown root` and `chmod go-w` on each listed script or directory.
 
 #### `files.cron-spool`
 
@@ -537,11 +537,21 @@ Lists every file with the set-user-ID or set-group-ID bit on local filesystems.
 
 #### `files.rhosts`
 
-.rhosts and hosts.equiv files are owned correctly and private (.rhosts·hosts.equiv는 root 소유, 비공개) — severity high, reads file metadata.
+hosts.equiv and root's .rhosts are owned by root and private (hosts.equiv와 root의 .rhosts는 root 소유, 비공개) — severity high, reads file metadata.
 
-Checks that /etc/hosts.equiv and the .rhosts files of root and home directories under /home are owned by root and private (mode 0600 or stricter). Such files should not exist unless the r-services are needed.
+Checks that /etc/hosts.equiv and /root/.rhosts are owned by root and private (mode 0600 or stricter); the .rhosts files of other users are files.rhosts-homes. Such files should not exist unless the r-services are needed.
 
 **Why.** These files let hosts and users log in through rlogin and rsh without a password.
+
+**Fix.** Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
+
+#### `files.rhosts-homes`
+
+Users' .rhosts files are private (사용자의 .rhosts는 비공개) — severity high, reads file metadata.
+
+Checks that the .rhosts files of the home directories under /home are private (mode 0600 or stricter). The owner is not compared with the home's user: a user's own file is the normal case. Such files should not exist unless the r-services are needed.
+
+**Why.** A .rhosts file lets hosts and users log in through rlogin and rsh without a password.
 
 **Fix.** Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
 
@@ -579,7 +589,7 @@ Checks that /etc/shadow is owned by root with mode 0400 or stricter. Debian-fami
 
 Start-up scripts and units are owned by root and not writable by others (시작 스크립트와 유닛은 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
 
-Checks that SysV init scripts, rc.local and the systemd units (services, timers, sockets, paths and their drop-in files) in /etc/systemd/system, and the services in /usr/lib/systemd/system, are owned by root and writable by no one else (mode 0755 or stricter).
+Checks that SysV init scripts, rc.local and the systemd units (services, timers, sockets, paths and their drop-in files) in /etc/systemd/system, and the services in /usr/lib/systemd/system and /lib/systemd/system, are owned by root and writable by no one else (mode 0755 or stricter).
 
 **Why.** These run as root at boot; whoever can change one gets root at the next restart.
 
@@ -609,7 +619,7 @@ Lists files and directories on local filesystems (and in /dev) whose name is mad
 
 syslog configuration is owned by a system account and not readable by others (syslog 설정은 시스템 계정 소유, 다른 사용자 읽기 금지) — severity high, reads file metadata.
 
-Checks that /etc/syslog.conf, /etc/rsyslog.conf and /etc/rsyslog.d/*.conf are owned by root, bin or sys with mode 0640 or stricter. Not applicable without a syslog daemon configuration.
+Checks that /etc/syslog.conf, /etc/rsyslog.conf, /etc/rsyslog.d/*.conf, /etc/syslog-ng/syslog-ng.conf and /etc/syslog-ng/conf.d/*.conf are owned by root, bin or sys with mode 0640 or stricter. Not applicable without a syslog daemon configuration.
 
 **Why.** Whoever can change the logging configuration can hide their tracks.
 
