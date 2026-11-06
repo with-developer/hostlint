@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 13)
+## kisa-2026 (revision 14)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -78,7 +78,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-63 | medium | sudoers files are protected (sudoers 파일 권한) | [`files.sudoers-perms`](#filessudoers-perms) |
 | U-64 | high | Security updates are applied (보안 패치 적용) | [`services.review-security-updates`](#servicesreview-security-updates) |
 | U-65 | medium | Time is synchronized (시각 동기화) | [`services.time-sync`](#servicestime-sync), [`services.review-time-sync`](#servicesreview-time-sync) |
-| U-66 | medium | Logging follows your policy (로그 정책 설정) | review by hand |
+| U-66 | medium | Logging follows your policy (로그 정책 설정) | [`files.review-logging-rules`](#filesreview-logging-rules) |
 | U-67 | medium | Log files are protected (로그 파일 소유자·권한) | [`files.log-world-writable`](#fileslog-world-writable), [`files.review-log-files`](#filesreview-log-files) |
 
 ### Checks
@@ -504,6 +504,16 @@ Lists the files and directories under /var/log that root does not own.
 **Why.** A log owned by a login account can be rewritten by whoever uses it; one owned by the logging service is expected.
 
 **Fix.** Run `chown root` on logs that no service writes as another account.
+
+#### `files.review-logging-rules`
+
+Review the logging rules (로그 수집 규칙 검토) — severity medium, a review (`MANUAL`).
+
+Shows the logging services that are enabled (rsyslog, syslog-ng, systemd-journald) and the selector rules of /etc/rsyslog.conf and the files it includes, with where each sends its messages. Whether they record what your policy requires is for a person to judge.
+
+**Why.** Without logs of logins, privileged commands and system events, an intrusion leaves nothing to investigate.
+
+**Fix.** Log authentication (auth, authpriv), privileged commands and system events to files or a log server, and keep them as long as your policy requires.
 
 #### `files.review-login-banners`
 

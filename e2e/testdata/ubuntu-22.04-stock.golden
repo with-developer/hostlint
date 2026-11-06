@@ -1,5 +1,5 @@
 os: Ubuntu 22.04.5 LTS (id ubuntu, version 22.04, family debian, supported true)
-profile kisa-2026 revision 13: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
+profile kisa-2026 revision 14: FAIL 7 MANUAL 10 PASS 29 NOT_APPLICABLE 21
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -400,6 +400,7 @@ U-65 FAIL
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {dpkg-db-backu…
 
 U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
 
 U-67 MANUAL
   files.log-world-writable PASS

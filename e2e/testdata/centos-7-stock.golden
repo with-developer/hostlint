@@ -1,5 +1,5 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile kisa-2026 revision 13: FAIL 7 MANUAL 10 PASS 31 NOT_APPLICABLE 19
+profile kisa-2026 revision 14: FAIL 7 MANUAL 10 PASS 31 NOT_APPLICABLE 19
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -404,6 +404,8 @@ U-65 FAIL
     - services.started = [{cryptsetup cryptsetup.target unit /usr/lib/systemd/system/sysinit.target.wants/cryptsetup.target}, {dbus dbus.service unit /usr/bin/dbus-daemon /usr/lib/systemd/system/multi-user.target.wants/dbus.service}, {dbus dbus.socket unit /usr/bin/dbus-daemon /usr/lib/systemd/system/soc…
 
 U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
+    - logging service enabled: systemd-journald.service
 
 U-67 MANUAL
   files.log-world-writable PASS

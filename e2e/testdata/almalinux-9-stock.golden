@@ -1,5 +1,5 @@
 os: AlmaLinux 9.8 (Olive Jaguar) (id almalinux, version 9.8, family rhel, supported true)
-profile kisa-2026 revision 13: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
+profile kisa-2026 revision 14: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -404,6 +404,8 @@ U-65 FAIL
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
 U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
+    - logging service enabled: systemd-journald.service
 
 U-67 MANUAL
   files.log-world-writable PASS

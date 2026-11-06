@@ -1,5 +1,5 @@
 os: Rocky Linux 10.2 (Red Quartz) (id rocky, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 13: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
+profile kisa-2026 revision 14: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -404,6 +404,7 @@ U-65 FAIL
     - services.started = []
 
 U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
 
 U-67 MANUAL
   files.log-world-writable PASS

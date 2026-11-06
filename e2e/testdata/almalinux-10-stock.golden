@@ -1,5 +1,5 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 13: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
+profile kisa-2026 revision 14: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
 collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
@@ -372,6 +372,8 @@ U-65 FAIL
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
 U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
+    - logging service enabled: systemd-journald.service
 
 U-67 MANUAL
   files.log-world-writable PASS

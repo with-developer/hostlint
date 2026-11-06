@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile kisa-2026 revision 13: MANUAL 11 PASS 36 NOT_APPLICABLE 20
+profile kisa-2026 revision 14: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -406,6 +406,8 @@ U-65 MANUAL
     - chrony.service (unit)
 
 U-66 MANUAL
+  files.review-logging-rules MANUAL: Check that the syslog configuration records authentication, privileged commands and system events as your policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules of rsyslog.
+    - logging service enabled: systemd-journald.service
 
 U-67 MANUAL
   files.log-world-writable PASS

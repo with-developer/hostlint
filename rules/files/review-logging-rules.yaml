@@ -1,0 +1,41 @@
+id: files.review-logging-rules
+version: 1
+title: Review the logging rules
+title_ko: 로그 수집 규칙 검토
+severity: medium
+description: >-
+  Shows the logging services that are enabled (rsyslog, syslog-ng, systemd-journald) and the selector rules of
+  /etc/rsyslog.conf and the files it includes, with where each sends its messages. Whether they record what your
+  policy requires is for a person to judge.
+rationale: Without logs of logins, privileged commands and system events, an intrusion leaves nothing to investigate.
+remediation: >-
+  Log authentication (auth, authpriv), privileged commands and system events to files or a log server, and keep them
+  as long as your policy requires.
+manual:
+  guidance: >-
+    Check that the syslog configuration records authentication, privileged commands and system events as your
+    policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules
+    of rsyslog.
+  show: >-
+    ["rsyslog.service", "syslog-ng.service", "systemd-journald.service"]
+      .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)
+      .map(n, "logging service enabled: " + n) +
+    rsyslog.rules.map(r, r.selector + " -> " + r.target)
+tests:
+  - name: rsyslog with rules
+    facts:
+      services: {units: {"rsyslog.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/rsyslog.service}}}
+      rsyslog: {present: true, rules: [{selector: "auth,authpriv.*", target: /var/log/auth.log, where: "/etc/rsyslog.d/50-default.conf:1"}]}
+    want: MANUAL
+  - name: nothing found
+    facts:
+      services: {units: {}}
+      rsyslog: {present: false, rules: []}
+    want: MANUAL
+  - name: rsyslog.conf could not be read completely
+    input: incomplete
+    incomplete: [rsyslog]
+    facts:
+      services: {units: {}}
+      rsyslog: {present: true, rules: []}
+    want: MANUAL
