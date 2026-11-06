@@ -80,7 +80,11 @@ func Generate(path string) (pub string, err error) {
 		return "", err
 	}
 	// A key file that was not written completely is removed, so that a retry is not refused.
-	if err := pem.Encode(f, &pem.Block{Type: "PRIVATE KEY", Bytes: der}); err != nil {
+	werr := pem.Encode(f, &pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	if werr == nil {
+		werr = f.Sync() // on disk before the public key is printed and registered
+	}
+	if err := werr; err != nil {
 		_ = f.Close()
 		_ = os.Remove(path) //nolint:forbidigo // the file this call made
 		return "", err

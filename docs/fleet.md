@@ -181,9 +181,9 @@ the database afterwards, a signature that was removed or replaced, controls show
 differ from the stored document, a scan moved to another host, and a scan with no ingest record are all
 found. A host that signs does not go back in time: a signed result that does not start after the host's
 latest scan is refused (a captured result cannot be replayed once the original was pruned), while a retry
-of a stored scan is still answered as before. If a key was replaced on purpose (a re-installed machine), `hostlint server host reset-key ID --key
+of a stored scan is still answered as before. A host whose clock ran ahead by a few minutes has to wait until real time catches up (the server accepts start times at most five minutes ahead), and a scan that was delayed behind a newer one is not accepted any more. If a key was replaced on purpose (a re-installed machine), `hostlint server host reset-key ID --key
 <new public key>` replaces the registered one at once (without `--key` it is forgotten, and until the next
-signed result registers a key unsigned results are accepted). The key file is refused if other users can read it.
+signed result registers a key unsigned results are accepted). A token bound to the old key (`--key`) keeps asking for it: issue a new token for the host. The key file is refused if other users can read it.
 
 ## What it does not protect
 

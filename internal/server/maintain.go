@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -144,17 +145,16 @@ type SignatureReport struct {
 	// Mismatched are the scans whose stored document, signature or key does not match what the audit chain
 	// recorded when they were received: a changed document, a removed or replaced signature.
 	Mismatched []int64
-	// Derived are the scans whose rows shown by the dashboard (controls, host) differ from the stored document.
+	// Derived are the scans whose host or control statuses, as the dashboard shows them, differ from the stored
+	// document (the individual check rows are not compared).
 	Derived []int64
 	// Unrecorded are the scans that no ingest audit row accounts for (not received through the server).
 	Unrecorded []int64
-	// Downgraded are the unsigned scans received after the host's first signed one.
-	Downgraded []int64
 }
 
 // OK reports whether every check passed.
 func (r SignatureReport) OK() bool {
-	return len(r.Mismatched)+len(r.Derived)+len(r.Unrecorded)+len(r.Downgraded) == 0
+	return len(r.Mismatched)+len(r.Derived)+len(r.Unrecorded) == 0
 }
 
 // VerifySignatures checks every stored scan against what the hash-chained audit table recorded at its
@@ -165,8 +165,9 @@ func (r SignatureReport) OK() bool {
 // error, not a finding; a document that cannot be read back (corrupt) is a mismatch.
 func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 	var rep SignatureReport
-	type ingest struct{ key string }
-	recorded := map[string]ingest{} // digest of a document → what its ingest recorded
+	// A document can be received more than once (after a host was deleted, say): every ingest of a
+	// digest is kept, and a stored scan has to match one of them.
+	recorded := map[string][]string{} // digest of a document → the key fingerprints its ingests recorded
 	ar, err := s.db.QueryContext(ctx, `SELECT digest, key FROM audit WHERE action = 'ingest'`)
 	if err != nil {
 		return rep, err
@@ -177,7 +178,7 @@ func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 			_ = ar.Close()
 			return rep, err
 		}
-		recorded[digest] = ingest{key}
+		recorded[digest] = append(recorded[digest], key)
 	}
 	if err := ar.Err(); err != nil {
 		return rep, err
@@ -205,22 +206,13 @@ func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 		return rep, err
 	}
 	_ = rs.Close()
-	firstSigned := map[int64]int64{}
-	for _, r := range rows {
-		if r.sig != "" && firstSigned[r.host] == 0 {
-			firstSigned[r.host] = r.id
-		}
-	}
 	for _, r := range rows {
 		if r.sig == "" {
 			rep.Unsigned++
-			if first := firstSigned[r.host]; first != 0 && r.id > first {
-				rep.Downgraded = append(rep.Downgraded, r.id)
-			}
 		} else {
 			rep.Signed++
 		}
-		rec, ok := recorded[r.digest]
+		keys, ok := recorded[r.digest]
 		if !ok {
 			rep.Unrecorded = append(rep.Unrecorded, r.id)
 			continue
@@ -237,8 +229,8 @@ func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 		sum := sha256.Sum256(doc)
 		switch {
 		case "sha256:"+hex.EncodeToString(sum[:]) != r.digest,
-			(r.sig != "") != (rec.key != ""),
-			r.sig != "" && (signing.Fingerprint(r.key) != rec.key || signing.Verify(r.key, r.sig, doc) != nil):
+			!slices.Contains(keys, signing.Fingerprint(r.key)), // "" for an unsigned scan, as the ingest recorded it
+			r.sig != "" && signing.Verify(r.key, r.sig, doc) != nil:
 			rep.Mismatched = append(rep.Mismatched, r.id)
 			continue
 		}

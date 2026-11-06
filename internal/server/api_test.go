@@ -540,7 +540,7 @@ func TestSignedResults(t *testing.T) {
 	if _, err := f.store.db.Exec(`UPDATE scans SET signature = '', pubkey = '' WHERE id = ?`, id+1); err != nil {
 		t.Fatal(err)
 	}
-	if rep, _ := f.store.VerifySignatures(ctx); len(rep.Downgraded) != 1 {
+	if rep, _ := f.store.VerifySignatures(ctx); len(rep.Mismatched) != 2 {
 		t.Errorf("a removed signature went unnoticed: %+v", rep)
 	}
 

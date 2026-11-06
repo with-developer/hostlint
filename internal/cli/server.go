@@ -229,9 +229,6 @@ it elsewhere, and a later run shows whether history was changed or cut off.`,
 				if len(rep.Mismatched) > 0 {
 					problems = append(problems, fmt.Sprintf("%d stored scans differ from what was recorded when they were received (document, signature or key)%s: the database was changed afterwards", len(rep.Mismatched), idList(rep.Mismatched)))
 				}
-				if len(rep.Downgraded) > 0 {
-					problems = append(problems, fmt.Sprintf("%d scans have no signature although their host had signed before%s: they were stored unsigned or their signature was removed", len(rep.Downgraded), idList(rep.Downgraded)))
-				}
 				if len(rep.Derived) > 0 {
 					problems = append(problems, fmt.Sprintf("%d scans show other controls or another host than their stored document says%s", len(rep.Derived), idList(rep.Derived)))
 				}

@@ -335,16 +335,39 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	// host is a replay of one captured earlier (the scan ID alone would be accepted again after the
 	// original was pruned).
 	if in.key != "" {
-		var latest sql.NullString
-		if err := tx.QueryRowContext(ctx, `SELECT MAX(started_at) FROM scans WHERE host_row = ? AND id != ?`, hostRow, scanRow).Scan(&latest); err != nil {
+		cur, err := time.Parse(time.RFC3339, res.Scan.StartedAt)
+		if err != nil {
+			return nil, fmt.Errorf("%w: the scan start time is not RFC 3339", ErrIdentity)
+		}
+		// Compared as instants (stored values may carry different offsets); one that cannot be read
+		// refuses the result rather than skipping the check.
+		rs, err := tx.QueryContext(ctx, `SELECT started_at FROM scans WHERE host_row = ? AND id != ?`, hostRow, scanRow)
+		if err != nil {
 			return nil, err
 		}
-		if latest.Valid {
-			prev, err1 := time.Parse(time.RFC3339, latest.String)
-			cur, err2 := time.Parse(time.RFC3339, res.Scan.StartedAt)
-			if err1 == nil && err2 == nil && !cur.After(prev) {
-				return nil, fmt.Errorf("%w: a signed result must be newer than the host's latest scan (started %s)", ErrIdentity, latest.String)
+		var latest time.Time
+		for rs.Next() {
+			var v string
+			if err := rs.Scan(&v); err != nil {
+				_ = rs.Close()
+				return nil, err
 			}
+			t, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				_ = rs.Close()
+				return nil, fmt.Errorf("%w: a stored scan has an unreadable start time", ErrIdentity)
+			}
+			if t.After(latest) {
+				latest = t
+			}
+		}
+		if err := rs.Err(); err != nil {
+			_ = rs.Close()
+			return nil, err
+		}
+		_ = rs.Close()
+		if !latest.IsZero() && !cur.After(latest) {
+			return nil, fmt.Errorf("%w: a signed result must be newer than the host's latest scan (started %s)", ErrIdentity, latest.UTC().Format(time.RFC3339))
 		}
 	}
 	if err := appendAuditKey(ctx, tx, received, cred.ID, remote, "ingest", fmt.Sprintf("host %s scan %s", name, res.Scan.ID), digest, signing.Fingerprint(in.key)); err != nil {
