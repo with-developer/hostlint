@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path"
 	"reflect"
 	"strings"
 
@@ -196,9 +197,15 @@ func (p *sambaParser) include(file, where string, depth int) {
 	case strings.Contains(file, "%"):
 		p.skipped = append(p.skipped, fmt.Sprintf("%s: include %s has a macro and is not followed", where, file))
 		return
-	case !strings.HasPrefix(file, "/"):
+	case file == "registry":
+		p.skipped = append(p.skipped, where+": include = registry is not followed")
+		return
+	}
+	relative := !strings.HasPrefix(file, "/")
+	if relative {
 		file = "/etc/samba/" + file
 	}
+	file = path.Clean(file)
 	switch {
 	case p.seen[file]:
 		return // a cycle
@@ -208,8 +215,12 @@ func (p *sambaParser) include(file, where string, depth int) {
 	}
 	data, err := p.fsys.ReadFile(file)
 	switch {
-	case errors.Is(err, fs.ErrNotExist):
+	case errors.Is(err, fs.ErrNotExist) && !relative:
 		return // Samba ignores a file that is not there
+	case errors.Is(err, fs.ErrNotExist):
+		// Where Samba looks for a relative name is not known here.
+		p.skipped = append(p.skipped, fmt.Sprintf("%s: the relative include %s was not found", where, file))
+		return
 	case err != nil:
 		p.skipped = append(p.skipped, fmt.Sprintf("%s: %v", file, err))
 		return

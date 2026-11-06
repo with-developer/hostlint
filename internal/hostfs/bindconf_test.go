@@ -143,6 +143,27 @@ func TestBindMultiLineString(t *testing.T) {
 	}
 }
 
+// Only a key or a secret may continue over lines; a stray quote elsewhere is an error at its own line,
+// and an escaped newline still counts as a line.
+func TestBindStringsAcrossLines(t *testing.T) {
+	stray := readBind(t, map[string]string{"/etc/named.conf": "zone \"a\" { type master; allow-transfer { \"none; }; };\nzone \"b\" { type master; allow-transfer { none; }; };\n"})
+	if len(stray.Skipped) != 1 || !strings.Contains(stray.Skipped[0], "named.conf:1: unterminated string") {
+		t.Errorf("skipped %v", stray.Skipped)
+	}
+	eof := readBind(t, map[string]string{"/etc/named.conf": "key k {\n secret \"abc\n def\n"})
+	if len(eof.Skipped) != 1 || !strings.Contains(eof.Skipped[0], "named.conf:2: unterminated string") {
+		t.Errorf("skipped %v", eof.Skipped)
+	}
+	escaped := readBind(t, map[string]string{"/etc/named.conf": "key k { secret \"abc\\\ndef\"; };\nzone \"a\" { type master; };\n"})
+	if len(escaped.Skipped) != 0 || len(escaped.Zones) != 1 || !strings.HasSuffix(escaped.Zones[0].Where, "named.conf:3") {
+		t.Errorf("zones %+v, skipped %v", escaped.Zones, escaped.Skipped)
+	}
+	long := readBind(t, map[string]string{"/etc/named.conf": "key k { secret \"" + strings.Repeat("a", 5000) + "\"; };\n"})
+	if len(long.Skipped) != 1 {
+		t.Errorf("skipped %v", long.Skipped)
+	}
+}
+
 func TestBindMoreForms(t *testing.T) {
 	tests := []struct {
 		name, conf, transfer, update string

@@ -2,6 +2,7 @@ package collect
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -96,6 +97,30 @@ func TestSambaIncludes(t *testing.T) {
 	}
 	if !strings.HasSuffix(s.Shares[1].Where, "extra.conf:1") {
 		t.Errorf("where %s", s.Shares[1].Where)
+	}
+}
+
+func TestSambaIncludeEdges(t *testing.T) {
+	incomplete := func(name string, m *hostfs.MemFS) {
+		t.Helper()
+		if _, complete := collectSamba(t, m); complete {
+			t.Errorf("%s: the facts must be incomplete", name)
+		}
+	}
+	incomplete("registry", smbConf("[global]\n  include = registry\n"))
+	incomplete("a relative include that is not there", smbConf("[global]\n  include = conf.d/x.conf\n"))
+	incomplete("a macro in a nested file", smbConf("include = /etc/samba/a.conf\n").AddFile("/etc/samba/a.conf", "include = /etc/samba/%U.conf\n", 0o644, 0, 0))
+	incomplete("an include that cannot be read", smbConf("include = /etc/samba/a.conf\n").AddFile("/etc/samba/a.conf", "x", 0o644, 0, 0).SetError("/etc/samba/a.conf", fsErrPermission))
+	deep := smbConf("include = /etc/samba/i1.conf\n")
+	for i := 1; i <= 10; i++ {
+		deep.AddFile(fmt.Sprintf("/etc/samba/i%d.conf", i), fmt.Sprintf("include = /etc/samba/i%d.conf\n", i+1), 0o644, 0, 0)
+	}
+	incomplete("a chain deeper than the limit", deep)
+	// Names are cleaned: a non-canonical path is the same file, and a self include is a cycle.
+	m := smbConf("include = /etc/samba//./extra.conf\ninclude = /etc/samba/../samba/smb.conf\n").
+		AddFile("/etc/samba/extra.conf", "[pub]\n  guest ok = yes\n", 0o644, 0, 0)
+	if s, complete := collectSamba(t, m); !complete || len(s.Shares) != 1 || !s.Shares[0].Guest {
+		t.Errorf("%+v complete %v", s.Shares, complete)
 	}
 }
 

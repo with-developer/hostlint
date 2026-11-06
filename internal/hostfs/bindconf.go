@@ -49,6 +49,7 @@ const (
 	bindMaxFiles  = 100
 	bindMaxDepth  = 16
 	bindMaxTokens = 1 << 20
+	bindMaxString = 4096 // bytes of a quoted string
 )
 
 // bindLocalZones are the zones installations define for the host itself, and
@@ -219,17 +220,29 @@ func bindTokens(name string, data []byte, count *int) ([]bindTok, error) {
 			toks = append(toks, bindTok{text: string(c), file: name, line: line})
 			i++
 		case c == '"':
-			// A quoted string may continue over lines (the keys of named.root.key).
+			// A quoted string may continue over lines when it is a key or a secret (the
+			// base64 text of named.root.key follows the algorithm number): a stray quote
+			// anywhere else must not swallow the rest of the file.
+			multiline := false
+			if n := len(toks); n > 0 && !toks[n-1].str {
+				multiline = toks[n-1].text == "secret" || strings.Trim(toks[n-1].text, "0123456789") == ""
+			}
 			j := i + 1
 			startLine := line
 			for j < len(data) && data[j] != '"' {
-				switch data[j] {
-				case '\\':
+				if data[j] == '\n' && !multiline {
+					break
+				}
+				if data[j] == '\\' && j+1 < len(data) {
 					j++
-				case '\n':
+				}
+				if data[j] == '\n' {
 					line++
 				}
 				j++
+				if j-i > bindMaxString {
+					return nil, fmt.Errorf("%s:%d: unterminated string", name, startLine)
+				}
 			}
 			if j >= len(data) || data[j] != '"' {
 				return nil, fmt.Errorf("%s:%d: unterminated string", name, startLine)
