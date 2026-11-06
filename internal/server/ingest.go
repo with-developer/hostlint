@@ -250,6 +250,9 @@ func checkLimits(res *engine.Result, now time.Time) error {
 		if len(c.ID) > 64 || len(c.Profile) > 64 || len(c.Title) > maxText || len(c.Reason) > maxText {
 			return fmt.Errorf("control %.40q has text that is too long", c.ID)
 		}
+		if !printable(c.ID) || !printable(c.Profile) {
+			return fmt.Errorf("control %.40q has characters that are not printable", c.ID)
+		}
 	}
 	for _, c := range res.Checks {
 		if len(c.Ref) > 256 || len(c.Title) > maxText || len(c.Reason) > maxText {

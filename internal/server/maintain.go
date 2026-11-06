@@ -61,15 +61,23 @@ func (s *Store) Backup(ctx context.Context, path string) error {
 	if strings.ContainsRune(path, 0) {
 		return errors.New("not a file name")
 	}
-	if _, err := os.Stat(path); err == nil { //nolint:forbidigo // the server's own backup file, not the scanned host
+	// The file is created private first (SQLite copies into an empty file), so it is never
+	// readable by others, not even for a moment; an existing file is not overwritten.
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:forbidigo,gosec // the server's own backup file (G304: the operator's path)
+	if errors.Is(err, fs.ErrExist) {
 		return fmt.Errorf("%s exists: a backup does not overwrite", path)
-	} else if !errors.Is(err, fs.ErrNotExist) {
+	}
+	if err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
 		return err
 	}
 	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
+		_ = os.Remove(path) //nolint:forbidigo // the empty file this call made
 		return err
 	}
-	return os.Chmod(path, 0o600) //nolint:forbidigo // the server's own backup file
+	return nil
 }
 
 // Stats counts what the database holds, for `hostlint server stats`.

@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Options say where to send a result and how to trust the server.
@@ -105,6 +106,13 @@ func Send(ctx context.Context, doc []byte, opts Options) (*Response, error) {
 		if json.Unmarshal(body, &e) == nil && e.Error != "" {
 			msg = e.Error
 		}
+		// Text from the server is shown on a terminal: no control characters.
+		msg = strings.Map(func(r rune) rune {
+			if unicode.IsControl(r) {
+				return ' '
+			}
+			return r
+		}, msg)
 		return nil, fmt.Errorf("the server answered %d: %s", resp.StatusCode, msg)
 	}
 	var out Response

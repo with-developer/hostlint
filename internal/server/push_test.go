@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"crypto/x509"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -70,5 +71,18 @@ func TestPushRefusesWhatIsUnsafe(t *testing.T) {
 		if _, err := push.Send(ctx, []byte("{}"), o); err == nil {
 			t.Errorf("%s was accepted", name)
 		}
+	}
+}
+
+// A server's error text is shown without control characters.
+func TestPushErrorTextHasNoControlCharacters(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("{\"error\": \"bad\\u001b[2J\\nresult\"}"))
+	}))
+	t.Cleanup(ts.Close)
+	_, err := push.Send(context.Background(), []byte("{}"), push.Options{URL: ts.URL, Token: "hlt_ing_x"})
+	if err == nil || strings.ContainsAny(err.Error(), "\x1b\n") {
+		t.Errorf("err = %q", err)
 	}
 }

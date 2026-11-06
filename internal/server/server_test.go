@@ -377,3 +377,16 @@ func TestDatabaseFileIsPrivate(t *testing.T) {
 		t.Errorf("a world-readable database was opened: %v", err)
 	}
 }
+
+// A control ID with a line break is refused, like the host name.
+func TestIngestRefusesUnprintableControlIDs(t *testing.T) {
+	srv, store := newTestServer(t)
+	wild := token(t, store, ScopeIngest, "")
+	body := bytes.ReplaceAll(fixture(t, "web-01.json"), []byte(`"id": "U-01"`), []byte(`"id": "U-01\nforged"`))
+	if bytes.Equal(body, fixture(t, "web-01.json")) {
+		t.Skip("the fixture has no control U-01 in this form")
+	}
+	if code, out := post(t, srv, wild, body); code != http.StatusUnprocessableEntity {
+		t.Errorf("%d %v", code, out)
+	}
+}
