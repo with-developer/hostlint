@@ -29,6 +29,7 @@ type Credential struct {
 	Prefix      string
 	BoundName   string // the host name it may speak for; "" for any host
 	BoundHostID string // pinned at its first use
+	PubKey      string // the public key (base64) results sent with this token must be signed with; "" for any
 	CreatedAt   string
 	LastUsedAt  string
 	ExpiresAt   string
@@ -45,7 +46,11 @@ func hashToken(token string) string {
 
 // CreateCredential makes a token and returns it: it is the only time it can be seen.
 // boundName "" lets the token speak for any host (an explicit opt-in).
-func (s *Store) CreateCredential(ctx context.Context, scope, name, boundName string, expires time.Duration) (token string, id int64, err error) {
+func (s *Store) CreateCredential(ctx context.Context, scope, name, boundName string, expires time.Duration, opts ...CredentialOption) (token string, id int64, err error) {
+	var co credentialOptions
+	for _, o := range opts {
+		o(&co)
+	}
 	prefix, ok := scopePrefix[scope]
 	if !ok {
 		return "", 0, fmt.Errorf("unknown scope %q", scope)
@@ -74,8 +79,8 @@ func (s *Store) CreateCredential(ctx context.Context, scope, name, boundName str
 	defer func() { _ = tx.Rollback() }()
 	at := s.stamp()
 	r, err := tx.ExecContext(ctx,
-		`INSERT INTO credentials (kind, scope, name, prefix, hash, bound_name, created_at, expires_at) VALUES ('token', ?, ?, ?, ?, ?, ?, ?)`,
-		scope, name, token[:len(prefix)+4], hashToken(token), bound, at, expiresAt)
+		`INSERT INTO credentials (kind, scope, name, prefix, hash, bound_name, created_at, expires_at, pubkey) VALUES ('token', ?, ?, ?, ?, ?, ?, ?, ?)`,
+		scope, name, token[:len(prefix)+4], hashToken(token), bound, at, expiresAt, co.pubkey)
 	if err != nil {
 		return "", 0, err
 	}
@@ -99,6 +104,15 @@ func orAny(name string) string {
 	return "host " + name
 }
 
+// CredentialOption adds to a new credential.
+type CredentialOption func(*credentialOptions)
+
+type credentialOptions struct{ pubkey string }
+
+// WithKey binds an ingest token to a public key (base64): its results must be signed with it, and a
+// host is never registered with another key through this token.
+func WithKey(pub string) CredentialOption { return func(o *credentialOptions) { o.pubkey = pub } }
+
 // Authenticate finds the credential a token belongs to and records its use.
 func (s *Store) Authenticate(ctx context.Context, token, scope string) (*Credential, error) {
 	prefix := scopePrefix[scope]
@@ -108,8 +122,8 @@ func (s *Store) Authenticate(ctx context.Context, token, scope string) (*Credent
 	var c Credential
 	var bound, boundID, last, expires, revoked sql.NullString
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, scope, name, prefix, bound_name, bound_host_id, created_at, last_used_at, expires_at, revoked_at FROM credentials WHERE hash = ?`,
-		hashToken(token)).Scan(&c.ID, &c.Scope, &c.Name, &c.Prefix, &bound, &boundID, &c.CreatedAt, &last, &expires, &revoked)
+		`SELECT id, scope, name, prefix, bound_name, bound_host_id, created_at, last_used_at, expires_at, revoked_at, pubkey FROM credentials WHERE hash = ?`,
+		hashToken(token)).Scan(&c.ID, &c.Scope, &c.Name, &c.Prefix, &bound, &boundID, &c.CreatedAt, &last, &expires, &revoked, &c.PubKey)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUnauthorized
 	}
@@ -153,7 +167,7 @@ func (s *Store) touch(ctx context.Context, c *Credential) error {
 // ListCredentials returns every credential, newest first. Hashes are never returned.
 func (s *Store) ListCredentials(ctx context.Context) ([]Credential, error) {
 	rs, err := s.db.QueryContext(ctx,
-		`SELECT id, scope, name, prefix, bound_name, bound_host_id, created_at, last_used_at, expires_at, revoked_at FROM credentials ORDER BY id DESC`)
+		`SELECT id, scope, name, prefix, bound_name, bound_host_id, created_at, last_used_at, expires_at, revoked_at, pubkey FROM credentials ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +176,7 @@ func (s *Store) ListCredentials(ctx context.Context) ([]Credential, error) {
 	for rs.Next() {
 		var c Credential
 		var bound, boundID, last, expires, revoked sql.NullString
-		if err := rs.Scan(&c.ID, &c.Scope, &c.Name, &c.Prefix, &bound, &boundID, &c.CreatedAt, &last, &expires, &revoked); err != nil {
+		if err := rs.Scan(&c.ID, &c.Scope, &c.Name, &c.Prefix, &bound, &boundID, &c.CreatedAt, &last, &expires, &revoked, &c.PubKey); err != nil {
 			return nil, err
 		}
 		c.BoundName, c.BoundHostID, c.LastUsedAt, c.ExpiresAt, c.RevokedAt = bound.String, boundID.String, last.String, expires.String, revoked.String

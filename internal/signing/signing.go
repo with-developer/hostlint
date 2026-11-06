@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 )
@@ -53,8 +54,8 @@ func Verify(pub, sig string, doc []byte) error {
 // Fingerprint names a public key (base64) the way `ssh-keygen -l` does: SHA256:<base64>.
 func Fingerprint(pub string) string {
 	p, err := base64.StdEncoding.DecodeString(pub)
-	if err != nil {
-		return ""
+	if err != nil || len(p) != ed25519.PublicKeySize {
+		return "" // no key, or not one: no fingerprint
 	}
 	sum := sha256.Sum256(p)
 	return "SHA256:" + base64.RawStdEncoding.EncodeToString(sum[:])
@@ -78,11 +79,14 @@ func Generate(path string) (pub string, err error) {
 	if err != nil {
 		return "", err
 	}
+	// A key file that was not written completely is removed, so that a retry is not refused.
 	if err := pem.Encode(f, &pem.Block{Type: "PRIVATE KEY", Bytes: der}); err != nil {
 		_ = f.Close()
+		_ = os.Remove(path) //nolint:forbidigo // the file this call made
 		return "", err
 	}
 	if err := f.Close(); err != nil {
+		_ = os.Remove(path) //nolint:forbidigo // the file this call made
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(publicKey), nil
@@ -91,7 +95,12 @@ func Generate(path string) (pub string, err error) {
 // Load reads a private key written by Generate. A key file that other users can read is refused:
 // whoever has the key can sign as this host.
 func Load(path string) (ed25519.PrivateKey, error) {
-	fi, err := os.Stat(path) //nolint:forbidigo // the key file the user named, not the scanned host
+	f, err := os.Open(path) //nolint:forbidigo,gosec // the key file the user named, not the scanned host (G304)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	fi, err := f.Stat() // the mode of the file that is read, not of one the path may name a moment later
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +110,7 @@ func Load(path string) (ed25519.PrivateKey, error) {
 	if fi.Mode().Perm()&0o077 != 0 {
 		return nil, fmt.Errorf("%s can be read by other users (mode %04o): run chmod 600 on it", path, fi.Mode().Perm())
 	}
-	data, err := os.ReadFile(path) //nolint:forbidigo,gosec // the key file the user named (G304)
+	data, err := io.ReadAll(io.LimitReader(f, 64<<10))
 	if err != nil {
 		return nil, err
 	}

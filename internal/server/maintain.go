@@ -1,10 +1,13 @@
 package server
 
 import (
+	"compress/flate"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -131,48 +134,78 @@ func (s *Store) HostList(ctx context.Context) ([]HostSummary, error) {
 	return s.allHosts(ctx, "", 0, 0)
 }
 
-// VerifySignatures checks every stored signed scan: the document in the database against the
-// signature and key it arrived with. A document changed after it was stored does not verify.
-// It returns how many signed and unsigned scans there are and the scans that failed.
-func (s *Store) VerifySignatures(ctx context.Context) (signed, unsigned int, failed []int64, err error) {
-	rs, err := s.db.QueryContext(ctx, `SELECT id, pubkey, signature FROM scans ORDER BY id`)
+// SignatureReport is what VerifySignatures found.
+type SignatureReport struct {
+	Signed, Unsigned int
+	// Mismatched are the signed scans whose stored document does not match its signature.
+	Mismatched []int64
+	// Downgraded are the unsigned scans received after the host's first signed one: a host that
+	// signs does not stop, so a scan without a signature there was stored without one or had it removed.
+	Downgraded []int64
+}
+
+// OK reports whether every stored signature verifies and no host went back to unsigned.
+func (r SignatureReport) OK() bool { return len(r.Mismatched) == 0 && len(r.Downgraded) == 0 }
+
+// VerifySignatures checks every stored signed scan against the signature and key it arrived with: a
+// document changed in the database afterwards does not verify. A database error is an error, not a
+// finding; a stored document that cannot be read back (corrupt) is a mismatch.
+func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
+	var rep SignatureReport
+	rs, err := s.db.QueryContext(ctx, `SELECT id, host_row, pubkey, signature FROM scans ORDER BY id`)
 	if err != nil {
-		return 0, 0, nil, err
+		return rep, err
 	}
 	type row struct {
-		id       int64
+		id, host int64
 		key, sig string
 	}
 	var rows []row
 	for rs.Next() {
 		var r row
-		if err := rs.Scan(&r.id, &r.key, &r.sig); err != nil {
+		if err := rs.Scan(&r.id, &r.host, &r.key, &r.sig); err != nil {
 			_ = rs.Close()
-			return 0, 0, nil, err
+			return rep, err
 		}
 		rows = append(rows, r)
 	}
 	if err := rs.Err(); err != nil {
-		return 0, 0, nil, err
+		return rep, err
 	}
 	_ = rs.Close()
+	firstSigned := map[int64]int64{} // host → id of its first signed scan
 	for _, r := range rows {
-		if r.sig == "" {
-			unsigned++
-			continue
-		}
-		signed++
-		doc, err := s.ScanDoc(ctx, r.id)
-		if err != nil || signing.Verify(r.key, r.sig, doc) != nil {
-			failed = append(failed, r.id)
+		if r.sig != "" && firstSigned[r.host] == 0 {
+			firstSigned[r.host] = r.id
 		}
 	}
-	return signed, unsigned, failed, nil
+	for _, r := range rows {
+		if r.sig == "" {
+			rep.Unsigned++
+			if first := firstSigned[r.host]; first != 0 && r.id > first {
+				rep.Downgraded = append(rep.Downgraded, r.id)
+			}
+			continue
+		}
+		rep.Signed++
+		doc, err := s.ScanDoc(ctx, r.id)
+		var corrupt flate.CorruptInputError
+		switch {
+		case errors.Is(err, gzip.ErrHeader), errors.Is(err, gzip.ErrChecksum), errors.Is(err, io.ErrUnexpectedEOF), errors.As(err, &corrupt):
+			rep.Mismatched = append(rep.Mismatched, r.id)
+		case err != nil:
+			return rep, fmt.Errorf("scan %d: %w", r.id, err)
+		case signing.Verify(r.key, r.sig, doc) != nil:
+			rep.Mismatched = append(rep.Mismatched, r.id)
+		}
+	}
+	return rep, nil
 }
 
-// ResetHostKey forgets the key registered for a host, so its next signed result registers a new one
-// (a re-installed machine with a new key). It is audited and reports whether the host had a key.
-func (s *Store) ResetHostKey(ctx context.Context, id int64) (bool, error) {
+// ResetHostKey replaces the key registered for a host. newKey "" forgets it, so that the next signed
+// result registers one (and until then unsigned results are accepted: prefer giving the new key). It
+// is audited and reports whether the host had a key.
+func (s *Store) ResetHostKey(ctx context.Context, id int64, newKey string) (bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
@@ -186,10 +219,17 @@ func (s *Store) ResetHostKey(ctx context.Context, id int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET pubkey = '' WHERE id = ?`, id); err != nil {
+	if newKey != "" && signing.Fingerprint(newKey) == "" {
+		return false, errors.New("the new key is not an Ed25519 public key in base64")
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET pubkey = ? WHERE id = ?`, newKey, id); err != nil {
 		return false, err
 	}
-	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-key-reset", fmt.Sprintf("host %d %s, key %s", id, name, signing.Fingerprint(key)), ""); err != nil {
+	detail := fmt.Sprintf("host %d %s, key %s forgotten", id, name, signing.Fingerprint(key))
+	if newKey != "" {
+		detail = fmt.Sprintf("host %d %s, key %s replaced by %s", id, name, signing.Fingerprint(key), signing.Fingerprint(newKey))
+	}
+	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-key-reset", detail, ""); err != nil {
 		return false, err
 	}
 	return true, tx.Commit()

@@ -169,12 +169,17 @@ sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.or
   --sign-key /etc/hostlint/sign.key
 ```
 
-The server registers the key at the host's first signed result. From then on it refuses that host's
+The server registers the key at the host's first signed result (trust on first use). To rule out that
+a stolen token registers someone else's key first, bind the token to the host's public key when you
+create it: `hostlint server token create --name web-01 --host web-01 --key <public key>`; it then
+accepts nothing but results signed with that key. From then on the server refuses that host's
 results that are unsigned or signed with another key (a stolen token alone is no longer enough),
 and the dashboard shows the host as signed with the key's fingerprint. `hostlint server verify` also
 checks every stored signed result against its signature, so a result changed in the database
-afterwards is found. If a key was replaced on purpose (a re-installed machine), `hostlint server
-host reset-key ID` forgets the registered one. The key file is refused if other users can read it.
+afterwards is found. It also reports a scan stored without a signature after its host had started
+signing. If a key was replaced on purpose (a re-installed machine), `hostlint server host reset-key ID --key
+<new public key>` replaces the registered one at once (without `--key` it is forgotten, and until the next
+signed result registers a key unsigned results are accepted). The key file is refused if other users can read it.
 
 ## What it does not protect
 

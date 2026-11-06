@@ -41,7 +41,7 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 			t.Errorf("%s verified", name)
 		}
 	}
-	if !strings.HasPrefix(Fingerprint(pub), "SHA256:") || Fingerprint("zz") != "" {
+	if !strings.HasPrefix(Fingerprint(pub), "SHA256:") || Fingerprint("zz") != "" || Fingerprint("") != "" || Fingerprint("AAAA") != "" {
 		t.Errorf("fingerprint %q", Fingerprint(pub))
 	}
 }

@@ -216,6 +216,10 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// A token bound to a public key accepts only results signed with that key (no trust on first use).
+	if cred.PubKey != "" && in.key != cred.PubKey {
+		return nil, fmt.Errorf("%w: this token only accepts results signed with its key", ErrIdentity)
+	}
 	name, hostID := res.Host.Hostname, res.Host.HostID
 	if cred.BoundName != "" {
 		if name != cred.BoundName {

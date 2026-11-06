@@ -188,6 +188,7 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	var opts []IngestOption
 	if key, sig := r.Header.Get(signing.HeaderKey), r.Header.Get(signing.HeaderSignature); key != "" || sig != "" {
 		if len(key) > 128 || len(sig) > 256 {
+			s.reject(ctx, cred.ID, remote, "bad signature", "the signature headers are too long")
 			writeError(w, http.StatusBadRequest, "the signature headers are too long")
 			return
 		}
