@@ -40,12 +40,30 @@ linters:
               desc: raw system calls belong in internal/hostfs (ADR 0004)
             - pkg: golang.org/x/sys/unix
               desc: raw system calls belong in internal/hostfs (ADR 0004)
+        # Scanning makes no network connection. Only the fleet server and the
+        # push client do (ADR 0010); the scanning packages may not import them.
         network:
           files:
             - "$all"
+            - "!**/internal/server/**"
+            - "!**/internal/push/**"
           deny:
             - pkg: net/http
-              desc: v0.1 makes no network connections (ADR 0004)
+              desc: scanning makes no network connections (ADR 0004); only internal/server and internal/push do (ADR 0010)
+        scanning-is-offline:
+          files:
+            - "**/internal/engine/**"
+            - "**/internal/collect/**"
+            - "**/internal/hostfs/**"
+            - "**/internal/facts/**"
+            - "**/internal/config/**"
+          deny:
+            - pkg: github.com/with-developer/hostlint/internal/server
+              desc: the scanning packages cannot depend on the fleet server (ADR 0004, ADR 0010)
+            - pkg: github.com/with-developer/hostlint/internal/push
+              desc: the scanning packages cannot depend on the push client (ADR 0004, ADR 0010)
+            - pkg: net/http
+              desc: scanning makes no network connections (ADR 0004)
     forbidigo:
       analyze-types: true
       forbid:
@@ -92,6 +110,12 @@ linters:
         linters:
           - forbidigo
         text: (read the host through internal/hostfs|raw system calls belong)
+      # The fleet server keeps its own data (database, generated certificate) and listens;
+      # the push client reads the file the user names and connects out. Neither scans.
+      - path: internal/(server|push)/
+        linters:
+          - forbidigo
+        text: (hostlint must not modify the host|read the host through internal/hostfs|scanning makes no network|v0.1 makes no network)
       # The end-to-end tests drive Docker on the developer's machine or CI; they
       # are not part of hostlint.
       - path: e2e/
