@@ -33,7 +33,7 @@ The database is one file (--db). Tokens are made with "hostlint server token cre
 shown once; only their hash is stored.`,
 	}
 	cmd.PersistentFlags().StringVar(&dbPath, "db", "hostlint-server.db", "the server's SQLite database")
-	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath), newServerDemoCommand())
+	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath), newServerDemoCommand(), newServerPruneCommand(&dbPath), newServerBackupCommand(&dbPath), newServerStatsCommand(&dbPath))
 	return cmd
 }
 
@@ -41,6 +41,7 @@ func newServerRunCommand(dbPath *string) *cobra.Command {
 	var lc server.ListenConfig
 	var maxBody int64
 	var rate int
+	var retention time.Duration
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Listen for results",
@@ -64,6 +65,9 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 			logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
 			srv := server.New(server.Config{Store: store, MaxBody: maxBody, Rate: rate, Logger: logger, BehindProxy: lc.BehindProxy, Content: content})
 			out := cmd.OutOrStdout()
+			if retention > 0 {
+				go pruneLoop(cmd.Context(), store, retention, logger)
+			}
 			return srv.Serve(cmd.Context(), lc, func(addr, pin string) {
 				if pin != "" {
 					fmt.Fprintf(out, "listening on https://%s\ncertificate pin: %s\n", addr, pin)
@@ -81,6 +85,7 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 	fl.BoolVar(&lc.BehindProxy, "behind-proxy", false, "allow --plain-http on a non-loopback address: a TLS proxy is in front")
 	fl.Int64Var(&maxBody, "max-result-bytes", server.DefaultMaxBody, "the largest result accepted")
 	fl.IntVar(&rate, "rate", 60, "results per minute one token may send")
+	fl.DurationVar(&retention, "retention", 400*24*time.Hour, "delete scans older than this once a day, except the latest scan of each host (0 keeps everything)")
 	return cmd
 }
 
@@ -267,4 +272,88 @@ to show. The data lives in memory and is gone when the command ends. It prints a
 	cmd.Flags().StringVar(&listen, "listen", "127.0.0.1:8443", "loopback address to listen on")
 	cmd.Flags().StringVar(&profile, "profile", "kisa-2026", "the profile whose controls the demo uses")
 	return cmd
+}
+
+// pruneLoop applies the retention once a day while the server runs.
+func pruneLoop(ctx context.Context, store *server.Store, retention time.Duration, logger *slog.Logger) {
+	for {
+		if n, err := store.Prune(ctx, retention); err != nil {
+			logger.Error("prune", "error", err)
+		} else if n > 0 {
+			logger.Info("pruned old scans", "scans", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(24 * time.Hour):
+		}
+	}
+}
+
+func newServerPruneCommand(dbPath *string) *cobra.Command {
+	var olderThan time.Duration
+	cmd := &cobra.Command{
+		Use:   "prune",
+		Short: "Delete old scans (the latest scan of every host is kept)",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			store, err := server.OpenStore(*dbPath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			n, err := store.Prune(cmd.Context(), olderThan)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%d scans deleted\n", n)
+			return nil
+		},
+	}
+	cmd.Flags().DurationVar(&olderThan, "older-than", 400*24*time.Hour, "delete scans received longer ago than this, such as 9600h")
+	return cmd
+}
+
+func newServerBackupCommand(dbPath *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "backup FILE",
+		Short: "Write a consistent copy of the database (safe while the server runs)",
+		Long: `Backup writes a copy of the database to FILE, which must not exist yet, readable by you only.
+It uses SQLite's online copy, so the server can keep running. To restore, stop the server and put the
+copy where --db points.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := server.OpenStore(*dbPath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			if err := store.Backup(cmd.Context(), args[0]); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "backup written to %s\n", args[0])
+			return nil
+		},
+	}
+}
+
+func newServerStatsCommand(dbPath *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "stats",
+		Short: "Show what the database holds",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			store, err := server.OpenStore(*dbPath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			st, err := store.Stats(cmd.Context())
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "hosts: %d\nscans: %d (%s to %s)\nactive tokens: %d\n", st.Hosts, st.Scans, orDash(st.Oldest), orDash(st.Newest), st.Credentials)
+			return nil
+		},
+	}
 }

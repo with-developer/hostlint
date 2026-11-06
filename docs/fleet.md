@@ -90,6 +90,53 @@ The score is PASS ÷ (PASS + FAIL + ERROR + MANUAL): results that are not decide
 NOT_APPLICABLE and WAIVED are left out of the ratio and listed beside it. A host is stale when it has
 not reported for `staleDays`.
 
+## Running it
+
+A service with systemd (`/etc/systemd/system/hostlint-server.service`); the state directory is
+created and owned by a throw-away user:
+
+```ini
+[Unit]
+Description=hostlint server
+After=network-online.target
+
+[Service]
+DynamicUser=yes
+StateDirectory=hostlint
+ExecStart=/usr/local/bin/hostlint server run --db /var/lib/hostlint/server.db --listen :8443
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Create tokens with `sudo systemd-run --pipe --property=DynamicUser=yes --property=StateDirectory=hostlint
+hostlint server token create --db /var/lib/hostlint/server.db ...`, or run the command as root and
+`chown` the database afterwards: the server refuses a database that other users can read.
+
+In a container (a binary that includes the dashboard, an empty `scratch` image, a volume for the data
+owned by uid 65532):
+
+```dockerfile
+FROM scratch
+COPY hostlint /hostlint
+VOLUME /data
+EXPOSE 8443
+USER 65532:65532
+ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen", ":8443"]
+```
+
+**Backup and retention.** `hostlint server backup FILE` writes a consistent copy while the server runs
+(the file must not exist and is readable by you only); to restore, stop the server and put the copy at
+`--db`. The server deletes scans older than `--retention` (400 days by default, `0` keeps everything)
+once a day, and always keeps the latest scan of every host; `hostlint server prune --older-than 9600h`
+does it once, and `hostlint server stats` shows what the database holds. Upgrading is replacing the
+binary: the schema migrates when the server starts.
+
 ## What the server checks
 
 - A valid token. An ingest token is bound to one host name (`--host`); the host ID in its first

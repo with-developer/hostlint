@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ f5ad0de -->
+<!-- translated from docs/fleet.md @ ced08d9 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -89,6 +89,51 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 점수는 PASS ÷ (PASS + FAIL + ERROR + MANUAL)입니다. 판정되지 않은 결과는 점수에 불리하게 작용하고,
 NOT_APPLICABLE과 WAIVED는 비율에서 빼고 옆에 따로 표시합니다. `staleDays` 동안 보고하지 않은 호스트는
 오래된(stale) 호스트입니다.
+
+## 운영하기
+
+systemd 서비스(`/etc/systemd/system/hostlint-server.service`)는 상태 디렉터리를 임시 사용자가 소유하게
+만듭니다.
+
+```ini
+[Unit]
+Description=hostlint server
+After=network-online.target
+
+[Service]
+DynamicUser=yes
+StateDirectory=hostlint
+ExecStart=/usr/local/bin/hostlint server run --db /var/lib/hostlint/server.db --listen :8443
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+토큰은 `sudo systemd-run --pipe --property=DynamicUser=yes --property=StateDirectory=hostlint
+hostlint server token create --db /var/lib/hostlint/server.db ...`로 만들거나, root로 실행한 뒤
+데이터베이스를 `chown`하세요. 서버는 다른 사용자가 읽을 수 있는 데이터베이스를 거부합니다.
+
+컨테이너에서는(대시보드가 포함된 바이너리, 빈 `scratch` 이미지, uid 65532가 소유한 데이터 볼륨):
+
+```dockerfile
+FROM scratch
+COPY hostlint /hostlint
+VOLUME /data
+EXPOSE 8443
+USER 65532:65532
+ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen", ":8443"]
+```
+
+**백업과 보관.** `hostlint server backup FILE`은 서버가 도는 중에도 일관된 복사본을 만듭니다(파일이 이미 있으면
+안 되고, 본인만 읽을 수 있습니다). 복원하려면 서버를 멈추고 복사본을 `--db` 위치에 두세요. 서버는
+`--retention`(기본 400일, `0`은 모두 보관)보다 오래된 스캔을 하루에 한 번 지우되, 호스트마다 최신 스캔은 항상
+남깁니다. `hostlint server prune --older-than 9600h`는 한 번 실행하고, `hostlint server stats`는 데이터베이스에
+든 것을 보여 줍니다. 업그레이드는 바이너리를 바꾸는 것이며 서버가 시작될 때 스키마가 마이그레이션됩니다.
 
 ## 서버가 확인하는 것
 
