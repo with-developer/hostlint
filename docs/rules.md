@@ -599,7 +599,7 @@ Checks that /etc/sudoers and the files in /etc/sudoers.d are owned by root with 
 
 No files or directories named only of dots and spaces (점과 공백만으로 된 이름의 파일·디렉터리 없음) — severity low, lists what violates it.
 
-Lists files and directories on local filesystems whose name is made only of dots and spaces (other than "." and ".."), such as "..." or ". ". Nothing legitimate needs such a name, and it hides a directory among the entries of a listing.
+Lists files and directories on local filesystems (and in /dev) whose name is made only of dots and spaces (other than "." and ".."), such as "..." or ". ". Nothing legitimate needs such a name, and it hides a directory among the entries of a listing.
 
 **Why.** A directory named "..." or ". " is easy to overlook next to "." and "..", which makes it a place to hide files.
 

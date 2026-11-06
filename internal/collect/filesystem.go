@@ -91,7 +91,7 @@ var excludedPaths = map[string]string{
 type filesystemCollector struct{}
 
 func (filesystemCollector) Name() string           { return "filesystem" }
-func (filesystemCollector) Version() int           { return 2 }
+func (filesystemCollector) Version() int           { return 3 }
 func (filesystemCollector) Access() engine.Access  { return engine.AccessFilesystem }
 func (filesystemCollector) Type() reflect.Type     { return reflect.TypeFor[Filesystem]() }
 func (filesystemCollector) Timeout() time.Duration { return walkTimeout }
@@ -166,7 +166,7 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 		return engine.Facts{}, err
 	case err != nil && !isNotExist(err), err == nil && !devRes.Complete:
 		// Out of time or interrupted: /dev was not fully seen.
-		w.markPartial(devRes.Problems, "dev_files")
+		w.markPartial(devRes.Problems, "dev_files", "odd_names")
 	}
 
 	f := engine.Facts{Value: fsf, Complete: true, Skipped: w.skipped, Partial: slices.Sorted(maps.Keys(w.partial))}

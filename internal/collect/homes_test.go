@@ -89,13 +89,27 @@ func TestHomesOneUnreadableFileDoesNotHideTheRest(t *testing.T) {
 		AddFile("/etc/passwd", "alice:x:1000:1000::/home/alice:/bin/bash\n", 0o644, 0, 0).
 		AddDir("/home/alice", 0o750, 1000, 1000).
 		AddSymlink("/home/alice/.profile", "/home/alice/.profile"). // a loop: stat fails
+		AddSymlink("/home/alice/.bashrc", "/home/alice/.bashrc").
 		AddFile("/home/alice/.zshrc", "", 0o666, 1000, 1000)
 	f, err := homesCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
 	if err != nil || f.Complete {
 		t.Fatalf("complete %v, err %v", f.Complete, err)
 	}
+	if len(f.Skipped) != 2 {
+		t.Errorf("skipped = %v, want both files", f.Skipped)
+	}
 	files := f.Value.(*Homes).Accounts[0].StartupFiles
 	if len(files) != 1 || files[0].Path != "/home/alice/.zshrc" || files[0].Mode != "0666" {
 		t.Errorf("startup files = %+v", files)
+	}
+}
+
+// A cancelled context ends the collector with an error, not a pile of skipped lines.
+func TestHomesCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	m := hostfs.NewMemFS().AddFile("/etc/passwd", "a:x:1:1::/home/a:/bin/sh\nb:x:2:2::/home/b:/bin/sh\n", 0o644, 0, 0)
+	if _, err := (homesCollector{}).Collect(ctx, hostfs.NewTestHost(m, nil, false)); err == nil {
+		t.Error("a cancelled context gave facts")
 	}
 }
