@@ -1,7 +1,7 @@
 # Fleet server (early)
 
 > Phase 1 of [ADR 0010](adr/0010-fleet-server-and-dashboard.md): the server receives and stores
-> results. The dashboard and the read API come next. Treat the interface as unstable.
+> results and answers read requests. The dashboard comes next. Treat the interface as unstable.
 
 Hosts scan themselves and **push** the result to a server. The server never connects to a host:
 it cannot make one scan, run anything or read anything there.
@@ -34,6 +34,27 @@ HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
 The token comes from `HOSTLINT_TOKEN` or `--token-file`, never from the command line. With a
 certificate from a public CA, leave `--pin` out. Run both steps from cron or a systemd timer.
 Sending a result the server already has is not an error.
+
+## Reading results
+
+A read token (`--scope api`) lets a script or CI ask the server what it knows:
+
+```sh
+hostlint server token create --db server.db --name ci --scope api
+curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.example.org:8443/api/v1/overview
+```
+
+| Request | Answer |
+|---|---|
+| `GET /api/v1/overview` | Hosts, hosts with a failing control, stale hosts, counts, the controls that fail on most hosts, recent regressions (`?staleDays=7`) |
+| `GET /api/v1/hosts` | The hosts with the counts and score of their latest scan (`?q=`, `?status=failing\|stale`, `?limit=`, `?offset=`, `?format=csv`) |
+| `GET /api/v1/hosts/ID` | One host: its latest controls and its history |
+| `GET /api/v1/scans/ID` | A stored result, exactly as received |
+| `GET /api/v1/diff?old=ID&new=ID` | What changed between two scans, as `hostlint diff` |
+
+The score is PASS ÷ (PASS + FAIL + ERROR + MANUAL): results that are not decided count against it, and
+NOT_APPLICABLE and WAIVED are left out of the ratio and listed beside it. A host is stale when it has
+not reported for `staleDays`.
 
 ## What the server checks
 

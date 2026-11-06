@@ -1,8 +1,8 @@
-<!-- translated from docs/fleet.md @ 15dc612 -->
+<!-- translated from docs/fleet.md @ c7c51f1 -->
 # 플릿 서버 (초기)
 
-> [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장합니다.
-> 대시보드와 조회 API는 다음 단계입니다. 인터페이스는 아직 안정적이지 않습니다.
+> [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
+> 조회 요청에 답합니다. 대시보드는 다음 단계입니다. 인터페이스는 아직 안정적이지 않습니다.
 
 호스트가 스스로 스캔하고 결과를 서버로 **보냅니다(push)**. 서버는 호스트에 접속하지 않습니다.
 호스트가 스캔하게 만들거나, 무언가를 실행하거나, 읽을 수 없습니다.
@@ -35,6 +35,27 @@ HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
 토큰은 `HOSTLINT_TOKEN`이나 `--token-file`로 전달하며 명령줄에는 쓰지 않습니다. 공인 CA 인증서를
 쓰면 `--pin`을 생략합니다. 두 단계를 cron이나 systemd 타이머로 돌리세요. 서버가 이미 가진 결과를 다시
 보내는 것은 오류가 아닙니다.
+
+## 결과 조회
+
+조회 토큰(`--scope api`)으로 스크립트나 CI가 서버가 아는 것을 물어볼 수 있습니다.
+
+```sh
+hostlint server token create --db server.db --name ci --scope api
+curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.example.org:8443/api/v1/overview
+```
+
+| 요청 | 응답 |
+|---|---|
+| `GET /api/v1/overview` | 호스트 수, 실패 컨트롤이 있는 호스트, 오래 보고하지 않은 호스트, 상태별 개수, 가장 많은 호스트에서 실패하는 컨트롤, 최근 악화(`?staleDays=7`) |
+| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?limit=`, `?offset=`, `?format=csv`) |
+| `GET /api/v1/hosts/ID` | 호스트 하나: 최신 컨트롤과 이력 |
+| `GET /api/v1/scans/ID` | 받은 그대로의 저장된 결과 |
+| `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이의 변화(`hostlint diff`와 같음) |
+
+점수는 PASS ÷ (PASS + FAIL + ERROR + MANUAL)입니다. 판정되지 않은 결과는 점수에 불리하게 작용하고,
+NOT_APPLICABLE과 WAIVED는 비율에서 빼고 옆에 따로 표시합니다. `staleDays` 동안 보고하지 않은 호스트는
+오래된(stale) 호스트입니다.
 
 ## 서버가 확인하는 것
 

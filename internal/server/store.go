@@ -155,7 +155,10 @@ func migrationVersion(name string) (int, error) {
 	return n, nil
 }
 
-func (s *Store) stamp() string { return s.now().UTC().Format(time.RFC3339Nano) }
+// stampLayout has a fixed width, so that timestamps sort as text.
+const stampLayout = "2006-01-02T15:04:05.000000000Z07:00"
+
+func (s *Store) stamp() string { return s.now().UTC().Format(stampLayout) }
 
 // Errors of an ingest that the caller answers with a status.
 var (
@@ -268,13 +271,13 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	if err != nil {
 		return nil, err
 	}
-	insControl, err := tx.PrepareContext(ctx, `INSERT INTO scan_controls (scan_row, profile, control_id, severity, status) VALUES (?, ?, ?, ?, ?)`)
+	insControl, err := tx.PrepareContext(ctx, `INSERT INTO scan_controls (scan_row, profile, control_id, severity, status, title) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
 	}
 	defer insControl.Close()
 	for _, c := range res.Controls {
-		if _, err := insControl.ExecContext(ctx, scanRow, c.Profile, c.ID, string(c.Severity), string(c.Status)); err != nil {
+		if _, err := insControl.ExecContext(ctx, scanRow, c.Profile, c.ID, string(c.Severity), string(c.Status), truncate(c.Title, 200)); err != nil {
 			return nil, err
 		}
 	}
