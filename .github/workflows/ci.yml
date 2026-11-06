@@ -94,6 +94,34 @@ jobs:
           go-version: stable
       - run: make vuln
 
+  # The dashboard: type-check, unit tests and a production build, then the server built with it.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - run: npm ci --ignore-scripts
+        working-directory: web
+      - run: npm test
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - name: The server builds and passes its tests with the dashboard embedded
+        run: go test -tags web ./internal/server/
+      - name: The built dashboard is in the binary
+        run: |
+          go build -tags web -o hostlint-web ./cmd/hostlint
+          ./hostlint-web version
+
   # Builds every release artifact as a snapshot (unsigned, unpublished), so the
   # release pipeline is tested before a tag needs it (docs/RELEASING.md).
   release-snapshot:
@@ -106,9 +134,15 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           syft-version: v1.55.0
+      # GoReleaser builds the dashboard first (before hook in .goreleaser.yaml) and embeds it.
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           version: v2.18.3 # keep in step with GORELEASER_VERSION in the Makefile
@@ -120,7 +154,7 @@ jobs:
   # job above succeeded (a skipped or cancelled job counts as a failure).
   ci-ok:
     if: always()
-    needs: [test, lint, build, vuln, release-snapshot]
+    needs: [test, lint, build, vuln, web, release-snapshot]
     runs-on: ubuntu-latest
     steps:
       - env:

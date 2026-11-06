@@ -1,0 +1,35 @@
+// What the server's read API returns (internal/server/query.go, api.go).
+export type Status = "FAIL" | "ERROR" | "MANUAL" | "WAIVED" | "PASS" | "NOT_APPLICABLE";
+export const STATUSES: Status[] = ["FAIL", "ERROR", "MANUAL", "WAIVED", "PASS", "NOT_APPLICABLE"];
+export type Counts = Partial<Record<Status, number>>;
+
+export interface HostSummary {
+  id: number;
+  name: string;
+  hostId: string;
+  lastScanAt: string;
+  latestScan: number;
+  counts: Counts;
+  score: number | null;
+  stale: boolean;
+}
+export interface ControlRow { profile: string; id: string; title: string; severity: string; status: Status }
+export interface ScanRow { id: number; receivedAt: string; startedAt: string; toolVersion: string; counts: Counts; score: number | null }
+export interface HostDetail extends HostSummary { controls: ControlRow[]; scans: ScanRow[] }
+export interface FailingControl { profile: string; id: string; title: string; severity: string; hosts: number }
+export interface RegressedControl { hostId: number; host: string; profile: string; id: string; title: string; severity: string; status: Status; receivedAt: string }
+export interface Overview {
+  hosts: number; hostsFailing: number; hostsStale: number; counts: Counts; score: number | null;
+  topFailing: FailingControl[]; recentRegressions: RegressedControl[]; staleAfterDays: number;
+}
+export interface CheckChange { ref: string; title: string; old: Status | ""; new: Status | "" }
+export interface ControlChange { profile: string; id: string; title: string; severity: string; old: Status | ""; new: Status | ""; checks: CheckChange[] }
+export interface Diff {
+  old: { file: string; scanned: string }; new: { file: string; scanned: string }; notes: string[];
+  regressed: ControlChange[]; fixed: ControlChange[]; changed: ControlChange[]; added: ControlChange[]; removed: ControlChange[]; unchanged: number;
+}
+// The stored result document: only the parts the dashboard shows. Every string is host text.
+export interface Evidence { key: string; text: string; source?: string }
+export interface DocCheck { ref: string; title: string; status: Status; reason?: string; evidence?: Evidence[]; evidenceOmitted?: number }
+export interface DocControl { profile: string; id: string; reason?: string; checks: string[]; waiver?: { reason: string; expires: string } }
+export interface ScanDoc { controls: DocControl[]; checks: DocCheck[] }

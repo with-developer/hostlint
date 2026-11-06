@@ -26,13 +26,19 @@ GORELEASER := $(TOOLS)/goreleaser-$(GORELEASER_VERSION)
 SNAPSHOT_SKIP ?= sign
 
 .DEFAULT_GOAL := help
-.PHONY: help build test lint lint-guards fmt tidy vuln snapshot docs e2e clean
+.PHONY: help build build-web web test lint lint-guards fmt tidy vuln snapshot docs e2e clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build ./hostlint (static on Linux; cross-compile with GOOS=linux GOARCH=arm64)
 	CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/hostlint
+
+web: ## Build the dashboard into internal/server/webdist (needs Node 22)
+	cd web && npm ci --ignore-scripts && npm run build
+
+build-web: web ## Build ./hostlint with the dashboard embedded in `hostlint server`
+	CGO_ENABLED=0 go build -trimpath -buildvcs=false -tags web -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/hostlint
 
 test: ## Run unit tests with the race detector
 	go test -race ./...

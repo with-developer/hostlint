@@ -1,0 +1,206 @@
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+
+export type Lang = "en" | "ko";
+
+const en = {
+  "app.name": "hostlint",
+  "nav.overview": "Overview",
+  "nav.hosts": "Hosts",
+  "nav.logout": "Sign out",
+  "lang.switch": "한국어",
+  "login.title": "Sign in",
+  "login.help": "Paste a read token. Create one on the server with: hostlint server token create --scope api --name dashboard",
+  "login.token": "Read token",
+  "login.submit": "Sign in",
+  "login.failed": "That is not a valid read token.",
+  "loading": "Loading…",
+  "error": "Something went wrong",
+  "retry": "Try again",
+  "overview.title": "Overview",
+  "overview.hosts": "Hosts",
+  "overview.failing": "Hosts with a failing control",
+  "overview.stale": "Hosts not reporting for {n} days",
+  "overview.score": "Pass rate",
+  "overview.scoreHelp": "PASS ÷ (PASS + FAIL + ERROR + MANUAL). Undecided results count against it; WAIVED and NOT_APPLICABLE are shown beside it.",
+  "overview.distribution": "Control results across the fleet",
+  "overview.topFailing": "Controls that fail on most hosts",
+  "overview.regressions": "Recent regressions",
+  "overview.regressionsHelp": "Controls that are failing in a host's latest scan and were not in the one before.",
+  "overview.none": "Nothing to show.",
+  "overview.empty": "No results yet. Push one with: hostlint push result.json --server …",
+  "hosts.title": "Hosts",
+  "hosts.search": "Search by name",
+  "hosts.all": "All",
+  "hosts.failing": "Failing",
+  "hosts.stale": "Stale",
+  "hosts.export": "Export CSV",
+  "hosts.name": "Host",
+  "hosts.status": "Controls",
+  "hosts.score": "Pass rate",
+  "hosts.lastScan": "Last scan",
+  "hosts.total": "{n} hosts",
+  "host.back": "← Hosts",
+  "host.hostId": "Host ID",
+  "host.lastScan": "Last scan",
+  "host.controls": "Controls (latest scan)",
+  "host.history": "Scan history",
+  "host.filter": "Filter controls",
+  "host.noControls": "This host has no scan yet.",
+  "host.checks": "Checks",
+  "host.evidence": "Evidence",
+  "host.noEvidence": "No evidence recorded.",
+  "host.waived": "Waived: {reason} (until {expires})",
+  "host.raw": "Result (JSON)",
+  "host.compare": "Compare with the previous scan",
+  "host.scan": "Scan {id}",
+  "diff.regressed": "Regressed",
+  "diff.fixed": "Fixed",
+  "diff.changed": "Changed",
+  "diff.added": "Added controls",
+  "diff.removed": "Removed controls",
+  "diff.unchanged": "{n} unchanged",
+  "diff.close": "Close",
+  "stale": "stale",
+  "severity.high": "high",
+  "severity.medium": "medium",
+  "severity.low": "low",
+  "status.FAIL": "FAIL",
+  "status.ERROR": "ERROR",
+  "status.MANUAL": "MANUAL",
+  "status.WAIVED": "WAIVED",
+  "status.PASS": "PASS",
+  "status.NOT_APPLICABLE": "N/A",
+  "ago.now": "just now",
+  "ago.minutes": "{n} min ago",
+  "ago.hours": "{n} h ago",
+  "ago.days": "{n} d ago",
+  "theme.toggle": "Theme",
+} as const;
+
+export type Key = keyof typeof en;
+
+const ko: Record<Key, string> = {
+  "app.name": "hostlint",
+  "nav.overview": "개요",
+  "nav.hosts": "호스트",
+  "nav.logout": "로그아웃",
+  "lang.switch": "English",
+  "login.title": "로그인",
+  "login.help": "조회 토큰을 붙여 넣으세요. 서버에서 만드는 방법: hostlint server token create --scope api --name dashboard",
+  "login.token": "조회 토큰",
+  "login.submit": "로그인",
+  "login.failed": "유효한 조회 토큰이 아닙니다.",
+  "loading": "불러오는 중…",
+  "error": "문제가 생겼습니다",
+  "retry": "다시 시도",
+  "overview.title": "개요",
+  "overview.hosts": "호스트",
+  "overview.failing": "실패한 컨트롤이 있는 호스트",
+  "overview.stale": "{n}일 동안 보고하지 않은 호스트",
+  "overview.score": "통과율",
+  "overview.scoreHelp": "PASS ÷ (PASS + FAIL + ERROR + MANUAL). 판정되지 않은 결과는 통과율에 불리하게 작용하고, WAIVED와 NOT_APPLICABLE은 옆에 따로 표시합니다.",
+  "overview.distribution": "전체 컨트롤 결과",
+  "overview.topFailing": "가장 많은 호스트에서 실패하는 컨트롤",
+  "overview.regressions": "최근 악화",
+  "overview.regressionsHelp": "호스트의 최신 스캔에서 실패 중이고 직전 스캔에서는 아니었던 컨트롤입니다.",
+  "overview.none": "표시할 것이 없습니다.",
+  "overview.empty": "아직 결과가 없습니다. 이렇게 보내세요: hostlint push result.json --server …",
+  "hosts.title": "호스트",
+  "hosts.search": "이름으로 검색",
+  "hosts.all": "전체",
+  "hosts.failing": "실패",
+  "hosts.stale": "오래됨",
+  "hosts.export": "CSV 내보내기",
+  "hosts.name": "호스트",
+  "hosts.status": "컨트롤",
+  "hosts.score": "통과율",
+  "hosts.lastScan": "마지막 스캔",
+  "hosts.total": "호스트 {n}개",
+  "host.back": "← 호스트",
+  "host.hostId": "호스트 ID",
+  "host.lastScan": "마지막 스캔",
+  "host.controls": "컨트롤 (최신 스캔)",
+  "host.history": "스캔 이력",
+  "host.filter": "컨트롤 거르기",
+  "host.noControls": "이 호스트는 아직 스캔 결과가 없습니다.",
+  "host.checks": "점검",
+  "host.evidence": "근거",
+  "host.noEvidence": "기록된 근거가 없습니다.",
+  "host.waived": "예외 처리: {reason} ({expires}까지)",
+  "host.raw": "결과 (JSON)",
+  "host.compare": "직전 스캔과 비교",
+  "host.scan": "스캔 {id}",
+  "diff.regressed": "악화",
+  "diff.fixed": "해결",
+  "diff.changed": "변경",
+  "diff.added": "추가된 컨트롤",
+  "diff.removed": "제거된 컨트롤",
+  "diff.unchanged": "변화 없음 {n}개",
+  "diff.close": "닫기",
+  "stale": "오래됨",
+  "severity.high": "높음",
+  "severity.medium": "중간",
+  "severity.low": "낮음",
+  "status.FAIL": "FAIL",
+  "status.ERROR": "ERROR",
+  "status.MANUAL": "MANUAL",
+  "status.WAIVED": "WAIVED",
+  "status.PASS": "PASS",
+  "status.NOT_APPLICABLE": "해당 없음",
+  "ago.now": "방금",
+  "ago.minutes": "{n}분 전",
+  "ago.hours": "{n}시간 전",
+  "ago.days": "{n}일 전",
+  "theme.toggle": "테마",
+};
+
+const dictionaries: Record<Lang, Record<Key, string>> = { en, ko };
+
+export type Translate = (key: Key | string, n?: number | Record<string, string | number>) => string;
+
+/** Fills {name} slots; a number fills {n}. Unknown keys show as themselves. */
+export function translate(lang: Lang, key: string, vars?: number | Record<string, string | number>): string {
+  const text = (dictionaries[lang] as Record<string, string>)[key] ?? key;
+  const slots: Record<string, string | number> = typeof vars === "number" ? { n: vars } : (vars ?? {});
+  return text.replace(/\{(\w+)\}/g, (_, name: string) => String(slots[name] ?? `{${name}}`));
+}
+
+export function initialLang(stored: string | null, browser: string): Lang {
+  if (stored === "en" || stored === "ko") return stored;
+  return browser.toLowerCase().startsWith("ko") ? "ko" : "en";
+}
+
+interface I18n {
+  lang: Lang;
+  t: Translate;
+  toggle: () => void;
+}
+const Ctx = createContext<I18n>({ lang: "en", t: (k) => k, toggle: () => {} });
+
+function read(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null; // storage can be unavailable (private windows)
+  }
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLang] = useState<Lang>(() => initialLang(read("hostlint.lang"), navigator.language));
+  const toggle = useCallback(() => {
+    setLang((l) => {
+      const next: Lang = l === "en" ? "ko" : "en";
+      try {
+        localStorage.setItem("hostlint.lang", next);
+      } catch {
+        // not remembered
+      }
+      document.documentElement.lang = next;
+      return next;
+    });
+  }, []);
+  const value = useMemo<I18n>(() => ({ lang, t: (key, vars) => translate(lang, key, vars), toggle }), [lang, toggle]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export const useI18n = () => useContext(Ctx);

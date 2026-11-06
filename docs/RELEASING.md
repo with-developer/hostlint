@@ -19,6 +19,10 @@ The release notes list the `feat:` and `fix:` commits since the previous tag; `d
 `ci:`, `chore:` and `refactor:` commits are left out; any other commit is listed under
 "Other changes".
 
+The binaries embed the fleet dashboard (`web/`): GoReleaser runs `npm ci --ignore-scripts && npm run
+build` first (Node 22, pinned lockfile) and builds with the `web` tag. The dependencies of the
+dashboard are those of `web/package-lock.json`; the SBOMs of the archives list the Go modules.
+
 [`install.sh`](../install.sh) installs the archive for the machine's architecture. It refuses an
 archive whose SHA-256 does not match `checksums.txt`. When cosign is installed, it first verifies
 the signature of `checksums.txt` against the release workflow's identity for that tag.

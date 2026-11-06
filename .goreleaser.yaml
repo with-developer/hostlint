@@ -11,6 +11,11 @@ git:
   # suffix declared, the release sorts last. The workflow also names the tag.
   prerelease_suffix: "-"
 
+# The dashboard (web/) is built first and embedded with the `web` build tag.
+before:
+  hooks:
+    - sh -c 'cd web && npm ci --ignore-scripts && npm run build'
+
 builds:
   - id: hostlint
     main: ./cmd/hostlint
@@ -22,6 +27,7 @@ builds:
     flags:
       - -trimpath
       - -buildvcs=false
+      - -tags=web
     ldflags:
       - -s -w
       - -X github.com/with-developer/hostlint/internal/version.version=v{{ .Version }}

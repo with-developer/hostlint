@@ -6,6 +6,17 @@
 Hosts scan themselves and **push** the result to a server. The server never connects to a host:
 it cannot make one scan, run anything or read anything there.
 
+## Dashboard
+
+`hostlint server run` serves a web dashboard at its address when the binary was built with it: the
+release binaries are, and a source build uses `make build-web` (Node 22). A binary from `go install`
+has the API only and says so at `/`. Sign in with a read token (`hostlint server token create --scope
+api`): the dashboard shows the fleet overview (pass rate, hosts with a failing control, hosts that
+stopped reporting, the controls that fail most, recent regressions), the host list (search, filters,
+sorting, CSV export), and for each host its controls with the evidence of every check, its history and a
+comparison of any scan with the one before. It is available in English and Korean and follows the
+system's light or dark theme. Everything a host sent is shown as text.
+
 ## Quick start
 
 On the server machine:

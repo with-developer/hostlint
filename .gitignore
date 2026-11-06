@@ -16,3 +16,4 @@ CLAUDE.local.md
 .vscode/
 .DS_Store
 /.tools/
+/web/node_modules/
