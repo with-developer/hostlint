@@ -489,6 +489,26 @@ func TestShellEnvLoopBodyDecidesWhatIsSourced(t *testing.T) {
 
 // The files a profile.d loop sources run under the conditions around the loop: the
 // stock guards hold in a login shell, any other makes what they set conditional.
+// The run-parts loop of Debian's /etc/profile is read under the same rules.
+func TestShellEnvRunPartsLoopGuards(t *testing.T) {
+	for name, tt := range map[string]struct {
+		profile     string
+		conditional bool
+	}{
+		"unguarded":    {"for i in $(run-parts --list --regex '\\.sh$' /etc/profile.d); do . \"$i\"; done\n", false},
+		"a condition":  {"if [ \"$X\" ]; then\n  for i in $(run-parts --list --regex '\\.sh$' /etc/profile.d); do . \"$i\"; done\nfi\n", true},
+		"a body guard": {"for i in $(run-parts --list --regex '\\.sh$' /etc/profile.d); do [ \"$X\" ] && . \"$i\"; done\n", true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := hostfs.NewMemFS().AddFile("/etc/profile", tt.profile, 0o644, 0, 0).AddFile("/etc/profile.d/t.sh", "TMOUT=600\n", 0o644, 0, 0)
+			env := shellEnv(t, m)
+			if len(env.TMOUT) != 1 || env.TMOUT[0].Conditional != tt.conditional {
+				t.Errorf("TMOUT %+v, want one value, conditional %v", env.TMOUT, tt.conditional)
+			}
+		})
+	}
+}
+
 func TestShellEnvProfileLoopGuards(t *testing.T) {
 	loop := "  for i in /etc/profile.d/*.sh; do\n    if [ -r \"$i\" ]; then\n      . \"$i\"\n    fi\n  done\n"
 	tests := []struct {
@@ -501,6 +521,14 @@ func TestShellEnvProfileLoopGuards(t *testing.T) {
 		{"another condition", "if [ \"$ENABLE_PROFILE_D\" = yes ]; then\n" + loop + "fi\n", true},
 		{"a stock guard inside another condition", "if [ \"$X\" ]; then\n  if [ -d /etc/profile.d ]; then\n" + loop + "  fi\nfi\n", true},
 		{"a loop that is itself inside a loop", "for k in 1 2; do\n" + loop + "done\n", true},
+		{"the else branch of a stock guard", "if [ -d /etc/profile.d ]; then\n  :\nelse\n" + loop + "fi\n", true},
+		{"an elif branch", "if [ -d /etc/profile.d ]; then\n  :\nelif [ \"$X\" ]; then\n" + loop + "fi\n", true},
+		{"the stock guard after a closed block", "if [ \"$X\" ]; then :; fi\nif [ -d /etc/profile.d ]; then\n" + loop + "fi\n", false},
+		{"a one-line block does not hide the outer guard", "if [ \"$X\" ]; then\n  if [ -d /etc/profile.d ]; then :; fi\n" + loop + "fi\n", true},
+		{"a condition around the source in the body", "for i in /etc/profile.d/*.sh; do\n  if [ \"$X\" ]; then\n    . \"$i\"\n  fi\ndone\n", true},
+		{"an and-list in the body", "for i in /etc/profile.d/*.sh; do\n  [ \"$X\" ] && . \"$i\"\ndone\n", true},
+		{"the RHEL body with its interactive branches", "for i in /etc/profile.d/*.sh; do\n  if [ -r \"$i\" ]; then\n    if [ \"${-#*i}\" != \"$-\" ]; then\n      . \"$i\"\n    else\n      . \"$i\" >/dev/null\n    fi\n  fi\ndone\n", false},
+		{"the readable-file guard around the loop is not a stock guard", "if [ -r \"$i\" ]; then\n" + loop + "fi\n", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -185,7 +185,7 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 	s.read[name] = true
 
 	depthBlocks := 0
-	var openers []string // the line that opened each block still open
+	var openers []opener // the blocks still open
 	lines := s.logicalLines(name, data)
 	for idx, l := range lines {
 		code := l.code
@@ -195,15 +195,13 @@ func (s *shellScanner) file(name string, cond bool, depth int) {
 		// after && or ||, or in a subshell.
 		lineCond := cond || depthBlocks > 0 || opens > 0 || hasControlOperator(code)
 		// The files a loop over /etc/profile.d sources run under the guards around the
-		// loop: the stock ones hold in a login shell, any other makes them conditional.
-		loopCond := cond || hasControlOperator(code) || !stockGuards(openers) || guardedOnLine(code)
+		// loop: the stock ones hold in an interactive login shell, any other (or the
+		// else branch of one) makes them conditional.
+		loopCond := cond || hasControlOperator(code) || !stockGuards(openers)
 		s.scanLine(code, src, lineCond)
 		s.follow(code, src, lineCond, loopCond, depth, func() string { return loopBody(lines, idx) })
 		depthBlocks = max(depthBlocks+opens-closes, 0)
-		openers = openers[:max(len(openers)-closes, 0)]
-		for range opens {
-			openers = append(openers, strings.TrimSpace(code))
-		}
+		openers = updateOpeners(openers, code, opens)
 	}
 }
 
@@ -400,11 +398,11 @@ func (s *shellScanner) follow(code, src string, cond, loopCond bool, depth int, 
 		after := code[len(m[0]):]
 		hasRegex := strings.Contains(m[0], "--regex")
 		if loopSourcesItems(code, body) {
-			s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth, loopCond)
+			s.runParts(m[1]+m[2], hasRegex, m[2] != "", src, depth, loopCond || loopBodyGuarded(code, body))
 		}
 		rest = s.afterLoop(src, after)
 	case forRe.MatchString(code) && mentionsProfileD(code):
-		rest = s.profileLoop(code, src, depth, loopCond, loopSourcesItems(code, body))
+		rest = s.profileLoop(code, src, depth, loopCond || loopBodyGuarded(code, body), loopSourcesItems(code, body))
 	case forAnywhereRe.MatchString(code) && mentionsProfileD(code):
 		// A loop behind a condition or another command.
 		s.unknownLoop(src)
@@ -421,6 +419,16 @@ func (s *shellScanner) follow(code, src string, cond, loopCond bool, depth int, 
 		target = path.Clean(target)
 		s.file(target, cond && !slices.Contains(standardSources, target), depth+1)
 	}
+}
+
+// loopBodyGuarded reports whether the body of the for loop on code puts a
+// non-stock condition around what it sources.
+func loopBodyGuarded(code string, body func() string) bool {
+	if loopVarRe.FindStringSubmatch(code) == nil {
+		return false
+	}
+	b := body()
+	return b != "" && bodyGuarded(b)
 }
 
 func mentionsProfileD(code string) bool {
@@ -713,11 +721,10 @@ var positiveTMOUT = regexp.MustCompile(`^0*[1-9][0-9]*$`)
 // select, a function's or a group's "{") and close (fi, esac, done, "}")
 // shell blocks on a line.
 func blockWords(code string) (opens, closes int) {
-	for _, w := range strings.FieldsFunc(code, func(r rune) bool { return strings.ContainsRune(" \t;&|()", r) }) {
-		switch w {
-		case "if", "case", "for", "while", "until", "select", "{":
+	for _, open := range blockSeq(code) {
+		if open {
 			opens++
-		case "fi", "esac", "done", "}":
+		} else {
 			closes++
 		}
 	}
@@ -725,6 +732,20 @@ func blockWords(code string) (opens, closes int) {
 		opens++ // "name()" with its brace on the next line
 	}
 	return opens, closes
+}
+
+// blockSeq lists, in order, whether each block word of a line opens (true) or closes (false) a block.
+func blockSeq(code string) []bool {
+	var seq []bool
+	for _, w := range strings.FieldsFunc(code, func(r rune) bool { return strings.ContainsRune(" \t;&|()", r) }) {
+		switch w {
+		case "if", "case", "for", "while", "until", "select", "{":
+			seq = append(seq, true)
+		case "fi", "esac", "done", "}":
+			seq = append(seq, false)
+		}
+	}
+	return seq
 }
 
 // hasControlOperator reports whether a line has && or || or a subshell
@@ -786,28 +807,65 @@ func readonlyPrefix(prefix string) bool {
 	return false
 }
 
-// stockGuardRe are the conditions around the stock profile.d loops, which hold in
-// a login shell: the directory exists, the file is readable, bash is
-// interactive.
-var stockGuardRe = regexp.MustCompile(`^if \[ (-d /etc/profile\.d|-r "?\$i"?|"\$\{-#\*i\}" != "\$-"|-n "\$PS1"|"\$PS1") \]\s*;\s*then\s*$`)
+// opener is an open block of a startup file: the line that opened it, and whether
+// the file went on to its else or elif branch (which a condition no longer guards).
+type opener struct {
+	text     string
+	branched bool
+}
 
-// stockGuards reports whether every block around a line was opened by a stock guard.
-func stockGuards(openers []string) bool {
+var branchRe = regexp.MustCompile(`(^|[;\s])(else|elif)(\s|;|$)`)
+
+// updateOpeners applies a line to the stack of open blocks: its block words in
+// order (a closing word ends the block opened last), and an else or elif, which
+// marks the innermost block as no longer guarded by its condition.
+func updateOpeners(stack []opener, code string, opens int) []opener {
+	text := strings.TrimSpace(code)
+	pushed := 0
+	for _, open := range blockSeq(code) {
+		if open {
+			stack = append(stack, opener{text: text})
+			pushed++
+		} else if len(stack) > 0 {
+			stack = stack[:len(stack)-1]
+		}
+	}
+	// A function header with its brace on the next line opens a block too.
+	for ; pushed < opens; pushed++ {
+		stack = append(stack, opener{text: text})
+	}
+	if branchRe.MatchString(code) && len(stack) > 0 {
+		stack[len(stack)-1].branched = true
+	}
+	return stack
+}
+
+// stockGuardRe are the conditions around the stock profile.d loops, which hold in
+// an interactive login shell: the directory exists, bash is interactive.
+var stockGuardRe = regexp.MustCompile(`^if \[ (-d /etc/profile\.d|-n "\$PS1"|"\$PS1") \]\s*;\s*then\s*$`)
+
+// stockGuards reports whether every block around a line was opened by a stock
+// guard and is still on its guarded branch.
+func stockGuards(openers []opener) bool {
 	for _, o := range openers {
-		if !stockGuardRe.MatchString(o) {
+		if o.branched || !stockGuardRe.MatchString(o.text) {
 			return false
 		}
 	}
 	return true
 }
 
-// guardedOnLine reports whether a loop's own line puts a condition before it
-// ("if cond; then for ...", "cond && for ...").
-func guardedOnLine(code string) bool {
-	i := strings.Index(code, "for ")
-	if i < 0 {
-		return false
-	}
-	before := code[:i]
-	return regexp.MustCompile(`(^|[\s;])(if|while|until|case)\s`).MatchString(before) || strings.Contains(before, "&&") || strings.Contains(before, "||")
+var (
+	// The guards inside the stock loop bodies: the file is readable, bash is
+	// interactive (both branches source the file).
+	stockBodyGuardRe = regexp.MustCompile(`\bif\s+\[\s+(-r\s+"?\$\w+"?|"\$\{-#\*i\}"\s+!=\s+"\$-")\s+\]\s*;\s*then\b`)
+	bodyWordRe       = regexp.MustCompile(`\b(fi|else|done)\b`)
+	bodyControlRe    = regexp.MustCompile(`\b(if|elif|case|while|until|select)\b|&&|\|\|`)
+)
+
+// bodyGuarded reports whether a loop body puts a condition other than the stock
+// ones around what it sources.
+func bodyGuarded(body string) bool {
+	rest := bodyWordRe.ReplaceAllString(stockBodyGuardRe.ReplaceAllString(body, " "), " ")
+	return bodyControlRe.MatchString(rest)
 }
