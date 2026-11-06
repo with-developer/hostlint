@@ -37,5 +37,22 @@ export function compareControls(a: { status: Status; severity: string; id: strin
 
 /** A route of the hash-based router: "#/hosts/3" → ["hosts", "3"]. */
 export function parseRoute(hash: string): string[] {
-  return hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  return hash
+    .replace(/^#\/?/, "")
+    .split("/")
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part; // a garbled escape in a link is a path that matches nothing, not a crash
+      }
+    });
+}
+
+/** A stable hue (0-359) for a name, for the avatars. */
+export function hue(name: string): number {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) % 360;
+  return h;
 }

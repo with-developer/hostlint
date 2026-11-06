@@ -33,3 +33,7 @@ export interface Evidence { key: string; text: string; source?: string }
 export interface DocCheck { ref: string; title: string; status: Status; reason?: string; evidence?: Evidence[]; evidenceOmitted?: number }
 export interface DocControl { profile: string; id: string; reason?: string; checks: string[]; waiver?: { reason: string; expires: string } }
 export interface ScanDoc { controls: DocControl[]; checks: DocCheck[] }
+
+export interface MatrixControl { profile: string; id: string; title: string; severity: string }
+export interface MatrixHost { id: number; name: string; stale: boolean; statuses: string }
+export interface Matrix { controls: MatrixControl[]; hosts: MatrixHost[] }

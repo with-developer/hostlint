@@ -14,7 +14,7 @@
 `go install`로 설치한 바이너리에는 API만 있고 `/`에서 그렇게 안내합니다. 조회 토큰
 (`hostlint server token create --scope api`)으로 로그인하면, 전체 현황(통과율, 실패한 컨트롤이 있는
 호스트, 보고를 멈춘 호스트, 가장 많이 실패하는 컨트롤, 최근 악화), 호스트 목록(검색, 필터, 정렬, CSV
-내보내기), 그리고 호스트별로 모든 점검의 근거가 있는 컨트롤, 이력, 직전 스캔과의 비교를 볼 수 있습니다.
+내보내기), 모든 호스트의 모든 컨트롤 매트릭스, 그리고 호스트별로 모든 점검의 근거가 있는 컨트롤, 이력, 직전 스캔과의 비교를 볼 수 있습니다.
 영어와 한국어를 지원하고 시스템의 라이트/다크 테마를 따릅니다. 호스트가 보낸 내용은 모두 텍스트로만
 표시합니다.
 
@@ -59,7 +59,8 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | 요청 | 응답 |
 |---|---|
 | `GET /api/v1/overview` | 호스트 수, 실패 컨트롤이 있는 호스트, 오래 보고하지 않은 호스트, 상태별 개수, 가장 많은 호스트에서 실패하는 컨트롤, 최근 악화(`?staleDays=7`) |
-| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?limit=`, `?offset=`, `?format=csv`) |
+| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`) |
+| `GET /api/v1/matrix` | 모든 호스트의 모든 컨트롤의 최신 상태, 가장 많이 실패한 호스트가 먼저 |
 | `GET /api/v1/hosts/ID` | 호스트 하나: 최신 컨트롤과 이력 |
 | `GET /api/v1/scans/ID` | 받은 그대로의 저장된 결과 |
 | `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이의 변화(`hostlint diff`와 같음) |

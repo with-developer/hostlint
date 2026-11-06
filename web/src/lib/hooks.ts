@@ -9,17 +9,20 @@ export interface Async<T> {
 }
 
 /** Runs an async function when its dependencies change; a late answer for an old request is dropped. */
-export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
+export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], keepPrevious = true): Async<T> {
   const [state, setState] = useState<{ data: T | null; error: Error | null; loading: boolean }>({ data: null, error: null, loading: true });
   const [tick, setTick] = useState(0);
   const latest = useRef(0);
   useEffect(() => {
     const id = ++latest.current;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState((s) => ({ data: keepPrevious ? s.data : null, error: null, loading: true }));
     fn().then(
       (data) => id === latest.current && setState({ data, error: null, loading: false }),
       (error: Error) => id === latest.current && setState({ data: null, error, loading: false }),
     );
+    return () => {
+      latest.current++; // the answer to a request nobody waits for is dropped
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
   const reload = useCallback(() => setTick((n) => n + 1), []);

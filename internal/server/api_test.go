@@ -293,3 +293,68 @@ func TestHostsCSVIsComplete(t *testing.T) {
 		t.Errorf("csv has %d lines (%d), want %d", lines, code, 1+522)
 	}
 }
+
+func TestMatrixAndSort(t *testing.T) {
+	f := newAPIFixture(t)
+	var m Matrix
+	f.json(t, "/api/v1/matrix", &m)
+	if len(m.Hosts) != 2 || len(m.Controls) == 0 {
+		t.Fatalf("matrix = %d hosts, %d controls", len(m.Hosts), len(m.Controls))
+	}
+	for _, h := range m.Hosts {
+		if len(h.Statuses) != len(m.Controls) || strings.Trim(h.Statuses, "FEMWPN-") != "" {
+			t.Errorf("host %s statuses %q for %d controls", h.Name, h.Statuses, len(m.Controls))
+		}
+	}
+	// Hosts that fail most come first (ties by name).
+	for i := 1; i < len(m.Hosts); i++ {
+		if strings.Count(m.Hosts[i-1].Statuses, "F") < strings.Count(m.Hosts[i].Statuses, "F") {
+			t.Errorf("hosts not ordered by failures: %+v", m.Hosts)
+		}
+	}
+	for i := 1; i < len(m.Controls); i++ {
+		if m.Controls[i-1].Profile == m.Controls[i].Profile && naturalLess(m.Controls[i].ID, m.Controls[i-1].ID) {
+			t.Errorf("controls not in natural order: %s before %s", m.Controls[i-1].ID, m.Controls[i].ID)
+		}
+	}
+	// Sorted by score, the worst host comes first.
+	var list struct {
+		Hosts []HostSummary `json:"hosts"`
+	}
+	f.json(t, "/api/v1/hosts?sort=score", &list)
+	if len(list.Hosts) != 2 || (list.Hosts[0].Score != nil && list.Hosts[1].Score != nil && *list.Hosts[0].Score > *list.Hosts[1].Score) {
+		t.Errorf("by score: %+v", list.Hosts)
+	}
+	f.json(t, "/api/v1/hosts?sort=last", &list)
+	if list.Hosts[0].LastScanAt > list.Hosts[1].LastScanAt {
+		t.Errorf("by last scan: %+v", list.Hosts)
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/hosts?sort=bogus"); code != http.StatusBadRequest {
+		t.Errorf("sort=bogus: %d", code)
+	}
+	if code, _ := f.get(t, "", "/api/v1/matrix"); code != http.StatusUnauthorized {
+		t.Errorf("matrix without a token: %d", code)
+	}
+}
+
+func TestNaturalLess(t *testing.T) {
+	for _, tt := range []struct {
+		a, b string
+		want bool
+	}{{"U-2", "U-10", true}, {"U-10", "U-2", false}, {"U-02", "U-2", false}, {"U-1", "U-1", false}, {"A-1", "U-1", true}, {"U-1", "U-1a", true}} {
+		if got := naturalLess(tt.a, tt.b); got != tt.want {
+			t.Errorf("naturalLess(%q, %q) = %v, want %v", tt.a, tt.b, got, tt.want)
+		}
+	}
+}
+
+// A list with no entries is [] in the JSON, never null: the dashboard reads .length of it.
+func TestEmptyListsAreNotNull(t *testing.T) {
+	f := newAPIFixture(t)
+	for _, path := range []string{"/api/v1/hosts?status=stale", "/api/v1/hosts?q=nomatch", "/api/v1/hosts?offset=100"} {
+		code, body := f.get(t, f.api, path)
+		if code != http.StatusOK || !strings.Contains(string(body), `"hosts":[]`) {
+			t.Errorf("%s: %d %s", path, code, body)
+		}
+	}
+}

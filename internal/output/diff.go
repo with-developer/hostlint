@@ -67,6 +67,8 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 		Old:           diffSide(oldName, older),
 		New:           diffSide(newName, newer),
 		Notes:         []string{},
+		// Never nil: the JSON has [] for a list without entries, and readers can count it.
+		Regressed: []ControlChange{}, Fixed: []ControlChange{}, Changed: []ControlChange{}, Added: []ControlChange{}, Removed: []ControlChange{},
 	}
 	if older.Host.Hostname != newer.Host.Hostname {
 		d.Notes = append(d.Notes, fmt.Sprintf("the results are of different hosts (%s and %s)", oneLine(older.Host.Hostname), oneLine(newer.Host.Hostname)))

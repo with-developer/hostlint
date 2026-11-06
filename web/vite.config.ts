@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   build: {
     outDir: "../internal/server/webdist",
-    emptyOutDir: true,
+    emptyOutDir: false, // scripts/prebuild.mjs empties it, keeping the .gitignore
     sourcemap: false,
     // No inline scripts or styles: the server's CSP forbids them.
     assetsInlineLimit: 0,

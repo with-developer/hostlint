@@ -1,6 +1,6 @@
 # 0010. Fleet server and dashboard: push first, agent later
 
-- Status: Proposed
+- Status: Accepted (phase 1 implemented; phase 2, the agent, needs its own ADR)
 - Date: 2026-11-06
 
 ## Context

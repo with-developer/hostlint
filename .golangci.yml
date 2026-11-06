@@ -1,7 +1,7 @@
 version: "2"
 
 run:
-  build-tags: [e2e] # lint the end-to-end tests too
+  build-tags: [e2e, web] # lint the end-to-end tests and the files built with the dashboard too
 
 linters:
   default: standard

@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago, percent } from "../lib/format";
-import { Await, StatusBar } from "../components/ui";
+import { ago } from "../lib/format";
+import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, StatusBar } from "../components/ui";
+import { IconDownload, IconSearch } from "../components/icons";
 import type { HostSummary } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
 
 type Filter = "" | "failing" | "stale";
 type Sort = "name" | "score" | "last";
+const PAGE = 50;
 
 export function HostsPage() {
   const { t } = useI18n();
@@ -16,18 +18,12 @@ export function HostsPage() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("");
   const [sort, setSort] = useState<Sort>("name");
+  const [pages, setPages] = useState(1);
   const query = useDebounced(q, 250);
-  const state = useAsync(() => api.hosts({ q: query, status: filter, staleDays: STALE_DAYS }), [query, filter]);
-
-  const sorted = useMemo(() => {
-    const hosts = [...(state.data?.hosts ?? [])];
-    const by: Record<Sort, (a: HostSummary, b: HostSummary) => number> = {
-      name: (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }),
-      score: (a, b) => (a.score ?? 2) - (b.score ?? 2), // worst first; undecided last
-      last: (a, b) => a.lastScanAt.localeCompare(b.lastScanAt), // longest silent first
-    };
-    return hosts.sort(by[sort]);
-  }, [state.data, sort]);
+  useEffect(() => setPages(1), [query, filter, sort]);
+  const params = { q: query, status: filter, sort, staleDays: STALE_DAYS };
+  // One request for everything shown so far: the server sorts the whole fleet, not a page of it.
+  const state = useAsync(() => api.hosts({ ...params, limit: PAGE * pages, offset: 0 }), [query, filter, sort, pages]);
 
   const filters: [Filter, string][] = [
     ["", t("hosts.all")],
@@ -42,64 +38,93 @@ export function HostsPage() {
 
   return (
     <>
-      <div className="titlebar">
-        <h1>{t("hosts.title")}</h1>
-        <a className="button" href="/api/v1/hosts?format=csv" download>
-          {t("hosts.export")}
-        </a>
-      </div>
+      <PageHeader
+        title={t("hosts.title")}
+        subtitle={t("hosts.subtitle")}
+        actions={
+          <a className="button" href={api.hostsCSV(params)} download>
+            <IconDownload /> {t("hosts.export")}
+          </a>
+        }
+      />
       <div className="toolbar">
-        <input type="search" placeholder={t("hosts.search")} aria-label={t("hosts.search")} value={q} onChange={(e) => setQ(e.target.value)} />
-        <div className="chips" role="group">
+        <label className="search">
+          <IconSearch />
+          <input type="search" placeholder={t("hosts.search")} aria-label={t("hosts.search")} value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        <div className="segmented" role="group">
           {filters.map(([value, label]) => (
-            <button key={value} className={`chip ${filter === value ? "on" : ""}`} aria-pressed={filter === value} onClick={() => setFilter(value)}>
+            <button key={value} className={filter === value ? "on" : ""} aria-pressed={filter === value} onClick={() => setFilter(value)}>
               {label}
             </button>
           ))}
         </div>
-        <div className="chips" role="group">
+        <div className="segmented" role="group" aria-label={t("hosts.sortBy")}>
           {sorts.map(([value, label]) => (
-            <button key={value} className={`chip ${sort === value ? "on" : ""}`} aria-pressed={sort === value} onClick={() => setSort(value)}>
-              ↕ {label}
+            <button key={value} className={sort === value ? "on" : ""} aria-pressed={sort === value} onClick={() => setSort(value)}>
+              {label}
             </button>
           ))}
         </div>
       </div>
-      <Await state={state}>
+      <Await state={state} skeleton={<div className="card"><Skeleton height={220} /></div>}>
         {(d) => (
-          <>
-            <p className="muted small">{t("hosts.total", d.total)}</p>
-            <div className="table-wrap">
-              <table className="hosts">
-                <thead>
-                  <tr>
-                    <th>{t("hosts.name")}</th>
-                    <th>{t("hosts.status")}</th>
-                    <th className="num">{t("hosts.score")}</th>
-                    <th>{t("hosts.lastScan")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((h) => (
-                    <tr key={h.id}>
-                      <td>
-                        <a href={`#/hosts/${h.id}`}>{h.name}</a>
-                      </td>
-                      <td className="bar-cell">
-                        <StatusBar counts={h.counts} />
-                      </td>
-                      <td className="num">{percent(h.score)}</td>
-                      <td className={h.stale ? "stale" : ""}>
-                        {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>}
-                      </td>
+          <section className="card flush">
+            {d.hosts.length === 0 ? (
+              <Empty>{t("hosts.none")}</Empty>
+            ) : (
+              <div className="table-wrap">
+                <table className="hosts">
+                  <thead>
+                    <tr>
+                      <th>{t("hosts.name")}</th>
+                      <th>{t("hosts.status")}</th>
+                      <th className="num">{t("hosts.score")}</th>
+                      <th>{t("hosts.lastScan")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {d.hosts.map((h) => (
+                      <HostRow key={h.id} host={h} now={now} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="tablefoot">
+              <span className="muted small">{t("hosts.showing", { n: d.hosts.length, total: d.total })}</span>
+              {d.hosts.length < d.total && <button onClick={() => setPages((p) => p + 1)}>{t("hosts.more")}</button>}
             </div>
-          </>
+          </section>
         )}
       </Await>
     </>
+  );
+}
+
+function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
+  const { t } = useI18n();
+  return (
+    <tr onClick={() => (location.hash = `#/hosts/${h.id}`)} className="clickable">
+      <td>
+        <a className="hostname" href={`#/hosts/${h.id}`} onClick={(e) => e.stopPropagation()}>
+          <Avatar name={h.name} /> {h.name}
+        </a>
+      </td>
+      <td className="bar-cell">
+        <StatusBar counts={h.counts} thin />
+        <div className="muted small counts">
+          {h.counts.FAIL ? <span className="c-FAIL">{h.counts.FAIL} FAIL</span> : null}
+          {h.counts.ERROR ? <span className="c-ERROR">{h.counts.ERROR} ERROR</span> : null}
+          {h.counts.MANUAL ? <span>{h.counts.MANUAL} MANUAL</span> : null}
+        </div>
+      </td>
+      <td className="num">
+        <ScorePill score={h.score} />
+      </td>
+      <td className={h.stale ? "stale" : ""}>
+        {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>}
+      </td>
+    </tr>
   );
 }

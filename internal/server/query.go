@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 )
@@ -52,7 +53,8 @@ type HostFilter struct {
 	StaleAfter time.Duration // a host that has not reported for this long is stale (7 days when 0)
 	Limit      int           // 100 when 0, at most 500
 	Offset     int
-	All        bool // every match: no paging (the export)
+	All        bool   // every match: no paging (the export)
+	Sort       string // "name" (default), "score" (worst first, undecided last) or "last" (longest silent first)
 }
 
 const latestScans = `SELECT id, host_row FROM scans s WHERE id = (SELECT id FROM scans WHERE host_row = s.host_row ORDER BY received_at DESC, id DESC LIMIT 1)`
@@ -111,13 +113,28 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 	if err != nil {
 		return nil, 0, err
 	}
-	out := all[:0]
+	out := make([]HostSummary, 0, len(all)) // never nil: the JSON is [], not null
 	for _, h := range all {
 		switch {
 		case f.Status == "failing" && h.Counts["FAIL"] == 0, f.Status == "stale" && !h.Stale:
 			continue
 		}
 		out = append(out, h)
+	}
+	switch f.Sort {
+	case "score":
+		sort.SliceStable(out, func(i, j int) bool {
+			a, b := 2.0, 2.0 // undecided hosts last
+			if out[i].Score != nil {
+				a = *out[i].Score
+			}
+			if out[j].Score != nil {
+				b = *out[j].Score
+			}
+			return a < b
+		})
+	case "last":
+		sort.SliceStable(out, func(i, j int) bool { return out[i].LastScanAt < out[j].LastScanAt })
 	}
 	total := len(out)
 	if f.All {
@@ -378,3 +395,128 @@ func (s *Store) Overview(ctx context.Context, staleAfter time.Duration) (*Overvi
 	}
 	return o, rr.Err()
 }
+
+// MatrixControl is a column of the matrix.
+type MatrixControl struct {
+	Profile  string `json:"profile"`
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Severity string `json:"severity"`
+}
+
+// MatrixHost is a row: the status of every column in the latest scan of the host, as one
+// letter each (F fail, E error, M manual, W waived, P pass, N not applicable, - not in the scan).
+type MatrixHost struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Stale    bool   `json:"stale"`
+	Statuses string `json:"statuses"`
+}
+
+// Matrix is the hosts × controls view of the latest scans.
+type Matrix struct {
+	Controls []MatrixControl `json:"controls"`
+	Hosts    []MatrixHost    `json:"hosts"`
+}
+
+var statusLetter = map[string]byte{"FAIL": 'F', "ERROR": 'E', "MANUAL": 'M', "WAIVED": 'W', "PASS": 'P', "NOT_APPLICABLE": 'N'}
+
+// Matrix returns the latest status of every control on every host, hosts that fail most first.
+func (s *Store) Matrix(ctx context.Context, staleAfter time.Duration) (*Matrix, error) {
+	hosts, err := s.allHosts(ctx, "", 0, staleAfter)
+	if err != nil {
+		return nil, err
+	}
+	rs, err := s.db.QueryContext(ctx, `
+		SELECT c.scan_row, c.profile, c.control_id, c.title, c.severity, c.status
+		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row`)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	type key struct{ profile, id string }
+	var order []key
+	cols := map[key]MatrixControl{}
+	byScan := map[int64]map[key]byte{}
+	for rs.Next() {
+		var scan int64
+		var c MatrixControl
+		var status string
+		if err := rs.Scan(&scan, &c.Profile, &c.ID, &c.Title, &c.Severity, &status); err != nil {
+			return nil, err
+		}
+		k := key{c.Profile, c.ID}
+		if _, ok := cols[k]; !ok {
+			cols[k] = c
+			order = append(order, k)
+		}
+		if byScan[scan] == nil {
+			byScan[scan] = map[key]byte{}
+		}
+		byScan[scan][k] = statusLetter[status]
+	}
+	if err := rs.Err(); err != nil {
+		return nil, err
+	}
+	sort.Slice(order, func(i, j int) bool {
+		a, b := order[i], order[j]
+		if a.profile != b.profile {
+			return a.profile < b.profile
+		}
+		return naturalLess(a.id, b.id)
+	})
+	m := &Matrix{Controls: make([]MatrixControl, 0, len(order)), Hosts: make([]MatrixHost, 0, len(hosts))}
+	for _, k := range order {
+		m.Controls = append(m.Controls, cols[k])
+	}
+	for _, h := range hosts {
+		row := make([]byte, len(order))
+		for i, k := range order {
+			if st, ok := byScan[h.LatestScan][k]; ok && st != 0 {
+				row[i] = st
+			} else {
+				row[i] = '-'
+			}
+		}
+		m.Hosts = append(m.Hosts, MatrixHost{ID: h.ID, Name: h.Name, Stale: h.Stale, Statuses: string(row)})
+	}
+	// Hosts with the most failing controls first, then by name.
+	sort.SliceStable(m.Hosts, func(i, j int) bool {
+		fi, fj := strings.Count(m.Hosts[i].Statuses, "F"), strings.Count(m.Hosts[j].Statuses, "F")
+		return fi > fj
+	})
+	return m, nil
+}
+
+// naturalLess orders "U-2" before "U-10".
+func naturalLess(a, b string) bool {
+	ia, ib := 0, 0
+	for ia < len(a) && ib < len(b) {
+		if isDigit(a[ia]) && isDigit(b[ib]) {
+			ja, jb := ia, ib
+			for ja < len(a) && isDigit(a[ja]) {
+				ja++
+			}
+			for jb < len(b) && isDigit(b[jb]) {
+				jb++
+			}
+			na, nb := strings.TrimLeft(a[ia:ja], "0"), strings.TrimLeft(b[ib:jb], "0")
+			if len(na) != len(nb) {
+				return len(na) < len(nb)
+			}
+			if na != nb {
+				return na < nb
+			}
+			ia, ib = ja, jb
+			continue
+		}
+		if a[ia] != b[ib] {
+			return a[ia] < b[ib]
+		}
+		ia++
+		ib++
+	}
+	return len(a)-ia < len(b)-ib
+}
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }

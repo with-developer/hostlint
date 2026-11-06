@@ -66,6 +66,7 @@ func (s *Server) routesRead(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/session", s.readAPI(s.handleSession))
 	mux.HandleFunc("GET /api/v1/overview", s.readAPI(s.handleOverview))
 	mux.HandleFunc("GET /api/v1/hosts", s.readAPI(s.handleHosts))
+	mux.HandleFunc("GET /api/v1/matrix", s.readAPI(s.handleMatrix))
 	mux.HandleFunc("GET /api/v1/hosts/{id}", s.readAPI(s.handleHost))
 	mux.HandleFunc("GET /api/v1/scans/{id}", s.readAPI(s.handleScan))
 	mux.HandleFunc("GET /api/v1/diff", s.readAPI(s.handleDiff))
@@ -110,7 +111,11 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	f := HostFilter{Query: q.Get("q"), Status: q.Get("status"), StaleAfter: after}
+	f := HostFilter{Query: q.Get("q"), Status: q.Get("status"), StaleAfter: after, Sort: q.Get("sort")}
+	if f.Sort != "" && f.Sort != "name" && f.Sort != "score" && f.Sort != "last" {
+		writeError(w, http.StatusBadRequest, `sort is "name", "score" or "last"`)
+		return
+	}
 	if f.Status != "" && f.Status != "failing" && f.Status != "stale" {
 		writeError(w, http.StatusBadRequest, `status is "failing" or "stale"`)
 		return
@@ -322,4 +327,18 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 // handleSession tells the dashboard whether its cookie is still good.
 func (s *Server) handleSession(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
+}
+
+func (s *Server) handleMatrix(w http.ResponseWriter, r *http.Request) {
+	after, err := staleAfter(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	m, err := s.cfg.Store.Matrix(r.Context(), after)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, m)
 }

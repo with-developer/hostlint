@@ -189,3 +189,18 @@ func TestDiffTableShowsProfileWhenThereAreSeveral(t *testing.T) {
 		t.Errorf("%v\n%s", err, b.String())
 	}
 }
+
+// Lists without entries are [] in the JSON, not null.
+func TestDiffJSONListsAreNeverNull(t *testing.T) {
+	older := readFixture(t, "web-01.json")
+	d := DiffResults("a", older, "b", older)
+	var buf bytes.Buffer
+	if err := WriteDiff(&buf, d, "json", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"regressed", "fixed", "changed", "added", "removed", "notes"} {
+		if !strings.Contains(buf.String(), `"`+key+`": []`) {
+			t.Errorf("%s is not []:\n%s", key, buf.String())
+		}
+	}
+}

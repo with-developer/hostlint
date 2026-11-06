@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type Lang = "en" | "ko";
 
@@ -75,6 +75,36 @@ const en = {
   "ago.hours": "{n} h ago",
   "ago.days": "{n} d ago",
   "theme.toggle": "Theme",
+  "nav.matrix": "Matrix",
+  "nav.section": "Fleet",
+  "login.tagline": "Know how hardened every server is, and what changed since yesterday.",
+  "login.hint": "Read-only access to the results your hosts pushed.",
+  "overview.subtitle": "How hardened your fleet is right now",
+  "overview.attention": "Needs attention",
+  "overview.attentionHelp": "Hosts that stopped reporting.",
+  "overview.failRate": "{n} of {total} hosts fail at least one control",
+  "overview.viewAll": "View all",
+  "overview.of": "of {n} hosts",
+  "hosts.subtitle": "Every host with the result of its latest scan",
+  "hosts.sortBy": "Sort",
+  "hosts.more": "Show more",
+  "hosts.showing": "Showing {n} of {total}",
+  "hosts.none": "No host matches.",
+  "matrix.title": "Matrix",
+  "matrix.subtitle": "Every control on every host. Hosts that fail most are first.",
+  "matrix.legend": "Click a cell to open the host.",
+  "matrix.moreHosts": "Show more hosts",
+  "host.tabControls": "Controls",
+  "host.tabHistory": "History",
+  "host.empty": "No control matches the filter.",
+  "host.toggle": "Show or hide details",
+  "host.passRate": "Pass rate",
+  "host.scans": "{n} scans",
+  "sessionExpired": "Your session ended. Sign in again.",
+  "loadFailed": "Could not reach the server.",
+  "theme.dark": "Dark",
+  "diff.checksChanged": "checks changed",
+  "theme.light": "Light",
 } as const;
 
 export type Key = keyof typeof en;
@@ -152,6 +182,36 @@ const ko: Record<Key, string> = {
   "ago.hours": "{n}시간 전",
   "ago.days": "{n}일 전",
   "theme.toggle": "테마",
+  "nav.matrix": "매트릭스",
+  "nav.section": "플릿",
+  "login.tagline": "모든 서버가 얼마나 단단한지, 어제와 무엇이 달라졌는지 한눈에.",
+  "login.hint": "호스트가 보낸 결과를 읽기 전용으로 봅니다.",
+  "overview.subtitle": "지금 플릿이 얼마나 견고한지",
+  "overview.attention": "확인이 필요한 곳",
+  "overview.attentionHelp": "보고를 멈춘 호스트입니다.",
+  "overview.failRate": "호스트 {total}개 중 {n}개에 실패한 컨트롤이 있습니다",
+  "overview.viewAll": "모두 보기",
+  "overview.of": "호스트 {n}개 기준",
+  "hosts.subtitle": "모든 호스트와 최신 스캔 결과",
+  "hosts.sortBy": "정렬",
+  "hosts.more": "더 보기",
+  "hosts.showing": "{total}개 중 {n}개 표시",
+  "hosts.none": "일치하는 호스트가 없습니다.",
+  "matrix.title": "매트릭스",
+  "matrix.subtitle": "모든 호스트의 모든 컨트롤. 가장 많이 실패한 호스트가 위에 옵니다.",
+  "matrix.legend": "셀을 누르면 호스트로 이동합니다.",
+  "matrix.moreHosts": "호스트 더 보기",
+  "host.tabControls": "컨트롤",
+  "host.tabHistory": "이력",
+  "host.empty": "필터에 맞는 컨트롤이 없습니다.",
+  "host.toggle": "자세히 보기/접기",
+  "host.passRate": "통과율",
+  "host.scans": "스캔 {n}개",
+  "sessionExpired": "세션이 끝났습니다. 다시 로그인하세요.",
+  "loadFailed": "서버에 연결할 수 없습니다.",
+  "theme.dark": "다크",
+  "diff.checksChanged": "하위 점검이 바뀜",
+  "theme.light": "라이트",
 };
 
 const dictionaries: Record<Lang, Record<Key, string>> = { en, ko };
@@ -187,18 +247,14 @@ function read(key: string): string | null {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => initialLang(read("hostlint.lang"), navigator.language));
-  const toggle = useCallback(() => {
-    setLang((l) => {
-      const next: Lang = l === "en" ? "ko" : "en";
-      try {
-        localStorage.setItem("hostlint.lang", next);
-      } catch {
-        // not remembered
-      }
-      document.documentElement.lang = next;
-      return next;
-    });
-  }, []);
+  const toggle = useCallback(() => setLang((l) => (l === "en" ? "ko" : "en")), []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("hostlint.lang", lang);
+    } catch {
+      // not remembered
+    }
+  }, [lang]);
   const value = useMemo<I18n>(() => ({ lang, t: (key, vars) => translate(lang, key, vars), toggle }), [lang, toggle]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

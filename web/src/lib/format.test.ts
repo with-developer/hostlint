@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, compareControls, parseRoute, percent, score, total } from "./format";
+import { ago, compareControls, hue, parseRoute, percent, score, total } from "./format";
 
 const t = (key: string, n?: number) => `${key}:${n ?? ""}`;
 
@@ -45,5 +45,14 @@ describe("parseRoute and total", () => {
     expect(parseRoute("")).toEqual([]);
     expect(parseRoute("#/a%20b")).toEqual(["a b"]);
     expect(total({ PASS: 2, FAIL: 3 })).toBe(5);
+  });
+  it("does not throw on a garbled escape", () => {
+    expect(parseRoute("#/hosts/%E0%A4%A")).toEqual(["hosts", "%E0%A4%A"]);
+    expect(parseRoute("#/%")).toEqual(["%"]);
+  });
+  it("gives a name a stable hue", () => {
+    expect(hue("web-01")).toBe(hue("web-01"));
+    expect(hue("web-01")).toBeGreaterThanOrEqual(0);
+    expect(hue("web-01")).toBeLessThan(360);
   });
 });
