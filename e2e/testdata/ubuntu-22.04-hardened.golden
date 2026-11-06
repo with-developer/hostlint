@@ -1,5 +1,5 @@
 os: Ubuntu 22.04.5 LTS (id ubuntu, version 22.04, family debian, supported true)
-profile kisa-2026 revision 14: MANUAL 11 PASS 36 NOT_APPLICABLE 20
+profile kisa-2026 revision 15: MANUAL 11 PASS 36 NOT_APPLICABLE 20
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -112,14 +112,14 @@ U-16 PASS
 
 U-17 PASS
   files.startup-scripts PASS
+    - /etc/init.d: root:root 0755  [/etc/init.d]
     - /etc/init.d/chrony: root:root 0755  [/etc/init.d/chrony]
     - /etc/init.d/hwclock.sh: root:root 0755  [/etc/init.d/hwclock.sh]
     - /etc/init.d/procps: root:root 0755  [/etc/init.d/procps]
     - /etc/init.d/ssh: root:root 0755  [/etc/init.d/ssh]
+    - /etc/rc.d/init.d: does not exist  [/etc/rc.d/init.d]
     - /etc/rc.d/init.d/*: no matching files  [/etc/rc.d/init.d/*]
     - /etc/rc.d/rc.local: does not exist  [/etc/rc.d/rc.local]
-    - /etc/rc.local: does not exist  [/etc/rc.local]
-    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
     - …
 
 U-18 PASS
@@ -140,6 +140,8 @@ U-21 NOT_APPLICABLE
   files.syslog-conf-perms NOT_APPLICABLE: no matching files exist
     - /etc/rsyslog.conf: does not exist  [/etc/rsyslog.conf]
     - /etc/rsyslog.d/*.conf: no matching files  [/etc/rsyslog.d/*.conf]
+    - /etc/syslog-ng/conf.d/*.conf: no matching files  [/etc/syslog-ng/conf.d/*.conf]
+    - /etc/syslog-ng/syslog-ng.conf: does not exist  [/etc/syslog-ng/syslog-ng.conf]
     - /etc/syslog.conf: does not exist  [/etc/syslog.conf]
 
 U-22 NOT_APPLICABLE
@@ -171,8 +173,9 @@ U-26 PASS
 U-27 PASS
   files.rhosts PASS
     - /etc/hosts.equiv: does not exist  [/etc/hosts.equiv]
-    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
     - /root/.rhosts: does not exist  [/root/.rhosts]
+  files.rhosts-homes PASS
+    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
 
 U-28 MANUAL
   services.review-network-access MANUAL: Check that services accept connections only from the addresses that need them, with a host firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the firewall services that are enabled and the sockets that listen beyond the host itself.
@@ -227,11 +230,15 @@ U-37 PASS
     - /etc/cron.deny: does not exist  [/etc/cron.deny]
     - /etc/crontab: does not exist  [/etc/crontab]
   files.cron-scripts PASS
+    - /etc/cron.daily: root:root 0755  [/etc/cron.daily]
     - /etc/cron.daily/apt-compat: root:root 0755  [/etc/cron.daily/apt-compat]
     - /etc/cron.daily/dpkg: root:root 0755  [/etc/cron.daily/dpkg]
+    - /etc/cron.hourly: does not exist  [/etc/cron.hourly]
     - /etc/cron.hourly/*: no matching files  [/etc/cron.hourly/*]
+    - /etc/cron.monthly: does not exist  [/etc/cron.monthly]
     - /etc/cron.monthly/*: no matching files  [/etc/cron.monthly/*]
-    - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
+    - /etc/cron.weekly: does not exist  [/etc/cron.weekly]
+    - …
   files.cron-spool PASS
     - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
   files.cron-spool-rhel NOT_APPLICABLE: applies to rhel, not debian
@@ -297,18 +304,18 @@ U-49 NOT_APPLICABLE
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-50 NOT_APPLICABLE
-  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
     - bind.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
-  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
     - bind.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 
 U-51 NOT_APPLICABLE
-  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
     - bind.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
-  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
     - bind.present = false
     - services.started = [{apt-daily-upgrade apt-daily-upgrade.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily-upgrade.timer}, {apt-daily apt-daily.timer unit /usr/lib/apt/apt.systemd.daily /etc/systemd/system/timers.target.wants/apt-daily.timer}, {chrony chrony…
 

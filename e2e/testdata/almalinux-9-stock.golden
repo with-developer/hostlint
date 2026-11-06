@@ -1,5 +1,5 @@
 os: AlmaLinux 9.8 (Olive Jaguar) (id almalinux, version 9.8, family rhel, supported true)
-profile kisa-2026 revision 14: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
+profile kisa-2026 revision 15: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -113,14 +113,14 @@ U-16 PASS
 
 U-17 PASS
   files.startup-scripts PASS
+    - /etc/init.d: does not exist  [/etc/init.d]
     - /etc/init.d/*: no matching files  [/etc/init.d/*]
+    - /etc/rc.d/init.d: does not exist  [/etc/rc.d/init.d]
     - /etc/rc.d/init.d/*: no matching files  [/etc/rc.d/init.d/*]
     - /etc/rc.d/rc.local: root:root 0644  [/etc/rc.d/rc.local]
     - /etc/rc.local: root:root 0644  [/etc/rc.local]
+    - /etc/systemd/system: root:root 0755  [/etc/systemd/system]
     - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
-    - /etc/systemd/system/*.path: no matching files  [/etc/systemd/system/*.path]
-    - /etc/systemd/system/*.socket: no matching files  [/etc/systemd/system/*.socket]
-    - /etc/systemd/system/*.timer: no matching files  [/etc/systemd/system/*.timer]
     - …
 
 U-18 PASS
@@ -141,6 +141,8 @@ U-21 NOT_APPLICABLE
   files.syslog-conf-perms NOT_APPLICABLE: no matching files exist
     - /etc/rsyslog.conf: does not exist  [/etc/rsyslog.conf]
     - /etc/rsyslog.d/*.conf: no matching files  [/etc/rsyslog.d/*.conf]
+    - /etc/syslog-ng/conf.d/*.conf: no matching files  [/etc/syslog-ng/conf.d/*.conf]
+    - /etc/syslog-ng/syslog-ng.conf: does not exist  [/etc/syslog-ng/syslog-ng.conf]
     - /etc/syslog.conf: does not exist  [/etc/syslog.conf]
 
 U-22 PASS
@@ -172,8 +174,9 @@ U-26 PASS
 U-27 PASS
   files.rhosts PASS
     - /etc/hosts.equiv: does not exist  [/etc/hosts.equiv]
-    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
     - /root/.rhosts: does not exist  [/root/.rhosts]
+  files.rhosts-homes PASS
+    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
 
 U-28 MANUAL
   services.review-network-access MANUAL: Check that services accept connections only from the addresses that need them, with a host firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the firewall services that are enabled and the sockets that listen beyond the host itself.
@@ -228,9 +231,13 @@ U-37 PASS
     - /etc/cron.deny: does not exist  [/etc/cron.deny]
     - /etc/crontab: does not exist  [/etc/crontab]
   files.cron-scripts PASS
+    - /etc/cron.daily: does not exist  [/etc/cron.daily]
     - /etc/cron.daily/*: no matching files  [/etc/cron.daily/*]
+    - /etc/cron.hourly: does not exist  [/etc/cron.hourly]
     - /etc/cron.hourly/*: no matching files  [/etc/cron.hourly/*]
+    - /etc/cron.monthly: does not exist  [/etc/cron.monthly]
     - /etc/cron.monthly/*: no matching files  [/etc/cron.monthly/*]
+    - /etc/cron.weekly: does not exist  [/etc/cron.weekly]
     - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
   files.cron-spool PASS
     - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
@@ -298,18 +305,18 @@ U-49 NOT_APPLICABLE
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
 U-50 NOT_APPLICABLE
-  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+  services.bind-restrict-transfer NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
     - bind.present = false
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
-  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
     - bind.present = false
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
 U-51 NOT_APPLICABLE
-  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$"))
+  services.bind-restrict-update NOT_APPLICABLE: applies is false: bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
     - bind.present = false
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
-  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind9", "named-chroot"] || s.program.matches("/named$")))
+  services.review-dns-other NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) || (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
     - bind.present = false
     - services.started = [{dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-mqueue dev-mqueue.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-mqueue.mount}, {dnf-makecache dnf-makecache.timer unit /usr/bin/dnf /etc/systemd/system/timers.target.wants/dnf-makec…
 
