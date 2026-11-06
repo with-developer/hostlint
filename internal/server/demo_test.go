@@ -61,7 +61,7 @@ func TestDemoFleetShowsWhatTheDashboardIsFor(t *testing.T) {
 	}
 	// Every kind of status is there, so every color of the dashboard is used.
 	hosts := get("/api/v1/hosts?limit=500")
-	for _, want := range []string{`"FAIL"`, `"PASS"`, `"MANUAL"`, `"NOT_APPLICABLE"`, `"ERROR"`, `"name":"batch-01"`, `"stale":true`} {
+	for _, want := range []string{`"FAIL"`, `"PASS"`, `"MANUAL"`, `"NOT_APPLICABLE"`, `"ERROR"`, `"name":"batch-01"`, `"stale":true`, `"signed":true`, `"keyFingerprint":"SHA256:`} {
 		if !strings.Contains(hosts, want) {
 			t.Errorf("hosts lack %s", want)
 		}

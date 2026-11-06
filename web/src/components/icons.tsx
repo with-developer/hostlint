@@ -83,6 +83,12 @@ export const IconChevron = ({ open }: { open: boolean }) => (
     <path d="M9 6l6 6-6 6" />
   </svg>
 );
+export const IconKey = () => (
+  <Icon size={14}>
+    <circle cx="8" cy="15" r="4" />
+    <path d="M11 12.5 20 4M16 8l3 3" />
+  </Icon>
+);
 export const IconShield = ({ size = 22 }: { size?: number }) => (
   <Icon size={size}>
     <path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6L12 3z" />

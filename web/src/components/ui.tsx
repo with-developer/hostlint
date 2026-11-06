@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useI18n } from "../lib/i18n";
+import { IconKey } from "./icons";
 import { hue, percent, total } from "../lib/format";
 import { STATUSES, type Counts, type Status } from "../lib/types";
 import type { Async } from "../lib/hooks";
@@ -20,6 +21,16 @@ export function StatusBadge({ status }: { status: Status | "" }) {
   const { t } = useI18n();
   if (!status) return <span className="badge none">–</span>;
   return <span className={`badge s-${status}`}>{t(`status.${status}`)}</span>;
+}
+
+/** The host signs its results: shown with the key it registered. */
+export function SignedBadge({ fingerprint }: { fingerprint?: string }) {
+  const { t } = useI18n();
+  return (
+    <span className="signed" title={t("signed.help", { key: fingerprint ?? "" })}>
+      <IconKey /> {t("signed")}
+    </span>
+  );
 }
 
 export function Severity({ value }: { value: string }) {

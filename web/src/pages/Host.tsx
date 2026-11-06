@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago, compareControls, ctitle } from "../lib/format";
-import { Avatar, Await, Empty, Gauge, ScorePill, Severity, Sparkline, StatusBadge, StatusBar } from "../components/ui";
+import { Avatar, Await, Empty, Gauge, ScorePill, Severity, SignedBadge, Sparkline, StatusBadge, StatusBar } from "../components/ui";
 import { IconChevron, IconSearch } from "../components/icons";
 import { STATUSES, type ControlChange, type ControlRow, type Diff, type ScanDoc, type ScanRow, type Status } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
@@ -31,7 +31,7 @@ export function HostPage({ id }: { id: number }) {
                       {t("host.hostId")}: <span className="mono">{h.hostId}</span> ·{" "}
                     </>
                   )}
-                  {t("host.lastScan")}: {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>}
+                  {t("host.lastScan")}: {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>} {h.signed && <SignedBadge fingerprint={h.keyFingerprint} />}
                 </p>
                 <StatusBar counts={h.counts} legend />
               </div>
@@ -196,6 +196,7 @@ function History({ scans }: { scans: ScanRow[] }) {
                 <span className="muted small">{ago(s.receivedAt, now, t)}</span>
                 <span className="muted small mono">{s.toolVersion}</span>
                 <ScorePill score={s.score} />
+                {s.signed && <SignedBadge />}
                 <span className="small">
                   {s.counts.FAIL ? <span className="badge s-FAIL">{s.counts.FAIL}</span> : null}
                   {s.counts.ERROR ? <span className="badge s-ERROR">{s.counts.ERROR}</span> : null}

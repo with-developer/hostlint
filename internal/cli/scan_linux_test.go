@@ -187,3 +187,41 @@ func TestScanPush(t *testing.T) {
 		t.Errorf("--pin alone: exit %d, %q", code, stderr)
 	}
 }
+
+// scan --push --sign-key signs the result; the server registers the key.
+func TestScanPushSigned(t *testing.T) {
+	store, err := server.OpenStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	srv := httptest.NewServer(server.New(server.Config{Store: store}).Handler())
+	t.Cleanup(srv.Close)
+	token, _, err := store.CreateCredential(context.Background(), server.ScopeIngest, "img", "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOSTLINT_TOKEN", token)
+	root := fakeRoot(t)
+	keyPath := filepath.Join(t.TempDir(), "sign.key")
+	if code, stdout, stderr := run(context.Background(), t, "key", "generate", keyPath); code != ExitOK || !strings.Contains(stdout, "fingerprint: SHA256:") {
+		t.Fatalf("key generate: %d %q %q", code, stdout, stderr)
+	}
+	if code, _, stderr := run(context.Background(), t, "scan", "--root", root, "--push", srv.URL, "--sign-key", keyPath); code != ExitFail || !strings.Contains(stderr, "result sent") {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	hosts, err := store.HostList(context.Background())
+	if err != nil || len(hosts) != 1 || !hosts[0].Signed {
+		t.Errorf("hosts %+v, %v", hosts, err)
+	}
+	// An unreadable-by-others rule: a key that others can read is refused before the scan.
+	if err := os.Chmod(keyPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := run(context.Background(), t, "scan", "--root", root, "--push", srv.URL, "--sign-key", keyPath); code != ExitError || !strings.Contains(stderr, "read by other users") {
+		t.Errorf("a readable key: exit %d, %q", code, stderr)
+	}
+	if code, _, stderr := run(context.Background(), t, "scan", "--root", root, "--sign-key", keyPath); code != ExitError || !strings.Contains(stderr, "for --push") {
+		t.Errorf("--sign-key alone: exit %d, %q", code, stderr)
+	}
+}

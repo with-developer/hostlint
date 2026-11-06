@@ -19,6 +19,7 @@ import (
 
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/output"
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 // Limits on what a host may send (ADR 0010). A full scan of a stock host is about 125 KiB.
@@ -184,6 +185,19 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "the request body could not be read")
 		return
 	}
+	var opts []IngestOption
+	if key, sig := r.Header.Get(signing.HeaderKey), r.Header.Get(signing.HeaderSignature); key != "" || sig != "" {
+		if len(key) > 128 || len(sig) > 256 {
+			writeError(w, http.StatusBadRequest, "the signature headers are too long")
+			return
+		}
+		if err := signing.Verify(key, sig, raw); err != nil {
+			s.reject(ctx, cred.ID, remote, "bad signature", err.Error())
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		opts = append(opts, WithSignature(key, sig))
+	}
 	res, err := output.ReadResult(bytes.NewReader(raw))
 	if err == nil {
 		err = checkLimits(res, s.cfg.Now())
@@ -194,7 +208,7 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	got, err := s.cfg.Store.IngestScan(ctx, cred, res, raw, remote)
+	got, err := s.cfg.Store.IngestScan(ctx, cred, res, raw, remote, opts...)
 	switch {
 	case errors.Is(err, ErrDuplicate):
 		s.reject(ctx, cred.ID, remote, "duplicate", "scan "+res.Scan.ID)

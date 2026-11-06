@@ -168,6 +168,17 @@ var (
 	ErrIdentity = errors.New("host identity conflict")
 )
 
+// IngestOption adds to an ingest.
+type IngestOption func(*ingestOptions)
+
+type ingestOptions struct{ key, sig string }
+
+// WithSignature says the document was signed: key is the public key and sig the signature (both
+// base64), already verified against the document by the caller.
+func WithSignature(key, sig string) IngestOption {
+	return func(o *ingestOptions) { o.key, o.sig = key, sig }
+}
+
 // IngestResult says what a received scan became.
 type IngestResult struct {
 	ScanRow    int64
@@ -183,7 +194,11 @@ type IngestResult struct {
 // ADR 0010: a bound credential speaks for one host name and host ID; a known name never
 // gets a second host ID; a scan ID is stored once per host. The same document sent again
 // is a retry and is acknowledged without being stored twice.
-func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Result, raw []byte, remote string) (*IngestResult, error) {
+func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Result, raw []byte, remote string, opts ...IngestOption) (*IngestResult, error) {
+	var in ingestOptions
+	for _, o := range opts {
+		o(&in)
+	}
 	sum := sha256.Sum256(raw)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
 	var gz bytes.Buffer
@@ -243,13 +258,26 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 		return nil, err
 	}
 	var hostRow int64
-	if err := tx.QueryRowContext(ctx, `SELECT id FROM hosts WHERE name = ? AND host_id = ?`, name, hostID).Scan(&hostRow); err != nil {
+	var hostKey string
+	if err := tx.QueryRowContext(ctx, `SELECT id, pubkey FROM hosts WHERE name = ? AND host_id = ?`, name, hostID).Scan(&hostRow, &hostKey); err != nil {
 		return nil, err
 	}
+	// A host that has signed before keeps signing, with the same key: an unsigned result, or one
+	// signed with another key, is what a thief of the token (or a compromised host) would send.
+	switch {
+	case hostKey != "" && in.key == "":
+		return nil, fmt.Errorf("%w: this host sends signed results, and this one is not signed", ErrIdentity)
+	case hostKey != "" && in.key != hostKey:
+		return nil, fmt.Errorf("%w: signed with another key than the one registered for this host (reset it with: hostlint server host reset-key)", ErrIdentity)
+	case hostKey == "" && in.key != "":
+		if _, err := tx.ExecContext(ctx, `UPDATE hosts SET pubkey = ? WHERE id = ?`, in.key, hostRow); err != nil {
+			return nil, err
+		}
+	}
 	r, err := tx.ExecContext(ctx,
-		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (host_row, scan_id) DO NOTHING`,
-		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes())
+		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes(), in.key, in.sig)
 	if err != nil {
 		return nil, err
 	}

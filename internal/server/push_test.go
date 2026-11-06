@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/with-developer/hostlint/internal/push"
 	"github.com/with-developer/hostlint/internal/server"
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 // The client sends a result to a real TLS server, trusting its public key by pin.
@@ -84,5 +86,43 @@ func TestPushErrorTextHasNoControlCharacters(t *testing.T) {
 	_, err := push.Send(context.Background(), []byte("{}"), push.Options{URL: ts.URL, Token: "hlt_ing_x"})
 	if err == nil || strings.ContainsAny(err.Error(), "\x1b\n") {
 		t.Errorf("err = %q", err)
+	}
+}
+
+// The client signs with a key file; the server registers the key and then insists on it.
+func TestPushSigned(t *testing.T) {
+	store, err := server.OpenStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	ts := httptest.NewServer(server.New(server.Config{Store: store, Now: func() time.Time { return time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC) }}).Handler())
+	t.Cleanup(ts.Close)
+	tok, _, err := store.CreateCredential(context.Background(), server.ScopeIngest, "any", "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := os.ReadFile(filepath.Join("..", "output", "testdata", "report", "web-01.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPath := filepath.Join(t.TempDir(), "k")
+	if _, err := signing.Generate(keyPath); err != nil {
+		t.Fatal(err)
+	}
+	key, err := signing.Load(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := push.Send(ctx, doc, push.Options{URL: ts.URL, Token: tok, SignKey: key}); err != nil {
+		t.Fatalf("signed: %v", err)
+	}
+	other := bytes.ReplaceAll(doc, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte("another-scan"))
+	if _, err := push.Send(ctx, other, push.Options{URL: ts.URL, Token: tok}); err == nil || !strings.Contains(err.Error(), "not signed") {
+		t.Errorf("an unsigned result of a signing host: %v", err)
+	}
+	if _, err := push.Send(ctx, other, push.Options{URL: ts.URL, Token: tok, SignKey: key}); err != nil {
+		t.Errorf("the same key again: %v", err)
 	}
 }

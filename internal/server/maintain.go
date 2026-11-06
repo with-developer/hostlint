@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 // pruneBatch is how many scans one delete removes, so the single writer is never held for long.
@@ -127,4 +129,68 @@ func (s *Store) DeleteHost(ctx context.Context, id int64) (bool, error) {
 // Hosts of the database as `hostlint server host list` shows them.
 func (s *Store) HostList(ctx context.Context) ([]HostSummary, error) {
 	return s.allHosts(ctx, "", 0, 0)
+}
+
+// VerifySignatures checks every stored signed scan: the document in the database against the
+// signature and key it arrived with. A document changed after it was stored does not verify.
+// It returns how many signed and unsigned scans there are and the scans that failed.
+func (s *Store) VerifySignatures(ctx context.Context) (signed, unsigned int, failed []int64, err error) {
+	rs, err := s.db.QueryContext(ctx, `SELECT id, pubkey, signature FROM scans ORDER BY id`)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	type row struct {
+		id       int64
+		key, sig string
+	}
+	var rows []row
+	for rs.Next() {
+		var r row
+		if err := rs.Scan(&r.id, &r.key, &r.sig); err != nil {
+			_ = rs.Close()
+			return 0, 0, nil, err
+		}
+		rows = append(rows, r)
+	}
+	if err := rs.Err(); err != nil {
+		return 0, 0, nil, err
+	}
+	_ = rs.Close()
+	for _, r := range rows {
+		if r.sig == "" {
+			unsigned++
+			continue
+		}
+		signed++
+		doc, err := s.ScanDoc(ctx, r.id)
+		if err != nil || signing.Verify(r.key, r.sig, doc) != nil {
+			failed = append(failed, r.id)
+		}
+	}
+	return signed, unsigned, failed, nil
+}
+
+// ResetHostKey forgets the key registered for a host, so its next signed result registers a new one
+// (a re-installed machine with a new key). It is audited and reports whether the host had a key.
+func (s *Store) ResetHostKey(ctx context.Context, id int64) (bool, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var name, key string
+	err = tx.QueryRowContext(ctx, `SELECT name, pubkey FROM hosts WHERE id = ?`, id).Scan(&name, &key)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && key == "") {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET pubkey = '' WHERE id = ?`, id); err != nil {
+		return false, err
+	}
+	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-key-reset", fmt.Sprintf("host %d %s, key %s", id, name, signing.Fingerprint(key)), ""); err != nil {
+		return false, err
+	}
+	return true, tx.Commit()
 }

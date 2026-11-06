@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago } from "../lib/format";
-import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, StatusBar } from "../components/ui";
+import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, SignedBadge, StatusBar } from "../components/ui";
 import { IconDownload, IconSearch } from "../components/icons";
 import type { HostSummary } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
@@ -109,7 +109,8 @@ function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
       <td>
         <a className="hostname" href={`#/hosts/${h.id}`} onClick={(e) => e.stopPropagation()}>
           <Avatar name={h.name} /> {h.name}
-        </a>
+        </a>{" "}
+        {h.signed && <SignedBadge fingerprint={h.keyFingerprint} />}
       </td>
       <td className="bar-cell">
         <StatusBar counts={h.counts} thin />

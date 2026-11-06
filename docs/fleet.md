@@ -158,11 +158,31 @@ binary: the schema migrates when the server starts.
   `hostlint server verify` recomputes the chain and prints the last hash: keep it elsewhere to
   notice later changes.
 
+## Signed results
+
+A host can sign what it sends, so that a result is evidence of what that host's key said even if the
+server that stores it is compromised later:
+
+```sh
+sudo hostlint key generate /etc/hostlint/sign.key      # once per host; prints the fingerprint
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443 \
+  --sign-key /etc/hostlint/sign.key
+```
+
+The server registers the key at the host's first signed result. From then on it refuses that host's
+results that are unsigned or signed with another key (a stolen token alone is no longer enough),
+and the dashboard shows the host as signed with the key's fingerprint. `hostlint server verify` also
+checks every stored signed result against its signature, so a result changed in the database
+afterwards is found. If a key was replaced on purpose (a re-installed machine), `hostlint server
+host reset-key ID` forgets the registered one. The key file is refused if other users can read it.
+
 ## What it does not protect
 
-The server is a store, not an authority. Whoever controls its database can change what it shows,
-and a stolen token can submit results for the host it is bound to. Signed results are planned. Until
-then, the stored records are only as trustworthy as the server.
+The server is a store, not an authority. Whoever controls its database can change what it shows, and
+can also replace both a stored result and its signature and key together: keep a copy of the key
+fingerprints (`hostlint server host list`) and of the audit hash (`hostlint server verify`) somewhere
+else to notice that. A stolen token can submit results for the host it is bound to unless that host
+signs; a host whose own key is stolen can sign anything.
 
 ## Hosts
 

@@ -154,6 +154,7 @@ input::placeholder { color: var(--muted); }
 .timeline { list-style: none; padding: 0; display: grid; gap: .8rem; margin-top: .6rem; }
 .timeline li { display: grid; grid-template-columns: 12px 1fr; gap: .7rem; }
 .timeline-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: .45rem; background: var(--fail); }
+.signed { display: inline-flex; align-items: center; gap: .25rem; font-size: .75rem; color: var(--pass); background: color-mix(in srgb, var(--pass) 14%, transparent); border-radius: 999px; padding: .05rem .5rem; font-weight: 600; white-space: nowrap; }
 .id { font-weight: 600; }
 .prose { white-space: pre-line; max-width: 80ch; }
 .remedy { border-left: 3px solid var(--pass); padding-left: .8rem; }

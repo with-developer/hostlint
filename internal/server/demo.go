@@ -3,6 +3,8 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/output"
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 // demoHost is a made-up host and how its configuration behaves over the two weeks of demo data.
@@ -24,21 +27,22 @@ type demoHost struct {
 	every       int  // a scan every n days
 	silent      int  // the last scan was this many days ago
 	noRoot      bool // ran without root: some checks cannot read their files (ERROR)
+	signs       bool // signs its results with a key
 }
 
 var demoFleet = []demoHost{
-	{"web-01", "Ubuntu 24.04", "debian", 0.30, -0.20, 1, 0, false},
-	{"web-02", "Ubuntu 24.04", "debian", 0.30, -0.18, 1, 0, false},
-	{"web-03", "Ubuntu 22.04", "debian", 0.38, 0.0, 1, 0, false},
-	{"web-04", "Debian 12", "debian", 0.12, 0.10, 1, 0, false}, // was hardened, then drifted
-	{"api-01", "Debian 12", "debian", 0.02, 0.0, 1, 0, false},
-	{"api-02", "Debian 12", "debian", 0.10, 0.0, 2, 0, false},
-	{"api-03", "Rocky Linux 9", "rhel", 0.22, -0.08, 1, 0, false},
-	{"db-01", "Rocky Linux 9", "rhel", 0.0, 0.0, 1, 0, false}, // nothing fails
-	{"db-02", "AlmaLinux 9", "rhel", 0.08, 0.04, 1, 0, false},
-	{"cache-01", "Amazon Linux 2023", "rhel", 0.35, 0.0, 2, 0, false},
-	{"batch-01", "CentOS 7", "rhel", 0.55, 0.0, 3, 9, false}, // stopped reporting
-	{"bastion-01", "Ubuntu 24.04", "debian", 0.15, 0.0, 1, 0, true},
+	{"web-01", "Ubuntu 24.04", "debian", 0.30, -0.20, 1, 0, false, false},
+	{"web-02", "Ubuntu 24.04", "debian", 0.30, -0.18, 1, 0, false, false},
+	{"web-03", "Ubuntu 22.04", "debian", 0.38, 0.0, 1, 0, false, false},
+	{"web-04", "Debian 12", "debian", 0.12, 0.10, 1, 0, false, false}, // was hardened, then drifted
+	{"api-01", "Debian 12", "debian", 0.02, 0.0, 1, 0, false, true},
+	{"api-02", "Debian 12", "debian", 0.10, 0.0, 2, 0, false, false},
+	{"api-03", "Rocky Linux 9", "rhel", 0.22, -0.08, 1, 0, false, false},
+	{"db-01", "Rocky Linux 9", "rhel", 0.0, 0.0, 1, 0, false, true}, // nothing fails
+	{"db-02", "AlmaLinux 9", "rhel", 0.08, 0.04, 1, 0, false, true},
+	{"cache-01", "Amazon Linux 2023", "rhel", 0.35, 0.0, 2, 0, false, false},
+	{"batch-01", "CentOS 7", "rhel", 0.55, 0.0, 3, 9, false, false}, // stopped reporting
+	{"bastion-01", "Ubuntu 24.04", "debian", 0.15, 0.0, 1, 0, true, false},
 }
 
 // SeedDemo fills the store with generated scans of a made-up fleet: fourteen days of history
@@ -76,7 +80,12 @@ func SeedDemo(ctx context.Context, store *Store, content *engine.Content, profil
 			if err != nil {
 				return n, fmt.Errorf("demo result of %s: %w", h.name, err)
 			}
-			if _, err := store.IngestScan(ctx, cred, parsed, raw, "demo"); err != nil {
+			var opts []IngestOption
+			if h.signs {
+				sig, pub := signing.Sign(ed25519.NewKeyFromSeed(demoSeed(h.name)), raw)
+				opts = append(opts, WithSignature(pub, sig))
+			}
+			if _, err := store.IngestScan(ctx, cred, parsed, raw, "demo", opts...); err != nil {
 				return n, fmt.Errorf("demo result of %s: %w", h.name, err)
 			}
 			n++
@@ -164,6 +173,12 @@ func demoResult(content *engine.Content, profile *engine.Profile, h demoHost, da
 		return dup
 	})
 	return res
+}
+
+// demoSeed is a fixed 32-byte seed for a demo host's key, so the demo is the same every time.
+func demoSeed(name string) []byte {
+	sum := sha256.Sum256([]byte("hostlint demo key " + name))
+	return sum[:]
 }
 
 func fnvSum(s string) []byte {

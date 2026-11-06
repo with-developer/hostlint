@@ -6,6 +6,7 @@ package push
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -18,6 +19,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 // Options say where to send a result and how to trust the server.
@@ -29,6 +32,9 @@ type Options struct {
 	// Pin is a public key pin ("sha256/<base64>", as the server prints it) that replaces the
 	// check of the server certificate against the system roots: for a self-signed server.
 	Pin string
+	// SignKey, when set, signs the document: the server keeps the signature and key, and refuses
+	// later results of the host that are unsigned or signed with another key.
+	SignKey ed25519.PrivateKey
 	// Timeout of the whole request; 30 seconds when 0.
 	Timeout time.Duration
 }
@@ -92,6 +98,11 @@ func Send(ctx context.Context, doc []byte, opts Options) (*Response, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+opts.Token)
 	req.Header.Set("Content-Type", "application/json")
+	if opts.SignKey != nil {
+		sig, key := signing.Sign(opts.SignKey, doc)
+		req.Header.Set(signing.HeaderSignature, sig)
+		req.Header.Set(signing.HeaderKey, key)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

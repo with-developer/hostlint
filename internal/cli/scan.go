@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/hostfs"
 	"github.com/with-developer/hostlint/internal/output"
+	"github.com/with-developer/hostlint/internal/signing"
 	"github.com/with-developer/hostlint/internal/version"
 	"github.com/with-developer/hostlint/profiles"
 	"github.com/with-developer/hostlint/rules"
@@ -43,7 +45,7 @@ func (e *findingsError) Error() string {
 
 type scanFlags struct {
 	profile, format, output, root, failOn, color, config string
-	pushURL, pin, tokenFile                              string
+	pushURL, pin, tokenFile, signKey                     string
 	labels                                               []string
 	verbose                                              bool
 }
@@ -81,6 +83,7 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringVar(&f.pushURL, "push", "", "after the scan, send the result to this hostlint server (docs/fleet.md)")
 	fl.StringVar(&f.pin, "pin", "", `with --push: trust the server's public key ("sha256/<base64>") instead of the system roots`)
 	fl.StringVar(&f.tokenFile, "token-file", "", "with --push: read the ingest token from this file (default: the HOSTLINT_TOKEN environment variable)")
+	fl.StringVar(&f.signKey, "sign-key", "", "with --push: sign the result with this key (made with: hostlint key generate)")
 	fl.StringVar(&f.config, "config", "", "configuration file (default: ./hostlint.yaml, then /etc/hostlint/hostlint.yaml, if present)")
 	return cmd
 }
@@ -105,8 +108,14 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		if token, err = readToken(f.tokenFile); err != nil {
 			return err
 		}
-	} else if f.pin != "" || f.tokenFile != "" {
-		return errors.New("--pin and --token-file are for --push")
+	} else if f.pin != "" || f.tokenFile != "" || f.signKey != "" {
+		return errors.New("--pin, --token-file and --sign-key are for --push")
+	}
+	var signer ed25519.PrivateKey
+	if f.signKey != "" {
+		if signer, err = signing.Load(f.signKey); err != nil {
+			return err
+		}
 	}
 
 	content, err := engine.Load(rules.FS, profiles.FS)
@@ -164,7 +173,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return err
 	}
 	if f.pushURL != "" {
-		if err := pushScan(cmd, res, f, token); err != nil {
+		if err := pushScan(cmd, res, f, token, signer); err != nil {
 			return err
 		}
 	}

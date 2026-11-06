@@ -211,6 +211,14 @@ it elsewhere, and a later run shows whether history was changed or cut off.`,
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "audit chain OK: %d rows, last hash %s\n", rows, last)
+			signed, unsigned, failed, err := store.VerifySignatures(cmd.Context())
+			if err != nil {
+				return err
+			}
+			if len(failed) > 0 {
+				return fmt.Errorf("%d stored scans do not match their signature (scan IDs %v): the database was changed after they were received", len(failed), failed)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "signatures OK: %d signed scans verify, %d are unsigned\n", signed, unsigned)
 			return nil
 		},
 	}
@@ -375,11 +383,38 @@ func newServerHostCommand(dbPath *string) *cobra.Command {
 				return err
 			}
 			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-			fmt.Fprintln(tw, "ID\tNAME\tHOST ID\tLAST SCAN")
+			fmt.Fprintln(tw, "ID\tNAME\tHOST ID\tLAST SCAN\tKEY")
 			for _, h := range hosts {
-				fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", h.ID, oneLineCLI(h.Name), orDash(oneLineCLI(h.HostID)), orDash(h.LastScanAt))
+				fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%s\n", h.ID, oneLineCLI(h.Name), orDash(oneLineCLI(h.HostID)), orDash(h.LastScanAt), orDash(h.KeyFingerprint))
 			}
 			return tw.Flush()
+		},
+	}
+	reset := &cobra.Command{
+		Use:   "reset-key ID",
+		Short: "Forget the signing key registered for a host",
+		Long: `A host that signs its results keeps signing with the same key. If its key was replaced on purpose
+(a re-installed machine), reset-key forgets the registered one: the next signed result registers the new key.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil || id < 1 {
+				return fmt.Errorf("%q is not a host ID (see: hostlint server host list)", args[0])
+			}
+			store, err := server.OpenStore(*dbPath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			ok, err := store.ResetHostKey(cmd.Context(), id)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("host %d has no registered key", id)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "the key of host %d was forgotten\n", id)
+			return nil
 		},
 	}
 	var yes bool
@@ -415,6 +450,6 @@ be undone: make a backup first, and pass --yes to confirm.`,
 		},
 	}
 	del.Flags().BoolVar(&yes, "yes", false, "confirm the deletion")
-	cmd.AddCommand(list, del)
+	cmd.AddCommand(list, del, reset)
 	return cmd
 }

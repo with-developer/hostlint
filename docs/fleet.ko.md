@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 7cb4802 -->
+<!-- translated from docs/fleet.md @ 26e26ae -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -154,11 +154,29 @@ ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen
 - 모든 것이 감사 테이블에 기록되며 각 행은 이전 행의 해시를 이어 받습니다. `hostlint server verify`가
   체인을 다시 계산해 마지막 해시를 출력하니, 다른 곳에 보관해 두면 이후의 변경을 알아챌 수 있습니다.
 
+## 서명된 결과
+
+호스트는 보내는 결과에 서명할 수 있습니다. 그러면 나중에 결과를 저장한 서버가 침해되더라도, 그 결과는 그
+호스트의 키가 말한 내용의 증거가 됩니다.
+
+```sh
+sudo hostlint key generate /etc/hostlint/sign.key      # 호스트마다 한 번; 지문을 출력합니다
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443 \
+  --sign-key /etc/hostlint/sign.key
+```
+
+서버는 호스트의 첫 서명된 결과에서 키를 등록합니다. 그 뒤로는 그 호스트의 서명 없는 결과와 다른 키로 서명된
+결과를 거부하므로(토큰만 훔쳐서는 더 이상 충분하지 않습니다), 대시보드가 그 호스트를 키 지문과 함께
+서명됨으로 표시합니다. `hostlint server verify`는 저장된 서명된 결과를 모두 서명과 대조하므로, 나중에
+데이터베이스에서 바뀐 결과를 찾아냅니다. 키를 일부러 바꾼 경우(다시 설치한 머신)에는 `hostlint server host
+reset-key ID`가 등록된 키를 잊게 합니다. 다른 사용자가 읽을 수 있는 키 파일은 거부됩니다.
+
 ## 보호하지 않는 것
 
-서버는 저장소이지 권위가 아닙니다. 데이터베이스를 장악한 사람은 보이는 내용을 바꿀 수 있고, 훔친
-토큰으로는 묶인 호스트의 결과를 보낼 수 있습니다. 서명된 결과를 계획하고 있습니다. 그 전까지 저장된
-기록은 서버만큼만 신뢰할 수 있습니다.
+서버는 저장소이지 권위가 아닙니다. 데이터베이스를 장악한 사람은 보이는 내용을 바꿀 수 있고, 저장된 결과와
+그 서명·키를 함께 바꿀 수도 있습니다. 이를 알아채려면 키 지문(`hostlint server host list`)과 감사 해시
+(`hostlint server verify`)의 사본을 다른 곳에 보관하세요. 훔친 토큰으로는, 그 호스트가 서명하지 않는 한 묶인
+호스트의 결과를 보낼 수 있고, 키 자체를 도난당한 호스트는 무엇이든 서명할 수 있습니다.
 
 ## 호스트
 

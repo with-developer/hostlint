@@ -2,15 +2,19 @@ package server
 
 import (
 	"bytes"
+	"compress/gzip"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/internal/signing"
 	"github.com/with-developer/hostlint/profiles"
 	"github.com/with-developer/hostlint/rules"
 )
@@ -428,5 +432,124 @@ func TestKoreanTitlesFromTheProfiles(t *testing.T) {
 	f.srv.cfg.Content = nil
 	if _, body := f.get(t, f.api, "/api/v1/controls"); strings.Contains(string(body), "titleKo") {
 		t.Errorf("titleKo without profiles: %.200s", body)
+	}
+}
+
+// ---- signed results ----
+
+func signedDoc(t *testing.T, keyPath string, doc []byte) (key, sig string) {
+	t.Helper()
+	k, err := signing.Load(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig, key = signing.Sign(k, doc)
+	return key, sig
+}
+
+func postSigned(t *testing.T, f *apiFixture, tok string, body []byte, key, sig string) (int, map[string]any) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/results", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	if key != "" {
+		req.Header.Set(signing.HeaderKey, key)
+		req.Header.Set(signing.HeaderSignature, sig)
+	}
+	rec := httptest.NewRecorder()
+	f.srv.Handler().ServeHTTP(rec, req)
+	var out map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &out)
+	return rec.Code, out
+}
+
+func TestSignedResults(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	dir := t.TempDir()
+	keyA, keyB := filepath.Join(dir, "a.key"), filepath.Join(dir, "b.key")
+	if _, err := signing.Generate(keyA); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := signing.Generate(keyB); err != nil {
+		t.Fatal(err)
+	}
+	web := fixture(t, "web-01.json") // web-01 already has unsigned scans in the fixture; use another host
+	doc := func(id string) []byte {
+		out := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "signer"`))
+		return bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(id))
+	}
+	d1 := doc("s-1")
+	k, s := signedDoc(t, keyA, d1)
+	if code, out := postSigned(t, f, ingest, d1, k, s); code != http.StatusCreated {
+		t.Fatalf("first signed result: %d %v", code, out)
+	}
+	// The key is registered: the host's list entry shows it.
+	var list struct {
+		Hosts []HostSummary `json:"hosts"`
+	}
+	f.json(t, "/api/v1/hosts?q=signer", &list)
+	if len(list.Hosts) != 1 || !list.Hosts[0].Signed || !strings.HasPrefix(list.Hosts[0].KeyFingerprint, "SHA256:") {
+		t.Fatalf("host = %+v", list.Hosts)
+	}
+
+	// A document changed after it was signed does not verify.
+	d2 := doc("s-2")
+	k2, s2 := signedDoc(t, keyA, d2)
+	if code, out := postSigned(t, f, ingest, append(d2, ' '), k2, s2); code != http.StatusUnprocessableEntity {
+		t.Errorf("a changed document: %d %v", code, out)
+	}
+	// Unsigned, or signed with another key: refused for a host that signs.
+	if code, out := postSigned(t, f, ingest, d2, "", ""); code != http.StatusConflict || !strings.Contains(out["error"].(string), "not signed") {
+		t.Errorf("an unsigned result: %d %v", code, out)
+	}
+	kb, sb := signedDoc(t, keyB, d2)
+	if code, out := postSigned(t, f, ingest, d2, kb, sb); code != http.StatusConflict || !strings.Contains(out["error"].(string), "another key") {
+		t.Errorf("another key: %d %v", code, out)
+	}
+	// Half a signature is refused; the right key still works.
+	if code, _ := postSigned(t, f, ingest, d2, k2, ""); code != http.StatusUnprocessableEntity {
+		t.Errorf("a key without a signature: %d", code)
+	}
+	if code, out := postSigned(t, f, ingest, d2, k2, s2); code != http.StatusCreated {
+		t.Errorf("the same key: %d %v", code, out)
+	}
+
+	// The stored scans verify; a changed stored document does not.
+	ctx := context.Background()
+	signed, unsigned, failed, err := f.store.VerifySignatures(ctx)
+	if err != nil || signed != 2 || unsigned != 3 || len(failed) != 0 {
+		t.Fatalf("verify: %d signed, %d unsigned, failed %v, %v", signed, unsigned, failed, err)
+	}
+	var id int64
+	if err := f.store.db.QueryRow(`SELECT id FROM scans WHERE signature != '' ORDER BY id LIMIT 1`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	altered := bytes.ReplaceAll(d1, []byte(`"status": "FAIL"`), []byte(`"status": "PASS"`))
+	var gz bytes.Buffer
+	zw := gzip.NewWriter(&gz)
+	_, _ = zw.Write(altered)
+	_ = zw.Close()
+	if _, err := f.store.db.Exec(`UPDATE scans SET doc = ? WHERE id = ?`, gz.Bytes(), id); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, failed, _ := f.store.VerifySignatures(ctx); len(failed) != 1 || failed[0] != id {
+		t.Errorf("a stored document that was changed went unnoticed: %v", failed)
+	}
+
+	// An operator can reset the registered key (a re-installed machine), and the new key registers.
+	hostID := list.Hosts[0].ID
+	if ok, err := f.store.ResetHostKey(ctx, hostID); !ok || err != nil {
+		t.Fatalf("reset: %v %v", ok, err)
+	}
+	if ok, _ := f.store.ResetHostKey(ctx, hostID); ok {
+		t.Error("a key was reset twice")
+	}
+	d3 := doc("s-3")
+	k3, s3 := signedDoc(t, keyB, d3)
+	if code, out := postSigned(t, f, ingest, d3, k3, s3); code != http.StatusCreated {
+		t.Errorf("the new key after a reset: %d %v", code, out)
+	}
+	if _, _, err := f.store.VerifyAudit(ctx); err != nil {
+		t.Errorf("audit chain: %v", err)
 	}
 }

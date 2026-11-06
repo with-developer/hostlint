@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/with-developer/hostlint/internal/signing"
 )
 
 // ErrNotFound means there is no such host or scan.
@@ -44,6 +46,9 @@ type HostSummary struct {
 	Counts     Counts   `json:"counts"`
 	Score      *float64 `json:"score"`
 	Stale      bool     `json:"stale"`
+	// Signed is true when the host signs its results; KeyFingerprint names the key it registered.
+	Signed         bool   `json:"signed"`
+	KeyFingerprint string `json:"keyFingerprint,omitempty"`
 }
 
 // HostFilter selects and pages the host list.
@@ -66,7 +71,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 		staleAfter = 7 * 24 * time.Hour
 	}
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT h.id, h.name, h.host_id, COALESCE(h.last_scan_at, ''), COALESCE(l.id, 0)
+		SELECT h.id, h.name, h.host_id, COALESCE(h.last_scan_at, ''), COALESCE(l.id, 0), h.pubkey
 		FROM hosts h LEFT JOIN (`+latestScans+`) l ON l.host_row = h.id
 		WHERE h.name LIKE ? ESCAPE '\' AND (? = 0 OR h.id = ?)
 		ORDER BY h.name, h.id`, "%"+likeEscape(query)+"%", id, id)
@@ -76,10 +81,12 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 	var all []HostSummary
 	for rs.Next() {
 		var h HostSummary
-		if err := rs.Scan(&h.ID, &h.Name, &h.HostID, &h.LastScanAt, &h.LatestScan); err != nil {
+		var key string
+		if err := rs.Scan(&h.ID, &h.Name, &h.HostID, &h.LastScanAt, &h.LatestScan, &key); err != nil {
 			_ = rs.Close()
 			return nil, err
 		}
+		h.Signed, h.KeyFingerprint = key != "", signing.Fingerprint(key)
 		all = append(all, h)
 	}
 	if err := rs.Err(); err != nil {
@@ -194,6 +201,7 @@ type ScanRow struct {
 	ToolVersion string   `json:"toolVersion"`
 	Counts      Counts   `json:"counts"`
 	Score       *float64 `json:"score"`
+	Signed      bool     `json:"signed"`
 }
 
 // HostDetail is a host with the controls of its latest scan and its history, newest first.
@@ -234,7 +242,7 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration) (*
 	}
 	d.Scans = []ScanRow{}
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT s.id, s.received_at, s.started_at, s.tool_version, c.status, COUNT(c.status)
+		SELECT s.id, s.received_at, s.started_at, s.tool_version, s.signature != '', c.status, COUNT(c.status)
 		FROM (SELECT * FROM scans WHERE host_row = ? ORDER BY received_at DESC, id DESC LIMIT 200) s
 		LEFT JOIN scan_controls c ON c.scan_row = s.id
 		GROUP BY s.id, c.status ORDER BY s.received_at DESC, s.id DESC`, id)
@@ -247,7 +255,7 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration) (*
 		var r ScanRow
 		var status sql.NullString
 		var n int
-		if err := rs.Scan(&r.ID, &r.ReceivedAt, &r.StartedAt, &r.ToolVersion, &status, &n); err != nil {
+		if err := rs.Scan(&r.ID, &r.ReceivedAt, &r.StartedAt, &r.ToolVersion, &r.Signed, &status, &n); err != nil {
 			return nil, err
 		}
 		row := byID[r.ID]
