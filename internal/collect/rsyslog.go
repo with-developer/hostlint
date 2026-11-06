@@ -28,8 +28,9 @@ type Rsyslog struct {
 // RsyslogRule is one selector rule and where it sends the messages.
 type RsyslogRule struct {
 	Selector string `json:"selector"`
-	// Target is a file, "@host" for a remote server, ":omusrmsg:users" for
-	// terminals, or the module of a RainerScript action.
+	// Target is a file, "@host" for a remote server, a legacy module action
+	// (":omusrmsg:", ":ommysql:": its arguments are dropped, they can hold a
+	// password), or the module of a RainerScript action.
 	Target string `json:"target"`
 	Where  string `json:"where"`
 }
@@ -159,6 +160,14 @@ func rsyslogTarget(action string) string {
 			return "action " + t[1]
 		}
 		return "action"
+	}
+	// A legacy module action carries its arguments after the module name
+	// (:ommysql:host,database,user,password): only the module is kept.
+	if strings.HasPrefix(action, ":") {
+		if end := strings.Index(action[1:], ":"); end >= 0 {
+			return action[:end+2]
+		}
+		return action
 	}
 	if i := strings.IndexAny(action, " \t;"); i > 0 {
 		action = action[:i]

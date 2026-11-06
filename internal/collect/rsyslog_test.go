@@ -2,6 +2,7 @@ package collect
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -29,7 +30,7 @@ func rules(r *Rsyslog) string {
 // (selectors with RainerScript actions).
 func TestRsyslogPackagedConfigurations(t *testing.T) {
 	r, complete := collectRsyslog(t, fixtureFS(t, "ubuntu-24.04"))
-	want := "auth,authpriv.* -> /var/log/auth.log; *.*;auth,authpriv.none -> /var/log/syslog; kern.* -> /var/log/kern.log; mail.* -> /var/log/mail.log; mail.err -> /var/log/mail.err; *.emerg -> :omusrmsg:*"
+	want := "auth,authpriv.* -> /var/log/auth.log; *.*;auth,authpriv.none -> /var/log/syslog; kern.* -> /var/log/kern.log; mail.* -> /var/log/mail.log; mail.err -> /var/log/mail.err; *.emerg -> :omusrmsg:"
 	if !r.Present || !complete || rules(r) != want {
 		t.Errorf("ubuntu: %s (complete %v)", rules(r), complete)
 	}
@@ -85,4 +86,16 @@ func FuzzRsyslogConfig(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, data []byte) {
 		_, _ = rsyslogCollector{}.Collect(context.Background(), hostfs.NewTestHost(hostfs.NewMemFS().AddFile(rsyslogConf, string(data), 0o644, 0, 0), nil, false))
 	})
+}
+
+// A legacy module action can carry a password in its arguments: only the module is kept.
+func TestRsyslogKeepsNoActionArguments(t *testing.T) {
+	r, _ := collectRsyslog(t, hostfs.NewMemFS().AddFile(rsyslogConf, "*.* :ommysql:dbhost,Syslog,rsyslog,Sup3r-Secret-Pw\n*.emerg :omusrmsg:*\nauth.* action(type=\"omelasticsearch\" uid=\"u\" pwd=\"Sup3r-Secret-Pw\")\n", 0o644, 0, 0))
+	if rules(r) != "*.* -> :ommysql:; *.emerg -> :omusrmsg:; auth.* -> action omelasticsearch" {
+		t.Errorf("rules %s", rules(r))
+	}
+	data, _ := json.Marshal(r)
+	if strings.Contains(string(data), "Sup3r-Secret-Pw") {
+		t.Errorf("a password is in the facts: %s", data)
+	}
 }
