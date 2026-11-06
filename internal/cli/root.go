@@ -38,8 +38,9 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	cmd.SetErr(stderr)
 	err := cmd.ExecuteContext(ctx)
 	var findings *findingsError
+	var regressed *regressionError
 	switch {
-	case errors.As(err, &findings):
+	case errors.As(err, &findings), errors.As(err, &regressed):
 		// The scan finished and its result was written; a signal that came
 		// afterwards does not make it interrupted.
 		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)

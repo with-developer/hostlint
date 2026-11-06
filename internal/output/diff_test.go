@@ -85,9 +85,10 @@ func TestDiffClassification(t *testing.T) {
 		{engine.StatusManual, engine.StatusError, "regressed"},
 		{engine.StatusNotApplicable, engine.StatusFail, "regressed"},
 		{engine.StatusFail, engine.StatusPass, "fixed"},
-		{engine.StatusError, engine.StatusWaived, "fixed"},
-		{engine.StatusFail, engine.StatusError, "changed"},
 		{engine.StatusError, engine.StatusFail, "changed"},
+		{engine.StatusFail, engine.StatusWaived, "changed"}, // a waiver is not a fix
+		{engine.StatusWaived, engine.StatusFail, "changed"},
+		{engine.StatusFail, engine.StatusError, "changed"},
 		{engine.StatusPass, engine.StatusManual, "changed"},
 		{engine.StatusManual, engine.StatusPass, "changed"},
 	} {
@@ -126,5 +127,65 @@ func TestWriteDiff(t *testing.T) {
 	var esc bytes.Buffer
 	if err := WriteDiff(&esc, d, "table", Options{}); err != nil || strings.Contains(esc.String(), "\x1b") {
 		t.Errorf("escape sequence in the table: %q", esc.String())
+	}
+}
+
+// The status of a control can stay the same while a check of it goes wrong; and a control that is
+// new in the later result and failing counts as getting worse.
+func TestDiffCheckLevelAndAddedControls(t *testing.T) {
+	mk := func(a, b engine.Status, extra ...engine.ControlResult) *engine.Result {
+		return &engine.Result{
+			Host: engine.HostInfo{Hostname: "h"},
+			Scan: engine.ScanInfo{StartedAt: "2026-11-01T00:00:00Z"},
+			Controls: append([]engine.ControlResult{{Profile: "p", ID: "U-05", Title: "t", Severity: engine.SeverityHigh,
+				Status: engine.StatusFail, Checks: []string{"a", "b"}}}, extra...),
+			Checks: []engine.CheckResult{{Ref: "a", Title: "A", Status: a}, {Ref: "b", Title: "B", Status: b}},
+		}
+	}
+	d := DiffResults("o", mk(engine.StatusFail, engine.StatusPass), "n", mk(engine.StatusFail, engine.StatusFail))
+	if ids(d.Regressed) != "U-05" || d.Regressions() != 1 || len(d.Regressed[0].Checks) != 1 || d.Regressed[0].Checks[0].Ref != "b" {
+		t.Errorf("a check that went wrong in a failing control: %+v", d)
+	}
+	// A check that got better is only a change.
+	d = DiffResults("o", mk(engine.StatusFail, engine.StatusFail), "n", mk(engine.StatusFail, engine.StatusPass))
+	if ids(d.Changed) != "U-05" || d.Regressions() != 0 {
+		t.Errorf("a check that got better: %+v", d)
+	}
+	added := engine.ControlResult{Profile: "p", ID: "U-68", Title: "new", Severity: engine.SeverityLow, Status: engine.StatusFail, Checks: []string{}}
+	d = DiffResults("o", mk(engine.StatusFail, engine.StatusFail), "n", mk(engine.StatusFail, engine.StatusFail, added))
+	if ids(d.Added) != "U-68" || d.Regressions() != 1 {
+		t.Errorf("a failing control that is new: %+v", d)
+	}
+	added.Status = engine.StatusPass
+	if d = DiffResults("o", mk(engine.StatusFail, engine.StatusFail), "n", mk(engine.StatusFail, engine.StatusFail, added)); d.Regressions() != 0 {
+		t.Errorf("a passing control that is new counted: %+v", d)
+	}
+}
+
+// Scans that differ in who ran them or with what are not directly comparable.
+func TestDiffNotesPrivilegesAndTool(t *testing.T) {
+	older, newer := readFixture(t, "web-01-old.json"), readFixture(t, "web-01.json")
+	newer.Scan.Privileges.EUID = 1000
+	newer.Scan.Tool.Version = "v9.9.9"
+	newer.Scan.Target = engine.TargetInfo{Kind: "root", Root: "/mnt"}
+	newer.Host.HostID = "aaaa"
+	older.Host.HostID = "bbbb"
+	notes := strings.Join(DiffResults("o", older, "n", newer).Notes, "|")
+	for _, want := range []string{"as root and the other did not", "different targets", "versions differ", "different host IDs"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("notes lack %q: %s", want, notes)
+		}
+	}
+}
+
+// With more than one profile the table says which one a control is from.
+func TestDiffTableShowsProfileWhenThereAreSeveral(t *testing.T) {
+	d := &Diff{Regressed: []ControlChange{
+		{Profile: "kisa-2026", ID: "U-01", Title: "t", Severity: engine.SeverityLow, Old: engine.StatusPass, New: engine.StatusFail},
+		{Profile: "other", ID: "U-01", Title: "t", Severity: engine.SeverityLow, Old: engine.StatusPass, New: engine.StatusFail},
+	}}
+	var b bytes.Buffer
+	if err := WriteDiff(&b, d, "table", Options{}); err != nil || !strings.Contains(b.String(), "kisa-2026 U-01") || !strings.Contains(b.String(), "other U-01") {
+		t.Errorf("%v\n%s", err, b.String())
 	}
 }

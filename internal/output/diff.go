@@ -41,32 +41,47 @@ type ControlChange struct {
 
 // Diff is what changed between two scans of a host.
 type Diff struct {
-	Old       DiffSide        `json:"old"`
-	New       DiffSide        `json:"new"`
-	Notes     []string        `json:"notes"`
-	Regressed []ControlChange `json:"regressed"`
-	Fixed     []ControlChange `json:"fixed"`
-	Changed   []ControlChange `json:"changed"`
-	Added     []ControlChange `json:"added"`
-	Removed   []ControlChange `json:"removed"`
-	Unchanged int             `json:"unchanged"`
+	SchemaVersion int             `json:"schemaVersion"`
+	Old           DiffSide        `json:"old"`
+	New           DiffSide        `json:"new"`
+	Notes         []string        `json:"notes"`
+	Regressed     []ControlChange `json:"regressed"`
+	Fixed         []ControlChange `json:"fixed"`
+	Changed       []ControlChange `json:"changed"`
+	Added         []ControlChange `json:"added"`
+	Removed       []ControlChange `json:"removed"`
+	Unchanged     int             `json:"unchanged"`
 }
 
 // bad is a status that says something is wrong or could not be decided.
 func bad(s engine.Status) bool { return s == engine.StatusFail || s == engine.StatusError }
 
 // DiffResults compares an older and a newer result. A control regressed when it is FAIL
-// or ERROR now and was not before, and is fixed when it was and is not any more; every
-// other change of status is a change. Controls found in one result only are added or removed
+// or ERROR now and was not before, or when a check of it went wrong while the control's
+// status stayed the same; it is fixed when it was FAIL or ERROR and is not any more. A
+// waiver added or removed, and every other change of status, is a change. Controls found in one result only are added or removed
 // (a profile revision adds and removes controls).
 func DiffResults(oldName string, older *engine.Result, newName string, newer *engine.Result) *Diff {
 	d := &Diff{
-		Old:   diffSide(oldName, older),
-		New:   diffSide(newName, newer),
-		Notes: []string{},
+		SchemaVersion: 1,
+		Old:           diffSide(oldName, older),
+		New:           diffSide(newName, newer),
+		Notes:         []string{},
 	}
 	if older.Host.Hostname != newer.Host.Hostname {
 		d.Notes = append(d.Notes, fmt.Sprintf("the results are of different hosts (%s and %s)", oneLine(older.Host.Hostname), oneLine(newer.Host.Hostname)))
+	}
+	if older.Host.HostID != "" && newer.Host.HostID != "" && older.Host.HostID != newer.Host.HostID && older.Host.Hostname == newer.Host.Hostname {
+		d.Notes = append(d.Notes, "the results have the same host name but different host IDs: they may be different machines")
+	}
+	if (older.Scan.Privileges.EUID == 0) != (newer.Scan.Privileges.EUID == 0) {
+		d.Notes = append(d.Notes, "one scan ran as root and the other did not: controls that need protected files report ERROR or MANUAL without root")
+	}
+	if older.Scan.Target != newer.Scan.Target {
+		d.Notes = append(d.Notes, "the scans have different targets (a running host and a mounted root, or two roots)")
+	}
+	if older.Scan.Tool.Version != newer.Scan.Tool.Version {
+		d.Notes = append(d.Notes, fmt.Sprintf("hostlint versions differ (%s and %s): new or changed checks can move results", oneLine(older.Scan.Tool.Version), oneLine(newer.Scan.Tool.Version)))
 	}
 	if scanTime(newer).Before(scanTime(older)) {
 		d.Notes = append(d.Notes, "the first file is newer than the second: the changes read backwards")
@@ -102,13 +117,22 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 			d.Added = append(d.Added, change)
 			continue
 		}
-		if oc.Status == nc.Status {
-			d.Unchanged++
-			continue
-		}
 		change.Old = oc.Status
 		change.Checks = checkChanges(oc.Checks, nc.Checks, oldChecks, newChecks)
 		switch {
+		case oc.Status == nc.Status && len(change.Checks) == 0:
+			d.Unchanged++
+		case oc.Status == nc.Status:
+			// The same status, but a check moved: a check that went wrong is a regression
+			// even when the control was already failing.
+			if slices.ContainsFunc(change.Checks, func(c CheckChange) bool { return bad(c.New) && !bad(c.Old) }) {
+				d.Regressed = append(d.Regressed, change)
+			} else {
+				d.Changed = append(d.Changed, change)
+			}
+		case oc.Status == engine.StatusWaived || nc.Status == engine.StatusWaived:
+			// A waiver added, removed or expired is not a change of the host.
+			d.Changed = append(d.Changed, change)
 		case bad(nc.Status) && !bad(oc.Status):
 			d.Regressed = append(d.Regressed, change)
 		case bad(oc.Status) && !bad(nc.Status):
@@ -200,13 +224,25 @@ func writeDiffTable(w io.Writer, d *Diff, opts Options) error {
 	}
 	b.WriteString("\n")
 
+	profiles := map[string]bool{}
+	for _, list := range [][]ControlChange{d.Regressed, d.Fixed, d.Changed, d.Added, d.Removed} {
+		for _, c := range list {
+			profiles[c.Profile] = true
+		}
+	}
+	name := func(c ControlChange) string {
+		if len(profiles) > 1 {
+			return oneLine(c.Profile) + " " + oneLine(c.ID)
+		}
+		return oneLine(c.ID)
+	}
 	section := func(title, color string, list []ControlChange, arrows bool) {
 		if len(list) == 0 {
 			return
 		}
 		fmt.Fprintf(&b, "%s\n", p.paint(color, fmt.Sprintf("%s (%d)", title, len(list))))
 		for _, c := range list {
-			fmt.Fprintf(&b, "  %-6s %s %s  %s\n", oneLine(c.ID), oneLine(c.Title), p.paint(dim, "["+string(c.Severity)+"]"), statusArrow(p, c.Old, c.New, arrows))
+			fmt.Fprintf(&b, "  %-6s %s %s  %s\n", name(c), oneLine(c.Title), p.paint(dim, "["+string(c.Severity)+"]"), statusArrow(p, c.Old, c.New, arrows))
 			for _, ch := range c.Checks {
 				fmt.Fprintf(&b, "      %s %s  %s\n", oneLine(ch.Ref), p.paint(dim, "— "+oneLine(ch.Title)), statusArrow(p, ch.Old, ch.New, true))
 			}
@@ -233,6 +269,9 @@ func statusArrow(p painter, oldS, newS engine.Status, both bool) string {
 		}
 		return p.paint(statusStyle[s].color, string(s))
 	}
+	if oldS == newS && oldS != "" {
+		return paint(newS) + p.paint(dim, " (checks changed)")
+	}
 	if !both || oldS == "" {
 		if newS != "" {
 			return paint(newS)
@@ -245,4 +284,16 @@ func statusArrow(p painter, oldS, newS engine.Status, both bool) string {
 // WriteDiffFile renders d into the file at path, as WriteFile does for a result.
 func WriteDiffFile(path string, d *Diff, format string, opts Options) error {
 	return writeFile(path, func(w io.Writer) error { return WriteDiff(w, d, format, opts) })
+}
+
+// Regressions is how many controls got worse: those that regressed, and controls
+// new in the later result that are FAIL or ERROR.
+func (d *Diff) Regressions() int {
+	n := len(d.Regressed)
+	for _, c := range d.Added {
+		if bad(c.New) {
+			n++
+		}
+	}
+	return n
 }
