@@ -228,7 +228,7 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	}
 	switch {
 	case other > 0 && hostID != "":
-		return nil, fmt.Errorf("%w: the name %q is known with another host ID", ErrIdentity, name)
+		return nil, fmt.Errorf("%w: the name %q is known with another host ID (if the machine was re-installed, remove the old host: hostlint server host delete)", ErrIdentity, name)
 	case other > 0:
 		return nil, fmt.Errorf("%w: the name %q is known with a host ID and this result has none", ErrIdentity, name)
 	}

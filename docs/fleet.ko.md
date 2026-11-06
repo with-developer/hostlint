@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ c70cc2b -->
+<!-- translated from docs/fleet.md @ 7cb4802 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -159,6 +159,17 @@ ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen
 서버는 저장소이지 권위가 아닙니다. 데이터베이스를 장악한 사람은 보이는 내용을 바꿀 수 있고, 훔친
 토큰으로는 묶인 호스트의 결과를 보낼 수 있습니다. 서명된 결과를 계획하고 있습니다. 그 전까지 저장된
 기록은 서버만큼만 신뢰할 수 있습니다.
+
+## 호스트
+
+```sh
+hostlint server host list   --db server.db
+hostlint server host delete --db server.db 4 --yes
+```
+
+이미 알려진 호스트 이름에는 두 번째 호스트 ID가 붙지 않습니다. 다시 설치한 머신(호스트 ID가 바뀜)은 거부되고
+응답이 그렇게 알려 줍니다. 이전 호스트와 그 호스트에서 받은 모든 결과를 삭제하면(먼저 백업하세요) 같은
+이름으로 다시 시작할 수 있습니다. 삭제는 감사 기록에 남습니다.
 
 ## 토큰
 

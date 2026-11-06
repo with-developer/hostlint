@@ -164,6 +164,17 @@ The server is a store, not an authority. Whoever controls its database can chang
 and a stolen token can submit results for the host it is bound to. Signed results are planned. Until
 then, the stored records are only as trustworthy as the server.
 
+## Hosts
+
+```sh
+hostlint server host list   --db server.db
+hostlint server host delete --db server.db 4 --yes
+```
+
+A known host name never gets a second host ID: a machine that was re-installed (its host ID changed) is
+refused, and the answer says so. Delete the old host (and everything received from it, so make a
+backup first) and the machine can start again under the same name. Deletions are audited.
+
 ## Tokens
 
 ```sh

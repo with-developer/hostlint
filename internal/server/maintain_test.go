@@ -99,3 +99,53 @@ func TestStats(t *testing.T) {
 		t.Errorf("stats = %+v, %v", st, err)
 	}
 }
+
+// A re-installed machine (new host ID, same name) is refused until the old host is deleted.
+func TestDeleteHostLetsAReinstalledMachineStartAgain(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	web := fixture(t, "web-01.json")
+	variant := func(hostID, scanID string) []byte {
+		out := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "reinstalled", "hostId": "`+hostID+`"`))
+		return bytes.ReplaceAll(out, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte(scanID))
+	}
+	if code, out := post(t, f.srv, ingest, variant("old", "r-1")); code != 201 {
+		t.Fatalf("%d %v", code, out)
+	}
+	code, out := post(t, f.srv, ingest, variant("new", "r-2"))
+	if code != 409 || !strings.Contains(out["error"].(string), "host delete") {
+		t.Fatalf("the new host ID: %d %v (the message should say how to resolve it)", code, out)
+	}
+	ctx := context.Background()
+	hosts, err := f.store.HostList(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var id int64
+	for _, h := range hosts {
+		if h.Name == "reinstalled" {
+			id = h.ID
+		}
+	}
+	if id == 0 {
+		t.Fatal("the host is not in the list")
+	}
+	if ok, err := f.store.DeleteHost(ctx, id); !ok || err != nil {
+		t.Fatalf("delete: %v %v", ok, err)
+	}
+	if ok, _ := f.store.DeleteHost(ctx, id); ok {
+		t.Error("a host was deleted twice")
+	}
+	if n := count(t, f.store, `SELECT COUNT(*) FROM scans WHERE scan_id = 'r-1'`); n != 0 {
+		t.Errorf("%d scans of the deleted host remain", n)
+	}
+	if code, out := post(t, f.srv, ingest, variant("new", "r-3")); code != 201 {
+		t.Errorf("after the deletion: %d %v", code, out)
+	}
+	if n := count(t, f.store, `SELECT COUNT(*) FROM audit WHERE action = 'host-deleted'`); n != 1 {
+		t.Errorf("%d audit rows for the deletion", n)
+	}
+	if _, _, err := f.store.VerifyAudit(ctx); err != nil {
+		t.Errorf("audit chain: %v", err)
+	}
+}

@@ -33,7 +33,7 @@ The database is one file (--db). Tokens are made with "hostlint server token cre
 shown once; only their hash is stored.`,
 	}
 	cmd.PersistentFlags().StringVar(&dbPath, "db", "hostlint-server.db", "the server's SQLite database")
-	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath), newServerDemoCommand(), newServerPruneCommand(&dbPath), newServerBackupCommand(&dbPath), newServerStatsCommand(&dbPath))
+	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath), newServerDemoCommand(), newServerPruneCommand(&dbPath), newServerBackupCommand(&dbPath), newServerStatsCommand(&dbPath), newServerHostCommand(&dbPath))
 	return cmd
 }
 
@@ -356,4 +356,65 @@ func newServerStatsCommand(dbPath *string) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newServerHostCommand(dbPath *string) *cobra.Command {
+	cmd := &cobra.Command{Use: "host", Short: "List and delete hosts"}
+	list := &cobra.Command{
+		Use:   "list",
+		Short: "List the hosts the server knows",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			store, err := server.OpenStore(*dbPath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			hosts, err := store.HostList(cmd.Context())
+			if err != nil {
+				return err
+			}
+			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
+			fmt.Fprintln(tw, "ID\tNAME\tHOST ID\tLAST SCAN")
+			for _, h := range hosts {
+				fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", h.ID, oneLineCLI(h.Name), orDash(oneLineCLI(h.HostID)), orDash(h.LastScanAt))
+			}
+			return tw.Flush()
+		},
+	}
+	var yes bool
+	del := &cobra.Command{
+		Use:   "delete ID",
+		Short: "Delete a host and all the results received from it",
+		Long: `Delete removes a host and every scan of it. It is for a machine that was re-installed (its host ID
+changed, so the server refuses its results under the old name), or one that was retired. It cannot
+be undone: make a backup first, and pass --yes to confirm.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil || id < 1 {
+				return fmt.Errorf("%q is not a host ID (see: hostlint server host list)", args[0])
+			}
+			if !yes {
+				return errors.New("this deletes the host and all its results for good: add --yes to confirm")
+			}
+			store, err := server.OpenStore(*dbPath)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			ok, err := store.DeleteHost(cmd.Context(), id)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("no host %d", id)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "host %d deleted\n", id)
+			return nil
+		},
+	}
+	del.Flags().BoolVar(&yes, "yes", false, "confirm the deletion")
+	cmd.AddCommand(list, del)
+	return cmd
 }

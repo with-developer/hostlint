@@ -96,3 +96,35 @@ func (s *Store) Stats(ctx context.Context) (Stats, error) {
 	st.Oldest, st.Newest = oldest.String, newest.String
 	return st, err
 }
+
+// DeleteHost removes a host and everything received from it (its scans, with the rows derived from
+// them). It is how an operator lets a re-installed machine, whose host ID changed, start again under
+// the same name. The deletion is audited. It reports whether there was such a host.
+func (s *Store) DeleteHost(ctx context.Context, id int64) (bool, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var name string
+	var scans int
+	err = tx.QueryRowContext(ctx, `SELECT name, (SELECT COUNT(*) FROM scans WHERE host_row = hosts.id) FROM hosts WHERE id = ?`, id).Scan(&name, &scans)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts WHERE id = ?`, id); err != nil {
+		return false, err
+	}
+	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-deleted", fmt.Sprintf("host %d %s with %d scans", id, name, scans), ""); err != nil {
+		return false, err
+	}
+	return true, tx.Commit()
+}
+
+// Hosts of the database as `hostlint server host list` shows them.
+func (s *Store) HostList(ctx context.Context) ([]HostSummary, error) {
+	return s.allHosts(ctx, "", 0, 0)
+}
