@@ -5,7 +5,8 @@ title_ko: 소유자·그룹이 없는 파일 없음
 severity: high
 description: >-
   Lists files and directories on local filesystems whose owner or group has no account in
-  /etc/passwd or /etc/group.
+  /etc/passwd or /etc/group. Accounts that only a directory service (LDAP, SSSD, NIS) provides
+  are not looked up, so files they own are listed too.
 rationale: >-
   A file left behind by a deleted account belongs to whoever is next given its UID or GID.
 remediation: Give each listed file an owner and group (`chown`), or remove it.

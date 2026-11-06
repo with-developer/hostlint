@@ -619,7 +619,7 @@ Checks that /etc/syslog.conf, /etc/rsyslog.conf and /etc/rsyslog.d/*.conf are ow
 
 No files without an owner (소유자·그룹이 없는 파일 없음) — severity high, lists what violates it.
 
-Lists files and directories on local filesystems whose owner or group has no account in /etc/passwd or /etc/group.
+Lists files and directories on local filesystems whose owner or group has no account in /etc/passwd or /etc/group. Accounts that only a directory service (LDAP, SSSD, NIS) provides are not looked up, so files they own are listed too.
 
 **Why.** A file left behind by a deleted account belongs to whoever is next given its UID or GID.
 

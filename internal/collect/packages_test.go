@@ -2,6 +2,7 @@ package collect
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -146,5 +147,19 @@ func TestPackagesDpkgDamagedStanza(t *testing.T) {
 		if err != nil || f.Complete || len(f.Skipped) != 1 || !strings.Contains(f.Skipped[0], "/var/lib/dpkg/status:1") {
 			t.Errorf("%s: complete %v, skipped %v, err %v; want one note at the stanza", name, f.Complete, f.Skipped, err)
 		}
+	}
+}
+
+// A status file larger than a plain read allows is still read.
+func TestPackagesDpkgBigStatus(t *testing.T) {
+	stanza := "Package: pkg%d\nStatus: install ok installed\nArchitecture: amd64\nVersion: 1.0\nDescription: " + strings.Repeat("x", 900) + "\n\n"
+	var b strings.Builder
+	for i := 0; b.Len() < hostfs.MaxReadSize+1<<20; i++ {
+		fmt.Fprintf(&b, stanza, i)
+	}
+	m := hostfs.NewMemFS().AddFile(dpkgStatus, b.String(), 0o644, 0, 0)
+	p, err := packagesFacts(t, hostfs.NewTestHost(m, nil, false))
+	if err != nil || len(p.Installed) < 16000 {
+		t.Fatalf("%d packages, err %v", len(p.Installed), err)
 	}
 }

@@ -149,12 +149,15 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 		fsf.Excluded = append(fsf.Excluded, p+" (automount)")
 	}
 
-	// /dev on its own: only regular files matter there.
+	// /dev on its own: regular files and odd names matter there.
 	devSkip := func(p string) bool { return p == "/dev/shm" || p == "/dev/mqueue" || skip(p) }
 	devRes, err := hostfs.Walk(ctx, h.FS, "/dev", hostfs.WalkOptions{MaxEntries: 200_000, MaxDepth: 8, Timeout: budget(), Skip: devSkip},
 		func(fi hostfs.FileInfo) error {
 			if fi.IsRegular() {
 				w.add(&fsf.DevFiles, "dev_files", fi)
+			}
+			if isOddName(path.Base(fi.Path)) { // "..." is a place to hide files in /dev too
+				w.add(&w.facts.OddNames, "odd_names", fi)
 			}
 			return nil
 		})
@@ -244,7 +247,7 @@ func isOddName(name string) bool {
 func (w *walker) add(list *[]FileEntry, field string, fi hostfs.FileInfo) {
 	if len(*list) >= walkMaxListed {
 		if !w.partial[field] {
-			w.markPartial([]string{fmt.Sprintf("more than %d entries; the rest are not listed", walkMaxListed)}, field)
+			w.markPartial([]string{fmt.Sprintf("more than %d %s entries; the rest are not listed", walkMaxListed, field)}, field)
 		}
 		return
 	}

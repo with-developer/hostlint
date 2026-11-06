@@ -166,3 +166,12 @@ func TestIsOddName(t *testing.T) {
 		}
 	}
 }
+
+// A directory named "..." in /dev is found as well.
+func TestFilesystemOddNameInDev(t *testing.T) {
+	m := fsTree().AddDir("/dev/...", 0o755, 0, 0)
+	got := collectFS(t, hostfs.NewTestHost(m, nil, false)).Value.(*Filesystem)
+	if !strings.Contains(paths(got.OddNames), "/dev/...") {
+		t.Errorf("odd names = %s", paths(got.OddNames))
+	}
+}

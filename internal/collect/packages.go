@@ -3,6 +3,7 @@ package collect
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/hostfs"
@@ -78,8 +80,8 @@ func (packagesCollector) Type() reflect.Type    { return reflect.TypeFor[Package
 // A database format that is not read (ndb on SUSE) leaves the targets without
 // package facts, and checks that read them are ERROR, never shown an empty
 // list.
-func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
-	data, err := h.FS.ReadFile(dpkgStatus)
+func (packagesCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, error) {
+	data, err := readBig(h.FS, dpkgStatus)
 	switch {
 	case err == nil:
 		return readDpkg(h.FS, data)
@@ -91,7 +93,7 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 		case err == nil && db.parse == nil:
 			return engine.Facts{}, fmt.Errorf("%s: reading this rpm database format (ndb on SUSE) is not supported yet", db.path)
 		case err == nil:
-			return readRPM(h.FS, db)
+			return readRPM(ctx, h.FS, db)
 		case !errors.Is(err, fs.ErrNotExist):
 			return engine.Facts{}, err
 		}
@@ -102,7 +104,7 @@ func (packagesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 // readRPM reads an rpm database with parse. Changes still in the write-ahead
 // log or a rollback journal of a SQLite database are not in the file yet: the
 // list may be outdated.
-func readRPM(fsys hostfs.FS, rdb rpmDatabase) (engine.Facts, error) {
+func readRPM(ctx context.Context, fsys hostfs.FS, rdb rpmDatabase) (engine.Facts, error) {
 	db := rdb.path
 	// rpm may be writing the live database: read it again when its size or
 	// time changed while it was read, so the pages are not from two states.
@@ -125,6 +127,11 @@ func readRPM(fsys hostfs.FS, rdb rpmDatabase) (engine.Facts, error) {
 		if attempt == 2 {
 			return engine.Facts{}, fmt.Errorf("%s: changed while being read (is rpm running?)", db)
 		}
+		select { // let a transaction go on before reading again
+		case <-ctx.Done():
+			return engine.Facts{}, ctx.Err()
+		case <-time.After(time.Duration(attempt+1) * 500 * time.Millisecond):
+		}
 	}
 	pkgs, err := rdb.parse(data)
 	if err != nil {
@@ -135,7 +142,9 @@ func readRPM(fsys hostfs.FS, rdb rpmDatabase) (engine.Facts, error) {
 		p.Installed[pkg.name] = append(p.Installed[pkg.name], Package{Version: pkg.fullVersion(), Arch: pkg.arch, State: "installed", Source: db})
 	}
 	for _, instances := range p.Installed {
-		slices.SortFunc(instances, func(a, b Package) int { return strings.Compare(a.Arch+" "+a.Version, b.Arch+" "+b.Version) })
+		slices.SortFunc(instances, func(a, b Package) int {
+			return cmp.Or(strings.Compare(a.Arch, b.Arch), strings.Compare(a.Version, b.Version))
+		})
 	}
 	f := engine.Facts{Value: p, Complete: true}
 	for _, suffix := range rdb.pending {

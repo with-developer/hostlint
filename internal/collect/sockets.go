@@ -71,7 +71,7 @@ func (socketsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts
 	}
 	s := &Sockets{Listening: []Socket{}}
 	for _, t := range procNetTables {
-		data, err := h.FS.ReadFile(t.file)
+		data, err := readBig(h.FS, t.file)
 		if err != nil {
 			// tcp6 and udp6 are missing when IPv6 is disabled at boot, and
 			// so are IPv6 sockets; tcp and udp always exist.

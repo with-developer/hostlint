@@ -206,14 +206,14 @@ func (db *sqliteDB) leafPayload(p []byte, off int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: rows hold more than the file", errMalformedDB)
 	}
 	local := db.localSize(total)
-	if off+local > len(p) {
+	if off+local > db.usable {
 		return nil, fmt.Errorf("%w: payload past page", errMalformedDB)
 	}
 	payload := append(make([]byte, 0, total), p[off:off+local]...)
 	if local == total {
 		return payload, nil
 	}
-	if off+local+4 > len(p) {
+	if off+local+4 > db.usable {
 		return nil, fmt.Errorf("%w: overflow pointer past page", errMalformedDB)
 	}
 	next := binary.BigEndian.Uint32(p[off+local:])

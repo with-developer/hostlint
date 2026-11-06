@@ -61,7 +61,7 @@ func (homesCollector) Version() int          { return 1 }
 func (homesCollector) Access() engine.Access { return engine.AccessFilesystem }
 func (homesCollector) Type() reflect.Type    { return reflect.TypeFor[Homes]() }
 
-func (homesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
+func (homesCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts, error) {
 	var skipped []string
 	homes := &Homes{Accounts: []Home{}}
 	seen := map[string]Home{} // accounts often share a home (/, /var/empty)
@@ -69,6 +69,9 @@ func (homesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, 
 		uid, err := strconv.ParseInt(f[2], 10, 64)
 		if err != nil {
 			return errMalformed
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		home := Home{User: f[0], UID: uid, LoginShell: !noLoginShells[f[6]], Path: f[5], StartupFiles: []HomeFile{}}
 		if prev, ok := seen[home.Path]; ok {
@@ -109,6 +112,7 @@ func observeHome(fsys hostfs.FS, home *Home) error {
 	if !fi.IsDir() {
 		return nil
 	}
+	var first error // one file that cannot be looked at does not hide the others
 	for _, name := range startupFiles {
 		file := path.Join(p, name)
 		if pointsToNull(fsys, file) {
@@ -122,11 +126,14 @@ func observeHome(fsys hostfs.FS, home *Home) error {
 			}
 			continue
 		case err != nil:
-			return err
+			if first == nil {
+				first = err
+			}
+			continue
 		}
 		home.StartupFiles = append(home.StartupFiles, HomeFile{Path: file, UID: f.UID, Mode: fmt.Sprintf("%04o", f.Perm())})
 	}
-	return nil
+	return first
 }
 
 // pointsToNull reports whether file is a symbolic link to /dev/null, the way

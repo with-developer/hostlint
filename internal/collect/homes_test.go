@@ -82,3 +82,20 @@ func TestHomesNullLinksSharedHomesAndMoreFiles(t *testing.T) {
 		t.Errorf("shared home: %+v and %+v", accounts[1], accounts[2])
 	}
 }
+
+// One startup file that cannot be looked at is reported, and the files after it are still seen.
+func TestHomesOneUnreadableFileDoesNotHideTheRest(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/passwd", "alice:x:1000:1000::/home/alice:/bin/bash\n", 0o644, 0, 0).
+		AddDir("/home/alice", 0o750, 1000, 1000).
+		AddSymlink("/home/alice/.profile", "/home/alice/.profile"). // a loop: stat fails
+		AddFile("/home/alice/.zshrc", "", 0o666, 1000, 1000)
+	f, err := homesCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil || f.Complete {
+		t.Fatalf("complete %v, err %v", f.Complete, err)
+	}
+	files := f.Value.(*Homes).Accounts[0].StartupFiles
+	if len(files) != 1 || files[0].Path != "/home/alice/.zshrc" || files[0].Mode != "0666" {
+		t.Errorf("startup files = %+v", files)
+	}
+}
