@@ -4,7 +4,7 @@ title: Review the DNS server
 title_ko: DNS 서버 설정 검토
 severity: high
 description: >-
-  Applies when a DNS server is started; then shows how, for a review of its configuration. Not
+  Applies when a DNS server is started; then shows how, and the installed versions of its packages, for a review of its configuration. Not
   applicable otherwise.
 rationale: >-
   Zone transfers map your network for attackers, and open dynamic updates let them change it.
@@ -16,13 +16,24 @@ manual:
   guidance: >-
     Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
   show: >-
-    services.started.filter(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+    services.started.filter(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source) +
+    ["bind9", "bind", "bind-chroot", "unbound", "pdns", "pdns-server", "knot", "nsd"]
+      .filter(n, n in packages.installed && size(packages.installed[n]) > 0)
+      .map(n, "package " + n + " " + packages.installed[n][0].version)
 tests:
   - name: not started
     facts:
       services: {started: []}
+      packages: {manager: dpkg, installed: {}}
     want: NOT_APPLICABLE
   - name: started
+    facts:
+      services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
+      packages: {manager: dpkg, installed: {bind9: [{version: "3.8.6-1build2", arch: amd64, state: installed, source: /var/lib/dpkg/status}]}}
+    want: MANUAL
+  - name: started, and the package list could not be read
+    input: unavailable
+    unavailable: [packages]
     facts:
       services: {started: [{service: named, name: named.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/named.service"}]}
     want: MANUAL

@@ -4,7 +4,7 @@ title: Review the mail server
 title_ko: 메일 서버 설정 검토
 severity: high
 description: >-
-  Applies when a mail server is started; then shows how, for a review of its configuration. Not
+  Applies when a mail server is started; then shows how, and the installed versions of its packages, for a review of its configuration. Not
   applicable otherwise.
 rationale: >-
   An outdated or open mail server is used to send spam and to probe for accounts.
@@ -16,13 +16,24 @@ manual:
   guidance: >-
     Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
   show: >-
-    services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
+    services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source) +
+    ["postfix", "exim4", "exim4-daemon-light", "exim4-daemon-heavy", "exim", "sendmail", "sendmail-bin", "opensmtpd"]
+      .filter(n, n in packages.installed && size(packages.installed[n]) > 0)
+      .map(n, "package " + n + " " + packages.installed[n][0].version)
 tests:
   - name: not started
     facts:
       services: {started: []}
+      packages: {manager: dpkg, installed: {}}
     want: NOT_APPLICABLE
   - name: started
+    facts:
+      services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
+      packages: {manager: dpkg, installed: {postfix: [{version: "3.8.6-1build2", arch: amd64, state: installed, source: /var/lib/dpkg/status}]}}
+    want: MANUAL
+  - name: started, and the package list could not be read
+    input: unavailable
+    unavailable: [packages]
     facts:
       services: {started: [{service: postfix, name: postfix.service, kind: unit, source: "/etc/systemd/system/multi-user.target.wants/postfix.service"}]}
     want: MANUAL

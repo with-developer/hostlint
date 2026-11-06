@@ -849,7 +849,7 @@ Applies when a DNS server other than BIND is started, or BIND is started and has
 
 Review the DNS server (DNS 서버 설정 검토) — severity high, a review (`MANUAL`).
 
-Applies when a DNS server is started; then shows how, for a review of its configuration. Not applicable otherwise.
+Applies when a DNS server is started; then shows how, and the installed versions of its packages, for a review of its configuration. Not applicable otherwise.
 
 **Why.** Zone transfers map your network for attackers, and open dynamic updates let them change it.
 
@@ -889,7 +889,7 @@ Applies when a mail server other than Postfix is started, or Postfix is started 
 
 Review the mail server (메일 서버 설정 검토) — severity high, a review (`MANUAL`).
 
-Applies when a mail server is started; then shows how, for a review of its configuration. Not applicable otherwise.
+Applies when a mail server is started; then shows how, and the installed versions of its packages, for a review of its configuration. Not applicable otherwise.
 
 **Why.** An outdated or open mail server is used to send spam and to probe for accounts.
 
