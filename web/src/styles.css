@@ -270,7 +270,10 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   .hosthead .gauge { grid-column: 1 / -1; }
 }
 @media (max-width: 760px) {
-  .app { grid-template-columns: 1fr; }
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .hero, .hosthead { min-width: 0; }
+  .gauge svg { max-width: 180px; }
+  .legend { justify-content: flex-start; }
   .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: .6rem .9rem; gap: .5rem; }
   .sidebar nav { display: flex; order: 3; width: 100%; overflow-x: auto; }
   .nav-section { display: none; }
