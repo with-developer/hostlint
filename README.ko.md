@@ -1,4 +1,4 @@
-<!-- translated from README.md @ d3dafef -->
+<!-- translated from README.md @ 3cf206c -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)

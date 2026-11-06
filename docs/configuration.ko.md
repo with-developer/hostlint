@@ -1,4 +1,4 @@
-<!-- translated from docs/configuration.md @ b0d2388 -->
+<!-- translated from docs/configuration.md @ 3cf206c -->
 # 설정
 
 hostlint는 설정 없이 동작합니다. `hostlint.yaml`을 두면 프로파일을 고르고, 점검을 더 엄격하게 만들고,
