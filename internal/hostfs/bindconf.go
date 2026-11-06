@@ -219,17 +219,22 @@ func bindTokens(name string, data []byte, count *int) ([]bindTok, error) {
 			toks = append(toks, bindTok{text: string(c), file: name, line: line})
 			i++
 		case c == '"':
+			// A quoted string may continue over lines (the keys of named.root.key).
 			j := i + 1
-			for j < len(data) && data[j] != '"' && data[j] != '\n' {
-				if data[j] == '\\' {
+			startLine := line
+			for j < len(data) && data[j] != '"' {
+				switch data[j] {
+				case '\\':
 					j++
+				case '\n':
+					line++
 				}
 				j++
 			}
 			if j >= len(data) || data[j] != '"' {
-				return nil, fmt.Errorf("%s:%d: unterminated string", name, line)
+				return nil, fmt.Errorf("%s:%d: unterminated string", name, startLine)
 			}
-			toks = append(toks, bindTok{text: string(data[i+1 : j]), file: name, line: line, str: true})
+			toks = append(toks, bindTok{text: string(data[i+1 : j]), file: name, line: startLine, str: true})
 			i = j + 1
 		default:
 			j := i

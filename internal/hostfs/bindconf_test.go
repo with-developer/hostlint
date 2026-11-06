@@ -132,6 +132,17 @@ func TestBindIncludesAndLocalZones(t *testing.T) {
 	}
 }
 
+// A quoted string may span lines: the trust anchors of EL7's named.root.key do.
+func TestBindMultiLineString(t *testing.T) {
+	cfg := readBind(t, map[string]string{
+		"/etc/named.conf":     "include \"/etc/named.root.key\";\nzone \"a\" { type master; allow-transfer { none; }; };\n",
+		"/etc/named.root.key": "managed-keys {\n  . initial-key 257 3 8 \"AwEAAagAIKlVZrpC\n     FVQUTf6v58fLjwBd\n     QxA+Uk1ihz0=\";\n};\n",
+	})
+	if len(cfg.Skipped) != 0 || len(cfg.Zones) != 1 || cfg.Zones[0].Transfer != "none" || !strings.HasSuffix(cfg.Zones[0].Where, "named.conf:2") {
+		t.Errorf("zones %+v, skipped %v", cfg.Zones, cfg.Skipped)
+	}
+}
+
 func TestBindMoreForms(t *testing.T) {
 	tests := []struct {
 		name, conf, transfer, update string

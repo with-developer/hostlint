@@ -30,6 +30,19 @@ func TestSambaPackagedConfiguration(t *testing.T) {
 	}
 }
 
+// Rocky Linux 9's smb.conf includes usershares.conf, which does not exist until a user share is made.
+func TestSambaRockyConfiguration(t *testing.T) {
+	s, complete := collectSamba(t, fixtureFS(t, "rocky-9"))
+	if !s.Present || !complete {
+		t.Errorf("%+v complete %v", s, complete)
+	}
+	for _, sh := range s.Shares {
+		if sh.Guest {
+			t.Errorf("share %+v", sh)
+		}
+	}
+}
+
 func TestSambaGuestShares(t *testing.T) {
 	tests := []struct {
 		name, conf string
@@ -72,12 +85,26 @@ func TestSambaWhere(t *testing.T) {
 	}
 }
 
+// An include is read in place; a missing one is ignored (RHEL's smb.conf names usershares.conf).
+func TestSambaIncludes(t *testing.T) {
+	m := smbConf("[global]\n  include = /etc/samba/usershares.conf\n  include = /etc/samba/gone.conf\n[a]\n  include = extra.conf\n").
+		AddFile("/etc/samba/usershares.conf", "[pub]\n  guest ok = yes\n", 0o644, 0, 0).
+		AddFile("/etc/samba/extra.conf", "guest ok = yes\n  include = /etc/samba/smb.conf\n", 0o644, 0, 0)
+	s, complete := collectSamba(t, m)
+	if !complete || len(s.Shares) != 2 || s.Shares[0].Name != "pub" || !s.Shares[0].Guest || s.Shares[1].Name != "a" || !s.Shares[1].Guest {
+		t.Errorf("%+v complete %v", s.Shares, complete)
+	}
+	if !strings.HasSuffix(s.Shares[1].Where, "extra.conf:1") {
+		t.Errorf("where %s", s.Shares[1].Where)
+	}
+}
+
 func TestSambaIncompleteAndAbsent(t *testing.T) {
 	for name, conf := range map[string]string{
-		"an include":         "include = /etc/samba/extra.conf\n[a]\n",
-		"a config file":      "[global]\n  config file = /etc/samba/%m.conf\n",
-		"a value not a bool": "[a]\n  guest ok = maybe\n",
-		"an open bracket":    "[a\n",
+		"an include with a macro": "include = /etc/samba/%m.conf\n[a]\n",
+		"a config file":           "[global]\n  config file = /etc/samba/%m.conf\n",
+		"a value not a bool":      "[a]\n  guest ok = maybe\n",
+		"an open bracket":         "[a\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, complete := collectSamba(t, smbConf(conf)); complete {

@@ -54,12 +54,12 @@ func (sambaCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, 
 		return engine.Facts{}, err
 	}
 	s.Present = true
-	skipped := parseSamba(data, s)
+	skipped, included := parseSamba(h.FS, data, s)
 	// smbd can be started with another file (-s): other .conf files next to
 	// smb.conf may be the ones in use.
 	if entries, err := h.FS.ReadDir("/etc/samba"); err == nil {
 		for _, e := range entries {
-			if e.IsRegular() && strings.HasSuffix(e.Path, ".conf") && e.Path != sambaConfig {
+			if e.IsRegular() && strings.HasSuffix(e.Path, ".conf") && e.Path != sambaConfig && !included[e.Path] {
 				skipped = append(skipped, fmt.Sprintf("%s: another Samba configuration exists; which one is in use is not seen", e.Path))
 			}
 		}
@@ -78,76 +78,38 @@ func sambaBool(v string) (value, ok bool) {
 	return false, false
 }
 
-// parseSamba reads smb.conf: "[section]" lines and "name = value" lines, with
-// ; and # comment lines and a backslash at the end of a line continuing it.
-// A guest default in [global] applies to every share that does not say. It
-// returns what it could not follow (include files).
-func parseSamba(data []byte, s *Samba) (skipped []string) {
-	type share struct{ SambaShare }
-	var shares []share
-	var section string
-	globalGuest, globalWhere := false, "" // the default [global] gives the shares that begin after it
-	var pending strings.Builder
-	start := 0
-	handle := func(text string, line int) {
-		text = strings.TrimSpace(text)
-		switch {
-		case text == "" || text[0] == '#' || text[0] == ';':
-			return
-		case text[0] == '[':
-			end := strings.Index(text, "]")
-			if end < 0 {
-				skipped = append(skipped, fmt.Sprintf("%s:%d: a section without a closing bracket", sambaConfig, line))
-				return
-			}
-			section = strings.TrimSpace(text[1:end])
-			low := strings.ToLower(section)
-			if low != "global" && low != "printers" {
-				// A section named twice is one share: Samba merges them.
-				found := false
-				for _, sh := range shares {
-					found = found || strings.EqualFold(sh.Name, section)
-				}
-				if !found {
-					shares = append(shares, share{
-						SambaShare: SambaShare{Name: section, Guest: globalGuest, Where: globalWhere},
-					})
-					if globalWhere == "" {
-						shares[len(shares)-1].Where = fmt.Sprintf("%s:%d", sambaConfig, line)
-					}
-				}
-			}
-			return
-		}
-		name, value, ok := strings.Cut(text, "=")
-		if !ok {
-			return
-		}
-		// Samba ignores case and spaces in parameter names ("Guest OK", "guestok").
-		key := strings.ToLower(strings.Join(strings.Fields(name), ""))
-		switch key {
-		case "include", "configfile":
-			skipped = append(skipped, fmt.Sprintf("%s:%d: %s is not followed", sambaConfig, line, key))
-		case "guestok", "public":
-			v, ok := sambaBool(value)
-			where := fmt.Sprintf("%s:%d", sambaConfig, line)
-			switch {
-			case !ok:
-				skipped = append(skipped, fmt.Sprintf("%s: %s is not a yes or no value", where, key))
-			case strings.EqualFold(section, "global"):
-				globalGuest, globalWhere = v, where
-			default:
-				for i := range shares {
-					if strings.EqualFold(shares[i].Name, section) {
-						shares[i].Guest, shares[i].Where = v, where
-					}
-				}
-			}
-		}
-	}
+// sambaParser reads smb.conf and the files it includes.
+type sambaParser struct {
+	fsys    hostfs.FS
+	shares  []SambaShare
+	section string
+	// the default [global] gives the shares that begin after it
+	globalGuest bool
+	globalWhere string
+	seen        map[string]bool // the files being read: an include of one of them is a cycle
+	included    map[string]bool // the files that were read
+	files       int
+	skipped     []string
+}
+
+const sambaMaxFiles = 50
+
+// parseSamba reads smb.conf: "[section]" lines and "name = value" lines, with ; and #
+// comment lines and a backslash at the end of a line continuing it. An include
+// is read in place (it continues the current section); one that does not exist is
+// ignored, as Samba does, one whose name has a % macro cannot be followed.
+func parseSamba(fsys hostfs.FS, data []byte, s *Samba) (skipped []string, included map[string]bool) {
+	p := &sambaParser{fsys: fsys, seen: map[string]bool{sambaConfig: true}, included: map[string]bool{}}
+	p.feed(sambaConfig, data, 0)
+	s.Shares = append(s.Shares, p.shares...)
+	return p.skipped, p.included
+}
+
+func (p *sambaParser) feed(name string, data []byte, depth int) {
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
-	line := 0
+	var pending strings.Builder
+	start, line := 0, 0
 	for sc.Scan() {
 		line++
 		text := sc.Text()
@@ -159,17 +121,101 @@ func parseSamba(data []byte, s *Samba) (skipped []string) {
 			continue
 		}
 		pending.WriteString(text)
-		handle(pending.String(), start)
+		p.handle(name, pending.String(), start, depth)
 		pending.Reset()
 	}
 	if pending.Len() > 0 {
-		handle(pending.String(), start)
+		p.handle(name, pending.String(), start, depth)
 	}
 	if err := sc.Err(); err != nil {
-		skipped = append(skipped, fmt.Sprintf("%s:%d: the rest of the file was not read (%v)", sambaConfig, line+1, err))
+		p.skipped = append(p.skipped, fmt.Sprintf("%s:%d: the rest of the file was not read (%v)", name, line+1, err))
 	}
-	for _, sh := range shares {
-		s.Shares = append(s.Shares, sh.SambaShare)
+}
+
+func (p *sambaParser) handle(file, text string, line, depth int) {
+	text = strings.TrimSpace(text)
+	where := fmt.Sprintf("%s:%d", file, line)
+	switch {
+	case text == "" || text[0] == '#' || text[0] == ';':
+		return
+	case text[0] == '[':
+		end := strings.Index(text, "]")
+		if end < 0 {
+			p.skipped = append(p.skipped, where+": a section without a closing bracket")
+			return
+		}
+		p.section = strings.TrimSpace(text[1:end])
+		low := strings.ToLower(p.section)
+		if low == "global" || low == "printers" {
+			return
+		}
+		// A section named twice is one share: Samba merges them.
+		for _, sh := range p.shares {
+			if strings.EqualFold(sh.Name, p.section) {
+				return
+			}
+		}
+		sh := SambaShare{Name: p.section, Guest: p.globalGuest, Where: p.globalWhere}
+		if sh.Where == "" {
+			sh.Where = where
+		}
+		p.shares = append(p.shares, sh)
+		return
 	}
-	return skipped
+	name, value, ok := strings.Cut(text, "=")
+	if !ok {
+		return
+	}
+	// Samba ignores case and spaces in parameter names ("Guest OK", "guestok").
+	key := strings.ToLower(strings.Join(strings.Fields(name), ""))
+	switch key {
+	case "include":
+		p.include(strings.TrimSpace(value), where, depth)
+	case "configfile":
+		p.skipped = append(p.skipped, fmt.Sprintf("%s: config file is not followed", where))
+	case "guestok", "public":
+		v, ok := sambaBool(value)
+		switch {
+		case !ok:
+			p.skipped = append(p.skipped, fmt.Sprintf("%s: %s is not a yes or no value", where, key))
+		case strings.EqualFold(p.section, "global"):
+			p.globalGuest, p.globalWhere = v, where
+		default:
+			for i := range p.shares {
+				if strings.EqualFold(p.shares[i].Name, p.section) {
+					p.shares[i].Guest, p.shares[i].Where = v, where
+				}
+			}
+		}
+	}
+}
+
+func (p *sambaParser) include(file, where string, depth int) {
+	file = strings.Trim(file, `"`)
+	switch {
+	case strings.Contains(file, "%"):
+		p.skipped = append(p.skipped, fmt.Sprintf("%s: include %s has a macro and is not followed", where, file))
+		return
+	case !strings.HasPrefix(file, "/"):
+		file = "/etc/samba/" + file
+	}
+	switch {
+	case p.seen[file]:
+		return // a cycle
+	case depth >= 8 || p.files >= sambaMaxFiles:
+		p.skipped = append(p.skipped, where+": too many included files")
+		return
+	}
+	data, err := p.fsys.ReadFile(file)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return // Samba ignores a file that is not there
+	case err != nil:
+		p.skipped = append(p.skipped, fmt.Sprintf("%s: %v", file, err))
+		return
+	}
+	p.files++
+	p.seen[file], p.included[file] = true, true
+	p.feed(file, data, depth+1)
+	delete(p.seen, file)
 }
