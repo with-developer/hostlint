@@ -544,7 +544,10 @@ func readSecretFile(path string) ([]byte, error) {
 	if fi.Mode().Perm()&0o077 != 0 {
 		return nil, fmt.Errorf("%s is readable by other users: chmod 600 it", path)
 	}
-	data, err := io.ReadAll(io.LimitReader(f, 4096))
+	if fi.Size() > 4096 {
+		return nil, fmt.Errorf("%s is larger than 4096 bytes: a secret of that size is a mistake", path)
+	}
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

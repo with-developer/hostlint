@@ -155,3 +155,68 @@ func TestValidateWebhookURL(t *testing.T) {
 		}
 	}
 }
+
+// Enabling the webhook reports no history, not even the hosts that are silent already; an event the
+// webhook refuses for good does not hold back the ones after it; a scan that reuses a deleted row's ID
+// is still seen.
+func TestNotifierBaselineRejectionAndReusedRows(t *testing.T) {
+	sink := &hookSink{}
+	ts := httptest.NewServer(sink)
+	defer ts.Close()
+	f := newAPIFixture(t) // three scans an hour apart, then the clock moves
+	ingest := token(t, f.store, ScopeIngest, "")
+	f.store.now = func() time.Time { return f.clock }
+	n := &Notifier{Store: f.store, Hook: &Webhook{URL: ts.URL}, StaleAfter: 24 * time.Hour}
+	ctx := context.Background()
+
+	f.clock = f.clock.Add(10 * 24 * time.Hour) // every host is silent when the webhook is first enabled
+	if err := n.Tick(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if evs := sink.take(); len(evs) != 0 {
+		t.Errorf("history was reported: %+v", evs)
+	}
+
+	// The newest scan is deleted with its host, a new scan reuses the row: it is still looked at.
+	ingestAt(t, f, ingest, 1, f.clock) // web-01, after the old state
+	if err := n.Tick(ctx); err != nil {
+		t.Fatal(err)
+	}
+	sink.take()
+	var id int64
+	if err := f.store.db.QueryRow(`SELECT MAX(id) FROM scans`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	var host int64
+	if err := f.store.db.QueryRow(`SELECT host_row FROM scans WHERE id = ?`, id).Scan(&host); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.DeleteHost(ctx, host); err != nil {
+		t.Fatal(err)
+	}
+	f.clock = f.clock.Add(time.Hour)
+	for _, name := range []string{"web-01-old.json", "web-01.json"} {
+		if code, out := post(t, f.srv, ingest, fixture(t, name)); code != http.StatusCreated {
+			t.Fatalf("%s: %d %v", name, code, out)
+		}
+		f.clock = f.clock.Add(time.Hour)
+	}
+	// A webhook that refuses the event for good (400) is not asked again, and the next tick is quiet.
+	sink.mu.Lock()
+	sink.status = 400
+	sink.mu.Unlock()
+	if err := n.Tick(ctx); err != nil {
+		t.Fatalf("a refused event wedged the notifier: %v", err)
+	}
+	sink.mu.Lock()
+	sink.status = 0
+	sink.mu.Unlock()
+	if err := n.Tick(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range sink.take() {
+		if e.Event == "regression" {
+			t.Errorf("a refused event was sent again: %+v", e)
+		}
+	}
+}

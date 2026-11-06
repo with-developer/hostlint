@@ -215,7 +215,11 @@ loopback address); it is read from `--webhook-url` or `HOSTLINT_WEBHOOK_URL` (pr
 webhook URL is a secret, and it is never logged). Redirects are not followed.
 
 Delivery is at least once: an event is retried every 30 seconds until the webhook answers 2xx, and nothing
-that happened before the webhook was enabled is reported. Receivers should tolerate a repeat.
+that happened before the webhook was enabled is reported (hosts that are silent already included). An answer
+of 4xx (other than 408 and 429) means the event is refused for good: it is logged and dropped, so it does not
+hold back the rest. Every event has an `id`, also sent as `X-Hostlint-Delivery`, that is the same for every
+delivery of it: use it to drop repeats. A control that the host's previous scan did not have (a new rule or
+profile) is not reported as a regression.
 
 ## Hosts
 

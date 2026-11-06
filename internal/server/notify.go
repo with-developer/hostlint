@@ -52,6 +52,7 @@ func ValidateWebhookURL(raw string) error {
 // (Slack, Mattermost, Discord's Slack-compatible endpoint) show as it is. It carries control IDs and
 // statuses only, never evidence.
 type Event struct {
+	ID        string           `json:"id"`    // the same for every delivery of one event: receivers can drop repeats
 	Event     string           `json:"event"` // "regression" or "stale"
 	Text      string           `json:"text"`
 	At        string           `json:"at"`
@@ -87,6 +88,7 @@ func (w *Webhook) Send(ctx context.Context, ev Event) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "hostlint-server")
+	req.Header.Set("X-Hostlint-Delivery", ev.ID)
 	if len(w.Secret) > 0 {
 		mac := hmac.New(sha256.New, w.Secret)
 		mac.Write(body)
@@ -106,7 +108,11 @@ func (w *Webhook) Send(ctx context.Context, ev Event) error {
 	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode <= 299:
+	case resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusRequestTimeout && resp.StatusCode != http.StatusTooManyRequests:
+		return fmt.Errorf("%w: it answered %d", ErrRejected, resp.StatusCode)
+	default:
 		return fmt.Errorf("the webhook answered %d", resp.StatusCode)
 	}
 	return nil
@@ -149,8 +155,28 @@ func (s *Store) setState(ctx context.Context, name, value string) error {
 	return err
 }
 
+// ErrRejected means the webhook refused an event for good (a 4xx answer other than "too many requests"
+// and "timeout"): sending it again would not help, and it must not hold back what follows.
+var ErrRejected = errors.New("the webhook rejected the event")
+
+// scanBatch is how many scans one pass looks at; a full batch is followed by another pass at once.
+const scanBatch = 200
+
+// cursor is a position among the scans: when one was received, and its row. Row IDs alone are not
+// enough, SQLite reuses them after a delete, but a scan received later is always after the cursor.
+func cursor(at string, id int64) string { return at + "|" + strconv.FormatInt(id, 10) }
+
+func parseCursor(v string) (at string, id int64, err error) {
+	at, rest, ok := strings.Cut(v, "|")
+	if !ok {
+		return "", 0, errors.New("the notification cursor is damaged")
+	}
+	id, err = strconv.ParseInt(rest, 10, 64)
+	return at, id, err
+}
+
 // Tick reports what is new since the last tick. Enabling the webhook does not report history: the
-// cursor starts at the newest scan.
+// cursor starts at the newest scan, and the hosts that are silent already are taken as reported.
 func (n *Notifier) Tick(ctx context.Context) error {
 	st := n.Store
 	cur, ok, err := st.state(ctx, "scan-cursor")
@@ -158,68 +184,112 @@ func (n *Notifier) Tick(ctx context.Context) error {
 		return err
 	}
 	if !ok {
-		var newest sql.NullInt64
-		if err := st.db.QueryRowContext(ctx, `SELECT MAX(id) FROM scans`).Scan(&newest); err != nil {
+		var at string
+		var id int64
+		err := st.db.QueryRowContext(ctx, `SELECT received_at, id FROM scans ORDER BY received_at DESC, id DESC LIMIT 1`).Scan(&at, &id)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		cur = strconv.FormatInt(newest.Int64, 10)
+		cur = cursor(at, id)
 		if err := st.setState(ctx, "scan-cursor", cur); err != nil {
 			return err
 		}
+		qs, err := n.quietHosts(ctx)
+		if err != nil {
+			return err
+		}
+		for _, q := range qs {
+			if err := st.setState(ctx, q.stateName(), q.stateValue()); err != nil {
+				return err
+			}
+		}
 	}
-	cursor, err := strconv.ParseInt(cur, 10, 64)
+	for {
+		full, err := n.scanPass(ctx, cur)
+		if err != nil {
+			return err
+		}
+		if !full {
+			break
+		}
+		if cur, _, err = st.state(ctx, "scan-cursor"); err != nil {
+			return err
+		}
+	}
+	return n.tickStale(ctx)
+}
+
+// scanPass reports the regressions of the next batch of scans after the cursor, and says whether the batch was full.
+func (n *Notifier) scanPass(ctx context.Context, cur string) (bool, error) {
+	st := n.Store
+	curAt, curID, err := parseCursor(cur)
 	if err != nil {
-		return fmt.Errorf("the notification cursor is damaged: %w", err)
+		return false, err
 	}
 	type newScan struct {
 		id, host     int64
 		scan, name   string
-		hostID       string
-		scanned      string
+		hostID, recv string
 		hasPredecess bool
 	}
 	rs, err := st.db.QueryContext(ctx, `
-		SELECT s.id, s.host_row, s.scan_id, h.name, h.host_id, s.started_at,
+		SELECT s.id, s.host_row, s.scan_id, h.name, h.host_id, s.received_at,
 		       EXISTS (SELECT 1 FROM scans p WHERE p.host_row = s.host_row AND (p.received_at, p.id) < (s.received_at, s.id))
-		FROM scans s JOIN hosts h ON h.id = s.host_row WHERE s.id > ? ORDER BY s.id LIMIT 200`, cursor)
+		FROM scans s JOIN hosts h ON h.id = s.host_row WHERE (s.received_at, s.id) > (?, ?) ORDER BY s.received_at, s.id LIMIT ?`, curAt, curID, scanBatch)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var scans []newScan
 	for rs.Next() {
 		var x newScan
-		if err := rs.Scan(&x.id, &x.host, &x.scan, &x.name, &x.hostID, &x.scanned, &x.hasPredecess); err != nil {
+		if err := rs.Scan(&x.id, &x.host, &x.scan, &x.name, &x.hostID, &x.recv, &x.hasPredecess); err != nil {
 			_ = rs.Close()
-			return err
+			return false, err
 		}
 		scans = append(scans, x)
 	}
 	if err := rs.Err(); err != nil {
-		return err
+		return false, err
 	}
 	_ = rs.Close()
-	for _, x := range scans {
+	var done *newScan // the last scan that is dealt with; the cursor is written once, also when a send fails
+	save := func() error {
+		if done == nil {
+			return nil
+		}
+		return st.setState(ctx, "scan-cursor", cursor(done.recv, done.id))
+	}
+	for i, x := range scans {
 		if x.hasPredecess {
 			reg, err := st.regressedIn(ctx, x.id, x.host)
 			if err != nil {
-				return err
+				return false, err
 			}
 			if len(reg) > 0 {
-				ev := Event{Event: "regression", At: st.stamp(), Host: x.name, HostID: x.hostID, Scan: x.scan, Regressed: reg}
+				ev := Event{ID: fmt.Sprintf("regression-%s-%d", x.recv, x.id), Event: "regression", At: st.stamp(), Host: x.name, HostID: x.hostID, Scan: x.scan, Regressed: reg}
 				if len(reg) > maxRegressedInEvent {
 					ev.More, ev.Regressed = len(reg)-maxRegressedInEvent, reg[:maxRegressedInEvent]
 				}
 				ev.Text = fmt.Sprintf("hostlint: %s got worse: %d control(s) now fail (%s)", x.name, len(reg), joinIDs(reg))
 				if err := n.Hook.Send(ctx, ev); err != nil {
-					return err
+					if !errors.Is(err, ErrRejected) {
+						if serr := save(); serr != nil {
+							return false, serr
+						}
+						return false, err
+					}
+					if n.Logger != nil {
+						n.Logger.Error("webhook dropped an event", "event", ev.ID, "error", err)
+					}
 				}
 			}
 		}
-		if err := st.setState(ctx, "scan-cursor", strconv.FormatInt(x.id, 10)); err != nil {
-			return err
-		}
+		done = &scans[i]
 	}
-	return n.tickStale(ctx)
+	if err := save(); err != nil {
+		return false, err
+	}
+	return len(scans) == scanBatch, nil
 }
 
 func joinIDs(reg []RegressedEntry) string {
@@ -235,14 +305,15 @@ func joinIDs(reg []RegressedEntry) string {
 }
 
 // regressedIn lists the controls that are FAIL or ERROR in a scan and were not in the host's scan before it.
+// A control the previous scan did not have (a new rule, another profile) is not a regression of the host.
 func (s *Store) regressedIn(ctx context.Context, scanRow, hostRow int64) ([]RegressedEntry, error) {
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT c.profile, c.control_id, c.title, c.severity, COALESCE(p.status, ''), c.status
+		SELECT c.profile, c.control_id, c.title, c.severity, p.status, c.status
 		FROM scans cur
 		JOIN scans prev ON prev.id = (SELECT id FROM scans WHERE host_row = cur.host_row AND (received_at, id) < (cur.received_at, cur.id) ORDER BY received_at DESC, id DESC LIMIT 1)
 		JOIN scan_controls c ON c.scan_row = cur.id AND c.status IN ('FAIL', 'ERROR')
 		LEFT JOIN scan_controls p ON p.scan_row = prev.id AND p.profile = c.profile AND p.control_id = c.control_id
-		WHERE cur.id = ? AND cur.host_row = ? AND (p.status IS NULL OR p.status NOT IN ('FAIL', 'ERROR'))
+		WHERE cur.id = ? AND cur.host_row = ? AND p.status IS NOT NULL AND p.status NOT IN ('FAIL', 'ERROR')
 		ORDER BY c.profile, c.control_id`, scanRow, hostRow)
 	if err != nil {
 		return nil, err
@@ -259,8 +330,16 @@ func (s *Store) regressedIn(ctx context.Context, scanRow, hostRow int64) ([]Regr
 	return out, rs.Err()
 }
 
-// tickStale reports the hosts whose latest scan is older than StaleAfter, once per latest scan.
-func (n *Notifier) tickStale(ctx context.Context) error {
+type quiet struct {
+	host, scan             int64
+	name, hostID, received string
+}
+
+func (q quiet) stateName() string  { return "silent-" + strconv.FormatInt(q.host, 10) }
+func (q quiet) stateValue() string { return q.received + "|" + strconv.FormatInt(q.scan, 10) }
+
+// quietHosts lists the hosts whose latest scan is older than StaleAfter.
+func (n *Notifier) quietHosts(ctx context.Context) ([]quiet, error) {
 	st := n.Store
 	after := n.StaleAfter
 	if after <= 0 {
@@ -269,40 +348,44 @@ func (n *Notifier) tickStale(ctx context.Context) error {
 	cutoff := st.now().UTC().Add(-after).Format(stampLayout)
 	rs, err := st.db.QueryContext(ctx, `SELECT h.id, h.name, h.host_id, l.id, s.received_at FROM hosts h JOIN (`+latestScans+`) l ON l.host_row = h.id JOIN scans s ON s.id = l.id WHERE s.received_at < ? ORDER BY h.id`, cutoff)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	type quiet struct {
-		host, scan             int64
-		name, hostID, received string
-	}
+	defer rs.Close()
 	var qs []quiet
 	for rs.Next() {
 		var q quiet
 		if err := rs.Scan(&q.host, &q.name, &q.hostID, &q.scan, &q.received); err != nil {
-			_ = rs.Close()
-			return err
+			return nil, err
 		}
 		qs = append(qs, q)
 	}
-	if err := rs.Err(); err != nil {
+	return qs, rs.Err()
+}
+
+// tickStale reports the hosts that went silent, once for each of their latest scans (the time it was
+// received is kept with its row, which SQLite can reuse).
+func (n *Notifier) tickStale(ctx context.Context) error {
+	st := n.Store
+	qs, err := n.quietHosts(ctx)
+	if err != nil {
 		return err
 	}
-	_ = rs.Close()
 	for _, q := range qs {
-		name := "silent-" + strconv.FormatInt(q.host, 10)
-		last, _, err := st.state(ctx, name)
+		last, _, err := st.state(ctx, q.stateName())
 		if err != nil {
 			return err
 		}
-		if last == strconv.FormatInt(q.scan, 10) {
+		if last == q.stateValue() {
 			continue
 		}
-		ev := Event{Event: "stale", At: st.stamp(), Host: q.name, HostID: q.hostID, LastScan: q.received,
+		ev := Event{ID: "stale-" + q.stateName() + "-" + q.stateValue(), Event: "stale", At: st.stamp(), Host: q.name, HostID: q.hostID, LastScan: q.received,
 			Text: fmt.Sprintf("hostlint: %s has not reported since %s", q.name, q.received)}
-		if err := n.Hook.Send(ctx, ev); err != nil {
+		if err := n.Hook.Send(ctx, ev); err != nil && !errors.Is(err, ErrRejected) {
 			return err
+		} else if err != nil && n.Logger != nil {
+			n.Logger.Error("webhook dropped an event", "event", ev.ID, "error", err)
 		}
-		if err := st.setState(ctx, name, strconv.FormatInt(q.scan, 10)); err != nil {
+		if err := st.setState(ctx, q.stateName(), q.stateValue()); err != nil {
 			return err
 		}
 	}
