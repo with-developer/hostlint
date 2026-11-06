@@ -17,13 +17,24 @@ case " $ID ${ID_LIKE:-} " in
 	;;
 esac
 
+# The package mirrors fail now and then: try a command three times before giving up.
+retry() {
+	attempt=1
+	until "$@"; do
+		[ "$attempt" -ge 3 ] && return 1
+		attempt=$((attempt + 1))
+		echo "harden.sh: retrying (attempt $attempt): $*" >&2
+		sleep 10
+	done
+}
+
 # Packages: password quality, time synchronization, an SSH server, and on
 # EL the PAM configuration tool.
 case $family in
 debian)
 	export DEBIAN_FRONTEND=noninteractive
-	apt-get update -qq
-	apt-get install -y -qq --no-install-recommends libpam-pwquality chrony openssh-server >/dev/null
+	retry apt-get update -qq
+	retry apt-get install -y -qq --no-install-recommends libpam-pwquality chrony openssh-server >/dev/null
 	rm -rf /var/lib/apt/lists/*
 	;;
 rhel)
@@ -34,11 +45,11 @@ rhel)
 			-e 's|^#\{0,1\}baseurl=http://mirror.centos.org/centos/$releasever|baseurl=https://vault.centos.org/7.9.2009|' \
 			-e 's|^#\{0,1\}baseurl=http://mirror.centos.org/altarch/$releasever|baseurl=https://vault.centos.org/altarch/7.9.2009|' \
 			/etc/yum.repos.d/CentOS-*.repo
-		yum -q -y install chrony openssh-server >/dev/null
+		retry yum -q -y install chrony openssh-server >/dev/null
 		yum clean all >/dev/null
 	else
 		# The minimal images lack passwd (its PAM service) and su.
-		dnf -q -y install authselect pam libpwquality passwd util-linux chrony openssh-server >/dev/null
+		retry dnf -q -y install authselect pam libpwquality passwd util-linux chrony openssh-server >/dev/null
 		dnf clean all >/dev/null
 	fi
 	;;
