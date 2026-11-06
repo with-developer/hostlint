@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/output"
 )
 
@@ -21,7 +22,7 @@ type apiHandler func(w http.ResponseWriter, r *http.Request)
 func (s *Server) readAPI(next apiHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		remote := remoteAddr(r)
-		if !s.limiter.allow("ip:"+remote, s.cfg.Rate*10) {
+		if !s.limiter.allow("rip:"+remote, s.cfg.Rate*10) {
 			w.Header().Set("Retry-After", "60")
 			writeError(w, http.StatusTooManyRequests, "too many requests from this address")
 			return
@@ -109,9 +110,7 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	format := q.Get("format")
-	if format == "csv" {
-		f.Limit, f.Offset = 500, 0
-	}
+	f.All = format == "csv" // the export is every host that matches
 	hosts, total, err := s.cfg.Store.Hosts(r.Context(), f)
 	if err != nil {
 		s.fail(w, err)
@@ -208,7 +207,11 @@ func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
 		}
 		ids[i] = n
 	}
-	var results [2]*output.DiffInput
+	type scan struct {
+		name   string
+		result *engine.Result
+	}
+	var scans [2]scan
 	for i, id := range ids {
 		doc, err := s.cfg.Store.ScanDoc(r.Context(), id)
 		if errors.Is(err, ErrNotFound) {
@@ -224,7 +227,7 @@ func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, fmt.Errorf("stored scan %d: %w", id, err))
 			return
 		}
-		results[i] = &output.DiffInput{Name: fmt.Sprintf("scan %d", id), Result: res}
+		scans[i] = scan{fmt.Sprintf("scan %d", id), res}
 	}
-	writeJSON(w, http.StatusOK, output.DiffResults(results[0].Name, results[0].Result, results[1].Name, results[1].Result))
+	writeJSON(w, http.StatusOK, output.DiffResults(scans[0].name, scans[0].result, scans[1].name, scans[1].result))
 }

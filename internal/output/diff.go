@@ -56,12 +56,6 @@ type Diff struct {
 // bad is a status that says something is wrong or could not be decided.
 func bad(s engine.Status) bool { return s == engine.StatusFail || s == engine.StatusError }
 
-// DiffInput is a named result to compare.
-type DiffInput struct {
-	Name   string
-	Result *engine.Result
-}
-
 // DiffResults compares an older and a newer result. A control regressed when it is FAIL
 // or ERROR now and was not before, or when a check of it went wrong while the control's
 // status stayed the same; it is fixed when it was FAIL or ERROR and is not any more. A

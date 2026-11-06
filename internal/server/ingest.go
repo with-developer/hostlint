@@ -196,7 +196,7 @@ func (s *Server) reject(ctx context.Context, credID int64, remote, action, detai
 
 func (s *Server) fail(w http.ResponseWriter, err error) {
 	s.cfg.Logger.Error("request failed", "error", err)
-	writeError(w, http.StatusInternalServerError, "the server could not store the result")
+	writeError(w, http.StatusInternalServerError, "the server could not complete the request")
 }
 
 // checkLimits bounds a result that passed ReadResult, which only checks that it is well formed.

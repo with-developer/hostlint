@@ -52,6 +52,7 @@ type HostFilter struct {
 	StaleAfter time.Duration // a host that has not reported for this long is stale (7 days when 0)
 	Limit      int           // 100 when 0, at most 500
 	Offset     int
+	All        bool // every match: no paging (the export)
 }
 
 const latestScans = `SELECT id, host_row FROM scans s WHERE id = (SELECT id FROM scans WHERE host_row = s.host_row ORDER BY received_at DESC, id DESC LIMIT 1)`
@@ -83,7 +84,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 		return nil, err
 	}
 	_ = rs.Close()
-	counts, err := s.countsOfLatestScans(ctx)
+	counts, err := s.countsOfLatestScans(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +120,9 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 		out = append(out, h)
 	}
 	total := len(out)
+	if f.All {
+		return out, total, nil
+	}
 	if f.Offset >= len(out) {
 		return []HostSummary{}, total, nil
 	}
@@ -130,10 +134,11 @@ func likeEscape(s string) string {
 }
 
 // countsOfLatestScans counts the controls of every host's latest scan by status, by scan row.
-func (s *Store) countsOfLatestScans(ctx context.Context) (map[int64]Counts, error) {
+func (s *Store) countsOfLatestScans(ctx context.Context, hostRow int64) (map[int64]Counts, error) {
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT c.scan_row, c.status, COUNT(*) FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
-		GROUP BY c.scan_row, c.status`)
+		WHERE ? = 0 OR l.host_row = ?
+		GROUP BY c.scan_row, c.status`, hostRow, hostRow)
 	if err != nil {
 		return nil, err
 	}
@@ -212,8 +217,9 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration) (*
 	d.Scans = []ScanRow{}
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT s.id, s.received_at, s.started_at, s.tool_version, c.status, COUNT(c.status)
-		FROM scans s LEFT JOIN scan_controls c ON c.scan_row = s.id
-		WHERE s.host_row = ? GROUP BY s.id, c.status ORDER BY s.received_at DESC, s.id DESC LIMIT 200`, id)
+		FROM (SELECT * FROM scans WHERE host_row = ? ORDER BY received_at DESC, id DESC LIMIT 200) s
+		LEFT JOIN scan_controls c ON c.scan_row = s.id
+		GROUP BY s.id, c.status ORDER BY s.received_at DESC, s.id DESC`, id)
 	if err != nil {
 		return nil, err
 	}

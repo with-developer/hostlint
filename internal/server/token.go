@@ -125,8 +125,12 @@ func (s *Store) Authenticate(ctx context.Context, token, scope string) (*Credent
 			return nil, ErrUnauthorized
 		}
 	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE credentials SET last_used_at = ? WHERE id = ?`, s.stamp(), c.ID); err != nil {
-		return nil, err
+	// Recording the use is a write: once a minute is enough for "last used", and a read does
+	// not wait for the database's writer on every request.
+	if last, err := time.Parse(stampLayout, c.LastUsedAt); err != nil || s.now().Sub(last) > time.Minute {
+		if _, err := s.db.ExecContext(ctx, `UPDATE credentials SET last_used_at = ? WHERE id = ?`, s.stamp(), c.ID); err != nil {
+			return nil, err
+		}
 	}
 	return &c, nil
 }

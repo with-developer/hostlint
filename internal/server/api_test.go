@@ -29,7 +29,7 @@ func newAPIFixture(t *testing.T) *apiFixture {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	f.store = store
-	f.srv = New(Config{Store: store, Now: func() time.Time { return f.clock }})
+	f.srv = New(Config{Store: store, Rate: 100000, Now: func() time.Time { return f.clock }})
 	ingest := token(t, store, ScopeIngest, "")
 	f.api = token(t, store, ScopeAPI, "")
 	for _, name := range []string{"web-01-old.json", "web-01.json", "db-01.json"} {
@@ -217,5 +217,79 @@ func TestAPIResponsesAreJSONAndWritesAreRefused(t *testing.T) {
 	f.srv.Handler().ServeHTTP(rec, req)
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" || rec.Header().Get("X-Content-Type-Options") != "nosniff" {
 		t.Errorf("headers: %v", rec.Header())
+	}
+}
+
+// The history is limited by scans, not by rows: every scan listed has all of its counts.
+func TestHostHistoryIsLimitedByScans(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	web := fixture(t, "web-01.json")
+	for i := range 230 {
+		doc := bytes.ReplaceAll(web, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte("scan-"+strconv.Itoa(i)))
+		if code, out := post(t, f.srv, ingest, doc); code != http.StatusCreated {
+			t.Fatalf("scan %d: %d %v", i, code, out)
+		}
+		f.clock = f.clock.Add(time.Second)
+	}
+	var list struct {
+		Hosts []HostSummary `json:"hosts"`
+	}
+	f.json(t, "/api/v1/hosts?q=web", &list)
+	var d HostDetail
+	f.json(t, "/api/v1/hosts/"+itoa(list.Hosts[0].ID), &d)
+	if len(d.Scans) != 200 {
+		t.Fatalf("%d scans in the history, want 200", len(d.Scans))
+	}
+	for _, s := range d.Scans {
+		total := 0
+		for _, n := range s.Counts {
+			total += n
+		}
+		if total != 5 {
+			t.Fatalf("scan %d has %d counted controls, want 5: %v", s.ID, total, s.Counts)
+		}
+	}
+}
+
+// "Last used" is written once a minute, not on every request.
+func TestLastUsedIsThrottled(t *testing.T) {
+	f := newAPIFixture(t)
+	read := func() string {
+		var last string
+		if err := f.store.db.QueryRow(`SELECT last_used_at FROM credentials WHERE scope = 'api'`).Scan(&last); err != nil {
+			t.Fatal(err)
+		}
+		return last
+	}
+	f.get(t, f.api, "/api/v1/overview")
+	first := read()
+	f.clock = f.clock.Add(10 * time.Second)
+	f.get(t, f.api, "/api/v1/overview")
+	if got := read(); got != first {
+		t.Errorf("last_used_at changed within a minute: %s -> %s", first, got)
+	}
+	f.clock = f.clock.Add(2 * time.Minute)
+	f.get(t, f.api, "/api/v1/overview")
+	if got := read(); got == first {
+		t.Error("last_used_at was not updated after two minutes")
+	}
+}
+
+// The export holds every host, however many there are.
+func TestHostsCSVIsComplete(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	web := fixture(t, "web-01.json")
+	for i := range 520 {
+		doc := bytes.ReplaceAll(web, []byte(`"hostname": "web-01"`), []byte(`"hostname": "h`+strconv.Itoa(i)+`"`))
+		doc = bytes.ReplaceAll(doc, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte("c-"+strconv.Itoa(i)))
+		if code, out := post(t, f.srv, ingest, doc); code != http.StatusCreated {
+			t.Fatalf("host %d: %d %v", i, code, out)
+		}
+	}
+	code, body := f.get(t, f.api, "/api/v1/hosts?format=csv")
+	if lines := strings.Count(string(body), "\n"); code != http.StatusOK || lines != 1+522 {
+		t.Errorf("csv has %d lines (%d), want %d", lines, code, 1+522)
 	}
 }
