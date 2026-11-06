@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/output"
 	"github.com/with-developer/hostlint/internal/push"
 )
@@ -28,16 +30,9 @@ result is refused here.`,
   HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json --server https://hostlint.example.org:8443`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			token := os.Getenv("HOSTLINT_TOKEN")
-			if tokenFile != "" {
-				data, err := os.ReadFile(tokenFile) //nolint:forbidigo,gosec // a file the user named, not the scanned host (G304)
-				if err != nil {
-					return err
-				}
-				token = strings.TrimSpace(string(data))
-			}
-			if token == "" {
-				return errors.New("no token: set HOSTLINT_TOKEN or use --token-file")
+			token, err := readToken(tokenFile)
+			if err != nil {
+				return err
 			}
 			if serverURL == "" {
 				return errors.New("--server is required")
@@ -79,4 +74,39 @@ func pushFile(cmd *cobra.Command, name, serverURL, token, pin string) (*push.Res
 		return nil, err
 	}
 	return push.Send(cmd.Context(), doc, push.Options{URL: serverURL, Token: token, Pin: pin})
+}
+
+// readToken is the ingest token: from the file the user named, else from HOSTLINT_TOKEN. It is
+// never taken from the command line, where other users could see it.
+func readToken(tokenFile string) (string, error) {
+	token := os.Getenv("HOSTLINT_TOKEN")
+	if tokenFile != "" {
+		data, err := os.ReadFile(tokenFile) //nolint:forbidigo,gosec // a file the user named, not the scanned host (G304)
+		if err != nil {
+			return "", err
+		}
+		token = strings.TrimSpace(string(data))
+	}
+	if token == "" {
+		return "", errors.New("no token: set HOSTLINT_TOKEN or use --token-file")
+	}
+	return token, nil
+}
+
+// pushScan sends the result of the scan that just ran, as JSON, whatever --format was.
+func pushScan(cmd *cobra.Command, res *engine.Result, f scanFlags, token string) error {
+	var doc bytes.Buffer
+	if err := output.Write(&doc, res, "json", output.Options{}); err != nil {
+		return err
+	}
+	got, err := push.Send(cmd.Context(), doc.Bytes(), push.Options{URL: f.pushURL, Token: token, Pin: f.pin})
+	if err != nil {
+		return fmt.Errorf("the result was not sent: %w", err)
+	}
+	state := "sent"
+	if got.Duplicate {
+		state = "already received"
+	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "result %s to %s (scan %d)\n", state, f.pushURL, got.Scan)
+	return nil
 }

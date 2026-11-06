@@ -100,7 +100,7 @@ hostlint diff baseline.json current.json --fail-on-regression   # exit 1 when a 
 
 # A fleet server that collects results from many hosts (early; see docs/fleet.md)
 hostlint server run --db server.db --listen :8443
-HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json --server https://hostlint.example.org:8443
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443
 
 # Pick the profile, tighten thresholds and accept findings you decided to live with
 sudo hostlint scan --config hostlint.yaml

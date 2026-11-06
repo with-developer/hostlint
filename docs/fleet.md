@@ -44,10 +44,18 @@ Without `--tls-cert` and `--tls-key` the server makes a self-signed certificate 
 database and prints the pin of its public key. Plain HTTP is allowed only on a loopback address, or
 with `--plain-http --behind-proxy` when a TLS proxy is in front.
 
-On each host:
+On each host, scan and send in one command:
 
 ```sh
-sudo hostlint scan --format json --output result.json
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan \
+  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
+```
+
+The scan runs first and its report is printed as usual (`--format`, `--output` and `--fail-on` work as
+always); then the result is sent. A result that cannot be sent is an error (exit status 2), and a token
+that is missing is found out before the scan starts. To send a result you saved earlier:
+
+```sh
 HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
   --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```

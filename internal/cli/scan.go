@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -42,6 +43,7 @@ func (e *findingsError) Error() string {
 
 type scanFlags struct {
 	profile, format, output, root, failOn, color, config string
+	pushURL, pin, tokenFile                              string
 	labels                                               []string
 	verbose                                              bool
 }
@@ -58,7 +60,10 @@ hostlint only reads: it never changes the host. Run it as root, or checks that
 need protected files (such as /etc/shadow) report ERROR.`,
 		Example: `  sudo hostlint scan
   sudo hostlint scan --format json --output web-01.json
-  sudo hostlint scan --root /mnt/image --fail-on high`,
+  sudo hostlint scan --root /mnt/image --fail-on high
+
+  # scan and send the result to a hostlint server (the token is in HOSTLINT_TOKEN)
+  sudo hostlint scan --push https://hostlint.example.org:8443 --pin sha256/...`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runScan(cmd, f)
@@ -73,6 +78,9 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringArrayVar(&f.labels, "label", nil, "add a key=value label to the host in the report (repeatable)")
 	fl.BoolVarP(&f.verbose, "verbose", "v", false, "also list passing and not-applicable controls in the table")
 	fl.StringVar(&f.color, "color", "auto", "color the table: auto, always or never")
+	fl.StringVar(&f.pushURL, "push", "", "after the scan, send the result to this hostlint server (docs/fleet.md)")
+	fl.StringVar(&f.pin, "pin", "", `with --push: trust the server's public key ("sha256/<base64>") instead of the system roots`)
+	fl.StringVar(&f.tokenFile, "token-file", "", "with --push: read the ingest token from this file (default: the HOSTLINT_TOKEN environment variable)")
 	fl.StringVar(&f.config, "config", "", "configuration file (default: ./hostlint.yaml, then /etc/hostlint/hostlint.yaml, if present)")
 	return cmd
 }
@@ -90,6 +98,15 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	labels, err := parseLabels(f.labels)
 	if err != nil {
 		return err
+	}
+	// A scan that cannot be sent is found out before it runs, not after.
+	token := ""
+	if f.pushURL != "" {
+		if token, err = readToken(f.tokenFile); err != nil {
+			return err
+		}
+	} else if f.pin != "" || f.tokenFile != "" {
+		return errors.New("--pin and --token-file are for --push")
 	}
 
 	content, err := engine.Load(rules.FS, profiles.FS)
@@ -145,6 +162,11 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	}
 	if err != nil {
 		return err
+	}
+	if f.pushURL != "" {
+		if err := pushScan(cmd, res, f, token); err != nil {
+			return err
+		}
 	}
 	if n := failedAtOrAbove(res, f.failOn); n > 0 {
 		return &findingsError{controls: n, threshold: f.failOn}

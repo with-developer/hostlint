@@ -1,4 +1,4 @@
-<!-- translated from README.md @ b8f4a6d -->
+<!-- translated from README.md @ c70cc2b -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -100,7 +100,7 @@ hostlint diff baseline.json current.json --fail-on-regression   # 컨트롤이 �
 
 # 여러 호스트의 결과를 모으는 플릿 서버 (초기 단계, docs/fleet.ko.md 참고)
 hostlint server run --db server.db --listen :8443
-HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json --server https://hostlint.example.org:8443
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443
 
 # 프로파일을 고르고, 기준을 더 엄격하게 하고, 안고 가기로 한 발견을 예외로 처리
 sudo hostlint scan --config hostlint.yaml

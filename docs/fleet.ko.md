@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ ced08d9 -->
+<!-- translated from docs/fleet.md @ c70cc2b -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -45,10 +45,18 @@ hostlint server run --db /var/lib/hostlint/server.db --listen :8443
 핀을 출력합니다. 평문 HTTP는 루프백 주소에서만 허용되고, TLS 프록시가 앞에 있으면
 `--plain-http --behind-proxy`로 쓸 수 있습니다.
 
-각 호스트에서:
+각 호스트에서 스캔과 전송을 한 번에:
 
 ```sh
-sudo hostlint scan --format json --output result.json
+sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan \
+  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
+```
+
+스캔이 먼저 돌고 보고서는 평소처럼 출력된 뒤(`--format`, `--output`, `--fail-on`은 그대로 동작) 결과를 보냅니다.
+보낼 수 없으면 오류(종료 코드 2)이고, 토큰이 없으면 스캔을 시작하기 전에 알려 줍니다. 앞서 저장한 결과를
+보내려면:
+
+```sh
 HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
   --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```

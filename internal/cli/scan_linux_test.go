@@ -6,12 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/internal/server"
 )
 
 // fakeRoot builds a small mounted root: enough for every account check to
@@ -141,5 +143,47 @@ func TestScanManyAccounts(t *testing.T) {
 	}
 	if !found {
 		t.Error("no U-10 in the result")
+	}
+}
+
+// scan --push sends the result of the scan it just ran to a hostlint server.
+func TestScanPush(t *testing.T) {
+	store, err := server.OpenStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	srv := httptest.NewServer(server.New(server.Config{Store: store}).Handler())
+	t.Cleanup(srv.Close)
+	token, _, err := store.CreateCredential(context.Background(), server.ScopeIngest, "img", "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOSTLINT_TOKEN", token)
+	root := fakeRoot(t)
+
+	code, stdout, stderr := run(context.Background(), t, "scan", "--root", root, "--push", srv.URL)
+	if code != ExitFail || !strings.Contains(stderr, "result sent to "+srv.URL) {
+		t.Fatalf("exit %d, stderr %q (a second UID 0 account fails U-05, so 1)", code, stderr)
+	}
+	if !strings.Contains(stdout, "U-05") {
+		t.Errorf("the table was not printed: %q", stdout)
+	}
+	if st, err := store.Stats(context.Background()); err != nil || st.Scans != 1 {
+		t.Errorf("stats %+v, %v", st, err)
+	}
+	// A server that refuses the token turns a good scan into an error (2), not a silent success.
+	t.Setenv("HOSTLINT_TOKEN", "hlt_ing_wrong")
+	code, _, stderr = run(context.Background(), t, "scan", "--root", root, "--push", srv.URL, "--fail-on", "none")
+	if code != ExitError || !strings.Contains(stderr, "the result was not sent") {
+		t.Errorf("exit %d, stderr %q", code, stderr)
+	}
+	// Without a token the scan does not even start; the options of --push need --push.
+	t.Setenv("HOSTLINT_TOKEN", "")
+	if code, _, stderr = run(context.Background(), t, "scan", "--root", root, "--push", srv.URL); code != ExitError || !strings.Contains(stderr, "no token") {
+		t.Errorf("without a token: exit %d, %q", code, stderr)
+	}
+	if code, _, stderr = run(context.Background(), t, "scan", "--root", root, "--pin", "sha256/x"); code != ExitError || !strings.Contains(stderr, "for --push") {
+		t.Errorf("--pin alone: exit %d, %q", code, stderr)
 	}
 }
