@@ -13,7 +13,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/server"
+	"github.com/with-developer/hostlint/profiles"
+	"github.com/with-developer/hostlint/rules"
 )
 
 func newServerCommand() *cobra.Command {
@@ -30,7 +33,7 @@ The database is one file (--db). Tokens are made with "hostlint server token cre
 shown once; only their hash is stored.`,
 	}
 	cmd.PersistentFlags().StringVar(&dbPath, "db", "hostlint-server.db", "the server's SQLite database")
-	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath))
+	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath), newServerDemoCommand())
 	return cmd
 }
 
@@ -219,4 +222,45 @@ func oneLineCLI(s string) string {
 		}
 		return r
 	}, s)
+}
+
+func newServerDemoCommand() *cobra.Command {
+	var listen, profile string
+	cmd := &cobra.Command{
+		Use:   "demo",
+		Short: "Try the dashboard with a made-up fleet (nothing is scanned or written)",
+		Long: `Demo starts a server on a loopback address with generated results: twelve invented hosts with
+two weeks of scans each, built from the real controls of the profile, so the dashboard has something
+to show. The data lives in memory and is gone when the command ends. It prints a read token to sign in with.`,
+		Example: `  hostlint server demo
+  hostlint server demo --listen 127.0.0.1:9000`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			content, err := engine.Load(rules.FS, profiles.FS)
+			if err != nil {
+				return err
+			}
+			store, err := server.OpenStore(":memory:")
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+			n, err := server.SeedDemo(cmd.Context(), store, content, profile, time.Now())
+			if err != nil {
+				return err
+			}
+			token, _, err := store.CreateCredential(cmd.Context(), server.ScopeAPI, "demo", "", 0)
+			if err != nil {
+				return err
+			}
+			srv := server.New(server.Config{Store: store, Rate: 600})
+			out := cmd.OutOrStdout()
+			return srv.Serve(cmd.Context(), server.ListenConfig{Addr: listen, PlainHTTP: true}, func(addr, _ string) {
+				fmt.Fprintf(out, "demo fleet: 12 made-up hosts, %d results\nopen http://%s and sign in with this read token:\n\n  %s\n\n(Ctrl-C ends the demo; the data is gone with it)\n", n, addr, token)
+			})
+		},
+	}
+	cmd.Flags().StringVar(&listen, "listen", "127.0.0.1:8443", "loopback address to listen on")
+	cmd.Flags().StringVar(&profile, "profile", "kisa-2026", "the profile whose controls the demo uses")
+	return cmd
 }

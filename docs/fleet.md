@@ -17,6 +17,16 @@ sorting, CSV export), a matrix of every control on every host, and for each host
 comparison of any scan with the one before. It is available in English and Korean and follows the
 system's light or dark theme. Everything a host sent is shown as text.
 
+## Try it without any host
+
+```sh
+hostlint server demo
+```
+
+starts a server on `127.0.0.1:8443` with a made-up fleet (twelve hosts, two weeks of scans, built from
+the real controls) and prints a read token to sign in with. The data lives in memory and is gone when
+the command ends. It needs a binary with the dashboard (a release binary or `make build-web`).
+
 ## Quick start
 
 On the server machine:

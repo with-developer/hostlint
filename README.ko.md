@@ -1,4 +1,4 @@
-<!-- translated from README.md @ ebfad17 -->
+<!-- translated from README.md @ 6566c91 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -159,6 +159,19 @@ Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentO
 노력으로 점검하고 결과에 그렇게 표시합니다.
 
 제목과 설명은 hostlint가 직접 작성했고, 프로파일은 컨트롤 ID만 참조합니다.
+
+## 플릿 대시보드 (초기)
+
+호스트가 스스로 스캔하고 결과를 `hostlint server`로 보내면, 서버가 이력을 보관하고 웹 대시보드로 플릿을
+보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스,
+각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 호스트 없이 써 보려면
+`hostlint server demo`가 가상의 플릿으로 서버를 띄웁니다. [docs/fleet.ko.md](docs/fleet.ko.md)를 참고하세요.
+
+![대시보드 개요](docs/demo/dashboard-overview.png)
+
+| 모든 호스트의 모든 컨트롤 매트릭스 | 호스트 하나: 컨트롤, 근거, 이력 |
+|---|---|
+| ![매트릭스](docs/demo/dashboard-matrix.png) | ![호스트](docs/demo/dashboard-host.png) |
 
 ## 원칙
 
