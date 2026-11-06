@@ -104,12 +104,12 @@ func TestHomesOneUnreadableFileDoesNotHideTheRest(t *testing.T) {
 	}
 }
 
-// A cancelled context ends the collector with an error, not a pile of skipped lines.
+// A canceled context ends the collector with an error, not a pile of skipped lines.
 func TestHomesCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	m := hostfs.NewMemFS().AddFile("/etc/passwd", "a:x:1:1::/home/a:/bin/sh\nb:x:2:2::/home/b:/bin/sh\n", 0o644, 0, 0)
 	if _, err := (homesCollector{}).Collect(ctx, hostfs.NewTestHost(m, nil, false)); err == nil {
-		t.Error("a cancelled context gave facts")
+		t.Error("a canceled context gave facts")
 	}
 }

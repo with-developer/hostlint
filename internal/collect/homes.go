@@ -81,7 +81,7 @@ func (homesCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts
 		} else {
 			if err := observeHome(h.FS, &home); err != nil {
 				errs := []error{err}
-				if joined, ok := err.(interface{ Unwrap() []error }); ok { //nolint:errorlint // errors.Join of the files that failed
+				if joined, ok := err.(interface{ Unwrap() []error }); ok {
 					errs = joined.Unwrap()
 				}
 				for _, e := range errs {
