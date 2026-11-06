@@ -540,3 +540,44 @@ func TestShellEnvProfileLoopGuards(t *testing.T) {
 		})
 	}
 }
+
+// Review findings: constructs that are not what they look like.
+func TestShellEnvReviewedEdgeCases(t *testing.T) {
+	scan := func(profile string) *ShellEnv {
+		return shellEnv(t, hostfs.NewMemFS().AddFile("/etc/profile", profile, 0o644, 0, 0))
+	}
+	// A function whose brace is on the next line is one block, not two.
+	if env := scan("foo()\n{\n  :\n}\nTMOUT=900\n"); len(env.TMOUT) != 1 || env.TMOUT[0].Conditional {
+		t.Errorf("after a function: %+v", env.TMOUT)
+	}
+	// An unquoted PATH value ends at ; & | and ).
+	if env := scan("PATH=/usr/bin:/bin;export PATH\n"); len(env.Path) != 1 || env.Path[0].Value != "/usr/bin:/bin" {
+		t.Errorf("path = %+v", env.Path)
+	}
+	// The body of a here-document is text; a shell reading it runs it.
+	if env := scan("cat <<EOF\nTMOUT=0\numask 000\nEOF\nTMOUT=600\n"); len(env.TMOUT) != 1 || len(env.Umask) != 0 || env.Effective["TMOUT"].Value != "600" {
+		t.Errorf("heredoc: tmout %+v umask %+v", env.TMOUT, env.Umask)
+	}
+	if env := scan("cat > /tmp/x <<'END'\nTMOUT=0\nEND\nsh <<EOF\numask 000\nEOF\n"); len(env.TMOUT) != 0 || len(env.Umask) != 1 {
+		t.Errorf("heredoc: tmout %+v umask %+v", env.TMOUT, env.Umask)
+	}
+	// umask: printing options are no value; short numbers and expansions are listed.
+	for in, want := range map[string]string{"umask -p\n": "", "umask -S\n": "", "umask\n": "", "umask 22\n": "22", "umask $UMASK\n": "$UMASK", "umask \"077\"\n": "077", "umask -S 002\n": "002", "umask u=rwx,g=rx,o=\n": "u=rwx,g=rx,o="} {
+		env := scan(in)
+		got := ""
+		if len(env.Umask) > 0 {
+			got = env.Umask[0].Value
+		}
+		if got != want {
+			t.Errorf("%q: umask %q, want %q", in, got, want)
+		}
+	}
+	// A conditional timeout longer than the unconditional one means some shells wait longer.
+	if env := scan("TMOUT=900\nif [ \"$X\" ]; then TMOUT=86400; fi\n"); len(env.Effective) != 0 {
+		t.Errorf("effective = %+v, want none", env.Effective)
+	}
+	// An escaped quote inside double quotes does not end the string.
+	if env := scan("echo \"a \\\" # b\"; TMOUT=300\n"); env.Effective["TMOUT"].Value != "300" {
+		t.Errorf("effective = %+v", env.Effective)
+	}
+}

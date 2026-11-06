@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/with-developer/hostlint/internal/engine"
@@ -56,10 +57,12 @@ var (
 	unsetTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s(])unset\s+(?:-v\s+)?(?:\w+\s+)*TMOUT\b`)
 	// A read-only declaration without an assignment.
 	readonlyTMOUTRe = regexp.MustCompile(`(?:^|[;&|\s(])(?:readonly|declare\s+-[a-zA-Z]*r[a-zA-Z]*|typeset\s+-[a-zA-Z]*r[a-zA-Z]*)\s+(?:\w+\s+)*TMOUT\b(?:[^=]|$)`)
-	umaskRe         = regexp.MustCompile(`(?:^|[;&|\s(])umask\s+([0-7]{3,4}|[ugoa=+,rwx-]+)\b`)
-	pathRe          = regexp.MustCompile(`(?:^|[;&|\s(])(?:export\s+)?PATH=("[^"]*"|'[^']*'|\S*)`)
-	sourceRe        = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:\.|source)\s+("[^"]+"|'[^']+'|[^\s;&|)]+)`)
-	forRe           = regexp.MustCompile(`^\s*for\s`)
+	// The first word after umask that is not -p or -S (those only print): an octal
+	// number, a symbolic mode, or an expansion, which the rule lists to be reviewed.
+	umaskRe  = regexp.MustCompile(`(?:^|[;&|\s(])umask\s+(?:-[pS]\s+)?["']?([^\s;&|)"'-][^\s;&|)"']*)`)
+	pathRe   = regexp.MustCompile(`(?:^|[;&|\s(])(?:export\s+)?PATH=("[^"]*"|'[^']*'|[^\s;&|)]*)`)
+	sourceRe = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:\.|source)\s+("[^"]+"|'[^']+'|[^\s;&|)]+)`)
+	forRe    = regexp.MustCompile(`^\s*for\s`)
 	// A for keyword anywhere a command can start: loops that do not begin
 	// the line are not followed.
 	forAnywhereRe = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)for\s`)
@@ -235,6 +238,15 @@ func (s *shellScanner) logicalLines(name string, data []byte) []shellLine {
 		if continues(code) && mentionsProfileD(code) {
 			s.unknownLoop(fmt.Sprintf("%s:%d", name, start)) // the file ends inside the list
 		}
+		if word := heredocWord(code); word != "" {
+			// The body is text, not commands: skip it up to its terminator.
+			for sc.Scan() {
+				line++
+				if strings.TrimSpace(sc.Text()) == word {
+					break
+				}
+			}
+		}
 		code = maskPrinted(code)
 		if strings.TrimSpace(code) == "" {
 			continue
@@ -248,10 +260,13 @@ func (s *shellScanner) logicalLines(name string, data []byte) []shellLine {
 }
 
 var (
-	loopVarRe   = regexp.MustCompile(`^\s*for\s+(\w+)\s+in\b`)
-	loopOpenRe  = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:for|while|until|select)\s`)
-	loopCloseRe = regexp.MustCompile(`(?:^|[;&|(){}]\s*|\b(?:then|do|else)\s+)done\b`)
-	loopDoRe    = regexp.MustCompile(`(?:^|[;\s])do(?:[\s;]|$)`)
+	heredocRe = regexp.MustCompile(`<<-?\s*(?:"([A-Za-z_]\w*)"|'([A-Za-z_]\w*)'|([A-Za-z_]\w*))`)
+	// A shell reading the body runs it: its lines are commands.
+	shellReaderRe = regexp.MustCompile(`(?:^|[;&|\s(])(?:sh|bash|dash|zsh|ksh|eval|source|\.)\s`)
+	loopVarRe     = regexp.MustCompile(`^\s*for\s+(\w+)\s+in\b`)
+	loopOpenRe    = regexp.MustCompile(`(?:^|[;&|{(]\s*|\b(?:then|do|else)\s+)(?:for|while|until|select)\s`)
+	loopCloseRe   = regexp.MustCompile(`(?:^|[;&|(){}]\s*|\b(?:then|do|else)\s+)done\b`)
+	loopDoRe      = regexp.MustCompile(`(?:^|[;\s])do(?:[\s;]|$)`)
 )
 
 // loopBody returns the text of the loop that starts on lines[idx]: after its
@@ -674,8 +689,8 @@ func effectiveTMOUT(events []shellEvent) (facts.Setting, bool) {
 			if e.kind == "readonly" || e.readonly {
 				maybeFrozen = true
 			}
-			if e.kind == "unset" || e.kind == "set" && !positiveTMOUT.MatchString(e.value) {
-				broken = true
+			if e.kind == "unset" || e.kind == "set" && (!positiveTMOUT.MatchString(e.value) || longerThan(e.value, cur)) {
+				broken = true // some shells get no timeout, or a longer one than the value
 			}
 			continue
 		}
@@ -715,6 +730,16 @@ func decimal(v string) string {
 	return d
 }
 
+// longerThan reports whether the timeout v is longer than the one cur holds (none: nothing to compare).
+func longerThan(v string, cur facts.Setting) bool {
+	if !cur.Explicit {
+		return false
+	}
+	a, errA := strconv.ParseInt(decimal(v), 10, 64)
+	b, errB := strconv.ParseInt(decimal(cur.Value), 10, 64)
+	return errA != nil || errB != nil || a > b
+}
+
 var positiveTMOUT = regexp.MustCompile(`^0*[1-9][0-9]*$`)
 
 // blockWords counts the words that open (if, case, for, while, until,
@@ -727,9 +752,6 @@ func blockWords(code string) (opens, closes int) {
 		} else {
 			closes++
 		}
-	}
-	if regexp.MustCompile(`^\s*(function\s+)?[\w.-]+\s*\(\s*\)`).MatchString(code) && !strings.Contains(code, "{") {
-		opens++ // "name()" with its brace on the next line
 	}
 	return opens, closes
 }
@@ -755,6 +777,8 @@ func hasControlOperator(code string) bool {
 	for i := 0; i < len(code); i++ {
 		c := code[i]
 		switch {
+		case quote == '"' && c == '\\':
+			i++ // an escaped character inside double quotes
 		case quote != 0:
 			if c == quote {
 				quote = 0
@@ -779,6 +803,8 @@ func stripShellComment(text string) string {
 	for i := 0; i < len(text); i++ {
 		c := text[i]
 		switch {
+		case quote == '"' && c == '\\':
+			i++ // an escaped character inside double quotes
 		case quote != 0:
 			if c == quote {
 				quote = 0
@@ -868,4 +894,20 @@ var (
 func bodyGuarded(body string) bool {
 	rest := bodyWordRe.ReplaceAllString(stockBodyGuardRe.ReplaceAllString(body, " "), " ")
 	return bodyControlRe.MatchString(rest)
+}
+
+// heredocWord is the terminator of a here-document that a line opens, or "" when it
+// opens none or a shell reads it (its body is then commands).
+func heredocWord(code string) string {
+	m := heredocRe.FindStringSubmatch(code)
+	before, _, found := strings.Cut(code, "<<")
+	if m == nil || !found || shellReaderRe.MatchString(before) {
+		return ""
+	}
+	for _, w := range m[1:] {
+		if w != "" {
+			return w
+		}
+	}
+	return ""
 }

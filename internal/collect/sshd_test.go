@@ -186,3 +186,20 @@ func TestSSHDIncludeScope(t *testing.T) {
 		t.Errorf("match = %+v", s.Match)
 	}
 }
+
+// A keyword renamed by OpenSSH is stored under the name sshd -T prints.
+func TestSSHDKeywordAliases(t *testing.T) {
+	m := hostfs.NewMemFS().AddFile("/usr/sbin/sshd", "", 0o755, 0, 0).
+		AddFile("/etc/ssh/sshd_config", "ChallengeResponseAuthentication no\nPubkeyAcceptedKeyTypes ssh-ed25519\n", 0o644, 0, 0)
+	f, err := sshdCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := f.Value.(*SSHD)
+	if v := s.Config["kbdinteractiveauthentication"]; v.Value != "no" || !v.Explicit {
+		t.Errorf("kbdinteractiveauthentication = %+v", v)
+	}
+	if v := s.Config["pubkeyacceptedalgorithms"]; v.Value != "ssh-ed25519" || !v.Explicit {
+		t.Errorf("pubkeyacceptedalgorithms = %+v", v)
+	}
+}

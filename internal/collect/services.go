@@ -496,6 +496,7 @@ func (r *serviceReader) inetd() []InetdService {
 		// A line ending in a backslash continues on the next one; the entry is
 		// reported at the line it starts on.
 		sc := bufio.NewScanner(bytes.NewReader(data))
+		sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
 		for line := 1; sc.Scan(); line++ {
 			text, start := sc.Text(), line
 			for strings.HasSuffix(text, `\`) && sc.Scan() {
@@ -514,6 +515,9 @@ func (r *serviceReader) inetd() []InetdService {
 				Args: strings.Join(f[6:], " "), Source: fmt.Sprintf("%s:%d", file, start),
 			})
 		}
+		if err := sc.Err(); err != nil {
+			r.skipped = append(r.skipped, fmt.Sprintf("%s: the rest of the file was not read (%v)", file, err))
+		}
 	}
 	return out
 }
@@ -527,8 +531,13 @@ func (r *serviceReader) xinetd() []XinetdService {
 	}
 	x := &xinetdParser{r: r}
 	x.parse(xinetdConf, data)
-	for _, dir := range x.includeDirs {
-		for _, e := range r.readDir(dir) {
+	// An includedir or include in an included file is followed too.
+	for i := 0; i < len(x.includeDirs); i++ {
+		if i >= xinetdMaxIncludes {
+			r.skipped = append(r.skipped, "xinetd: too many includedir lines; the rest are not read")
+			break
+		}
+		for _, e := range r.readDir(x.includeDirs[i]) {
 			// xinetd skips names with a dot or ending in a tilde.
 			name := path.Base(e.Path)
 			if e.IsDir() || strings.Contains(name, ".") || strings.HasSuffix(name, "~") {
@@ -558,10 +567,13 @@ func (r *serviceReader) xinetd() []XinetdService {
 	return x.services
 }
 
+const xinetdMaxIncludes = 50
+
 type xinetdParser struct {
 	r                 *serviceReader
 	services          []XinetdService
 	includeDirs       []string
+	includes          int      // include files read
 	disabled, enabled []string // from the defaults section; enabled nil when not set
 }
 
@@ -570,6 +582,12 @@ type xinetdParser struct {
 func (x *xinetdParser) parse(file string, data []byte) {
 	var state xinetdState
 	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	defer func() {
+		if err := sc.Err(); err != nil {
+			x.r.skipped = append(x.r.skipped, fmt.Sprintf("%s: the rest of the file was not read (%v)", file, err))
+		}
+	}()
 	for line := 1; sc.Scan(); line++ {
 		text := strings.TrimSpace(sc.Text())
 		if i := strings.Index(text, "#"); i >= 0 {
@@ -598,6 +616,13 @@ func (x *xinetdParser) statement(text, file string, line int, st *xinetdState) {
 		case len(f) == 0:
 		case f[0] == "includedir" && len(f) == 2 && !inSection:
 			x.includeDirs = append(x.includeDirs, f[1])
+		case f[0] == "include" && len(f) == 2 && !inSection:
+			if x.includes >= xinetdMaxIncludes {
+				x.r.skipped = append(x.r.skipped, fmt.Sprintf("%s:%d: too many include lines; the rest are not read", file, line))
+			} else if data, ok := x.r.readFile(f[1]); ok {
+				x.includes++
+				x.parse(f[1], data)
+			}
 		case f[0] == "service" && len(f) >= 2 && !inSection:
 			x.services = append(x.services, XinetdService{Name: f[1], Settings: map[string]string{}, Source: fmt.Sprintf("%s:%d", file, line)})
 			cur = &x.services[len(x.services)-1]

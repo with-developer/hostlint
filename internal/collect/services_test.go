@@ -319,3 +319,39 @@ func TestServicesWantsLinks(t *testing.T) {
 		t.Errorf("ghost.service = %+v", u)
 	}
 }
+
+// A line longer than the scanner's default limit is read, and one too long to read is reported.
+func TestServicesLongLines(t *testing.T) {
+	long := strings.Repeat("x", 100<<10)
+	conf := "# " + long + "\ntelnet stream tcp nowait root /usr/sbin/in.telnetd in.telnetd\n"
+	if s, complete, skipped := servicesFacts(t, hostfs.NewMemFS().AddFile(inetdConf, conf, 0o644, 0, 0)); len(s.Inetd) != 1 || !complete {
+		t.Errorf("inetd = %+v, skipped %v", s.Inetd, skipped)
+	}
+	huge := "# " + strings.Repeat("x", 2<<20) + "\ntelnet stream tcp nowait root /usr/sbin/in.telnetd in.telnetd\n"
+	if _, complete, _ := servicesFacts(t, hostfs.NewMemFS().AddFile(inetdConf, huge, 0o644, 0, 0)); complete {
+		t.Error("an unreadable rest of inetd.conf left the facts complete")
+	}
+	huge = "# " + strings.Repeat("x", 2<<20) + "\nservice telnet { disable = no }\n"
+	if _, complete, _ := servicesFacts(t, hostfs.NewMemFS().AddFile("/etc/xinetd.conf", huge, 0o644, 0, 0)); complete {
+		t.Error("an unreadable rest of xinetd.conf left the facts complete")
+	}
+}
+
+// include and includedir lines of an included file are followed.
+func TestServicesXinetdNestedIncludes(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/xinetd.conf", "includedir /etc/xinetd.d\ninclude /etc/xinetd.extra\n", 0o644, 0, 0).
+		AddDir("/etc/xinetd.d", 0o755, 0, 0).
+		AddFile("/etc/xinetd.d/more", "includedir /etc/xinetd.more\n", 0o644, 0, 0).
+		AddFile("/etc/xinetd.extra", "service shell { server = /usr/sbin/in.rshd\n disable = no }\n", 0o644, 0, 0).
+		AddDir("/etc/xinetd.more", 0o755, 0, 0).
+		AddFile("/etc/xinetd.more/telnet", "service telnet { disable = no }\n", 0o644, 0, 0)
+	s, complete, skipped := servicesFacts(t, m)
+	got := map[string]bool{}
+	for _, x := range s.Xinetd {
+		got[x.Name] = x.Disabled
+	}
+	if len(got) != 2 || got["shell"] || got["telnet"] || !complete {
+		t.Errorf("xinetd = %+v, skipped %v", s.Xinetd, skipped)
+	}
+}

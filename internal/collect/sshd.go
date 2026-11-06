@@ -96,6 +96,13 @@ func (sshdCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.Facts,
 	return engine.Facts{Value: s, Complete: len(p.skipped) == 0, Skipped: p.skipped}, nil
 }
 
+// sshdAliases are keywords renamed in OpenSSH; sshd -T prints the new name.
+var sshdAliases = map[string]string{
+	"challengeresponseauthentication": "kbdinteractiveauthentication",
+	"pubkeyacceptedkeytypes":          "pubkeyacceptedalgorithms",
+	"hostbasedacceptedkeytypes":       "hostbasedacceptedalgorithms",
+}
+
 // errSSHDNeverStarted marks an installed server that has not run yet, so the
 // things it creates at its first start are missing and sshd -T refuses to
 // print: no host keys (RHEL family) or no privilege separation directory
@@ -182,6 +189,9 @@ func (p *sshdParser) parseFile(name string, depth int) error {
 		}
 		key, value := splitSSHDLine(text)
 		key = strings.ToLower(key)
+		if canonical, ok := sshdAliases[key]; ok {
+			key = canonical // sshd -T prints the current name
+		}
 		src := fmt.Sprintf("%s:%d", name, line)
 		switch key {
 		case "include":
