@@ -27,7 +27,8 @@ waivers:
     reason: Accepted by the security team (SEC-142)
     expires: 2027-01-31
 
-# A recorded human verdict for a MANUAL check.
+# A recorded human verdict for a MANUAL check. The digests are placeholders: copy the full
+# sha256:<64 hex digits> values from the JSON result.
 attestations:
   - check: accounts.review-login-accounts
     status: PASS
@@ -78,7 +79,7 @@ reported as `WAIVED` with the reason, and keeps its original status and evidence
 | `expires` | Required. The last day the waiver applies, `YYYY-MM-DD` (UTC) |
 | `revision` | Control waivers only, required: the profile revision the waiver was written for |
 | `hosts` | Hostname globs such as `web-*`; the waiver applies to every host when omitted |
-| `errors` | `true` to also accept `ERROR`: a deliberate decision that the check cannot run there |
+| `errors` | Check waivers only: `true` to also accept `ERROR`: a deliberate decision that the check cannot run there |
 
 - A waiver changes `FAIL` and `MANUAL` results, and `ERROR` only with `errors: true`. `PASS`
   and `NOT_APPLICABLE` stay as they are.

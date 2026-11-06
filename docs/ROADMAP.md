@@ -25,7 +25,7 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
    evaluation; failures become `ERROR` results, never crashes.
 5. **Collectors: config and accounts** — file metadata, key/value configs, effective sshd config,
    login.defs, PAM/pwquality/faillock (pam_tally2 on EL7), accounts (passwd/group/shadow
-   aging — never hashes), sysctl.
+   aging — never hashes).
 6. **Collectors: packages, services, filesystem** — dpkg/rpm, systemd (degrades gracefully
    without systemd), inetd/xinetd, SUID/SGID, world-writable and unowned files (bounded walks),
    listening sockets.
@@ -37,12 +37,12 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
     `--output`, `--fail-on`, exit codes; golden-file tests.
 11. **`hostlint report`** — merge many hosts' JSON into one self-contained HTML report
     (hosts × controls matrix, drill-down, works offline).
-12. **Config file** — `hostlint.yaml`: profile selection, disabled checks, waivers with reason
-    and expiry.
+12. **Config file** — `hostlint.yaml`: profile selection, stricter parameters, waivers with reason
+    and expiry, and attestations.
 13. **Container e2e matrix** — Docker-based end-to-end tests per supported distro (including
     `centos:7`) with hardened and default fixtures and golden results, in CI.
 14. **Release pipeline** — GoReleaser (linux amd64/arm64), checksums, cosign keyless signing,
-    SBOM, .deb/.rpm, install script. Tagging `v0.1.0` requires the owner's approval.
+    SBOM, .deb/.rpm, install script. The first public release required the owner's approval.
 15. **Docs** — README (EN) with a demo GIF, Korean translations of user-facing docs
     (`*.ko.md`), generated rule reference, CONTRIBUTING (how to write a check), SECURITY.md,
     and a CI check that flags English user docs changed without their `.ko.md`.
@@ -51,7 +51,7 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 
 ## Fleet mode (planned)
 
-Releases so far (v0.1 and v0.2) are the standalone CLI, and further minor releases of it
+Releases so far (v0.1 through v0.6) are the standalone CLI, and further minor releases of it
 (checks, collectors, outputs) continue while fleet mode is built. Fleet mode ships under the next
 version that is free when it is ready; its design needs its own ADR first.
 
@@ -63,5 +63,5 @@ version that is free when it is ready; its design needs its own ADR first.
 ## Later
 
 - CIS mapping overlays (control IDs only), custom policy packs.
-- More distros (Amazon Linux, SUSE); container image / rootfs scanning.
+- More distros (Amazon Linux, SUSE); scanning a container image without mounting it (`--root` scans a mounted root).
 - Remediation hints, scheduled scans, notifications.

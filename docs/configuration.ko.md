@@ -27,7 +27,8 @@ waivers:
     reason: Accepted by the security team (SEC-142)
     expires: 2027-01-31
 
-# MANUAL 점검에 사람이 내린 판정의 기록
+# MANUAL 점검에 사람이 내린 판정의 기록. digest는 자리표시자입니다: JSON 결과의
+# 전체 sha256:<16진수 64자리> 값을 복사하세요.
 attestations:
   - check: accounts.review-login-accounts
     status: PASS
@@ -78,7 +79,7 @@ attestations:
 | `expires` | 필수. 예외가 적용되는 마지막 날, `YYYY-MM-DD` (UTC) |
 | `revision` | 컨트롤 예외에서만, 필수: 예외를 작성할 때의 프로파일 리비전 |
 | `hosts` | `web-*` 같은 호스트 이름 패턴. 생략하면 모든 호스트에 적용 |
-| `errors` | `true`면 `ERROR`도 받아들임: 그곳에서는 점검을 실행할 수 없다는 의도적인 결정 |
+| `errors` | 점검 예외에만: `true`면 `ERROR`도 받아들임: 그곳에서는 점검을 실행할 수 없다는 의도적인 결정 |
 
 - 예외는 `FAIL`과 `MANUAL` 결과를 바꾸고, `ERROR`는 `errors: true`일 때만 바꿉니다. `PASS`와
   `NOT_APPLICABLE`은 그대로입니다.

@@ -16,7 +16,8 @@ a snapshot on every pull request, so the pipeline is tested before a tag needs i
 
 Every file in `checksums.txt` also gets a build provenance attestation (`gh attestation verify`).
 The release notes list the `feat:` and `fix:` commits since the previous tag; `docs:`, `test:`,
-`ci:`, `chore:` and `refactor:` commits are left out.
+`ci:`, `chore:` and `refactor:` commits are left out; any other commit is listed under
+"Other changes".
 
 [`install.sh`](../install.sh) installs the archive for the machine's architecture. It refuses an
 archive whose SHA-256 does not match `checksums.txt`. When cosign is installed, it first verifies
@@ -32,15 +33,16 @@ Before tagging:
    ROADMAP status.
 4. Choose the version (semver; before 1.0, a minor version for features and a patch version for
    fixes).
-5. **`v0.1.0` only:** the owner approves the exact commit. Open a `needs-approval` issue naming
-   the SHA, and tag only that commit.
+5. **The first public release only:** the owner approves the exact commit. Open a
+   `needs-approval` issue naming the SHA, and tag only that commit. Later releases follow the
+   steps above.
 
 Tag and push. The tag must point at a commit on `main`:
 
 ```sh
 git fetch origin
-git tag -a v0.1.0 -m "hostlint v0.1.0" <commit on main>
-git push origin v0.1.0
+git tag -a v<version> -m "hostlint v<version>" <commit on main>
+git push origin v<version>
 ```
 
 A release candidate and its release may share a commit: the workflow builds the tag that was
@@ -51,7 +53,7 @@ never released, and the first release is the next patch version.
 
 The workflow then:
 
-1. refuses a tag whose commit is not on `main`, and runs the tests;
+1. refuses a tag whose commit is not on `main` or has no passing `ci-ok`, and runs the tests;
 2. builds the binaries, archives, packages and SBOMs, signs `checksums.txt` with cosign (GitHub
    OIDC), and uploads everything to a **draft** release;
 3. runs [`scripts/check-release.sh`](../scripts/check-release.sh): checksums, SBOMs, archive and

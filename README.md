@@ -39,9 +39,8 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 The output above is abridged, from a Debian 12 container with `PermitRootLogin yes` and an inetd
 telnet service added (the host name is shortened).
 
-> 🚧 **Early release.** v0.1.1 is the first release (v0.1.0 exists as a tag only; its release
-> build failed, see [docs/RELEASING.md](docs/RELEASING.md)). Expect rough edges in the less
-> common setups, and report them. See the [roadmap](docs/ROADMAP.md).
+> 🚧 **Early release.** Expect rough edges in the less common setups, and report them. See the
+> [roadmap](docs/ROADMAP.md) and the [release history](docs/RELEASING.md).
 
 ## Why hostlint
 
@@ -67,7 +66,7 @@ when `cosign` is installed, the Sigstore signature of the checksums:
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.6.7/install.sh
-sh install.sh -v v0.6.7          # read it first; add -b DIR to choose where it goes
+sudo sh install.sh -v v0.6.7     # read it first; without root, add -b DIR to choose where it goes
 sudo hostlint scan
 ```
 
@@ -107,10 +106,11 @@ described in [docs/configuration.md](docs/configuration.md).
 | `-p, --profile` | Profile to check against (default `kisa-2026`) |
 | `-f, --format` | `table`, `json`, `sarif` or `junit` |
 | `-o, --output` | Write the report to a file |
-| `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low`, `medium`, `high`, `none` |
+| `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
 | `--root` | Scan a filesystem mounted at this directory (it must hold an operating system) |
 | `--config` | Configuration file (default: `./hostlint.yaml`, then `/etc/hostlint/hostlint.yaml`, if present) |
 | `--label key=value` | Add a label to the host in the report |
+| `--color` | `auto` (default), `always` or `never` |
 | `-v, --verbose` | Also list passing and not-applicable controls |
 
 ## Results
@@ -122,9 +122,13 @@ described in [docs/configuration.md](docs/configuration.md).
 | `MANUAL` | A person has to decide; the facts to review are shown |
 | `NOT_APPLICABLE` | The control does not apply (for example, the service is not installed) |
 | `ERROR` | It could not be decided reliably; the reason is shown |
+| `WAIVED` | A waiver in the configuration accepted a `FAIL` or `MANUAL` result; the original status and evidence are kept (see [docs/configuration.md](docs/configuration.md)) |
 
-A control's status is the worst of its checks: `FAIL` > `ERROR` > `MANUAL` > `PASS` >
-`NOT_APPLICABLE`.
+A control's status is the worst of its checks: `FAIL` > `ERROR` > `MANUAL` > `WAIVED` >
+`PASS` > `NOT_APPLICABLE`.
+
+Exit codes: 0 when nothing failed at or above `--fail-on`, 1 when something did, 2 for a usage error
+or a scan that could not run, 130 when interrupted.
 
 ## What it checks
 

@@ -39,9 +39,8 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 위 출력은 `PermitRootLogin yes`와 inetd telnet 서비스를 추가한 Debian 12 컨테이너의 결과를 줄인 것입니다
 (호스트 이름은 줄였습니다).
 
-> 🚧 **초기 릴리스입니다.** v0.1.1이 첫 릴리스입니다(v0.1.0은 태그만 있고, 릴리스 빌드가
-> 실패했습니다. [docs/RELEASING.md](docs/RELEASING.md) 참고). 흔치 않은 환경에서는 거친 부분이 있을
-> 수 있으니 알려 주세요. [로드맵](docs/ROADMAP.md)을 참고하세요.
+> 🚧 **초기 릴리스입니다.** 흔치 않은 환경에서는 거친 부분이 있을 수 있으니 알려 주세요.
+> [로드맵](docs/ROADMAP.md)과 [릴리스 이력](docs/RELEASING.md)을 참고하세요.
 
 ## 왜 hostlint인가
 
@@ -67,7 +66,7 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.6.7/install.sh
-sh install.sh -v v0.6.7          # 먼저 읽어 보세요. 설치 위치는 -b DIR
+sudo sh install.sh -v v0.6.7     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
 sudo hostlint scan
 ```
 
@@ -107,10 +106,11 @@ sudo hostlint scan --config hostlint.yaml
 | `-p, --profile` | 점검할 프로파일 (기본값 `kisa-2026`) |
 | `-f, --format` | `table`, `json`, `sarif`, `junit` |
 | `-o, --output` | 결과를 파일로 저장 |
-| `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`, `medium`, `high`, `none` |
+| `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`(기본값), `medium`, `high`, `none` |
 | `--root` | 이 디렉터리에 마운트된 파일시스템을 점검 (운영체제가 있어야 함) |
 | `--config` | 설정 파일 (기본값: `./hostlint.yaml`, 없으면 `/etc/hostlint/hostlint.yaml`) |
 | `--label key=value` | 결과의 호스트 정보에 라벨 추가 |
+| `--color` | `auto`(기본값), `always`, `never` |
 | `-v, --verbose` | 통과·해당 없음 컨트롤도 표에 표시 |
 
 ## 결과
@@ -122,9 +122,13 @@ sudo hostlint scan --config hostlint.yaml
 | `MANUAL` | 사람이 판단해야 하며, 검토할 사실을 보여 줍니다 |
 | `NOT_APPLICABLE` | 컨트롤이 해당되지 않습니다 (예: 서비스가 설치되지 않음) |
 | `ERROR` | 신뢰할 수 있게 판단할 수 없으며, 이유를 보여 줍니다 |
+| `WAIVED` | 설정 파일의 예외가 `FAIL`이나 `MANUAL` 결과를 받아들였습니다. 원래 상태와 근거는 남습니다 ([docs/configuration.ko.md](docs/configuration.ko.md)) |
 
-컨트롤의 상태는 점검 결과 중 가장 나쁜 것입니다: `FAIL` > `ERROR` > `MANUAL` > `PASS` >
-`NOT_APPLICABLE`.
+컨트롤의 상태는 점검 결과 중 가장 나쁜 것입니다: `FAIL` > `ERROR` > `MANUAL` > `WAIVED` >
+`PASS` > `NOT_APPLICABLE`.
+
+종료 코드: `--fail-on` 이상으로 실패한 것이 없으면 0, 있으면 1, 사용법 오류나 실행하지 못한 점검은 2,
+중단되면 130입니다.
 
 ## 무엇을 점검하나
 
