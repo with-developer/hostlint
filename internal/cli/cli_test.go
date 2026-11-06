@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -63,14 +64,26 @@ func checkStream(t *testing.T, name, got, want string) {
 }
 
 func TestExecuteInterrupted(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("scanning is Linux only")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	code, _, stderr := run(ctx, t, "version")
+	code, _, stderr := run(ctx, t, "scan", "--format", "json", "--root", t.TempDir())
 	if code != ExitInterrupted {
 		t.Errorf("exit code = %d, want %d", code, ExitInterrupted)
 	}
 	if !strings.Contains(stderr, "interrupted") {
 		t.Errorf("stderr = %q, want it to mention the interruption", stderr)
+	}
+}
+
+// A signal that arrives after a command finished does not turn its success into an interruption.
+func TestExecuteLateSignalKeepsFinishedResult(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if code, _, stderr := run(ctx, t, "version"); code != ExitOK || stderr != "" {
+		t.Errorf("exit code = %d, stderr %q", code, stderr)
 	}
 }
 

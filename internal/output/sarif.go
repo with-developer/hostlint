@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -52,7 +53,17 @@ type sarifResult struct {
 	Level     string          `json:"level"`
 	Message   sarifText       `json:"message"`
 	Locations []sarifLocation `json:"locations,omitempty"`
+	// Suppressions say that the finding is accepted: every control it belongs to is waived.
+	Suppressions []sarifSuppression `json:"suppressions,omitempty"`
 }
+
+type sarifSuppression struct {
+	Kind          string `json:"kind"`
+	Justification string `json:"justification"`
+}
+
+// maxSarifLocations is the most locations GitHub code scanning takes for a result.
+const maxSarifLocations = 10
 
 type sarifLocation struct {
 	PhysicalLocation sarifPhysical `json:"physicalLocation"`
@@ -81,10 +92,15 @@ func writeSARIF(w io.Writer, res *engine.Result) error {
 		Results: []sarifResult{},
 	}
 	controls := controlsByCheck(res)
+	accepted := waivedByControls(res)
 	for i, c := range res.Checks {
+		ctls := controls[c.Ref]
+		if ctls == nil {
+			ctls = []string{}
+		}
 		run.Tool.Driver.Rules = append(run.Tool.Driver.Rules, sarifRule{
 			ID: c.Ref, Name: c.ID, ShortDescription: sarifText{Text: c.Title},
-			Properties: map[string]any{"severity": string(c.Severity), "controls": controls[c.Ref]},
+			Properties: map[string]any{"severity": string(c.Severity), "controls": ctls},
 		})
 		var level string
 		switch c.Status {
@@ -105,9 +121,13 @@ func writeSARIF(w io.Writer, res *engine.Result) error {
 			}
 			msg += ": " + strings.Join(texts, "; ")
 		}
-		run.Results = append(run.Results, sarifResult{
+		result := sarifResult{
 			RuleID: c.Ref, RuleIndex: i, Level: level, Message: sarifText{Text: msg}, Locations: sarifLocations(c.Evidence),
-		})
+		}
+		if reason, ok := accepted[c.Ref]; ok {
+			result.Suppressions = []sarifSuppression{{Kind: "external", Justification: reason}}
+		}
+		run.Results = append(run.Results, result)
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
@@ -128,6 +148,9 @@ func sarifLocations(evidence []engine.Evidence) []sarifLocation {
 		src := ev.Source
 		if !strings.HasPrefix(src, "/") || seen[src] {
 			continue
+		}
+		if len(locs) >= maxSarifLocations {
+			break
 		}
 		seen[src] = true
 		file, line := src, 0
@@ -155,4 +178,29 @@ func controlsByCheck(res *engine.Result) map[string][]string {
 		}
 	}
 	return m
+}
+
+// waivedByControls maps a check to the reason of its waiver when every control
+// that holds it is waived (a control waiver leaves its checks FAIL).
+func waivedByControls(res *engine.Result) map[string]string {
+	total, waived := map[string]int{}, map[string]int{}
+	reasons := map[string][]string{}
+	for _, ctl := range res.Controls {
+		for _, ref := range ctl.Checks {
+			total[ref]++
+			if ctl.Status == engine.StatusWaived && ctl.Waiver != nil {
+				waived[ref]++
+				if !slices.Contains(reasons[ref], ctl.Waiver.Reason) {
+					reasons[ref] = append(reasons[ref], ctl.Waiver.Reason)
+				}
+			}
+		}
+	}
+	out := map[string]string{}
+	for ref, n := range total {
+		if n > 0 && waived[ref] == n {
+			out[ref] = strings.Join(reasons[ref], "; ")
+		}
+	}
+	return out
 }

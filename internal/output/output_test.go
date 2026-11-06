@@ -7,7 +7,10 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
+	"syscall" //nolint:depguard // the test makes a FIFO
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -213,6 +216,131 @@ func TestWriteFileIsAtomicAndDoesNotFollowLinks(t *testing.T) {
 	}
 	if fi, err := os.Lstat(link); err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm() != 0o644 {
 		t.Errorf("report: %v, %v", fi, err)
+	}
+}
+
+// A check whose controls are all waived is a suppressed result; one with an unwaived control is not.
+func TestSARIFSuppressesControlWaivedChecks(t *testing.T) {
+	res := sampleResult()
+	res.Controls[0].Status = engine.StatusWaived
+	res.Controls[0].Waiver = &engine.WaiverOf{Reason: "accepted until the migration", Scope: "control"}
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "sarif", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	var log sarifLog
+	if err := json.Unmarshal(buf.Bytes(), &log); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range log.Runs[0].Results {
+		if r.RuleID == "ssh.permit-root-login" {
+			if len(r.Suppressions) != 1 || r.Suppressions[0].Kind != "external" || r.Suppressions[0].Justification != "accepted until the migration" {
+				t.Errorf("suppressions = %+v", r.Suppressions)
+			}
+		} else if len(r.Suppressions) != 0 {
+			t.Errorf("%s is suppressed", r.RuleID)
+		}
+	}
+	// A check that another, unwaived control also holds stays active.
+	res.Controls = append(res.Controls, engine.ControlResult{Profile: "other", ID: "X-1", Status: engine.StatusFail, Checks: []string{"ssh.permit-root-login"}})
+	if _, ok := waivedByControls(res)["ssh.permit-root-login"]; ok {
+		t.Error("a check held by an unwaived control is suppressed")
+	}
+}
+
+// The controls property is an empty list, not null, and locations stop at the cap.
+func TestSARIFControlsAreNeverNullAndLocationsAreCapped(t *testing.T) {
+	res := sampleResult()
+	res.Controls = nil
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "sarif", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), `"controls": null`) || strings.Contains(buf.String(), `"controls":null`) {
+		t.Error("controls is null")
+	}
+	var ev []engine.Evidence
+	for i := 0; i < 25; i++ {
+		ev = append(ev, engine.Evidence{Source: "/etc/f" + strings.Repeat("x", i) + ":1"})
+	}
+	if got := len(sarifLocations(ev)); got != maxSarifLocations {
+		t.Errorf("locations = %d, want %d", got, maxSarifLocations)
+	}
+}
+
+// The status column keeps its width when color is on.
+func TestTableAlignsStatusWithColor(t *testing.T) {
+	plain, colored := strings.Builder{}, strings.Builder{}
+	if err := Write(&plain, sampleResult(), "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Write(&colored, sampleResult(), "table", Options{Color: true}); err != nil {
+		t.Fatal(err)
+	}
+	strip := regexp.MustCompile("\x1b\\[[0-9;]*m")
+	if got := strip.ReplaceAllString(colored.String(), ""); got != plain.String() {
+		t.Errorf("colored output differs from plain once the escapes are removed:\n%s\nvs\n%s", got, plain.String())
+	}
+}
+
+// --output /dev/null (or any stream) writes to the device instead of replacing it, and a
+// device or pipe that is not a stream is refused.
+func TestWriteFileStreamsAndDevices(t *testing.T) {
+	if err := WriteFile("/dev/null", sampleResult(), "json", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if fi, err := os.Lstat("/dev/null"); err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+		t.Fatalf("/dev/null is now %v, %v", fi, err)
+	}
+	fifo := filepath.Join(t.TempDir(), "out")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Skipf("no FIFOs here: %v", err)
+	}
+	if err := WriteFile(fifo, sampleResult(), "json", Options{}); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Errorf("err = %v", err)
+	}
+	if fi, err := os.Lstat(fifo); err != nil || fi.Mode()&os.ModeNamedPipe == 0 {
+		t.Errorf("the FIFO was replaced: %v, %v", fi, err)
+	}
+}
+
+// /dev/fd/N that is a regular file is refused, and a path with ".." is not a stream.
+func TestWriteFileRefusesFileBehindFD(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString("earlier log line\n"); err != nil {
+		t.Fatal(err)
+	}
+	fd := "/dev/fd/" + strconv.Itoa(int(f.Fd()))
+	if _, statErr := os.Stat(fd); statErr != nil {
+		t.Skipf("no /dev/fd here: %v", statErr)
+	}
+	if err := WriteFile(fd, sampleResult(), "json", Options{}); err == nil || !strings.Contains(err.Error(), "not a stream") {
+		t.Errorf("err = %v", err)
+	}
+	if data, _ := os.ReadFile(f.Name()); string(data) != "earlier log line\n" {
+		t.Errorf("the file was written: %q", data)
+	}
+	if isStream(fd + "/../x") {
+		t.Error("a path with .. is a stream")
+	}
+}
+
+// An existing report keeps its mode; a new one is 0644.
+func TestWriteFileKeepsMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "report.json")
+	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFile(path, sampleResult(), "json", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o600 {
+		t.Errorf("mode = %v, want 0600", fi.Mode().Perm())
 	}
 }
 

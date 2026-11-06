@@ -81,8 +81,8 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 		}
 		shown++
 		st := statusStyle[ctl.Status]
-		fmt.Fprintf(&b, "%s %-6s %-6s %s %s\n",
-			p.paint(st.color, st.mark), p.paint(st.color, string(ctl.Status)), ctl.ID, ctl.Title, p.paint(dim, "["+string(ctl.Severity)+"]"))
+		fmt.Fprintf(&b, "%s %s %-6s %s %s\n",
+			p.paint(st.color, st.mark), p.paint(st.color, fmt.Sprintf("%-6s", ctl.Status)), ctl.ID, ctl.Title, p.paint(dim, "["+string(ctl.Severity)+"]"))
 		// A control without checks (it needs a person) has nothing else to
 		// say what to do; a waived control says why it was accepted.
 		if ctl.Reason != "" && (len(ctl.Checks) == 0 || ctl.Waiver != nil) {

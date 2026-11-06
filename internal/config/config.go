@@ -103,6 +103,10 @@ const maxFile = 1 << 20
 // or changed: a regular file owned by root or by the user running hostlint,
 // not writable by group or others. The check is made on the open file.
 func Load(name string) (*File, error) {
+	// Opening a FIFO blocks until a writer appears, so look before opening.
+	if pre, err := os.Stat(name); err == nil && !pre.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s: not a regular file", name)
+	}
 	fd, err := os.Open(name) //nolint:gosec // G304: the --config path the user gave, or a fixed location
 	if err != nil {
 		return nil, err

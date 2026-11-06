@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall" //nolint:depguard // the test makes a FIFO
 	"testing"
+	"time"
 
 	"github.com/with-developer/hostlint/internal/engine"
 )
@@ -183,6 +185,24 @@ func TestUntrustedFile(t *testing.T) {
 				t.Errorf("err = %v; want %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// A FIFO at the config path is refused instead of blocking until a writer opens it.
+func TestLoadRefusesFIFO(t *testing.T) {
+	fifo := filepath.Join(t.TempDir(), "hostlint.yaml")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Skipf("no FIFOs here: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() { _, err := Load(fifo); done <- err }()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "not a regular file") {
+			t.Errorf("err = %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Load blocked on a FIFO")
 	}
 }
 

@@ -39,17 +39,20 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	err := cmd.ExecuteContext(ctx)
 	var findings *findingsError
 	switch {
-	case ctx.Err() != nil:
-		_, _ = fmt.Fprintln(stderr, "hostlint: interrupted")
-		return ExitInterrupted
 	case errors.As(err, &findings):
+		// The scan finished and its result was written; a signal that came
+		// afterwards does not make it interrupted.
 		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
 		return ExitFail
-	case err != nil:
+	case err == nil:
+		return ExitOK
+	case ctx.Err() != nil && errors.Is(err, ctx.Err()):
+		_, _ = fmt.Fprintln(stderr, "hostlint: interrupted")
+		return ExitInterrupted
+	default:
 		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
 		return ExitError
 	}
-	return ExitOK
 }
 
 func newRootCommand() *cobra.Command {
