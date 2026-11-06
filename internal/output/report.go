@@ -77,6 +77,11 @@ func ReadResult(r io.Reader) (*engine.Result, error) {
 	}
 	var head struct {
 		SchemaVersion *int `json:"schemaVersion"`
+		Scan          struct {
+			Privileges *struct {
+				EUID *int `json:"euid"`
+			} `json:"privileges"`
+		} `json:"scan"`
 	}
 	if err := json.Unmarshal(data, &head); err != nil {
 		return nil, fmt.Errorf("not a hostlint result: %w", err)
@@ -86,6 +91,9 @@ func ReadResult(r io.Reader) (*engine.Result, error) {
 		return nil, errors.New("not a hostlint result: no schemaVersion")
 	case *head.SchemaVersion != engine.SchemaVersion:
 		return nil, fmt.Errorf("result schema version %d is not supported; this hostlint reads version %d", *head.SchemaVersion, engine.SchemaVersion)
+	case head.Scan.Privileges == nil || head.Scan.Privileges.EUID == nil:
+		// Without it a missing value would read as root.
+		return nil, errors.New("not a hostlint result: no scan.privileges.euid")
 	}
 	var res engine.Result
 	if err := json.Unmarshal(data, &res); err != nil {
@@ -115,6 +123,9 @@ func checkResult(res *engine.Result) error {
 	}
 	profiles := map[string]bool{}
 	for _, p := range res.Profiles {
+		if profiles[p.ID] {
+			return fmt.Errorf("profile %q listed twice", p.ID)
+		}
 		profiles[p.ID] = true
 	}
 	checks := map[string]bool{}
@@ -359,7 +370,10 @@ func newestPerHost(inputs []ReportInput) ([]ReportInput, []string) {
 			continue
 		}
 		older, newer := inputs[j], in
-		if scanTime(in.Result).Before(scanTime(inputs[j].Result)) {
+		// The same time (a result exported twice): the file name decides, so the
+		// report does not depend on the order of the arguments.
+		if scanTime(in.Result).Before(scanTime(inputs[j].Result)) ||
+			scanTime(in.Result).Equal(scanTime(inputs[j].Result)) && in.Name > inputs[j].Name {
 			older, newer = in, inputs[j]
 		} else {
 			newest[id] = i

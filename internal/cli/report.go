@@ -44,6 +44,20 @@ func runReport(cmd *cobra.Command, files []string, out, title string) error {
 		return errors.New("the report is an HTML file: name it with --output, or redirect standard output")
 	}
 	inputs := make([]output.ReportInput, 0, len(files))
+	seen := map[string]bool{}
+	var unique []string
+	for _, name := range files {
+		// The same file named twice (an overlapping glob) is one input.
+		key := name
+		if abs, err := filepath.Abs(name); err == nil {
+			key = abs
+		}
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, name)
+		}
+	}
+	files = unique
 	for _, name := range files {
 		res, err := readResultFile(name)
 		if err != nil {

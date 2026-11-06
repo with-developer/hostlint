@@ -31,6 +31,11 @@ func TestReportCommand(t *testing.T) {
 		t.Errorf("code %d, stdout %.200q", code, stdout)
 	}
 
+	// The same file named twice (an overlapping glob) is one input, not a second scan.
+	if code, stdout, _ := run(ctx, t, "report", web, filepath.Join(fixtures, "..", "report", "web-01.json")); code != ExitOK || strings.Contains(stdout, "scanned more than once") {
+		t.Errorf("code %d; the same file counted as two scans", code)
+	}
+
 	bad := filepath.Join(dir, "v2.json")
 	if err := os.WriteFile(bad, []byte(`{"schemaVersion": 2}`), 0o644); err != nil {
 		t.Fatal(err)

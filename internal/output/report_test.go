@@ -200,6 +200,10 @@ func TestReadResultRejects(t *testing.T) {
 		{"scan time not a timestamp", edit(func(d map[string]any) { d["scan"].(map[string]any)["startedAt"] = "yesterday" }), "is not a timestamp"},
 		{"severity that is a class list", edit(func(d map[string]any) { first(d, "checks")["severity"] = "high s-FAIL" }), "unknown severity"},
 		{"control severity unknown", edit(func(d map[string]any) { first(d, "controls")["severity"] = "critical" }), "unknown severity"},
+		{"no privileges", edit(func(d map[string]any) { delete(d["scan"].(map[string]any), "privileges") }), "no scan.privileges.euid"},
+		{"profile twice", edit(func(d map[string]any) {
+			d["profiles"] = append(d["profiles"].([]any), first(d, "profiles"))
+		}), `profile "kisa-2026" listed twice`},
 		{"wrong type", edit(func(d map[string]any) { d["checks"] = "all good" }), "not a valid hostlint result"},
 	}
 	for _, tt := range tests {
@@ -226,5 +230,17 @@ func TestNaturalCompare(t *testing.T) {
 				t.Errorf("naturalCompare(%q, %q) = %d", ordered[i], ordered[j], got)
 			}
 		}
+	}
+}
+
+// Two scans of a host with the same time: the report does not depend on the argument order.
+func TestNewestPerHostTieDoesNotDependOnOrder(t *testing.T) {
+	in := reportInputs(t)[0]
+	a := ReportInput{Name: "a.json", Result: in.Result}
+	b := ReportInput{Name: "b.json", Result: in.Result}
+	first, _ := newestPerHost([]ReportInput{a, b})
+	second, _ := newestPerHost([]ReportInput{b, a})
+	if len(first) != 1 || len(second) != 1 || first[0].Name != second[0].Name {
+		t.Errorf("kept %v then %v", first[0].Name, second[0].Name)
 	}
 }

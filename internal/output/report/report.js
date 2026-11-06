@@ -135,16 +135,19 @@
     const all = [];
     let failing = 0;
     let notRoot = 0;
+    let erroring = 0;
     for (const hi of hosts) {
       const st = data.hosts[hi].controls.map((c) => c.s);
       all.push(...st);
       if (st.includes('FAIL')) failing++;
+      if (st.includes('ERROR')) erroring++;
       if (!data.hosts[hi].root) notRoot++;
     }
     return el('section', {class: 'summary'},
       el('div', {class: 'tiles'},
         tile(hosts.length, hosts.length === data.hosts.length ? 'hosts' : 'hosts match the filter'),
         tile(failing, 'hosts with a failed control'),
+        erroring ? tile(erroring, 'hosts with controls that could not be decided (ERROR)', 'warn') : null,
         tile(data.profiles.length === 1 ? data.profiles[0].controls.length : data.profiles.length, data.profiles.length === 1 ? 'controls in ' + data.profiles[0].id : 'profiles'),
         notRoot ? tile(notRoot, 'hosts scanned without root', 'warn') : null),
       el('h2', {}, 'Control results across hosts'),
@@ -162,12 +165,19 @@
     const rows = hosts.filter((hi) => controls.some((ci) => state.shown.has(statusOf(hi, ci))));
     const cols = controls.filter((ci) => rows.some((hi) => state.shown.has(statusOf(hi, ci))));
 
+    // Hosts whose result has the control: others were never evaluated for it.
+    const evaluated = (ci) => hosts.filter((hi) => statusOf(hi, ci) !== null).length;
+    // "No control failed" must not read as clean when results are undecided.
+    let undecided = 0;
+    for (const hi of hosts) for (const ci of controls) if (statusOf(hi, ci) === 'ERROR') undecided++;
+    const noFailure = 'No control failed' + (undecided ? ', but ' + undecided + ' could not be decided (ERROR).' : '.');
+
     // Controls that fail on most hosts.
     const worst = controls.map((ci) => ({ci, n: hosts.filter((hi) => statusOf(hi, ci) === 'FAIL').length}))
       .filter((x) => x.n > 0).sort((a, b) => b.n - a.n || a.ci - b.ci).slice(0, 10);
     const worstList = worst.length ? el('ol', {class: 'worst'}, worst.map(({ci, n}) => el('li', {},
       controlLink(pi, ci), ' ', title(p.controls[ci]), ' ', sev(p.controls[ci].severity),
-      el('span', {class: 'muted'}, ' — fails on ' + n + ' of ' + plural(hosts.length, 'host'))))) : el('p', {class: 'muted'}, 'No control failed.');
+      el('span', {class: 'muted'}, ' — fails on ' + n + ' of ' + plural(evaluated(ci), 'host'))))) : el('p', {class: 'muted'}, noFailure);
 
     const head = el('tr', {}, el('th', {class: 'corner'}, 'Host'), cols.map((ci) => el('th', {class: 'col', title: title(p.controls[ci])}, controlLink(pi, ci))));
     const body = rows.map((hi) => el('tr', {}, el('th', {class: 'row'}, hostLink(hi)), cols.map((ci) => {
@@ -347,7 +357,7 @@
     else if (kind === 'control') view = controlPage(parts[1], parts[2]);
     else view = overview();
     document.getElementById('app').replaceChildren(...view);
-    if (kind === 'host' && !Number.isNaN(parts[3])) {
+    if (kind === 'host' && Number.isInteger(parts[3])) {
       const target = document.getElementById('c-' + parts[2] + '-' + parts[3]);
       if (target) target.scrollIntoView({block: 'start'});
     }
