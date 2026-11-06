@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"regexp"
@@ -383,8 +382,8 @@ func (e *evalEnv) pathEvidence(paths []evidencePath, act cel.Activation) []Evide
 		v, _, err := e.eval(p.prog, act)
 		item := Evidence{Key: p.path}
 		switch {
-		case err != nil && p.mapKey:
-			// Selecting a fact path only fails on a map key the host does not have.
+		case err != nil && p.mapKey && strings.Contains(err.Error(), "no such key"):
+			// Selecting a fact path fails on a map key the host does not have.
 			item.Text = p.path + ": not set"
 		case err != nil:
 			item.Text = p.path + ": " + err.Error()
@@ -773,12 +772,18 @@ func limitEvidence(ev []Evidence, omitted int) ([]Evidence, int) {
 // compareKeys orders evidence keys, comparing list indexes as numbers:
 // show[2] comes before show[10].
 func compareKeys(a, b string) int {
-	pa, ia, oka := splitIndex(a)
-	pb, ib, okb := splitIndex(b)
-	if !oka || !okb || pa != pb {
-		return strings.Compare(a, b)
+	return strings.Compare(orderKey(a), orderKey(b))
+}
+
+// orderKey is the key with a list index padded to a fixed width, so that
+// comparing the keys as text puts show[2] before show[10] and stays a total order
+// when indexed and other keys mix.
+func orderKey(key string) string {
+	prefix, index, ok := splitIndex(key)
+	if !ok {
+		return key
 	}
-	return cmp.Or(cmp.Compare(len(ia), len(ib)), strings.Compare(ia, ib))
+	return prefix + "[" + strings.Repeat("0", max(20-len(index), 0)) + index + "]"
 }
 
 // splitIndex splits "name[12]" into "name" and "12".

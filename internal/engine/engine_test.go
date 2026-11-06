@@ -41,6 +41,7 @@ type fakeCollector struct {
 	err      error
 	panics   bool
 	hangs    bool
+	delay    time.Duration // sleeps, ignoring the context, then returns complete facts
 }
 
 func (f *fakeCollector) Name() string       { return f.name }
@@ -54,6 +55,8 @@ func (f *fakeCollector) Collect(ctx context.Context, _ *hostfs.Host) (Facts, err
 	case f.hangs:
 		<-ctx.Done()
 		return Facts{}, ctx.Err()
+	case f.delay > 0:
+		time.Sleep(f.delay)
 	case f.err != nil:
 		return Facts{}, f.err
 	}

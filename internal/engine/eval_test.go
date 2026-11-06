@@ -320,3 +320,20 @@ func TestCompareSettingInvalidValue(t *testing.T) {
 		t.Errorf("a permissive pattern accepted an unreadable value: %v, %v", ok, err)
 	}
 }
+
+// Evidence keys stay in a total order when indexed and other keys mix.
+func TestCompareKeysIsATotalOrder(t *testing.T) {
+	keys := []string{"show[10]", "show[2]", "show[1a]", "show[1]", "show", "show[]", "other[3]", "show[002]"}
+	for _, a := range keys {
+		for _, b := range keys {
+			for _, c := range keys {
+				if compareKeys(a, b) < 0 && compareKeys(b, c) < 0 && compareKeys(a, c) >= 0 {
+					t.Errorf("%s < %s < %s, but not %s < %s", a, b, c, a, c)
+				}
+			}
+		}
+	}
+	if compareKeys("show[2]", "show[10]") >= 0 {
+		t.Error("show[2] must come before show[10]")
+	}
+}

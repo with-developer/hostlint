@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"maps"
 	"path"
 	"reflect"
@@ -187,7 +186,7 @@ func observeFile(fsys hostfs.FS, p string) fileObservation {
 	switch {
 	case err == nil:
 		return fileObservation{Path: p, Info: fi}
-	case !errors.Is(err, fs.ErrNotExist):
+	case !hostfs.IsMissing(err):
 		return fileObservation{Path: p, Err: err.Error()}
 	}
 	q := "/"
@@ -195,7 +194,7 @@ func observeFile(fsys hostfs.FS, p string) fileObservation {
 		q = path.Join(q, elem)
 		li, err := fsys.Lstat(q)
 		switch {
-		case errors.Is(err, fs.ErrNotExist):
+		case hostfs.IsMissing(err):
 			return fileObservation{Path: p, Missing: true}
 		case err != nil:
 			return fileObservation{Path: p, Err: err.Error()}

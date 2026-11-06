@@ -127,6 +127,12 @@ func runCollector(ctx context.Context, c Collector, h *hostfs.Host, timeout time
 		}
 	}
 	out.run.DurationMs = time.Since(start).Milliseconds()
+	// A collector that saw its time run out and still returned complete facts may
+	// have stopped early: the facts cannot be trusted to be everything.
+	if r.err == nil && ctx.Err() != nil && r.facts.Complete && len(r.facts.Partial) == 0 && len(r.facts.Unknown) == 0 {
+		r.facts.Complete = false
+		r.facts.Skipped = append(r.facts.Skipped, "the collector's time ran out")
+	}
 	switch {
 	case r.err != nil && ctx.Err() != nil:
 		r.err = fmt.Errorf("collector did not finish: %w", r.err)

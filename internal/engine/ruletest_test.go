@@ -164,3 +164,34 @@ tests:
 		t.Errorf("failures %q, want one about show", got)
 	}
 }
+
+// A path below a regular file does not exist: the missing policy applies, not an error.
+func TestFileBelowARegularFileIsMissing(t *testing.T) {
+	rule := `id: x.y
+version: 1
+title: T
+severity: low
+file:
+  paths: [/etc/app/conf.d/x.conf]
+  owner: [root]
+  mode: "0644"
+  missing: pass
+tests:
+  - name: an ancestor is a file
+    files:
+      /etc/app: {type: file}
+    want: PASS
+  - name: present and wrong
+    files:
+      /etc/app/conf.d/x.conf: {mode: "0666"}
+    want: FAIL
+  - name: unreadable
+    input: unavailable
+    files:
+      /etc/app/conf.d: {type: dir, mode: "0700", error: permission}
+    want: ERROR
+`
+	if got := ruleFailures(t, rule); len(got) != 0 {
+		t.Errorf("failures %q", got)
+	}
+}

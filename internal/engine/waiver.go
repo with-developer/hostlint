@@ -84,14 +84,29 @@ func waiveChecks(waivers []Waiver, checks map[string]*CheckResult, hostname stri
 			notes = append(notes, w.note("expired"))
 			continue
 		}
+		found, applied, blocked := false, false, ""
 		for _, ref := range slices.Sorted(maps.Keys(checks)) {
 			cr := checks[ref]
-			if cr.ID != w.Check || !waivable(cr.Status, w.Errors) {
+			if cr.ID != w.Check {
+				continue
+			}
+			found = true
+			if !waivable(cr.Status, w.Errors) {
+				if cr.Status == StatusError {
+					blocked = "not applied: the check is ERROR here; set errors: true to accept that it cannot run"
+				}
 				continue
 			}
 			cr.OriginalStatus, cr.Status = cr.Status, StatusWaived
 			cr.Waiver = w.of("check")
 			cr.Reason = "waived: " + w.Reason
+			applied = true
+		}
+		switch {
+		case !found:
+			notes = append(notes, w.note("not applied: the check is not in the scanned profile"))
+		case !applied && blocked != "":
+			notes = append(notes, w.note(blocked))
 		}
 	}
 	return notes

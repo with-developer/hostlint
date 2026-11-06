@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -128,4 +129,10 @@ func ReadLargeFile(fsys FS, name string, limit int64) ([]byte, error) {
 		return nil, &fs.PathError{Op: "read", Path: name, Err: errors.ErrUnsupported}
 	}
 	return lr.readLarge(name, limit)
+}
+
+// IsMissing reports whether err says that nothing is at a path: it does not
+// exist, or a part of it is not a directory (a path below a regular file).
+func IsMissing(err error) bool {
+	return errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR)
 }
