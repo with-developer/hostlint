@@ -113,7 +113,7 @@ jobs:
         with:
           version: v2.18.3 # keep in step with GORELEASER_VERSION in the Makefile
           args: release --snapshot --clean --skip=sign
-      - run: shellcheck install.sh scripts/check-release.sh scripts/check-translations.sh
+      - run: shellcheck install.sh scripts/*.sh
       - run: scripts/check-release.sh dist
 
   # Single required status check for branch protection. Fails unless every

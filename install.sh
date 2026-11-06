@@ -51,6 +51,7 @@ aarch64 | arm64) arch=arm64 ;;
 esac
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
+command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || fail "sha256sum or shasum is required to verify the download"
 
 download() {
 	curl --proto '=https,file' --proto-redir '=https' --tlsv1.2 -fsSL -o "$2" "$1" || fail "could not download $1"
@@ -77,7 +78,7 @@ fi
 # Only what a release tag is made of: the version becomes part of a URL and
 # of the signing identity.
 case $version in
-v[0-9]*.[0-9]*.[0-9]* | v[0-9]*.[0-9]*.[0-9]*[-+]*)
+v[0-9]*.[0-9]*.[0-9]*)
 	case ${version#v} in
 	*[!0-9A-Za-z.+-]*) fail "not a release version: $version" ;;
 	esac
@@ -88,6 +89,7 @@ esac
 # HOSTLINT_DOWNLOAD_URL replaces the release URL; CI uses it to test this
 # script against a snapshot build.
 base=${HOSTLINT_DOWNLOAD_URL:-https://github.com/$repo/releases/download/$version}
+[ -z "${HOSTLINT_DOWNLOAD_URL:-}" ] || say "warning: downloading from HOSTLINT_DOWNLOAD_URL, not from GitHub"
 archive="hostlint_${version#v}_linux_$arch.tar.gz"
 
 tmp=$(mktemp -d)
@@ -121,8 +123,9 @@ mkdir -p "$bindir" 2>/dev/null || true
 [ -w "$bindir" ] || fail "cannot write to $bindir; run as root, or choose a directory with -b"
 # Written beside the target and renamed over it: a running hostlint, a full
 # disk or an interrupted copy never leaves a truncated binary behind.
-new="$bindir/.hostlint.new.$$"
+new=$(mktemp "$bindir/.hostlint.XXXXXX") || fail "cannot write to $bindir"
 trap 'rm -rf "$tmp" "$new"' EXIT
 { cp "$tmp/hostlint" "$new" && chmod 0755 "$new" && mv -f "$new" "$bindir/hostlint"; } ||
 	fail "could not install into $bindir"
-say "installed $("$bindir/hostlint" version | head -n 1) to $bindir/hostlint"
+installed=$("$bindir/hostlint" version) || fail "the installed $bindir/hostlint does not run (a noexec mount, or a build for another system?)"
+say "installed $(printf '%s\n' "$installed" | head -n 1) to $bindir/hostlint"

@@ -32,8 +32,11 @@ for a in amd64 arm64; do
 	echo "$list" | grep -qx hostlint || fail "no binary in the $a archive"
 done
 if command -v dpkg-deb >/dev/null 2>&1; then
-	contents=$(dpkg-deb --contents "$dist"/hostlint_*_amd64.deb)
-	echo "$contents" | grep -q ' \./usr/bin/hostlint$' || fail "no /usr/bin/hostlint in the .deb"
+	for a in amd64 arm64; do
+		contents=$(dpkg-deb --contents "$dist"/hostlint_*_"$a".deb)
+		echo "$contents" | grep -q ' \./usr/bin/hostlint$' || fail "no /usr/bin/hostlint in the $a .deb"
+		[ "$(dpkg-deb --field "$dist"/hostlint_*_"$a".deb Architecture)" = "$a" ] || fail "the $a .deb has another architecture"
+	done
 fi
 
 tmp=$(mktemp -d)
@@ -58,7 +61,7 @@ grep -q 'does not match its SHA-256' "$tmp/tamper.log" || {
 }
 [ ! -e "$tmp/bin2/hostlint" ] || fail "install.sh left a tampered binary behind"
 # A version is made of what a release tag is made of: it ends up in a URL.
-for bad in 'v1/../../evil' 'v1?x' 'latest'; do
+for bad in 'v1/../../evil' 'v1?x' 'latest' 'v1.2.3/../../evil' 'v1.2.3?x' 'v1.2.3 x'; do
 	if sh "$root/install.sh" -v "$bad" -b "$tmp/bin3" 2>"$tmp/version.log"; then
 		fail "install.sh accepted the version $bad"
 	fi
