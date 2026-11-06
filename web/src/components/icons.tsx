@@ -29,6 +29,11 @@ export const IconGrid = () => (
     <path d="M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM10 10h4v4h-4zM16 10h4v4h-4zM4 16h4v4H4zM10 16h4v4h-4zM16 16h4v4h-4z" />
   </Icon>
 );
+export const IconList = () => (
+  <Icon>
+    <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
+  </Icon>
+);
 export const IconSearch = () => (
   <Icon>
     <circle cx="11" cy="11" r="6.5" />

@@ -59,7 +59,9 @@ function Heatmap({ matrix }: { matrix: Matrix }) {
               <th className="corner" />
               {matrix.controls.map((c) => (
                 <th key={`${c.profile}/${c.id}`} className="col">
-                  <span>{c.id}</span>
+                  <a href={`#/controls/${c.profile}/${c.id}`} title={c.title}>
+                    <span>{c.id}</span>
+                  </a>
                 </th>
               ))}
             </tr>

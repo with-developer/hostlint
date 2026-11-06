@@ -13,7 +13,7 @@ release binaries are, and a source build uses `make build-web` (Node 22). A bina
 has the API only and says so at `/`. Sign in with a read token (`hostlint server token create --scope
 api`): the dashboard shows the fleet overview (pass rate, hosts with a failing control, hosts that
 stopped reporting, the controls that fail most, recent regressions), the host list (search, filters,
-sorting, CSV export), a matrix of every control on every host, and for each host its controls with the evidence of every check, its history and a
+sorting, CSV export), a list of controls (and for each one what it checks, why it matters, how to fix it and the hosts that fail it), a matrix of every control on every host, and for each host its controls with the evidence of every check, its history and a
 comparison of any scan with the one before. It is available in English and Korean and follows the
 system's light or dark theme. Everything a host sent is shown as text.
 
@@ -69,6 +69,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 |---|---|
 | `GET /api/v1/overview` | Hosts, hosts with a failing control, stale hosts, counts, the controls that fail on most hosts, recent regressions (`?staleDays=7`) |
 | `GET /api/v1/hosts` | The hosts with the counts and score of their latest scan (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`) |
+| `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | Every control with the status counts of the latest scans; one control with its hosts, and what it checks and how to fix it |
 | `GET /api/v1/matrix` | The latest status of every control on every host, hosts that fail most first |
 | `GET /api/v1/hosts/ID` | One host: its latest controls and its history |
 | `GET /api/v1/scans/ID` | A stored result, exactly as received |

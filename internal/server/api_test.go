@@ -9,6 +9,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/profiles"
+	"github.com/with-developer/hostlint/rules"
 )
 
 // apiFixture is a server with three scans received an hour apart: web-01 twice (U-01 got worse
@@ -356,5 +360,52 @@ func TestEmptyListsAreNotNull(t *testing.T) {
 		if code != http.StatusOK || !strings.Contains(string(body), `"hosts":[]`) {
 			t.Errorf("%s: %d %s", path, code, body)
 		}
+	}
+}
+
+func TestControlsAndControl(t *testing.T) {
+	f := newAPIFixture(t)
+	var list struct {
+		Controls []ControlSummary `json:"controls"`
+	}
+	f.json(t, "/api/v1/controls", &list)
+	if len(list.Controls) < 4 {
+		t.Fatalf("controls = %+v", list.Controls)
+	}
+	var u01 *ControlSummary
+	for i, c := range list.Controls {
+		if c.ID == "U-01" {
+			u01 = &list.Controls[i]
+		}
+	}
+	if u01 == nil || u01.Counts["FAIL"] != 1 || u01.Title == "" {
+		t.Fatalf("U-01 = %+v", u01)
+	}
+	var d struct {
+		Control ControlDetail `json:"control"`
+		Info    *ControlInfo  `json:"info"`
+	}
+	f.json(t, "/api/v1/controls/kisa-2026/U-01", &d)
+	if len(d.Control.Hosts) == 0 || d.Control.Hosts[0].Status != "FAIL" || d.Control.Hosts[0].Host != "web-01" {
+		t.Errorf("hosts of U-01 = %+v", d.Control.Hosts)
+	}
+	if d.Info != nil {
+		t.Errorf("info without profiles: %+v", d.Info)
+	}
+	// With the profiles, the answer says what the control checks and how to fix it.
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.srv.cfg.Content = content
+	f.json(t, "/api/v1/controls/kisa-2026/U-01", &d)
+	if d.Info == nil || len(d.Info.Checks) == 0 || d.Info.Checks[0].Remediation == "" || d.Info.Checks[0].Rationale == "" {
+		t.Errorf("info = %+v", d.Info)
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/controls/kisa-2026/U-99"); code != http.StatusNotFound {
+		t.Errorf("unknown control: %d", code)
+	}
+	if code, _ := f.get(t, "", "/api/v1/controls"); code != http.StatusUnauthorized {
+		t.Errorf("without a token: %d", code)
 	}
 }

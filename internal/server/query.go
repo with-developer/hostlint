@@ -520,3 +520,117 @@ func naturalLess(a, b string) bool {
 }
 
 func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+// ControlSummary is one control across the fleet: how many hosts have each status in their latest scan.
+type ControlSummary struct {
+	Profile  string `json:"profile"`
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Severity string `json:"severity"`
+	Counts   Counts `json:"counts"`
+}
+
+// Controls lists every control with the status counts of the latest scans.
+func (s *Store) Controls(ctx context.Context) ([]ControlSummary, error) {
+	rs, err := s.db.QueryContext(ctx, `
+		SELECT c.profile, c.control_id, MAX(c.title), MAX(c.severity), c.status, COUNT(*)
+		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
+		GROUP BY c.profile, c.control_id, c.status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	type key struct{ profile, id string }
+	byKey := map[key]*ControlSummary{}
+	var order []key
+	for rs.Next() {
+		var c ControlSummary
+		var status string
+		var n int
+		if err := rs.Scan(&c.Profile, &c.ID, &c.Title, &c.Severity, &status, &n); err != nil {
+			return nil, err
+		}
+		k := key{c.Profile, c.ID}
+		cur := byKey[k]
+		if cur == nil {
+			c.Counts = Counts{}
+			cur = &c
+			byKey[k] = cur
+			order = append(order, k)
+		}
+		cur.Counts[status] = n
+	}
+	if err := rs.Err(); err != nil {
+		return nil, err
+	}
+	sort.Slice(order, func(i, j int) bool {
+		a, b := order[i], order[j]
+		if a.profile != b.profile {
+			return a.profile < b.profile
+		}
+		return naturalLess(a.id, b.id)
+	})
+	out := make([]ControlSummary, 0, len(order))
+	for _, k := range order {
+		out = append(out, *byKey[k])
+	}
+	return out, nil
+}
+
+// ControlHost is a host's status for one control.
+type ControlHost struct {
+	HostID int64  `json:"hostId"`
+	Host   string `json:"host"`
+	Status string `json:"status"`
+	Stale  bool   `json:"stale"`
+}
+
+// ControlDetail is one control: the hosts, worst status first.
+type ControlDetail struct {
+	ControlSummary
+	Hosts []ControlHost `json:"hosts"`
+}
+
+// Control returns the status of one control on every host that has a scan.
+func (s *Store) Control(ctx context.Context, profile, id string, staleAfter time.Duration) (*ControlDetail, error) {
+	hosts, err := s.allHosts(ctx, "", 0, staleAfter)
+	if err != nil {
+		return nil, err
+	}
+	stale := map[int64]bool{}
+	for _, h := range hosts {
+		stale[h.ID] = h.Stale
+	}
+	rs, err := s.db.QueryContext(ctx, `
+		SELECT h.id, h.name, c.title, c.severity, c.status
+		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row JOIN hosts h ON h.id = l.host_row
+		WHERE c.profile = ? AND c.control_id = ? ORDER BY h.name`, profile, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	d := &ControlDetail{ControlSummary: ControlSummary{Profile: profile, ID: id, Counts: Counts{}}, Hosts: []ControlHost{}}
+	for rs.Next() {
+		var h ControlHost
+		var title, sev string
+		if err := rs.Scan(&h.HostID, &h.Host, &title, &sev, &h.Status); err != nil {
+			return nil, err
+		}
+		h.Stale = stale[h.HostID]
+		d.Title, d.Severity = title, sev
+		d.Counts[h.Status]++
+		d.Hosts = append(d.Hosts, h)
+	}
+	if err := rs.Err(); err != nil {
+		return nil, err
+	}
+	if len(d.Hosts) == 0 {
+		return nil, ErrNotFound
+	}
+	rank := map[string]int{}
+	for i, st := range statusOrder {
+		rank[st] = i
+	}
+	sort.SliceStable(d.Hosts, func(i, j int) bool { return rank[d.Hosts[i].Status] < rank[d.Hosts[j].Status] })
+	return d, nil
+}

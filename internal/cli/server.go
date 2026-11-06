@@ -56,9 +56,13 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 				return err
 			}
 			defer store.Close()
+			content, err := engine.Load(rules.FS, profiles.FS)
+			if err != nil {
+				return err
+			}
 			lc.GeneratedDir = filepath.Dir(*dbPath)
 			logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
-			srv := server.New(server.Config{Store: store, MaxBody: maxBody, Rate: rate, Logger: logger, BehindProxy: lc.BehindProxy})
+			srv := server.New(server.Config{Store: store, MaxBody: maxBody, Rate: rate, Logger: logger, BehindProxy: lc.BehindProxy, Content: content})
 			out := cmd.OutOrStdout()
 			return srv.Serve(cmd.Context(), lc, func(addr, pin string) {
 				if pin != "" {
@@ -253,7 +257,7 @@ to show. The data lives in memory and is gone when the command ends. It prints a
 			if err != nil {
 				return err
 			}
-			srv := server.New(server.Config{Store: store, Rate: 600})
+			srv := server.New(server.Config{Store: store, Rate: 600, Content: content})
 			out := cmd.OutOrStdout()
 			return srv.Serve(cmd.Context(), server.ListenConfig{Addr: listen, PlainHTTP: true}, func(addr, _ string) {
 				fmt.Fprintf(out, "demo fleet: 12 made-up hosts, %d results\nopen http://%s and sign in with this read token:\n\n  %s\n\n(Ctrl-C ends the demo; the data is gone with it)\n", n, addr, token)

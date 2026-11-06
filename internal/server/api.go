@@ -67,6 +67,8 @@ func (s *Server) routesRead(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/overview", s.readAPI(s.handleOverview))
 	mux.HandleFunc("GET /api/v1/hosts", s.readAPI(s.handleHosts))
 	mux.HandleFunc("GET /api/v1/matrix", s.readAPI(s.handleMatrix))
+	mux.HandleFunc("GET /api/v1/controls", s.readAPI(s.handleControls))
+	mux.HandleFunc("GET /api/v1/controls/{profile}/{id}", s.readAPI(s.handleControl))
 	mux.HandleFunc("GET /api/v1/hosts/{id}", s.readAPI(s.handleHost))
 	mux.HandleFunc("GET /api/v1/scans/{id}", s.readAPI(s.handleScan))
 	mux.HandleFunc("GET /api/v1/diff", s.readAPI(s.handleDiff))
@@ -341,4 +343,78 @@ func (s *Server) handleMatrix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, m)
+}
+
+func (s *Server) handleControls(w http.ResponseWriter, r *http.Request) {
+	list, err := s.cfg.Store.Controls(r.Context())
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"controls": list})
+}
+
+// CheckInfo is what a check looks at and how to fix it: our own rule text.
+type CheckInfo struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	TitleKo     string `json:"titleKo,omitempty"`
+	Description string `json:"description"`
+	Rationale   string `json:"rationale"`
+	Remediation string `json:"remediation"`
+}
+
+// ControlInfo is the profile's own description of a control, when the server has the profiles.
+type ControlInfo struct {
+	TitleKo string      `json:"titleKo,omitempty"`
+	Manual  string      `json:"manual,omitempty"`
+	Checks  []CheckInfo `json:"checks"`
+}
+
+func (s *Server) controlInfo(profile, id string) *ControlInfo {
+	if s.cfg.Content == nil {
+		return nil
+	}
+	p := s.cfg.Content.Profiles[profile]
+	if p == nil {
+		return nil
+	}
+	for _, c := range p.Controls {
+		if c.ID != id {
+			continue
+		}
+		info := &ControlInfo{TitleKo: c.TitleKo, Manual: strings.TrimSpace(c.Manual), Checks: []CheckInfo{}}
+		for _, ref := range c.Checks {
+			if ch := s.cfg.Content.Checks[ref]; ch != nil {
+				info.Checks = append(info.Checks, CheckInfo{
+					ID: ch.ID, Title: ch.Title, TitleKo: ch.TitleKo,
+					Description: strings.TrimSpace(ch.Description), Rationale: strings.TrimSpace(ch.Rationale), Remediation: strings.TrimSpace(ch.Remediation),
+				})
+			}
+		}
+		return info
+	}
+	return nil
+}
+
+func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
+	after, err := staleAfter(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	profile, id := r.PathValue("profile"), r.PathValue("id")
+	if len(profile) > 64 || len(id) > 64 {
+		writeError(w, http.StatusBadRequest, "not a control")
+		return
+	}
+	d, err := s.cfg.Store.Control(r.Context(), profile, id, after)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		writeError(w, http.StatusNotFound, "no such control, or no host has a result for it")
+	case err != nil:
+		s.fail(w, err)
+	default:
+		writeJSON(w, http.StatusOK, map[string]any{"control": d, "info": s.controlInfo(profile, id)})
+	}
 }

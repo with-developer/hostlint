@@ -8,7 +8,8 @@ import { OverviewPage } from "./pages/Overview";
 import { HostsPage } from "./pages/Hosts";
 import { HostPage } from "./pages/Host";
 import { MatrixPage } from "./pages/Matrix";
-import { IconGlobe, IconGrid, IconLogout, IconMoon, IconOverview, IconServer, IconShield, IconSun } from "./components/icons";
+import { ControlPage, ControlsPage } from "./pages/Controls";
+import { IconGlobe, IconGrid, IconList, IconLogout, IconMoon, IconOverview, IconServer, IconShield, IconSun } from "./components/icons";
 
 type Auth = "checking" | "in" | "out" | "failed";
 
@@ -91,18 +92,21 @@ export function App() {
       />
     );
 
-  const [page, arg] = parseRoute(hash);
+  const [page, arg, arg2] = parseRoute(hash);
   const hostId = Number(arg);
   let view;
   if (page === "hosts" && arg && Number.isInteger(hostId) && hostId > 0) view = <HostPage key={hostId} id={hostId} />;
   else if (page === "hosts") view = <HostsPage />;
   else if (page === "matrix") view = <MatrixPage />;
+  else if (page === "controls" && arg && arg2) view = <ControlPage key={`${arg}/${arg2}`} profile={arg} id={arg2} />;
+  else if (page === "controls") view = <ControlsPage />;
   else view = <OverviewPage />;
-  const current = page === "hosts" || page === "matrix" ? page : "overview";
+  const current = page === "hosts" || page === "matrix" || page === "controls" ? page : "overview";
 
   const nav: [string, string, string, JSX.Element][] = [
     ["overview", "#/", t("nav.overview"), <IconOverview key="o" />],
     ["hosts", "#/hosts", t("nav.hosts"), <IconServer key="h" />],
+    ["controls", "#/controls", t("nav.controls"), <IconList key="c" />],
     ["matrix", "#/matrix", t("nav.matrix"), <IconGrid key="m" />],
   ];
 

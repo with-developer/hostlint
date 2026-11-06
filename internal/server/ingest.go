@@ -42,6 +42,9 @@ type Config struct {
 	// Secure attribute of the session cookie).
 	BehindProxy bool
 	Now         func() time.Time
+	// Content, when set, adds what each control checks and how to fix it (the rule text of
+	// the built-in profiles) to the answers about a control.
+	Content *engine.Content
 	// Web holds the dashboard's files (index.html and assets/). Nil means the build has none
 	// and the server answers with the API only; the `web` build tag embeds the real one.
 	Web fs.FS

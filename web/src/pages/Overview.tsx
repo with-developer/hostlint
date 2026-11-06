@@ -47,7 +47,9 @@ export function OverviewPage() {
                       {o.topFailing.map((c) => (
                         <li key={`${c.profile}/${c.id}`}>
                           <div className="ranked-head">
-                            <span className="mono id">{c.id}</span>
+                            <a className="mono id" href={`#/controls/${c.profile}/${c.id}`}>
+                              {c.id}
+                            </a>
                             <span className="ranked-title">{c.title}</span>
                             <Severity value={c.severity} />
                             <strong className="num">

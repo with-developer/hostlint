@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 6566c91 -->
+<!-- translated from docs/fleet.md @ f5ad0de -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -14,7 +14,7 @@
 `go install`로 설치한 바이너리에는 API만 있고 `/`에서 그렇게 안내합니다. 조회 토큰
 (`hostlint server token create --scope api`)으로 로그인하면, 전체 현황(통과율, 실패한 컨트롤이 있는
 호스트, 보고를 멈춘 호스트, 가장 많이 실패하는 컨트롤, 최근 악화), 호스트 목록(검색, 필터, 정렬, CSV
-내보내기), 모든 호스트의 모든 컨트롤 매트릭스, 그리고 호스트별로 모든 점검의 근거가 있는 컨트롤, 이력, 직전 스캔과의 비교를 볼 수 있습니다.
+내보내기), 컨트롤 목록(컨트롤마다 무엇을 점검하는지, 왜 중요한지, 조치 방법, 실패한 호스트), 모든 호스트의 모든 컨트롤 매트릭스, 그리고 호스트별로 모든 점검의 근거가 있는 컨트롤, 이력, 직전 스캔과의 비교를 볼 수 있습니다.
 영어와 한국어를 지원하고 시스템의 라이트/다크 테마를 따릅니다. 호스트가 보낸 내용은 모두 텍스트로만
 표시합니다.
 
@@ -70,6 +70,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 |---|---|
 | `GET /api/v1/overview` | 호스트 수, 실패 컨트롤이 있는 호스트, 오래 보고하지 않은 호스트, 상태별 개수, 가장 많은 호스트에서 실패하는 컨트롤, 최근 악화(`?staleDays=7`) |
 | `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`) |
+| `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | 최신 스캔 기준 컨트롤별 상태 개수, 컨트롤 하나의 호스트 목록과 점검 내용·조치 방법 |
 | `GET /api/v1/matrix` | 모든 호스트의 모든 컨트롤의 최신 상태, 가장 많이 실패한 호스트가 먼저 |
 | `GET /api/v1/hosts/ID` | 호스트 하나: 최신 컨트롤과 이력 |
 | `GET /api/v1/scans/ID` | 받은 그대로의 저장된 결과 |
