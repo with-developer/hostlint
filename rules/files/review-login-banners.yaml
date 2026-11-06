@@ -1,0 +1,32 @@
+id: files.review-login-banners
+version: 1
+title: Review the login banners
+title_ko: 로그인 배너 검토
+severity: low
+description: >-
+  Shows the banner files (/etc/issue, /etc/issue.net, /etc/motd) with their first line, whether they show
+  system details (the getty escapes \S, \s, \r, \v, \m, \n), and the SSH Banner setting. Whether the text warns
+  against misuse is for a person to judge.
+rationale: A warning that unauthorized use is prohibited supports action against an intruder, and a banner that names the system or kernel helps an attacker.
+remediation: >-
+  Put your organization's warning in /etc/issue, /etc/issue.net and /etc/motd without the system escapes, and set
+  `Banner /etc/issue.net` in sshd_config.
+manual:
+  guidance: >-
+    Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your organization's warning and no
+    system details. The list shows what each file starts with.
+  show: >-
+    banner.files.filter(f, f.exists && !f.empty).map(f, f.path + ": " + f.first + (size(f.system_details) > 0 ? " (shows system details, for example " + f.system_details[0] + ")" : "")) +
+    banner.files.filter(f, !f.exists || f.empty).map(f, f.path + ": " + (f.exists ? "empty" : "missing")) +
+    (sshd.present ? ["sshd Banner: " + ("banner" in sshd.config ? sshd.config["banner"].value : "not set")] : [])
+tests:
+  - name: files with a banner and system details
+    facts:
+      banner: {files: [{path: /etc/issue, exists: true, empty: false, first: "Ubuntu 24.04 LTS \\n \\l", system_details: ["\\n"]}, {path: /etc/issue.net, exists: true, empty: false, first: "Authorized use only.", system_details: []}, {path: /etc/motd, exists: false, empty: false, first: "", system_details: []}]}
+      sshd: {present: true, config: {banner: {value: /etc/issue.net, explicit: true, source: "/etc/ssh/sshd_config:20"}}}
+    want: MANUAL
+  - name: no sshd
+    facts:
+      banner: {files: []}
+      sshd: {present: false}
+    want: MANUAL

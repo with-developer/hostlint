@@ -1,5 +1,5 @@
 os: AlmaLinux 10.2 (Lavender Lion) (id almalinux, version 10.2, family rhel, supported true)
-profile kisa-2026 revision 12: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
+profile kisa-2026 revision 13: FAIL 3 ERROR 3 MANUAL 10 PASS 31 NOT_APPLICABLE 20
 collector pam: ok, complete false  [read /etc/pam.d/system-auth: no such file or directory read /etc/pam.d/postlogin: no such file or directory the passwd stack does not certainly reach pam_unix: the hash of new passwords may be set elsewhere]
 
 U-01 NOT_APPLICABLE
@@ -343,6 +343,10 @@ U-61 NOT_APPLICABLE
     - snmp.present = false
 
 U-62 MANUAL
+  files.review-login-banners MANUAL: Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your organization's warning and no system details. The list shows what each file starts with.
+    - /etc/issue: \S (shows system details, for example \S)
+    - /etc/issue.net: \S (shows system details, for example \S)
+    - /etc/motd: empty
 
 U-63 NOT_APPLICABLE
   files.sudoers-perms NOT_APPLICABLE: no matching files exist

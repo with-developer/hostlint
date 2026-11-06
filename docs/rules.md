@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## kisa-2026 (revision 12)
+## kisa-2026 (revision 13)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 
@@ -74,7 +74,7 @@ KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers
 | U-59 | high | SNMP uses version 3 (SNMP v3 사용) | [`services.snmp-v3-only`](#servicessnmp-v3-only), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
 | U-60 | medium | SNMP communities are not guessable (SNMP 커뮤니티 문자열 복잡성) | [`services.snmp-community-strong`](#servicessnmp-community-strong), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
 | U-61 | high | SNMP access is restricted (SNMP 접근 제어) | [`services.snmp-access-restricted`](#servicessnmp-access-restricted), [`services.review-snmp-agent`](#servicesreview-snmp-agent) |
-| U-62 | low | Login banners warn against misuse (로그인 경고 메시지) | review by hand |
+| U-62 | low | Login banners warn against misuse (로그인 경고 메시지) | [`files.review-login-banners`](#filesreview-login-banners) |
 | U-63 | medium | sudoers files are protected (sudoers 파일 권한) | [`files.sudoers-perms`](#filessudoers-perms) |
 | U-64 | high | Security updates are applied (보안 패치 적용) | [`services.review-security-updates`](#servicesreview-security-updates) |
 | U-65 | medium | Time is synchronized (시각 동기화) | [`services.time-sync`](#servicestime-sync), [`services.review-time-sync`](#servicesreview-time-sync) |
@@ -504,6 +504,16 @@ Lists the files and directories under /var/log that root does not own.
 **Why.** A log owned by a login account can be rewritten by whoever uses it; one owned by the logging service is expected.
 
 **Fix.** Run `chown root` on logs that no service writes as another account.
+
+#### `files.review-login-banners`
+
+Review the login banners (로그인 배너 검토) — severity low, a review (`MANUAL`).
+
+Shows the banner files (/etc/issue, /etc/issue.net, /etc/motd) with their first line, whether they show system details (the getty escapes \S, \s, \r, \v, \m, \n), and the SSH Banner setting. Whether the text warns against misuse is for a person to judge.
+
+**Why.** A warning that unauthorized use is prohibited supports action against an intruder, and a banner that names the system or kernel helps an attacker.
+
+**Fix.** Put your organization's warning in /etc/issue, /etc/issue.net and /etc/motd without the system escapes, and set `Banner /etc/issue.net` in sshd_config.
 
 #### `files.review-setid`
 

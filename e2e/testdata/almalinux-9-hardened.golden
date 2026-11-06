@@ -1,5 +1,5 @@
 os: AlmaLinux 9.8 (Olive Jaguar) (id almalinux, version 9.8, family rhel, supported true)
-profile kisa-2026 revision 12: MANUAL 11 PASS 37 NOT_APPLICABLE 19
+profile kisa-2026 revision 13: MANUAL 11 PASS 37 NOT_APPLICABLE 19
 
 U-01 PASS
   ssh.permit-root-login PASS
@@ -374,6 +374,11 @@ U-61 NOT_APPLICABLE
     - snmp.present = false
 
 U-62 MANUAL
+  files.review-login-banners MANUAL: Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your organization's warning and no system details. The list shows what each file starts with.
+    - /etc/issue: \S (shows system details, for example \S)
+    - /etc/issue.net: \S (shows system details, for example \S)
+    - /etc/motd: empty
+    - sshd Banner: none
 
 U-63 NOT_APPLICABLE
   files.sudoers-perms NOT_APPLICABLE: no matching files exist

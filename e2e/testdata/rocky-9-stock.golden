@@ -1,5 +1,5 @@
 os: Rocky Linux 9.8 (Blue Onyx) (id rocky, version 9.8, family rhel, supported true)
-profile kisa-2026 revision 12: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
+profile kisa-2026 revision 13: FAIL 5 MANUAL 10 PASS 32 NOT_APPLICABLE 20
 
 U-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -375,6 +375,10 @@ U-61 NOT_APPLICABLE
     - snmp.present = false
 
 U-62 MANUAL
+  files.review-login-banners MANUAL: Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your organization's warning and no system details. The list shows what each file starts with.
+    - /etc/issue: \S (shows system details, for example \S)
+    - /etc/issue.net: \S (shows system details, for example \S)
+    - /etc/motd: empty
 
 U-63 NOT_APPLICABLE
   files.sudoers-perms NOT_APPLICABLE: no matching files exist

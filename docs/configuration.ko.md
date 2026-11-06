@@ -1,4 +1,4 @@
-<!-- translated from docs/configuration.md @ 7839e76 -->
+<!-- translated from docs/configuration.md @ caa12a3 -->
 # 설정
 
 hostlint는 설정 없이 동작합니다. `hostlint.yaml`을 두면 프로파일을 고르고, 점검을 더 엄격하게 만들고,
@@ -23,7 +23,7 @@ waivers:
     hosts: ["web-*"]
   # 프로파일의 컨트롤 하나를 받아들임
   - control: U-18
-    revision: 12
+    revision: 13
     reason: Accepted by the security team (SEC-142)
     expires: 2027-01-31
 
