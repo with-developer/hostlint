@@ -54,11 +54,11 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 **Phase 1 shipped (v0.8 to v0.10; [ADR 0010](adr/0010-fleet-server-and-dashboard.md)):** `hostlint server`
 (SQLite, tokens, a hash-chained audit table, sessions) with an embedded web dashboard, `hostlint push`
 and `hostlint scan --push` (hosts send results; the server has no channel to them), `hostlint diff`,
-retention, backup, host administration, `hostlint server demo`, and signed results (v0.10: a per-host
+retention, backup, host administration, `hostlint server demo`, a webhook for regressions and silent hosts (v0.11), and signed results (v0.10: a per-host
 Ed25519 key, so the stored records are evidence even against a compromised server).
 
 **Next:**
-- An outgoing webhook for regressions and hosts that stopped reporting; roles and OIDC for the dashboard.
+- Roles and OIDC for the dashboard.
 - Phase 2: `hostlint agent`, which dials out over a gRPC stream with mutual TLS for scheduled and
   on-demand scans (its own ADR); PostgreSQL as an option; waivers managed in the UI.
 

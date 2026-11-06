@@ -193,6 +193,30 @@ fingerprints (`hostlint server host list`) and of the audit hash (`hostlint serv
 else to notice that. A stolen token can submit results for the host it is bound to unless that host
 signs; a host whose own key is stolen can sign anything.
 
+## Notifications
+
+The server can post an event to a webhook when a host gets worse or stops reporting:
+
+```sh
+echo -n "a long random secret" > webhook.secret && chmod 600 webhook.secret
+HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
+  hostlint server run --webhook-secret-file webhook.secret --stale-after 72h
+```
+
+- `regression`: a result in which a control is FAIL or ERROR that was not in the host's previous scan.
+  It lists the controls (profile, ID, title, severity, old and new status), at most 20.
+- `stale`: a host that has not reported for `--stale-after` (7 days by default), once for each of its
+  latest scans.
+
+The body is JSON with a `text` line that Slack, Mattermost and Discord's Slack-compatible endpoint show as it
+is. It carries control IDs and statuses, never evidence. With `--webhook-secret-file` the body is signed:
+`X-Hostlint-Signature-256: sha256=<hex HMAC-SHA256 of the body>`. The URL must be https (http only to a
+loopback address); it is read from `--webhook-url` or `HOSTLINT_WEBHOOK_URL` (prefer the variable: a
+webhook URL is a secret, and it is never logged). Redirects are not followed.
+
+Delivery is at least once: an event is retried every 30 seconds until the webhook answers 2xx, and nothing
+that happened before the webhook was enabled is reported. Receivers should tolerate a repeat.
+
 ## Hosts
 
 ```sh

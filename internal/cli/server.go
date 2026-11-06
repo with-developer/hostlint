@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -42,7 +45,8 @@ func newServerRunCommand(dbPath *string) *cobra.Command {
 	var lc server.ListenConfig
 	var maxBody int64
 	var rate int
-	var retention time.Duration
+	var retention, staleAfter time.Duration
+	var webhookURL, webhookSecretFile string
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Listen for results",
@@ -53,6 +57,23 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
   hostlint server run --listen :8443`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			webhookURL = strings.TrimSpace(firstNonEmpty(webhookURL, os.Getenv("HOSTLINT_WEBHOOK_URL")))
+			var hook *server.Webhook
+			if webhookURL != "" {
+				if err := server.ValidateWebhookURL(webhookURL); err != nil {
+					return err
+				}
+				hook = &server.Webhook{URL: webhookURL}
+				if webhookSecretFile != "" {
+					secret, err := readSecretFile(webhookSecretFile)
+					if err != nil {
+						return err
+					}
+					hook.Secret = secret
+				}
+			} else if webhookSecretFile != "" {
+				return errors.New("--webhook-secret-file needs --webhook-url")
+			}
 			store, err := server.OpenStore(*dbPath)
 			if err != nil {
 				return err
@@ -68,6 +89,10 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 			out := cmd.OutOrStdout()
 			if retention > 0 {
 				go pruneLoop(cmd.Context(), store, retention, logger)
+			}
+			if hook != nil {
+				n := &server.Notifier{Store: store, Hook: hook, StaleAfter: staleAfter, Logger: logger}
+				go n.Run(cmd.Context(), 30*time.Second)
 			}
 			return srv.Serve(cmd.Context(), lc, func(addr, pin string) {
 				if pin != "" {
@@ -86,6 +111,9 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 	fl.BoolVar(&lc.BehindProxy, "behind-proxy", false, "allow --plain-http on a non-loopback address: a TLS proxy is in front")
 	fl.Int64Var(&maxBody, "max-result-bytes", server.DefaultMaxBody, "the largest result accepted")
 	fl.IntVar(&rate, "rate", 60, "results per minute one token may send")
+	fl.StringVar(&webhookURL, "webhook-url", "", "post an event here when a host gets worse or stops reporting (https; or set HOSTLINT_WEBHOOK_URL: the URL can be a secret)")
+	fl.StringVar(&webhookSecretFile, "webhook-secret-file", "", "a file with the secret the webhook body is signed with (HMAC-SHA256 in "+server.HeaderWebhookSignature+")")
+	fl.DurationVar(&staleAfter, "stale-after", 7*24*time.Hour, "report a host that has not reported for this long (with --webhook-url)")
 	fl.DurationVar(&retention, "retention", 400*24*time.Hour, "delete scans older than this once a day, except the latest scan of each host (0 keeps everything)")
 	return cmd
 }
@@ -493,4 +521,36 @@ be undone: make a backup first, and pass --yes to confirm.`,
 	reset.Flags().StringVar(&newKey, "key", "", "the host's new public key (base64)")
 	cmd.AddCommand(list, del, reset)
 	return cmd
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
+// readSecretFile reads a secret from a file only its owner can read.
+func readSecretFile(path string) ([]byte, error) {
+	f, err := os.Open(path) //nolint:forbidigo,gosec // a file the user named, not the scanned host (G304)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if fi.Mode().Perm()&0o077 != 0 {
+		return nil, fmt.Errorf("%s is readable by other users: chmod 600 it", path)
+	}
+	data, err := io.ReadAll(io.LimitReader(f, 4096))
+	if err != nil {
+		return nil, err
+	}
+	secret := bytes.TrimSpace(data)
+	if len(secret) == 0 {
+		return nil, fmt.Errorf("%s is empty", path)
+	}
+	return secret, nil
 }

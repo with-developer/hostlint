@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -126,6 +127,9 @@ func (s *Store) DeleteHost(ctx context.Context, id int64) (bool, error) {
 		return false, err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM hosts WHERE id = ?`, id); err != nil {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM notify_state WHERE name = ?`, "silent-"+strconv.FormatInt(id, 10)); err != nil {
 		return false, err
 	}
 	if err := appendAudit(ctx, tx, s.stamp(), 0, "cli", "host-deleted", fmt.Sprintf("host %d %s with %d scans", id, name, scans)); err != nil {

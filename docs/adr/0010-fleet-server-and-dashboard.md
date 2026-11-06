@@ -193,3 +193,12 @@ by an operator when names differ).
   key. The key is trusted on first use: a
   database controlled by an attacker can replace a result with its signature and key, which is why the
   fingerprints and the audit hash are meant to be kept elsewhere.
+
+## Amendment: the webhook (v0.11)
+
+`hostlint server run --webhook-url` posts JSON events ("a host got worse", "a host stopped reporting") to a URL
+the operator chose. It is the server's only outgoing connection, so it is held narrow: https (http only to
+loopback), no redirects, no response read beyond the status, the URL never logged (it is a secret for chat
+services), an optional HMAC of the body, and a payload of control IDs and statuses without evidence. Delivery is
+at least once from a cursor kept in the database (migration 0005, `notify_state`), which starts at the newest
+scan when the webhook is first enabled. Hosts still never receive anything from the server.

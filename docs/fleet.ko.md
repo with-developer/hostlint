@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ c2e14c0 -->
+<!-- translated from docs/fleet.md @ 8497c11 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -183,6 +183,29 @@ sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.or
 그 서명·키를 함께 바꿀 수도 있습니다. 이를 알아채려면 키 지문(`hostlint server host list`)과 감사 해시
 (`hostlint server verify`)의 사본을 다른 곳에 보관하세요. 훔친 토큰으로는, 그 호스트가 서명하지 않는 한 묶인
 호스트의 결과를 보낼 수 있고, 키 자체를 도난당한 호스트는 무엇이든 서명할 수 있습니다.
+
+## 알림
+
+호스트가 나빠지거나 보고를 멈추면 서버가 웹훅으로 이벤트를 보낼 수 있습니다.
+
+```sh
+echo -n "긴 무작위 비밀값" > webhook.secret && chmod 600 webhook.secret
+HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
+  hostlint server run --webhook-secret-file webhook.secret --stale-after 72h
+```
+
+- `regression`: 호스트의 이전 스캔에서는 아니었던 통제 항목이 FAIL 또는 ERROR가 된 결과. 통제 항목(프로파일, ID, 제목,
+  심각도, 이전·현재 상태)을 최대 20개까지 담습니다.
+- `stale`: `--stale-after`(기본 7일) 동안 보고하지 않은 호스트. 마지막 스캔마다 한 번만 보냅니다.
+
+본문은 JSON이며, Slack·Mattermost·Discord의 Slack 호환 엔드포인트가 그대로 보여 주는 `text` 줄이 들어 있습니다.
+통제 항목 ID와 상태만 담고 증거는 담지 않습니다. `--webhook-secret-file`을 주면 본문에 서명합니다:
+`X-Hostlint-Signature-256: sha256=<본문의 HMAC-SHA256 16진수>`. URL은 https여야 하고(http는 루프백 주소만),
+`--webhook-url` 또는 `HOSTLINT_WEBHOOK_URL`로 줍니다(웹훅 URL은 비밀이므로 환경 변수를 권장하며, 로그에는 남기지
+않습니다). 리다이렉트는 따라가지 않습니다.
+
+전달은 최소 한 번입니다. 웹훅이 2xx로 응답할 때까지 30초마다 다시 보내며, 웹훅을 켜기 전에 있었던 일은 보내지
+않습니다. 받는 쪽은 같은 이벤트가 다시 올 수 있음을 고려하세요.
 
 ## 호스트
 
