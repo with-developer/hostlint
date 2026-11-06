@@ -65,8 +65,8 @@ Install a release (Linux, amd64 or arm64). `install.sh` verifies the SHA-256 of 
 when `cosign` is installed, the Sigstore signature of the checksums:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.8.1/install.sh
-sudo sh install.sh -v v0.8.1     # read it first; without root, add -b DIR to choose where it goes
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.9.0/install.sh
+sudo sh install.sh -v v0.9.0     # read it first; without root, add -b DIR to choose where it goes
 sudo hostlint scan
 ```
 
@@ -75,7 +75,7 @@ packages, SBOMs and build provenance (`gh attestation verify FILE -R with-develo
 To build instead (Go 1.26 or later; the binary itself has no dependencies):
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.8.1
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.9.0
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -192,7 +192,7 @@ and the [architecture decisions](docs/adr/):
 hostlint is under active development. The KISA 2026 profile (U-01–U-67), the
 collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
 with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`) and a
-container test matrix over every supported distribution are in place, and v0.8.1 is the latest release.
+container test matrix over every supported distribution are in place, and v0.9.0 is the latest release.
 Fleet mode (an agent and a server with a web UI) is planned. See the [roadmap](docs/ROADMAP.md).
 
 ## License
