@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -329,4 +330,22 @@ func TestReportKeepsTheFixHintOfAFailingHost(t *testing.T) {
 	if n != 1 {
 		t.Errorf("%d checks carry a hint, want 1", n)
 	}
+}
+
+// Results come from hosts that were scanned: reading one is an error or a result, never a panic.
+func FuzzReadResult(f *testing.F) {
+	if data, err := os.ReadFile(filepath.Join("testdata", "report", "web-01.json")); err == nil {
+		f.Add(data)
+	}
+	f.Add([]byte(`{"schemaVersion":1,"scan":{"privileges":{"euid":0}}}`))
+	f.Add([]byte(`{`))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		res, err := ReadResult(bytes.NewReader(data))
+		if err == nil && res != nil {
+			// A result that was accepted can be turned into every output without a panic.
+			for _, format := range Formats {
+				_ = Write(io.Discard, res, format, Options{})
+			}
+		}
+	})
 }

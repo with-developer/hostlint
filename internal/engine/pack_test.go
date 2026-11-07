@@ -318,3 +318,19 @@ func TestFactCatalog(t *testing.T) {
 		}
 	}
 }
+
+// A pack is read from a directory the user names: whatever its files hold, loading is an error or a result, never a
+// panic (the checks and profiles are parsed, compiled and tested).
+func FuzzExtend(f *testing.F) {
+	f.Add(packCheck, packProfile)
+	f.Add("id: x-a.b\nversion: 1\ntitle: t\nseverity: low\nexpect: 'true'\n", "id: x-p\nrevision: 1\ntitle: p\ncontrols: []\n")
+	f.Add("not: [yaml", "")
+	base, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Fuzz(func(t *testing.T, check, prof string) {
+		c := *base // Extend returns a new content and leaves the built-in one alone
+		_, _ = c.Extend(source(map[string]string{"x-acme/fuzz.yaml": check}, map[string]string{"x-acme-fuzz.yaml": prof}))
+	})
+}
