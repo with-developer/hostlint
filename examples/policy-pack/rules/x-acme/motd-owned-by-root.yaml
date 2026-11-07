@@ -1,0 +1,31 @@
+id: x-acme.motd-owned-by-root
+version: 1
+title: /etc/motd belongs to root and cannot be changed by others
+severity: low
+description: >-
+  Checks the owner and the mode of /etc/motd, the banner shown after a login.
+rationale: A banner that anyone can edit can be used to show users anything.
+remediation: Run `chown root /etc/motd` and `chmod 644 /etc/motd`.
+file:
+  paths: [/etc/motd]
+  owner: [root]
+  mode: "0644"
+  missing: pass
+tests:
+  - name: owned by root, mode 0644
+    files:
+      /etc/motd: {mode: "0644"}
+    want: PASS
+  - name: writable by everyone
+    files:
+      /etc/motd: {mode: "0666"}
+    want: FAIL
+  - name: owned by someone else
+    files:
+      /etc/motd: {mode: "0644", owner: "1000"}
+    want: FAIL
+  - name: the file cannot be read
+    input: unavailable
+    files:
+      /etc: {type: dir, error: permission}
+    want: ERROR

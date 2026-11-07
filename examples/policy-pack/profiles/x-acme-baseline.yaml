@@ -1,0 +1,18 @@
+id: x-acme-baseline
+revision: 1
+title: Acme baseline
+controls:
+  - id: ACME-01
+    title: Root does not log in over SSH
+    severity: high
+    checks: [ssh.permit-root-login, ssh.match-permit-root-login]
+  - id: ACME-02
+    title: Passwords are long and expire within 60 days
+    severity: high
+    checks: [accounts.password-min-length, accounts.password-max-age]
+    params:
+      accounts.password-max-age: {max_days: 60}
+  - id: ACME-03
+    title: The login banner belongs to root
+    severity: low
+    checks: [x-acme.motd-owned-by-root]

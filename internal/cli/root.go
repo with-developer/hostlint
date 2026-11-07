@@ -39,8 +39,9 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	err := cmd.ExecuteContext(ctx)
 	var findings *findingsError
 	var regressed *regressionError
+	var packProblems *packTestError
 	switch {
-	case errors.As(err, &findings), errors.As(err, &regressed):
+	case errors.As(err, &findings), errors.As(err, &regressed), errors.As(err, &packProblems):
 		// The scan finished and its result was written; a signal that came
 		// afterwards does not make it interrupted.
 		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
@@ -69,7 +70,7 @@ changes the host it scans.`,
 	}
 	root.SetVersionTemplate("{{.Version}}\n")
 	root.SetHelpCommand(newHelpCommand())
-	root.AddCommand(newScanCommand(), newReportCommand(), newDiffCommand(), newPushCommand(), newKeyCommand(), newServerCommand(), newVersionCommand())
+	root.AddCommand(newScanCommand(), newReportCommand(), newDiffCommand(), newPushCommand(), newKeyCommand(), newServerCommand(), newPackCommand(), newVersionCommand())
 	return root
 }
 

@@ -1,0 +1,6 @@
+# An example policy pack (docs/packs.md): "Acme's baseline" adds one check of its own and maps it, with
+# built-in checks, to a profile of its own.
+format: 1
+name: acme
+version: 1.0.0
+description: Acme's baseline, an example of a policy pack

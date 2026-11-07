@@ -1,0 +1,177 @@
+package engine_test
+
+import (
+	"strings"
+	"testing"
+	"testing/fstest"
+
+	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/hostlint/profiles"
+	"github.com/with-developer/hostlint/rules"
+)
+
+const packCheck = `id: x-acme.motd-present
+version: 1
+title: /etc/motd is owned by root
+severity: low
+description: Checks the owner of /etc/motd.
+rationale: A banner anyone can edit is no banner.
+remediation: chown root /etc/motd
+file:
+  paths: [/etc/motd]
+  owner: [root]
+  mode: "0644"
+  missing: error
+tests:
+  - name: as required
+    files:
+      /etc/motd: {mode: "0644"}
+    want: PASS
+  - name: writable
+    files:
+      /etc/motd: {mode: "0666"}
+    want: FAIL
+  - name: missing
+    input: absent
+    want: ERROR
+`
+
+const packProfile = `id: x-acme-baseline
+revision: 1
+title: Acme baseline
+controls:
+  - id: A-01
+    title: Root login is off and the banner is root's
+    severity: low
+    checks: [ssh.permit-root-login, x-acme.motd-present]
+`
+
+func builtin(t *testing.T) *engine.Content {
+	t.Helper()
+	c, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func source(checks map[string]string, profs map[string]string) engine.PackSource {
+	r, p := fstest.MapFS{}, fstest.MapFS{}
+	for name, body := range checks {
+		r[name] = &fstest.MapFile{Data: []byte(body)}
+	}
+	for name, body := range profs {
+		p[name] = &fstest.MapFile{Data: []byte(body)}
+	}
+	return engine.PackSource{Name: "acme", Rules: r, Profiles: p}
+}
+
+func TestExtendAddsAPack(t *testing.T) {
+	c := builtin(t)
+	pc, err := c.Extend(source(map[string]string{"x-acme/motd-present.yaml": packCheck}, map[string]string{"x-acme-baseline.yaml": packProfile}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pc.Checks) != 1 || pc.Checks[0] != "x-acme.motd-present" || len(pc.Profiles) != 1 {
+		t.Fatalf("%+v", pc)
+	}
+	// ssh.permit-root-login is high: a control of a pack's profile is at least as severe as what it maps.
+	if got := c.Profiles["x-acme-baseline"].Controls[0].Severity; got != engine.SeverityHigh {
+		t.Errorf("severity = %s", got)
+	}
+	if len(pc.Notes) != 1 || !strings.Contains(pc.Notes[0], "raised from low to high") {
+		t.Errorf("notes = %v", pc.Notes)
+	}
+	// The built-in content is untouched.
+	if c.Profiles["kisa-2026"] == nil || c.Checks["ssh.permit-root-login"] == nil {
+		t.Error("the built-in content changed")
+	}
+}
+
+func TestExtendRefuses(t *testing.T) {
+	check := func(id string) string { return strings.Replace(packCheck, "x-acme.motd-present", id, 1) }
+	for name, tc := range map[string]struct {
+		checks, profs map[string]string
+		want          string
+	}{
+		"a built-in area": {
+			checks: map[string]string{"files/motd-present.yaml": check("files.motd-present")},
+			want:   `starts with "x-"`,
+		},
+		"a profile without the prefix": {
+			checks: map[string]string{"x-acme/motd-present.yaml": packCheck},
+			profs:  map[string]string{"acme-baseline.yaml": strings.Replace(packProfile, "x-acme-baseline", "acme-baseline", 1)},
+			want:   `starts with "x-"`,
+		},
+		"the title of KISA": {
+			checks: map[string]string{"x-acme/motd-present.yaml": packCheck},
+			profs:  map[string]string{"x-acme-baseline.yaml": strings.Replace(packProfile, "Acme baseline", "KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers", 1)},
+			want:   "title of another profile",
+		},
+		"an unknown check": {
+			profs: map[string]string{"x-acme-baseline.yaml": strings.Replace(packProfile, "x-acme.motd-present", "x-acme.nothing", 1)},
+			want:  "unknown check",
+		},
+		"a check without tests": {
+			checks: map[string]string{"x-acme/motd-present.yaml": strings.SplitN(packCheck, "tests:", 2)[0]},
+			want:   "tests need at least one PASS case",
+		},
+		"a weaker parameter": {
+			profs: map[string]string{"x-acme-baseline.yaml": `id: x-acme-baseline
+revision: 1
+title: Acme baseline
+controls:
+  - id: A-01
+    title: Passwords expire, in time
+    severity: medium
+    checks: [accounts.password-max-age]
+    params:
+      accounts.password-max-age: {max_days: 9999}
+`},
+			want: "weaker than the check's own 90",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := builtin(t)
+			if _, err := c.Extend(source(tc.checks, tc.profs)); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("err = %v, want %q", err, tc.want)
+			}
+			// A refused pack adds nothing.
+			if len(c.Profiles) != 2 {
+				t.Errorf("%d profiles", len(c.Profiles))
+			}
+		})
+	}
+}
+
+func TestExtendAllowsAStricterParameter(t *testing.T) {
+	prof := func(days string) string {
+		return `id: x-acme-baseline
+revision: 1
+title: Acme baseline
+controls:
+  - id: A-01
+    title: Passwords expire, in time
+    severity: medium
+    checks: [accounts.password-max-age]
+    params:
+      accounts.password-max-age: {max_days: ` + days + `}
+`
+	}
+	for _, days := range []string{"30", "90"} {
+		if _, err := builtin(t).Extend(source(nil, map[string]string{"x-acme-baseline.yaml": prof(days)})); err != nil {
+			t.Errorf("max_days %s: %v", days, err)
+		}
+	}
+}
+
+func TestPacksCannotCollide(t *testing.T) {
+	c := builtin(t)
+	s := source(map[string]string{"x-acme/motd-present.yaml": packCheck}, map[string]string{"x-acme-baseline.yaml": packProfile})
+	if _, err := c.Extend(s); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Extend(s); err == nil || !strings.Contains(err.Error(), "exists already") {
+		t.Errorf("a second pack with the same IDs: %v", err)
+	}
+}
