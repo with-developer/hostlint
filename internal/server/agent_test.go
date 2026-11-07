@@ -184,28 +184,69 @@ func TestScanRequestRules(t *testing.T) {
 	}
 	f.poll(f.agent, "kisa-2026") // claims it
 	f.clock = f.clock.Add(30 * time.Second)
-	f.poll(f.agent, "kisa-2026")
 	if code, _ := f.request(f.operator, "kisa-2026"); code != http.StatusTooManyRequests {
 		t.Errorf("claimed and unfinished: %d", code)
 	}
-	// An agent that stopped polling is offline.
+	// An agent that is scanning does not poll, and still shows as connected while its job is open.
 	f.clock = f.clock.Add(agentOnlineFor + time.Second)
 	if code, _ := f.request(f.operator, "kisa-2026"); code != http.StatusConflict {
 		t.Errorf("a silent agent: %d", code)
 	}
 	a, _ := f.store.HostAgent(context.Background(), f.host)
-	if a.Online || a.Job == nil || a.Job.State != "claimed" {
-		t.Errorf("agent: %+v", a)
+	if !a.Online || a.Job == nil || a.Job.State != "claimed" {
+		t.Errorf("a scanning agent: %+v %+v", a, a.Job)
 	}
-	// A request nobody finished expires, and a new one may be made.
+	// A job nobody finished reads as expired, and then the host is offline.
 	f.clock = f.clock.Add(jobExpiresAfter)
-	f.poll(f.agent, "kisa-2026")
 	a, _ = f.store.HostAgent(context.Background(), f.host)
-	if a.Job.State != "expired" {
+	if a.Online || a.Job.State != "expired" {
+		t.Errorf("after the limit: %+v %+v", a, a.Job)
+	}
+	f.poll(f.agent, "kisa-2026")
+	if code, _ := f.request(f.operator, "kisa-2026"); code != http.StatusAccepted {
+		t.Errorf("after expiry: %d", code)
+	}
+	// A request nobody took expires too, whatever the poll finds.
+	f.poll(f.agent, "kisa-2026") // takes it
+	f.clock = f.clock.Add(2 * time.Minute)
+	if code, _ := f.request(f.operator, "kisa-2026"); code != http.StatusTooManyRequests {
+		t.Errorf("a job taken two minutes ago: %d", code)
+	}
+}
+
+// A job whose answer never reached the agent is failed when the agent asks again, not left to block the host.
+func TestLostClaimIsFailed(t *testing.T) {
+	f := newAgentFixture(t)
+	f.poll(f.agent, "kisa-2026")
+	_, out := f.request(f.operator, "kisa-2026")
+	id := jobID(t, out)
+	if code, _ := f.poll(f.agent, "kisa-2026"); code != http.StatusOK { // claimed; suppose the answer was lost
+		t.Fatal(code)
+	}
+	f.clock = f.clock.Add(time.Minute + time.Second)
+	f.poll(f.agent, "kisa-2026")
+	a, _ := f.store.HostAgent(context.Background(), f.host)
+	if a.Job.ID != 0 && itoa(a.Job.ID) != id || a.Job.State != "failed" || !strings.Contains(a.Job.Error, "never took") {
 		t.Errorf("job: %+v", a.Job)
 	}
 	if code, _ := f.request(f.operator, "kisa-2026"); code != http.StatusAccepted {
-		t.Errorf("after expiry: %d", code)
+		t.Errorf("a new request: %d", code)
+	}
+}
+
+// A request nobody took expires.
+func TestUntakenRequestExpires(t *testing.T) {
+	f := newAgentFixture(t)
+	f.poll(f.agent, "kisa-2026")
+	if code, _ := f.request(f.operator, "kisa-2026"); code != http.StatusAccepted {
+		t.Fatal(code)
+	}
+	f.clock = f.clock.Add(jobExpiresAfter + time.Second)
+	if code, _ := f.poll(f.agent, "kisa-2026"); code != http.StatusNoContent {
+		t.Errorf("an expired job was handed out: %d", code)
+	}
+	if a, _ := f.store.HostAgent(context.Background(), f.host); a.Job.State != "expired" {
+		t.Errorf("job: %+v", a.Job)
 	}
 }
 

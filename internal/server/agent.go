@@ -18,11 +18,13 @@ import (
 // The agent of a host (ADR 0014) asks the server whether there is something to do, over one long poll, and
 // there is one thing the server can say: scan now, with a profile that the agent's own configuration allows.
 const (
-	agentOnlineFor   = 2 * time.Minute  // an agent that polled this recently is online
-	jobMinInterval   = time.Minute      // at most one request per host per minute
-	jobExpiresAfter  = 10 * time.Minute // a request nobody took, or a scan that never came
-	defaultPollHold  = 25 * time.Second // how long a poll waits for a job (a proxy cuts a request after a minute)
-	maxAgentProfiles = 8
+	agentOnlineFor  = 2 * time.Minute  // an agent that polled this recently is online
+	jobMinInterval  = time.Minute      // at most one request per host per minute
+	jobExpiresAfter = 10 * time.Minute // a request nobody took, or a scan that never came
+	lostClaimAfter  = 5 * time.Second
+	defaultPollHold = 25 * time.Second // how long a poll waits for a job (a proxy cuts a request after a minute)
+	// MaxAgentProfiles is how many profiles an agent may allow.
+	MaxAgentProfiles = 8
 	maxJobError      = 300
 )
 
@@ -36,6 +38,9 @@ var (
 
 	agentProfileRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 )
+
+// ValidAgentProfile reports whether s is shaped like a profile ID an agent may allow or a scan may ask for.
+func ValidAgentProfile(s string) bool { return agentProfileRe.MatchString(s) }
 
 // Job is a request for a scan.
 type Job struct {
@@ -94,13 +99,12 @@ func cleanProfiles(in []string) ([]string, bool) {
 			out = append(out, p)
 		}
 	}
-	return out, len(out) > 0 && len(out) <= maxAgentProfiles
+	return out, len(out) > 0 && len(out) <= MaxAgentProfiles
 }
 
-// AgentSeen records that the agent of the host an ingest token is bound to polled, with the profiles it allows. It
-// returns the host's row. A token bound to no host cannot be an agent's, and the host has to exist (it has sent a
-// result), with the ID the token is pinned to.
-func (s *Store) AgentSeen(ctx context.Context, cred *Credential, profiles []string) (int64, error) {
+// AgentHost returns the row of the host a token is bound to: an agent's token is bound to a host that has sent a
+// result, with the host ID the token is pinned to.
+func (s *Store) AgentHost(ctx context.Context, cred *Credential) (int64, error) {
 	if cred.BoundName == "" {
 		return 0, fmt.Errorf("%w: an agent's token is bound to a host (server token create --host NAME)", ErrIdentity)
 	}
@@ -116,6 +120,16 @@ func (s *Store) AgentSeen(ctx context.Context, cred *Credential, profiles []stri
 	if cred.BoundHostID != "" && cred.BoundHostID != hostID {
 		return 0, fmt.Errorf("%w: this token is pinned to another host ID", ErrIdentity)
 	}
+	return row, nil
+}
+
+// AgentSeen records that the agent of the host an ingest token is bound to polled, with the profiles it allows. It
+// returns the host's row.
+func (s *Store) AgentSeen(ctx context.Context, cred *Credential, profiles []string) (int64, error) {
+	row, err := s.AgentHost(ctx, cred)
+	if err != nil {
+		return 0, err
+	}
 	_, err = s.db.ExecContext(ctx, `UPDATE hosts SET agent_seen_at = ?, agent_profiles = ? WHERE id = ?`, s.stamp(), strings.Join(profiles, " "), row)
 	return row, err
 }
@@ -128,7 +142,15 @@ func (s *Store) ClaimJob(ctx context.Context, hostRow int64) (*Job, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	cutoff := s.now().UTC().Add(-jobExpiresAfter).Format(stampLayout)
-	if _, err := tx.ExecContext(ctx, `UPDATE agent_jobs SET state = 'expired', finished_at = ? WHERE host_row = ? AND state IN ('queued', 'claimed') AND created_at < ?`, s.stamp(), hostRow, cutoff); err != nil {
+	// An agent polls one request at a time: a job that is still claimed when it asks again was lost on the way to it
+	// (the answer never arrived), and is failed rather than left to block the host for ten minutes. The few seconds
+	// are for a poll the agent gave up on whose answer was still being written.
+	lost := s.now().UTC().Add(-lostClaimAfter).Format(stampLayout)
+	if _, err := tx.ExecContext(ctx, `UPDATE agent_jobs SET state = 'failed', finished_at = ?, error = 'the agent never took the job' WHERE host_row = ? AND state = 'claimed' AND claimed_at < ?`, s.stamp(), hostRow, lost); err != nil {
+		return nil, err
+	}
+	// A request is open for ten minutes from when it was made, and a claimed one from when it was taken.
+	if _, err := tx.ExecContext(ctx, `UPDATE agent_jobs SET state = 'expired', finished_at = ? WHERE host_row = ? AND state IN ('queued', 'claimed') AND COALESCE(claimed_at, created_at) < ?`, s.stamp(), hostRow, cutoff); err != nil {
 		return nil, err
 	}
 	var j Job
@@ -174,7 +196,7 @@ func (s *Store) CreateJob(ctx context.Context, cred *Credential, remote string, 
 	var recent int
 	cutoff := now.Add(-jobMinInterval).Format(stampLayout)
 	pending := now.Add(-jobExpiresAfter).Format(stampLayout)
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_jobs WHERE host_row = ? AND (created_at >= ? OR (state IN ('queued', 'claimed') AND created_at >= ?))`, hostRow, cutoff, pending).Scan(&recent); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_jobs WHERE host_row = ? AND (created_at >= ? OR (state IN ('queued', 'claimed') AND COALESCE(claimed_at, created_at) >= ?))`, hostRow, cutoff, pending).Scan(&recent); err != nil {
 		return nil, err
 	}
 	if recent > 0 {
@@ -232,17 +254,27 @@ func (s *Store) HostAgent(ctx context.Context, hostRow int64) (*AgentInfo, error
 	var j Job
 	var finished sql.NullString
 	var scan sql.NullInt64
-	err = s.db.QueryRowContext(ctx, `SELECT id, profile, state, created_at, finished_at, scan_row, error FROM agent_jobs WHERE host_row = ? ORDER BY id DESC LIMIT 1`, hostRow).
-		Scan(&j.ID, &j.Profile, &j.State, &j.CreatedAt, &finished, &scan, &j.Error)
+	var claimed sql.NullString
+	err = s.db.QueryRowContext(ctx, `SELECT id, profile, state, created_at, claimed_at, finished_at, scan_row, error FROM agent_jobs WHERE host_row = ? ORDER BY id DESC LIMIT 1`, hostRow).
+		Scan(&j.ID, &j.Profile, &j.State, &j.CreatedAt, &claimed, &finished, &scan, &j.Error)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 	case err != nil:
 		return nil, err
 	default:
 		j.FinishedAt, j.Scan = finished.String, scan.Int64
-		// A request that waited too long reads as expired, whether or not a poll has noticed.
-		if t, err := time.Parse(stampLayout, j.CreatedAt); err == nil && (j.State == "queued" || j.State == "claimed") && s.now().UTC().Sub(t) > jobExpiresAfter {
-			j.State = "expired"
+		// A request that waited too long reads as expired, whether or not a poll has noticed. An agent that is
+		// scanning does not poll: a job it took is a sign of life until it expires.
+		last := j.CreatedAt
+		if claimed.Valid {
+			last = claimed.String
+		}
+		if t, err := time.Parse(stampLayout, last); err == nil && (j.State == "queued" || j.State == "claimed") {
+			if s.now().UTC().Sub(t) > jobExpiresAfter {
+				j.State = "expired"
+			} else if j.State == "claimed" {
+				a.Online = true
+			}
 		}
 		a.Job = &j
 	}
@@ -253,7 +285,8 @@ func (s *Store) HostAgent(ctx context.Context, hostRow int64) (*AgentInfo, error
 func (s *Server) handleAgentPoll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	remote := s.remote(r)
-	if !s.limiter.allow("ip:"+remote, s.cfg.Rate*2) {
+	// Polls have a budget of their own: a fleet behind one address must not use up the one of its results.
+	if !s.limiter.allow("pip:"+remote, s.cfg.Rate*10) {
 		w.Header().Set("Retry-After", "60")
 		writeError(w, http.StatusTooManyRequests, "too many requests from this address")
 		return
@@ -335,6 +368,11 @@ func (s *Server) handleAgentPoll(w http.ResponseWriter, r *http.Request) {
 // handleJobFail records that the agent could not do its job.
 func (s *Server) handleJobFail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	if !s.limiter.allow("pip:"+s.remote(r), s.cfg.Rate*10) {
+		w.Header().Set("Retry-After", "60")
+		writeError(w, http.StatusTooManyRequests, "too many requests from this address")
+		return
+	}
 	cred, err := s.cfg.Store.Authenticate(ctx, bearer(r), ScopeIngest)
 	if errors.Is(err, ErrUnauthorized) {
 		writeError(w, http.StatusUnauthorized, "a valid ingest token is required")
@@ -356,9 +394,9 @@ func (s *Server) handleJobFail(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, `send {"error": "text"}`)
 		return
 	}
-	var row int64
-	if err := s.cfg.Store.db.QueryRowContext(ctx, `SELECT id FROM hosts WHERE name = ?`, cred.BoundName).Scan(&row); err != nil {
-		writeError(w, http.StatusNotFound, "no such host")
+	row, err := s.cfg.Store.AgentHost(ctx, cred)
+	if err != nil {
+		writeError(w, http.StatusConflict, "this token is not an agent's: "+err.Error())
 		return
 	}
 	if err := s.cfg.Store.FailJob(ctx, id, row, body.Error); err != nil {

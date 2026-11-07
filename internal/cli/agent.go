@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand/v2"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/push"
+	"github.com/with-developer/hostlint/internal/server"
 	"github.com/with-developer/hostlint/profiles"
 	"github.com/with-developer/hostlint/rules"
 )
@@ -26,8 +26,6 @@ const (
 	agentBackoffFirst = 5 * time.Second
 	agentBackoffCap   = 5 * time.Minute
 )
-
-var agentProfileRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
 // agent is the loop of "hostlint agent" with the parts that touch the network or the host passed in, so a test can
 // drive it.
@@ -77,7 +75,7 @@ func runAgent(cmd *cobra.Command, f scanFlags, allow []string) error {
 	if f.pushURL == "" {
 		return errors.New("--server is required")
 	}
-	if len(allow) == 0 || len(allow) > 8 {
+	if len(allow) == 0 || len(allow) > server.MaxAgentProfiles {
 		return errors.New("--allow-profile is required: name one to eight profiles the server may ask for")
 	}
 	content, err := engine.Load(rules.FS, profiles.FS)
@@ -85,22 +83,37 @@ func runAgent(cmd *cobra.Command, f scanFlags, allow []string) error {
 		return fmt.Errorf("built-in content: %w", err)
 	}
 	for _, p := range allow {
-		if !agentProfileRe.MatchString(p) || content.Profiles[p] == nil {
+		if !server.ValidAgentProfile(p) || content.Profiles[p] == nil {
 			return fmt.Errorf("--allow-profile %q is not a built-in profile", p)
 		}
 	}
-	token, err := readToken(f.tokenFile)
-	if err != nil {
+	if _, err := readToken(f.tokenFile); err != nil {
 		return err
 	}
-	opts := push.Options{URL: f.pushURL, Token: token, Pin: f.pin}
+	// The token is read for every call, as a scan does, so a rotated token file is the one used by both.
+	options := func() (push.Options, error) {
+		token, err := readToken(f.tokenFile)
+		return push.Options{URL: f.pushURL, Token: token, Pin: f.pin}, err
+	}
 	logf := func(format string, args ...any) {
 		fmt.Fprintf(cmd.ErrOrStderr(), "%s hostlint agent: %s\n", time.Now().UTC().Format(time.RFC3339), fmt.Sprintf(format, args...))
 	}
 	a := &agent{
 		allow: slices.Clone(allow),
-		poll:  func(ctx context.Context, allow []string) (*push.Job, error) { return push.Poll(ctx, opts, allow) },
-		fail:  func(ctx context.Context, id int64, reason string) error { return push.FailJob(ctx, opts, id, reason) },
+		poll: func(ctx context.Context, allow []string) (*push.Job, error) {
+			opts, err := options()
+			if err != nil {
+				return nil, err
+			}
+			return push.Poll(ctx, opts, allow)
+		},
+		fail: func(ctx context.Context, id int64, reason string) error {
+			opts, err := options()
+			if err != nil {
+				return err
+			}
+			return push.FailJob(ctx, opts, id, reason)
+		},
 		scan: func(ctx context.Context, job *push.Job) error {
 			// The scan is the one of "hostlint scan --push": same flags, the profile of the job, no output.
 			sc := f

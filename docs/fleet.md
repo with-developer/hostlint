@@ -145,7 +145,7 @@ What the server can ask is one thing: a scan with a profile that **this host's o
 (one to eight built-in profiles), and at most once a minute. It cannot send waivers, parameters, paths or commands:
 `hostlint.yaml` stays a file of the host, and the result goes back as `hostlint scan --push` sends it: the same
 token, the same `--pin`, the same signature. An agent also refuses a request for a profile it does not allow, or one
-that comes less than a minute after its last scan, and it tells the server why. A server that is compromised can make
+that comes less than 45 seconds after its last scan, and it tells the server why. A server that is compromised can make
 hosts scan more often, up to that limit; nothing else. The agent does not take `--pack`: a result of a policy pack is
 not accepted by the server yet.
 
@@ -157,7 +157,7 @@ agent is the host's token, not a new kind of identity. Scheduled scans keep work
 scans. A session started with an `api` token sees the host's agent but gets no button. The request is a JSON `POST
 /api/v1/hosts/{id}/scan` with `{"profile": "kisa-2026"}`; from a browser session it is accepted only with an `Origin`
 that is the server's own site, so a page of another site cannot make it (the session cookie is `SameSite=Strict` as
-well). It answers `202` with the job, `409` when no agent of the host polled in the last two minutes or the agent does
+well); behind a reverse proxy, pass the `Host` header on unchanged. It answers `202` with the job, `409` when no agent of the host polled in the last two minutes or the agent does
 not allow the profile, and `429` when a scan of that host was requested less than a minute ago or is still pending.
 Every request is in the audit chain (`scan-requested`, with the token that made it and the address). The dashboard
 shows the button only for a host whose agent is connected, and follows the request: waiting, scanning, arrived or
