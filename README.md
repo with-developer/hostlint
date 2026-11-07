@@ -195,9 +195,11 @@ and the [architecture decisions](docs/adr/):
 
 hostlint is under active development. The KISA 2026 profile (U-01–U-67), the
 collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
-with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`) and a
-container test matrix over every supported distribution are in place, and v0.13.0 is the latest release.
-Fleet mode (an agent and a server with a web UI) is planned. See the [roadmap](docs/ROADMAP.md).
+with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`), a
+container test matrix over every supported distribution, scanning container images
+([docs/images.md](docs/images.md)), a GitHub Action ([docs/ci.md](docs/ci.md)) and the fleet server with its
+dashboard, signed results and webhook ([docs/fleet.md](docs/fleet.md)) are in place, and v0.13.0 is the
+latest release. The outbound agent for scheduled scans is planned. See the [roadmap](docs/ROADMAP.md).
 
 ## License
 
