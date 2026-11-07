@@ -62,7 +62,7 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
 
 kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
 <h2>플릿 전체를 위한 대시보드</h2>
-<p>호스트가 스스로 스캔하고 결과를 <code>hostlint server</code>로 보내면, 서버가 이력을 보관하고 플릿을 보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스, 각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 호스트 없이도 <code>hostlint server demo</code>로 써 볼 수 있습니다.</p>
+<p>호스트가 스스로 스캔하고 결과를 <code>hostlint server</code>로 보내면, 서버가 이력을 보관하고 플릿을 보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스, 각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 요청 시 스캔은 호스트의 <code>hostlint agent</code>가 바깥으로 연결해 두고 대시보드의 “지금 스캔”을 기다리는 방식이며, 호스트가 허용한 프로파일만 요청할 수 있습니다. 호스트 없이도 <code>hostlint server demo</code>로 써 볼 수 있습니다.</p>
 <img class="shot" src="../img/dashboard-overview.png" alt="hostlint 대시보드 개요: 통과율, 상태 분포, 호스트, 가장 많이 실패하는 컨트롤, 최근 악화" width="1360" height="900" loading="lazy">
 <img class="shot" src="../img/dashboard-matrix.png" alt="모든 호스트의 모든 컨트롤 매트릭스(다크 테마)" width="1360" height="900" loading="lazy">
 <h2>CI의 컨테이너 이미지</h2>

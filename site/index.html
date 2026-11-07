@@ -62,7 +62,7 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
 
 kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
 <h2>A dashboard for the whole fleet</h2>
-<p>Hosts scan themselves and push the result to <code>hostlint server</code>, which keeps the history and shows the fleet: pass rate, the controls that fail most, regressions since the last scan, a matrix of every control on every host, and the evidence behind each result. The server never connects to a host. Try it with no host at all: <code>hostlint server demo</code>.</p>
+<p>Hosts scan themselves and push the result to <code>hostlint server</code>, which keeps the history and shows the fleet: pass rate, the controls that fail most, regressions since the last scan, a matrix of every control on every host, and the evidence behind each result. The server never connects to a host; to scan one on demand, its <code>hostlint agent</code> dials out and waits for a “scan now” from the dashboard, and can only be asked for a profile the host allows. Try it with no host at all: <code>hostlint server demo</code>.</p>
 <img class="shot" src="img/dashboard-overview.png" alt="The overview of the hostlint dashboard: pass rate, status distribution, hosts, the controls that fail most and recent regressions" width="1360" height="900" loading="lazy">
 <img class="shot" src="img/dashboard-matrix.png" alt="The matrix of every control on every host, in the dark theme" width="1360" height="900" loading="lazy">
 <h2>Container images in CI</h2>
