@@ -10,12 +10,14 @@ Guidance for AI coding agents and human contributors working on hostlint.
 
 ## Status
 
-Pre-v0.1. The layout below is the target; keep this file in sync as code lands.
+Released (see [docs/ROADMAP.md](docs/ROADMAP.md) for what each version added). Keep this file in sync as code lands.
 
 ## Commands
 
 - `make build` — `./hostlint` for the current platform (a static binary on Linux);
   cross-compile with `GOOS=linux GOARCH=arm64 make build`
+- `make web` — build the dashboard (`web/`, Node 22) into `internal/server/webdist`; `make build-web` builds
+  `./hostlint` with it embedded (`-tags web`, what a release has)
 - `make test` — unit tests with the race detector
 - `make lint` — golangci-lint for linux/amd64 (formatting, plus rules that enforce ADR 0004: no exec,
   raw syscalls, host writes or direct host reads outside `internal/hostfs`), `make lint-guards`
@@ -34,7 +36,7 @@ Pre-v0.1. The layout below is the target; keep this file in sync as code lands.
 CI runs test, lint, build (linux amd64/arm64), vuln and a release snapshot. `ci-ok` is the
 required check on `main`.
 
-## Layout (target)
+## Layout
 
 | Path | Purpose |
 |---|---|
@@ -44,14 +46,23 @@ required check on `main`.
 | `internal/engine/` | Rule loading, evaluation, result model |
 | `internal/collect/` | Fact collectors; they read the host only through `internal/hostfs` |
 | `internal/facts/` | Shared fact types (`Setting`, `OS`) and the fact type restrictions |
-| `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`) |
+| `internal/hostfs/` | Rooted filesystem and fixed-argv command runner (testability, `--root`), and the immutable tree of a container image (`ImageFS`) |
+| `internal/image/` | Loader of `docker save` and OCI image archives for `scan --image-tar` (untrusted input: strict limits; ADR 0011) |
+| `internal/signing/` | Ed25519 signing of results (ADR 0010) |
+| `internal/push/` | The client of the fleet server: `scan --push`, `hostlint agent`; the only package besides `internal/server` that uses `net/http` |
+| `internal/server/` | The fleet server: SQLite store and migrations, ingest, read API, sessions, webhook, the agent's jobs (ADR 0010, 0014) |
+| `web/` | The dashboard (React and TypeScript), built into `internal/server/webdist` and embedded with `-tags web` |
 | `internal/config/` | `hostlint.yaml`: parameter overrides and waivers, read from the machine running hostlint (not the scanned host), trust-checked |
-| `internal/rulesdoc/` | Renders the rule reference `docs/rules.md` from the built-in rules and profiles |
+| `internal/rulesdoc/` | Renders the rule reference `docs/rules.md` and the fact reference `docs/facts.md` from the built-in rules, profiles and collectors |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
 | `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |
 | `schema/` | JSON Schema of the result document (ADR 0006), with a valid example |
 | `testdata/` | Fixture root filesystems per distro (hardened and default) |
+| `e2e/` | Docker-based scans of every supported distribution (stock and hardened), image scans, and the golden results |
+| `examples/policy-pack/` | An example policy pack (ADR 0012, `docs/packs.md`) |
+| `action.yml` | The GitHub Action (composite): installs a verified release and scans an image, an archive or a root |
+| `packaging/container/` | The Dockerfile of the release image on ghcr.io (`.github/workflows/container.yml`) |
 | `install.sh` | The installer: downloads a release, verifies it, installs the binary |
 | `scripts/` | Release checks, the translation check and lint guards (`check-release.sh`, `check-translations.sh`, `lint-guards.sh`) |
 | `site/` | The project page for GitHub Pages (English, and `ko/`); published by `.github/workflows/pages.yml` once Pages is enabled |
