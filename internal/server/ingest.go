@@ -288,6 +288,10 @@ func checkLimits(res *engine.Result, now time.Time) error {
 		if len(c.Ref) > 256 || len(c.Title) > maxText || len(c.Reason) > maxText {
 			return fmt.Errorf("check %.40q has text that is too long", c.Ref)
 		}
+		// The fix hint is shown as guidance: bounded, and text (line breaks and tabs are fine).
+		if len(c.Remediation) > maxRemediation || !utf8.ValidString(c.Remediation) || strings.ContainsFunc(c.Remediation, func(r rune) bool { return r != '\n' && r != '\t' && unicode.IsControl(r) }) {
+			return fmt.Errorf("check %.40q has a remediation that is too long or not text", c.Ref)
+		}
 	}
 	// The server orders scans by its own clock; a start time far from it is not believed.
 	started, err := time.Parse(time.RFC3339, res.Scan.StartedAt)
@@ -302,6 +306,9 @@ func checkLimits(res *engine.Result, now time.Time) error {
 	}
 	return nil
 }
+
+// maxRemediation bounds the fix hint of a check in a received result (the engine writes at most 1500 bytes).
+const maxRemediation = 2000
 
 // printable reports whether s is valid UTF-8 without control characters.
 func printable(s string) bool {

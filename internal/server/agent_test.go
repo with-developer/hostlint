@@ -390,3 +390,29 @@ func TestOperatorTokenReads(t *testing.T) {
 		t.Error("a read token authenticated as an operator")
 	}
 }
+
+// A received result may carry the fix hint of a failed check, as text and of bounded size: it is shown as guidance.
+func TestIngestBoundsTheFixHint(t *testing.T) {
+	srv, store := newTestServer(t)
+	wild := token(t, store, ScopeIngest, "")
+	withHint := func(hint string) []byte {
+		var doc map[string]any
+		if err := json.Unmarshal(fixture(t, "web-01.json"), &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["checks"].([]any)[0].(map[string]any)["remediation"] = hint
+		out, _ := json.Marshal(doc)
+		return out
+	}
+	for name, hint := range map[string]string{
+		"escape sequence": "run this \x1b[2J now",
+		"too long":        strings.Repeat("a", maxRemediation+1),
+	} {
+		if code, _ := post(t, srv, wild, withHint(hint)); code != http.StatusUnprocessableEntity {
+			t.Errorf("%s: status %d, want 422", name, code)
+		}
+	}
+	if code, out := post(t, srv, wild, withHint("Set `PermitRootLogin no`.\n\tThen reload sshd.")); code != http.StatusCreated {
+		t.Errorf("a hint with a line break: %d %v", code, out)
+	}
+}

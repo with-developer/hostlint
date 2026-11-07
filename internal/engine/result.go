@@ -161,7 +161,8 @@ type CheckResult struct {
 	StatusSource   string   `json:"statusSource"` // observed or attested
 	Reason         string   `json:"reason,omitempty"`
 	// Remediation is the check's guidance on fixing a failure: static text of the rule, set for a check that
-	// failed or could not be decided, so a result says what to do about what it found.
+	// failed (not one that could not be decided: there is nothing to fix yet), so a result says what to do about
+	// what it found.
 	Remediation     string         `json:"remediation,omitempty"`
 	Params          map[string]any `json:"params,omitempty"`
 	Customized      bool           `json:"customized,omitempty"`

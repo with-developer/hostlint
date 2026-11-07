@@ -285,7 +285,7 @@ func (e *Engine) checkResult(in *instance, o outcome) *CheckResult {
 	if len(in.params) > 0 {
 		cr.Params = in.params
 	}
-	if o.status == StatusFail || o.status == StatusError {
+	if o.status == StatusFail {
 		cr.Remediation = truncate(strings.TrimSpace(c.Remediation), maxRemediationLen)
 	}
 	cr.Customized = in.customized
