@@ -19,8 +19,10 @@ import (
 // Values are the effective value as text, never reinterpreted: a "-1" that
 // means "no limit" stays "-1".
 type Setting struct {
-	Value    string `json:"value"`
-	Explicit bool   `json:"explicit"`
+	// Value is the effective value as text.
+	Value string `json:"value"`
+	// Explicit is true when the value is set in a configuration file, false when it is a default.
+	Explicit bool `json:"explicit"`
 	// Source is where the value came from, e.g. "/etc/login.defs:25",
 	// "default (OpenSSH 9.6)" or "sshd -T".
 	Source string `json:"source"`

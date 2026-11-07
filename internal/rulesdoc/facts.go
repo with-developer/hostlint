@@ -1,6 +1,7 @@
 package rulesdoc
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -38,7 +39,7 @@ func RenderFacts(e *engine.Engine, src fs.FS, srcDirs ...string) (string, error)
 			b.WriteString("| Path | Type | |\n|---|---|---|\n")
 			continue
 		}
-		b.WriteString("| `" + f.Path + "` | " + f.Type + " | " + oneLine(docs[f.Go]) + " |\n")
+		b.WriteString("| `" + f.Path + "` | " + f.Type + " | " + strings.ReplaceAll(oneLine(docs[f.Go]), "|", `\|`) + " |\n")
 	}
 	return b.String(), nil
 }
@@ -73,11 +74,13 @@ func fieldDocs(src fs.FS, dirs []string) (map[string]string, error) {
 				for _, spec := range gd.Specs {
 					ts := spec.(*ast.TypeSpec)
 					doc := ts.Doc
-					if doc == nil {
-						doc = gd.Doc
+					if doc == nil && len(gd.Specs) == 1 {
+						doc = gd.Doc // the comment of a group belongs to no single type of it
 					}
 					if doc != nil {
-						out[ts.Name.Name] = strings.TrimSpace(doc.Text())
+						if err := put(out, ts.Name.Name, doc.Text()); err != nil {
+							return nil, err
+						}
 					}
 					st, ok := ts.Type.(*ast.StructType)
 					if !ok {
@@ -92,7 +95,9 @@ func fieldDocs(src fs.FS, dirs []string) (map[string]string, error) {
 						}
 						for _, n := range f.Names {
 							if text != "" {
-								out[ts.Name.Name+"."+n.Name] = strings.TrimSpace(text)
+								if err := put(out, ts.Name.Name+"."+n.Name, text); err != nil {
+									return nil, err
+								}
 							}
 						}
 					}
@@ -101,4 +106,14 @@ func fieldDocs(src fs.FS, dirs []string) (map[string]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// put records a comment; the same name twice (two types of that name in the directories read) is an error,
+// not a comment that silently wins.
+func put(out map[string]string, key, text string) error {
+	if _, dup := out[key]; dup {
+		return fmt.Errorf("%s is declared twice: the documentation of the facts is keyed by type and field name", key)
+	}
+	out[key] = strings.TrimSpace(text)
+	return nil
 }

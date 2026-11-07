@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/with-developer/hostlint/internal/collect"
 	"github.com/with-developer/hostlint/internal/engine"
@@ -67,6 +68,12 @@ func TestFactsDocIsUpToDate(t *testing.T) {
 	if string(want) != got {
 		t.Error("docs/facts.md is out of date; run `make docs`")
 	}
+	// The comments of the Go fields are attached: a known one is in its row.
+	for _, doc := range []string{"| `sshd.config` | map of setting | Config holds the effective global settings", "| `sshd.config{}.explicit` | bool | Explicit is true when the value is set in a configuration file"} {
+		if !strings.Contains(got, doc) {
+			t.Errorf("the reference lacks the description %q", doc)
+		}
+	}
 	for _, name := range []string{"## `sshd`", "`sshd.config`", "`login_defs`"} {
 		if !strings.Contains(got, name) {
 			t.Errorf("the reference lacks %s", name)
@@ -94,5 +101,21 @@ func TestRenderCoversEveryControlAndCheck(t *testing.T) {
 	}
 	if Render(content) != out {
 		t.Error("Render is not deterministic")
+	}
+}
+
+func TestFactDocsRefuseTwoTypesOfOneName(t *testing.T) {
+	src := fstest.MapFS{
+		"a/a.go": {Data: []byte("package a\n\n// T is one.\ntype T struct {\n\t// X is x.\n\tX string `json:\"x\"`\n}\n")},
+		"b/b.go": {Data: []byte("package b\n\n// T is another.\ntype T struct{}\n")},
+	}
+	if _, err := fieldDocs(src, []string{"a", "b"}); err == nil || !strings.Contains(err.Error(), "declared twice") {
+		t.Errorf("err = %v", err)
+	}
+	// A group comment is nobody's comment.
+	grouped := fstest.MapFS{"c/c.go": {Data: []byte("package c\n\n// The group.\ntype (\n\tA struct{}\n\tB struct{}\n)\n")}}
+	docs, err := fieldDocs(grouped, []string{"c"})
+	if err != nil || docs["A"] != "" || docs["B"] != "" {
+		t.Errorf("docs = %v %v", docs, err)
 	}
 }

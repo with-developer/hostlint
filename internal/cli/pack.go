@@ -348,9 +348,10 @@ func uniqueDirs(dirs []string) []string {
 func newPackFactsCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "facts [COLLECTOR]",
-		Short: "List the facts a check or a pack can read (docs/facts.md has them with their descriptions)",
+		Short: "List the facts a check or a pack can read (the fact reference has their descriptions)",
 		Long: `Facts lists every fact path the compiled-in collectors produce, with its type: the names a check
-writes in its expressions. Give a collector (sshd, login_defs, ...) to see only its facts.`,
+writes in its expressions. Give a collector (sshd, login_defs, ...) to see only its facts. The fact reference
+with descriptions is https://github.com/with-developer/hostlint/blob/main/docs/facts.md.`,
 		Example: "  hostlint pack facts sshd",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -372,7 +373,7 @@ writes in its expressions. Give a collector (sshd, login_defs, ...) to see only 
 				shown++
 				fmt.Fprintf(out, "%-60s %s\n", f.Path, f.Type)
 			}
-			if shown == 0 {
+			if shown == 0 && len(args) == 1 {
 				return fmt.Errorf("no collector %q (have: %s)", args[0], strings.Join(e.FactCollectors(), ", "))
 			}
 			return nil

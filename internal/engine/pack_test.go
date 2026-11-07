@@ -286,6 +286,9 @@ func TestFactCatalog(t *testing.T) {
 	have := map[string]string{}
 	for _, f := range e.FactCatalog() {
 		have[f.Path] = f.Type
+		if strings.Contains(f.Path, "…") {
+			t.Errorf("the catalog is cut short at %s", f.Path)
+		}
 	}
 	for path, typ := range map[string]string{
 		"sshd":                           "object",

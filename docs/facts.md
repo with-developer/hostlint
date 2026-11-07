@@ -142,8 +142,8 @@ read.
 |---|---|---|
 | `ftp.present` | bool | Present is false when there is no vsftpd.conf. |
 | `ftp.settings` | map of setting | Settings are the options the checks read: set in vsftpd.conf, or their built-in defaults (vsftpd.conf(5)). Booleans are YES or NO. |
-| `ftp.settings{}.value` | string |  |
-| `ftp.settings{}.explicit` | bool |  |
+| `ftp.settings{}.value` | string | Value is the effective value as text. |
+| `ftp.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `ftp.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `ftp.banner` | string | Banner says what a client is told when it connects: "default" (the vsftpd banner, which names the version), "custom" or "version" (a custom banner, or banner_file, that still shows a version or the name vsftpd). |
 | `ftp.root_denied` | bool | RootDenied is true when root cannot log in: the PAM stack of the FTP service refuses the users of a file that lists root (pam_listfile, /etc/ftpusers), or userlist_enable and userlist_deny make a listed root refused. |
@@ -178,8 +178,8 @@ LoginDefs are the `login_defs` facts: /etc/login.defs (shadow-utils).
 |---|---|---|
 | `login_defs.present` | bool | Present is false when /etc/login.defs does not exist; the built-in defaults below still apply then. |
 | `login_defs.settings` | map of setting | Settings are keyed by the exact (upper-case) key, e.g. PASS_MAX_DAYS. |
-| `login_defs.settings{}.value` | string |  |
-| `login_defs.settings{}.explicit` | bool |  |
+| `login_defs.settings{}.value` | string | Value is the effective value as text. |
+| `login_defs.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `login_defs.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 
 ## `nfs`
@@ -246,29 +246,29 @@ do not have to re-implement PAM.
 | `pam.password_quality` | object | PasswordQuality is the policy that rejects weak new passwords in the passwd service: pam_pwquality or pam_cracklib. Module is "" when no such module can reject a password (absent, ignored or skipped). |
 | `pam.password_quality.module` | string |  |
 | `pam.password_quality.settings` | map of setting |  |
-| `pam.password_quality.settings{}.value` | string |  |
-| `pam.password_quality.settings{}.explicit` | bool |  |
+| `pam.password_quality.settings{}.value` | string | Value is the effective value as text. |
+| `pam.password_quality.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `pam.password_quality.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `pam.password_quality.ignored` | list of string | Ignored lists modules of this kind that are in the stack but cannot reject a password, with why (e.g. a sufficient rule ends the stack first). |
 | `pam.password_history` | object | PasswordHistory is the policy that rejects reused passwords in the passwd service: pam_pwhistory, or pam_unix's remember option. |
 | `pam.password_history.module` | string |  |
 | `pam.password_history.settings` | map of setting |  |
-| `pam.password_history.settings{}.value` | string |  |
-| `pam.password_history.settings{}.explicit` | bool |  |
+| `pam.password_history.settings{}.value` | string | Value is the effective value as text. |
+| `pam.password_history.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `pam.password_history.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `pam.password_history.ignored` | list of string | Ignored lists modules of this kind that are in the stack but cannot reject a password, with why (e.g. a sufficient rule ends the stack first). |
 | `pam.lockout` | map of object | Lockout maps a service to the lockout policy of its auth stack. |
 | `pam.lockout{}.module` | string | "" when neither is in the stack |
 | `pam.lockout{}.settings` | map of setting |  |
-| `pam.lockout{}.settings{}.value` | string |  |
-| `pam.lockout{}.settings{}.explicit` | bool |  |
+| `pam.lockout{}.settings{}.value` | string | Value is the effective value as text. |
+| `pam.lockout{}.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `pam.lockout{}.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `pam.lockout{}.actions` | list of string | Actions are the pam_faillock modes present: preauth, authfail and authsucc on auth lines, and account for an account line. |
 | `pam.lockout{}.enforced` | bool | Enforced is true when the auth stack, evaluated as libpam does, counts a wrong password, denies a locked account even with the right password, and still lets an unlocked account in. |
 | `pam.lockout{}.why` | string | Why says what is missing when Enforced is false. |
 | `pam.effective` | map of setting | Effective holds what the stacks amount to. A key is absent when the stacks do not decide it: - su_wheel: "restricted" when the su stack denies a user outside the pam_wheel group who knows root's password; otherwise "not restricted: <why>". "restricted" also when every su found is restricted by its permissions: setuid root, a group of administrators (wheel, sudo, admin, adm), not executable by others. Absent when neither the su stack has a pam_wheel.so nor su is so restricted. - password_hash: the hash pam_unix in the passwd stack uses (md5, sha256, sha512, yescrypt, ...): its last hash option, or else the first ENCRYPT_METHOD of /etc/login.defs, which pam_unix reads. |
-| `pam.effective{}.value` | string |  |
-| `pam.effective{}.explicit` | bool |  |
+| `pam.effective{}.value` | string | Value is the effective value as text. |
+| `pam.effective{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `pam.effective{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 
 ## `postfix`
@@ -279,8 +279,8 @@ Postfix is the `postfix` facts: /etc/postfix/main.cf.
 |---|---|---|
 | `postfix.present` | bool | Present is false when /etc/postfix/main.cf does not exist. |
 | `postfix.settings` | map of setting | Settings are the parameters set in main.cf (the last assignment wins, as in Postfix) and the defaults of the ones the checks read. |
-| `postfix.settings{}.value` | string |  |
-| `postfix.settings{}.explicit` | bool |  |
+| `postfix.settings{}.value` | string | Value is the effective value as text. |
+| `postfix.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `postfix.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `postfix.relay_problems` | list of string | RelayProblems say why the configuration lets anyone relay mail through the server, one sentence each; empty when it does not. |
 
@@ -406,12 +406,12 @@ rules decide what to accept.
 | `shell_env.path[].unset` | bool | an unset command (TMOUT only); Value is "" |
 | `shell_env.path[].source` | string |  |
 | `shell_env.effective` | map of setting | Effective maps a variable to what its unconditional assignments and unsets leave, in reading order (once it is read-only, later changes fail). A variable is absent when no value survives. The map is unknown when a conditional change could alter the result. Only TMOUT is tracked. |
-| `shell_env.effective{}.value` | string |  |
-| `shell_env.effective{}.explicit` | bool |  |
+| `shell_env.effective{}.value` | string | Value is the effective value as text. |
+| `shell_env.effective{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `shell_env.effective{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `shell_env.system_effective` | map of setting | SystemEffective is the same for the system-wide files only (/etc/environment, /etc/profile and what it sources): what every user's login shell gets, before their own startup files. |
-| `shell_env.system_effective{}.value` | string |  |
-| `shell_env.system_effective{}.explicit` | bool |  |
+| `shell_env.system_effective{}.value` | string | Value is the effective value as text. |
+| `shell_env.system_effective{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `shell_env.system_effective{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 
 ## `snmp`
@@ -458,14 +458,14 @@ SSHD are the `sshd` facts: the OpenSSH server configuration.
 |---|---|---|
 | `sshd.present` | bool | Present is true when an sshd program or its configuration exists. |
 | `sshd.config` | map of setting | Config holds the effective global settings, keyed by lowercase keyword. On a live host the values come from `sshd -T`, so defaults of the installed version are included (explicit=false); otherwise only values set in the files are known. |
-| `sshd.config{}.value` | string |  |
-| `sshd.config{}.explicit` | bool |  |
+| `sshd.config{}.value` | string | Value is the effective value as text. |
+| `sshd.config{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `sshd.config{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `sshd.match` | list of object | Match lists the Match blocks, whose settings override the global ones for matching connections. |
 | `sshd.match[].criteria` | string |  |
 | `sshd.match[].settings` | map of setting |  |
-| `sshd.match[].settings{}.value` | string |  |
-| `sshd.match[].settings{}.explicit` | bool |  |
+| `sshd.match[].settings{}.value` | string | Value is the effective value as text. |
+| `sshd.match[].settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `sshd.match[].settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `sshd.match[].source` | string |  |
 

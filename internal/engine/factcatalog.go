@@ -32,12 +32,18 @@ func (e *Engine) FactCatalog() []FactField {
 	return out
 }
 
+// maxFactDepth bounds how deep the catalog follows nested objects (a fact type that recurses would never end).
+const maxFactDepth = 5
+
 var settingFactType = reflect.TypeFor[facts.Setting]()
 
 func walkFacts(prefix string, t reflect.Type, depth int) []FactField {
 	var out []FactField
-	if t.Kind() != reflect.Struct || depth > 5 {
+	if t.Kind() != reflect.Struct {
 		return nil
+	}
+	if depth > maxFactDepth {
+		return []FactField{{Path: prefix + ".…", Type: "(deeper fields are not listed)", Go: t.Name()}}
 	}
 	for i := range t.NumField() {
 		f := t.Field(i)
