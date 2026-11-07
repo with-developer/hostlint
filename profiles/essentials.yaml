@@ -1,7 +1,7 @@
 # hostlint essentials: a short baseline of the settings most Linux server hardening guides agree
 # on, over the same checks as the other profiles. The control IDs and titles are hostlint's own.
 id: essentials
-revision: 1
+revision: 2
 title: hostlint essentials — a short hardening baseline for Linux servers
 title_ko: hostlint 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 controls:
@@ -105,3 +105,13 @@ controls:
     title_ko: 로그인할 수 있는 계정을 검토함
     severity: low
     checks: [accounts.review-login-accounts, accounts.review-admin-groups]
+  - id: ES-21
+    title: The network stack ignores what it should
+    title_ko: 네트워크 스택이 무시해야 할 것을 무시함
+    severity: medium
+    checks: [sysctl.syncookies, sysctl.rp-filter, sysctl.icmp-redirects, sysctl.source-routing, sysctl.icmp-broadcast]
+  - id: ES-22
+    title: The kernel limits what unprivileged code can see and do
+    title_ko: 커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함
+    severity: medium
+    checks: [sysctl.aslr, sysctl.kptr-restrict, sysctl.dmesg-restrict, sysctl.suid-dumpable, sysctl.ptrace-scope, sysctl.protected-links]

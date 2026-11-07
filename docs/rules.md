@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## essentials (revision 1)
+## essentials (revision 2)
 
 hostlint essentials — a short hardening baseline for Linux servers
 
@@ -33,6 +33,8 @@ hostlint essentials — a short hardening baseline for Linux servers
 | ES-18 | medium | The clock is kept in sync (시각이 동기화됨) | [`services.time-sync`](#servicestime-sync) |
 | ES-19 | medium | Set-ID programs are reviewed (Set-ID 프로그램을 검토함) | [`files.review-setid`](#filesreview-setid) |
 | ES-20 | low | Accounts that can log in are reviewed (로그인할 수 있는 계정을 검토함) | [`accounts.review-login-accounts`](#accountsreview-login-accounts), [`accounts.review-admin-groups`](#accountsreview-admin-groups) |
+| ES-21 | medium | The network stack ignores what it should (네트워크 스택이 무시해야 할 것을 무시함) | [`sysctl.syncookies`](#sysctlsyncookies), [`sysctl.rp-filter`](#sysctlrp-filter), [`sysctl.icmp-redirects`](#sysctlicmp-redirects), [`sysctl.source-routing`](#sysctlsource-routing), [`sysctl.icmp-broadcast`](#sysctlicmp-broadcast) |
+| ES-22 | medium | The kernel limits what unprivileged code can see and do (커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함) | [`sysctl.aslr`](#sysctlaslr), [`sysctl.kptr-restrict`](#sysctlkptr-restrict), [`sysctl.dmesg-restrict`](#sysctldmesg-restrict), [`sysctl.suid-dumpable`](#sysctlsuid-dumpable), [`sysctl.ptrace-scope`](#sysctlptrace-scope), [`sysctl.protected-links`](#sysctlprotected-links) |
 
 ### Checks
 
@@ -569,6 +571,116 @@ Checks the global X11Forwarding setting of the OpenSSH server. On a live host th
 **Why.** X11 forwarding exposes the client's display to the server, and anything that controls the server can then watch or drive it.
 
 **Fix.** Set `X11Forwarding no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `sysctl.aslr`
+
+Address space layout randomization is fully on (주소 공간 배치 무작위화가 완전히 켜져 있음) — severity medium, compares one setting.
+
+Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** Randomized addresses make memory-corruption bugs much harder to turn into working exploits.
+
+**Fix.** Set `kernel.randomize_va_space = 2` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.dmesg-restrict`
+
+Only privileged users can read the kernel log (커널 로그는 권한 있는 사용자만 읽을 수 있음) — severity low, compares one setting.
+
+Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** The kernel log can show addresses, device details and the traces of failed exploits.
+
+**Fix.** Set `kernel.dmesg_restrict = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.icmp-broadcast`
+
+Pings to a broadcast address are ignored (브로드캐스트 주소로 온 ping을 무시함) — severity low, compares one setting.
+
+Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answer them).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** Answering broadcast pings lets an attacker use the host to amplify traffic towards a victim.
+
+**Fix.** Set `net.ipv4.icmp_echo_ignore_broadcasts = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.icmp-redirects`
+
+ICMP redirects are neither accepted nor sent (ICMP 리다이렉트를 받지도 보내지도 않음) — severity medium, evaluates an expression.
+
+Checks net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects and net.ipv4.conf.all.send_redirects, which must all be 0. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
+
+**Why.** A forged redirect changes the routes of a host, and a host that sends redirects tells others about its network.
+
+**Fix.** Set the three parameters to 0 in a file of /etc/sysctl.d and apply them with `sysctl --system`.
+
+#### `sysctl.kptr-restrict`
+
+Kernel addresses are hidden from users (커널 주소를 사용자에게 숨김) — severity medium, compares one setting.
+
+Checks the kernel parameter kernel.kptr_restrict (1 or 2 hides kernel pointers from unprivileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** Kernel addresses in /proc and logs help an attacker defeat address randomization of the kernel.
+
+**Fix.** Set `kernel.kptr_restrict = 1` (or 2) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.protected-links`
+
+Links in world-writable directories are protected (누구나 쓸 수 있는 디렉터리의 링크를 보호함) — severity low, evaluates an expression.
+
+Checks fs.protected_hardlinks and fs.protected_symlinks, which must both be 1. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
+
+**Why.** Without them a user can plant a link that makes a privileged program open a file of the user\u0027s choice.
+
+**Fix.** Set `fs.protected_hardlinks = 1` and `fs.protected_symlinks = 1` in a file of /etc/sysctl.d and apply them with `sysctl --system`.
+
+#### `sysctl.ptrace-scope`
+
+Processes cannot attach to unrelated processes (관련 없는 프로세스에 붙을 수 없음) — severity low, compares one setting.
+
+Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to descendants; a kernel without Yama has no such parameter and cannot be judged).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** ptrace lets a process read the memory of another one of the same user, including keys and tokens.
+
+**Fix.** Set `kernel.yama.ptrace_scope = 1` (or more) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.rp-filter`
+
+Packets with a source that cannot come from their interface are dropped (출발지가 인터페이스와 맞지 않는 패킷을 버림) — severity medium, compares one setting.
+
+Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** Reverse path filtering drops packets with forged source addresses.
+
+**Fix.** Set `net.ipv4.conf.all.rp_filter = 1` (or 2) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.source-routing`
+
+Source-routed packets are refused (소스 라우팅 패킷을 거부함) — severity medium, compares one setting.
+
+Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore packets that name their own route).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** A sender that picks the route of its packets can steer them around the filters of the network.
+
+**Fix.** Set `net.ipv4.conf.all.accept_source_route = 0` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.suid-dumpable`
+
+Set-ID programs do not dump core (set-ID 프로그램이 코어 덤프를 만들지 않음) — severity medium, compares one setting.
+
+Checks the kernel parameter fs.suid_dumpable (0: a program that changed its privileges leaves no core dump).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** A core dump of a set-ID program can hold secrets of a more privileged user.
+
+**Fix.** Set `fs.suid_dumpable = 0` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.syncookies`
+
+TCP SYN cookies are on (TCP SYN 쿠키가 켜져 있음) — severity medium, compares one setting.
+
+Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
+
+**Fix.** Set `net.ipv4.tcp_syncookies = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
 
 ## kisa-2026 (revision 15)
 

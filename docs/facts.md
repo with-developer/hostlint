@@ -469,6 +469,18 @@ SSHD are the `sshd` facts: the OpenSSH server configuration.
 | `sshd.match[].settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 | `sshd.match[].source` | string |  |
 
+## `sysctl`
+
+Sysctl are the `sysctl` facts: the kernel parameters that checks read (sysctlKeys, not every parameter).
+
+| Path | Type | |
+|---|---|---|
+| `sysctl.live` | bool | Live is true when the values are what the running kernel reports (/proc/sys). Otherwise they are what the configuration files set at boot, and a parameter they do not set is absent: the kernel's own default is not known. A container image shares the kernel of its host, so it has no values at all (the checks do not apply to it). |
+| `sysctl.params` | map of setting | Params are keyed by the parameter's name with dots, e.g. kernel.kptr_restrict. |
+| `sysctl.params{}.value` | string | Value is the effective value as text. |
+| `sysctl.params{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
+| `sysctl.params{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
+
 ## `target`
 
 Target describes what is being scanned: the `target` variable.
@@ -476,3 +488,4 @@ Target describes what is being scanned: the `target` variable.
 | Path | Type | |
 |---|---|---|
 | `target.live` | bool | Live is true when the target is the running system, so live facts (running services, sockets) describe it; false for a mounted root (--root), where nothing runs. Checks use it to require live facts on live targets only. |
+| `target.image` | bool | Image is true when the target is a container image (--image-tar): its files, with nothing running and no kernel of its own. Checks of kernel parameters do not apply to it. |

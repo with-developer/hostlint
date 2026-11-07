@@ -1,0 +1,41 @@
+id: sysctl.protected-links
+version: 1
+title: Links in world-writable directories are protected
+title_ko: 누구나 쓸 수 있는 디렉터리의 링크를 보호함
+severity: low
+description: >-
+  Checks fs.protected_hardlinks and fs.protected_symlinks, which must both be 1. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
+rationale: >-
+  Without them a user can plant a link that makes a privileged program open a file of the user\u0027s choice.
+remediation: >-
+  Set `fs.protected_hardlinks = 1` and `fs.protected_symlinks = 1` in a file of /etc/sysctl.d and apply them with `sysctl --system`.
+applies: >-
+  !target.image
+failure: >-
+  Links in a sticky world-writable directory are not protected.
+expect: >-
+  sysctl.params["fs.protected_hardlinks"].value == "1" &&
+  sysctl.params["fs.protected_symlinks"].value == "1"
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"fs.protected_hardlinks": {value: "1", source: "/proc/sys/fs/protected_hardlinks"}, "fs.protected_symlinks": {value: "1", source: "/proc/sys/fs/protected_symlinks"}}}
+    want: PASS
+  - name: the first is set the other way
+    facts:
+      sysctl: {live: true, params: {"fs.protected_hardlinks": {value: "0", source: "/proc/sys/fs/protected_hardlinks"}, "fs.protected_symlinks": {value: "1", source: "/proc/sys/fs/protected_symlinks"}}}
+    want: FAIL
+  - name: the last is set the other way
+    facts:
+      sysctl: {live: true, params: {"fs.protected_hardlinks": {value: "1", source: "/proc/sys/fs/protected_hardlinks"}, "fs.protected_symlinks": {value: "0", source: "/proc/sys/fs/protected_symlinks"}}}
+    want: FAIL
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: one of them is not set in the files of a mounted root
+    input: absent
+    facts:
+      sysctl: {live: false, params: {"fs.protected_hardlinks": {value: "1", source: "x"}}}
+    want: ERROR

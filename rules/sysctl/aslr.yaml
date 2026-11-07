@@ -1,0 +1,40 @@
+id: sysctl.aslr
+version: 1
+title: Address space layout randomization is fully on
+title_ko: 주소 공간 배치 무작위화가 완전히 켜져 있음
+severity: medium
+description: >-
+  Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  Randomized addresses make memory-corruption bugs much harder to turn into working exploits.
+remediation: >-
+  Set `kernel.randomize_va_space = 2` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["kernel.randomize_va_space"]
+  in: ["2"]
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"kernel.randomize_va_space": {value: "2", source: "/proc/sys/kernel/randomize_va_space"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"kernel.randomize_va_space": {value: "0", source: "/proc/sys/kernel/randomize_va_space"}}}
+    want: FAIL
+  - name: an unexpected value
+    facts:
+      sysctl: {live: false, params: {"kernel.randomize_va_space": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: FAIL
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

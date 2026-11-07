@@ -152,3 +152,7 @@ const mountinfoSeed = `596 433 0:69 / / rw,relatime master:179 - overlay overlay
 605 596 254:1 /docker/volumes/data /srv/my\040data rw,relatime - ext4 /dev/vda1 rw
 606 596 0:80 / /mnt/share rw,relatime - nfs4 server:/export rw,vers=4.2
 `
+
+func FuzzSysctl(f *testing.F) {
+	fuzzCollector(f, sysctlCollector{}, "/etc/sysctl.d/10-kernel-hardening.conf", "sysctl-ubuntu-24.04", "sysctl-rocky-9")
+}

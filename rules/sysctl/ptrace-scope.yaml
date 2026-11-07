@@ -1,0 +1,40 @@
+id: sysctl.ptrace-scope
+version: 1
+title: Processes cannot attach to unrelated processes
+title_ko: 관련 없는 프로세스에 붙을 수 없음
+severity: low
+description: >-
+  Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to descendants; a kernel without Yama has no such parameter and cannot be judged).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  ptrace lets a process read the memory of another one of the same user, including keys and tokens.
+remediation: >-
+  Set `kernel.yama.ptrace_scope = 1` (or more) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["kernel.yama.ptrace_scope"]
+  range: {min: 1, max: 3}
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"kernel.yama.ptrace_scope": {value: "1", source: "/proc/sys/kernel/yama/ptrace_scope"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"kernel.yama.ptrace_scope": {value: "0", source: "/proc/sys/kernel/yama/ptrace_scope"}}}
+    want: FAIL
+  - name: a value that is not a number cannot be judged
+    facts:
+      sysctl: {live: false, params: {"kernel.yama.ptrace_scope": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: ERROR
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

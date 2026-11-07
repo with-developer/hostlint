@@ -1,0 +1,40 @@
+id: sysctl.dmesg-restrict
+version: 1
+title: Only privileged users can read the kernel log
+title_ko: 커널 로그는 권한 있는 사용자만 읽을 수 있음
+severity: low
+description: >-
+  Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  The kernel log can show addresses, device details and the traces of failed exploits.
+remediation: >-
+  Set `kernel.dmesg_restrict = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["kernel.dmesg_restrict"]
+  in: ["1"]
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"kernel.dmesg_restrict": {value: "1", source: "/proc/sys/kernel/dmesg_restrict"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"kernel.dmesg_restrict": {value: "0", source: "/proc/sys/kernel/dmesg_restrict"}}}
+    want: FAIL
+  - name: an unexpected value
+    facts:
+      sysctl: {live: false, params: {"kernel.dmesg_restrict": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: FAIL
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

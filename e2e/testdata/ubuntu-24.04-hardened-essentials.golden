@@ -1,5 +1,5 @@
 os: Ubuntu 24.04.5 LTS (id ubuntu, version 24.04, family debian, supported true)
-profile essentials revision 1: MANUAL 2 PASS 18
+profile essentials revision 2: MANUAL 2 PASS 18 (and 2 controls of the kernel of the host)
 
 ES-01 PASS
   ssh.permit-root-login PASS
@@ -183,3 +183,18 @@ ES-20 MANUAL
   accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
     - root: root (primary group)
     - sudo: ubuntu
+
+ES-21 (the kernel of the host)
+  sysctl.syncookies
+  sysctl.rp-filter
+  sysctl.icmp-redirects
+  sysctl.source-routing
+  sysctl.icmp-broadcast
+
+ES-22 (the kernel of the host)
+  sysctl.aslr
+  sysctl.kptr-restrict
+  sysctl.dmesg-restrict
+  sysctl.suid-dumpable
+  sysctl.ptrace-scope
+  sysctl.protected-links

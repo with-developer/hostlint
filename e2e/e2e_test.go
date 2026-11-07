@@ -171,26 +171,63 @@ func summary(r *engine.Result) string {
 	var b strings.Builder
 	o := r.Host.OS
 	fmt.Fprintf(&b, "os: %s (id %s, version %s, family %s, supported %v)\n", o.Name, o.ID, o.VersionID, o.Family, o.Supported)
-	for _, p := range r.Profiles {
-		s := r.Summary[p.ID]
-		fmt.Fprintf(&b, "profile %s revision %d:", p.ID, p.Revision)
-		for _, st := range engine.Statuses() {
-			if n := s.Controls[st]; n > 0 {
-				fmt.Fprintf(&b, " %s %d", st, n)
-			}
-		}
-		b.WriteByte('\n')
-	}
-	for _, c := range r.Collectors {
-		if c.Status != "ok" || !c.Complete {
-			fmt.Fprintf(&b, "collector %s: %s, complete %v %s %v\n", c.Name, c.Status, c.Complete, c.Error, c.Skipped)
-		}
-	}
 	checks := map[string]engine.CheckResult{}
 	for _, c := range r.Checks {
 		checks[c.Ref] = c
 	}
+	// The kernel parameters of a container are those of the machine that runs Docker (Docker Desktop, a
+	// CI runner): the checks of them are tested by their own rule tests and collector tests, and their
+	// results stay out of the goldens, which would otherwise differ from one machine to the next.
+	kernel := func(c engine.ControlResult) bool {
+		if len(c.Checks) == 0 {
+			return false
+		}
+		for _, ref := range c.Checks {
+			if !strings.HasPrefix(checks[ref].ID, "sysctl.") {
+				return false
+			}
+		}
+		return true
+	}
+	for _, p := range r.Profiles {
+		counts := map[engine.Status]int{}
+		hostKernel := 0
+		for _, c := range r.Controls {
+			switch {
+			case c.Profile != p.ID:
+			case kernel(c):
+				hostKernel++
+			default:
+				counts[c.Status]++
+			}
+		}
+		fmt.Fprintf(&b, "profile %s revision %d:", p.ID, p.Revision)
+		for _, st := range engine.Statuses() {
+			if n := counts[st]; n > 0 {
+				fmt.Fprintf(&b, " %s %d", st, n)
+			}
+		}
+		if hostKernel > 0 {
+			fmt.Fprintf(&b, " (and %d controls of the kernel of the host)", hostKernel)
+		}
+		b.WriteByte('\n')
+	}
+	for _, c := range r.Collectors {
+		if c.Name == "sysctl" {
+			continue // see above
+		}
+		if c.Status != "ok" || !c.Complete {
+			fmt.Fprintf(&b, "collector %s: %s, complete %v %s %v\n", c.Name, c.Status, c.Complete, c.Error, c.Skipped)
+		}
+	}
 	for _, c := range r.Controls {
+		if kernel(c) {
+			fmt.Fprintf(&b, "\n%s (the kernel of the host)\n", c.ID)
+			for _, ref := range c.Checks {
+				fmt.Fprintf(&b, "  %s\n", checks[ref].ID)
+			}
+			continue
+		}
 		fmt.Fprintf(&b, "\n%s %s\n", c.ID, c.Status)
 		for _, ref := range c.Checks {
 			k := checks[ref]

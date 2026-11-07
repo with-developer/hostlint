@@ -1,0 +1,40 @@
+id: sysctl.icmp-broadcast
+version: 1
+title: Pings to a broadcast address are ignored
+title_ko: 브로드캐스트 주소로 온 ping을 무시함
+severity: low
+description: >-
+  Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answer them).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  Answering broadcast pings lets an attacker use the host to amplify traffic towards a victim.
+remediation: >-
+  Set `net.ipv4.icmp_echo_ignore_broadcasts = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["net.ipv4.icmp_echo_ignore_broadcasts"]
+  in: ["1"]
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"net.ipv4.icmp_echo_ignore_broadcasts": {value: "1", source: "/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"net.ipv4.icmp_echo_ignore_broadcasts": {value: "0", source: "/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts"}}}
+    want: FAIL
+  - name: an unexpected value
+    facts:
+      sysctl: {live: false, params: {"net.ipv4.icmp_echo_ignore_broadcasts": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: FAIL
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

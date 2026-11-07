@@ -1,0 +1,40 @@
+id: sysctl.rp-filter
+version: 1
+title: Packets with a source that cannot come from their interface are dropped
+title_ko: 출발지가 인터페이스와 맞지 않는 패킷을 버림
+severity: medium
+description: >-
+  Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  Reverse path filtering drops packets with forged source addresses.
+remediation: >-
+  Set `net.ipv4.conf.all.rp_filter = 1` (or 2) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["net.ipv4.conf.all.rp_filter"]
+  range: {min: 1, max: 2}
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"net.ipv4.conf.all.rp_filter": {value: "1", source: "/proc/sys/net/ipv4/conf/all/rp_filter"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"net.ipv4.conf.all.rp_filter": {value: "0", source: "/proc/sys/net/ipv4/conf/all/rp_filter"}}}
+    want: FAIL
+  - name: a value that is not a number cannot be judged
+    facts:
+      sysctl: {live: false, params: {"net.ipv4.conf.all.rp_filter": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: ERROR
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

@@ -168,8 +168,11 @@ best-effort and marked as such.
 The `essentials` profile (`--profile essentials`) is a short baseline that most Linux hardening guides
 agree on, outside any national standard: SSH (no root login, no password logins, no empty passwords, few
 attempts, no X11 forwarding, and no `Match` block that undoes them), UID 0 and password files, password
-length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions
-and time synchronization. It has 20 controls with its own IDs (`ES-01`–`ES-20`), mostly over the checks of the other profile plus eight new SSH checks.
+length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions,
+time synchronization and the kernel parameters that matter (address randomization, `kptr_restrict`, ICMP redirects,
+reverse path filtering, SYN cookies, ...). It has 22 controls with its own IDs (`ES-01`–`ES-22`), mostly over the checks
+of the other profile plus eight new SSH checks and eleven of kernel parameters; the kernel parameters do not apply to a
+container image, which has no kernel of its own.
 
 Your own standard goes into a [policy pack](docs/packs.md): a directory of checks and profiles in the same
 YAML format, tested with `hostlint pack test`, reviewed with `hostlint pack show`, used with `hostlint scan

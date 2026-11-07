@@ -1,0 +1,40 @@
+id: sysctl.suid-dumpable
+version: 1
+title: Set-ID programs do not dump core
+title_ko: set-ID 프로그램이 코어 덤프를 만들지 않음
+severity: medium
+description: >-
+  Checks the kernel parameter fs.suid_dumpable (0: a program that changed its privileges leaves no core dump).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  A core dump of a set-ID program can hold secrets of a more privileged user.
+remediation: >-
+  Set `fs.suid_dumpable = 0` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["fs.suid_dumpable"]
+  in: ["0"]
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"fs.suid_dumpable": {value: "0", source: "/proc/sys/fs/suid_dumpable"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"fs.suid_dumpable": {value: "2", source: "/proc/sys/fs/suid_dumpable"}}}
+    want: FAIL
+  - name: an unexpected value
+    facts:
+      sysctl: {live: false, params: {"fs.suid_dumpable": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: FAIL
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

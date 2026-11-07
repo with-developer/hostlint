@@ -1,0 +1,40 @@
+id: sysctl.syncookies
+version: 1
+title: TCP SYN cookies are on
+title_ko: TCP SYN 쿠키가 켜져 있음
+severity: medium
+description: >-
+  Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
+remediation: >-
+  Set `net.ipv4.tcp_syncookies = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["net.ipv4.tcp_syncookies"]
+  in: ["1"]
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"net.ipv4.tcp_syncookies": {value: "1", source: "/proc/sys/net/ipv4/tcp_syncookies"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"net.ipv4.tcp_syncookies": {value: "0", source: "/proc/sys/net/ipv4/tcp_syncookies"}}}
+    want: FAIL
+  - name: an unexpected value
+    facts:
+      sysctl: {live: false, params: {"net.ipv4.tcp_syncookies": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: FAIL
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

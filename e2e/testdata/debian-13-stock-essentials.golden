@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 13 (trixie) (id debian, version 13, family debian, supported true)
-profile essentials revision 1: FAIL 6 MANUAL 2 PASS 7 NOT_APPLICABLE 5
+profile essentials revision 2: FAIL 6 MANUAL 2 PASS 7 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host)
 
 ES-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -182,3 +182,18 @@ ES-20 MANUAL
   accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
     - root: root (primary group)
     - sudo: (no members)
+
+ES-21 (the kernel of the host)
+  sysctl.syncookies
+  sysctl.rp-filter
+  sysctl.icmp-redirects
+  sysctl.source-routing
+  sysctl.icmp-broadcast
+
+ES-22 (the kernel of the host)
+  sysctl.aslr
+  sysctl.kptr-restrict
+  sysctl.dmesg-restrict
+  sysctl.suid-dumpable
+  sysctl.ptrace-scope
+  sysctl.protected-links

@@ -1,0 +1,40 @@
+id: sysctl.kptr-restrict
+version: 1
+title: Kernel addresses are hidden from users
+title_ko: 커널 주소를 사용자에게 숨김
+severity: medium
+description: >-
+  Checks the kernel parameter kernel.kptr_restrict (1 or 2 hides kernel pointers from unprivileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+rationale: >-
+  Kernel addresses in /proc and logs help an attacker defeat address randomization of the kernel.
+remediation: >-
+  Set `kernel.kptr_restrict = 1` (or 2) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+applies: >-
+  !target.image
+setting:
+  fact: sysctl.params["kernel.kptr_restrict"]
+  range: {min: 1, max: 2}
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sysctl: {live: true, params: {"kernel.kptr_restrict": {value: "1", source: "/proc/sys/kernel/kptr_restrict"}}}
+    want: PASS
+  - name: set weaker
+    facts:
+      sysctl: {live: true, params: {"kernel.kptr_restrict": {value: "0", source: "/proc/sys/kernel/kptr_restrict"}}}
+    want: FAIL
+  - name: a value that is not a number cannot be judged
+    facts:
+      sysctl: {live: false, params: {"kernel.kptr_restrict": {value: "many", explicit: true, source: "/etc/sysctl.d/99-x.conf:1"}}}
+    want: ERROR
+  - name: a container image has no kernel of its own
+    facts:
+      target: {live: false, image: true}
+      sysctl: {live: false, params: {}}
+    want: NOT_APPLICABLE
+  - name: not set in the files of a mounted root, and the default of the kernel is not known
+    input: absent
+    facts:
+      sysctl: {live: false, params: {}}
+    want: ERROR

@@ -110,6 +110,9 @@ type Target struct {
 	// (--root), where nothing runs. Checks use it to require live facts on
 	// live targets only.
 	Live bool `json:"live"`
+	// Image is true when the target is a container image (--image-tar): its files, with nothing running and
+	// no kernel of its own. Checks of kernel parameters do not apply to it.
+	Image bool `json:"image"`
 }
 
 // InvalidPrefix starts the value of a Setting that the program reading it

@@ -38,3 +38,17 @@ first of them, and a way for a user outside the KISA context to get a useful res
 - Another profile means another set of goldens to review when a check changes.
 - Not decided: a profile that maps CIS benchmark control IDs (IDs only, ADR 0003), and making
   `essentials` the default outside Korea.
+
+## Amendment: kernel parameters (revision 2)
+
+`essentials` revision 2 adds two controls, `ES-21` (the network stack) and `ES-22` (what the kernel lets
+unprivileged code see and do), over eleven new `sysctl.*` checks and a `sysctl` collector. The collector reads
+a fixed list of fourteen parameters, never a path a rule or a file chooses: on a running host from `/proc/sys`
+(the kernel is the truth, and a parameter it does not have is absent, so a check cannot decide), on a mounted
+root from the files of sysctl.d(5) in the order systemd-sysctl applies them (a file of an earlier directory hides
+the one of that name later, a link to `/dev/null` masks it, `/etc/sysctl.conf` last, the last line wins; a
+wildcard key is not read as setting any parameter, so what only a wildcard sets stays unknown instead of guessed).
+A container image shares the kernel of its host, so the checks do not apply to it (`target.image`).
+The end-to-end goldens leave the results of these checks out: a container's parameters are those of the machine
+that runs Docker, which differ between a laptop and a CI runner; the rule tests and the collector tests (with
+the `sysctl.d` files of Ubuntu, Rocky Linux, CentOS and Amazon Linux) cover them.

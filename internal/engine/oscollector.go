@@ -48,7 +48,7 @@ func (targetCollector) Access() Access     { return AccessFilesystem }
 func (targetCollector) Type() reflect.Type { return reflect.TypeFor[facts.Target]() }
 
 func (targetCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
-	return Facts{Value: &facts.Target{Live: h.Live}, Complete: true}, nil
+	return Facts{Value: &facts.Target{Live: h.Live, Image: h.Image}, Complete: true}, nil
 }
 
 func osFromFacts(v any) hostfs.OS {
