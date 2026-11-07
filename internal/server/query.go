@@ -46,6 +46,10 @@ type HostSummary struct {
 	Counts     Counts   `json:"counts"`
 	Score      *float64 `json:"score"`
 	Stale      bool     `json:"stale"`
+	// Profile is the profile the counts are of ("" counts every profile of the scan); OtherProfile is true for a
+	// host whose latest scan has no control of it, so it has no counts here.
+	Profile      string `json:"profile"`
+	OtherProfile bool   `json:"otherProfile"`
 	// Signed is true when the host signs its results; KeyFingerprint names the key it registered.
 	Signed         bool   `json:"signed"`
 	KeyFingerprint string `json:"keyFingerprint,omitempty"`
@@ -58,6 +62,7 @@ type HostFilter struct {
 	StaleAfter time.Duration // a host that has not reported for this long is stale (7 days when 0)
 	Limit      int           // 100 when 0, at most 500
 	Offset     int
+	Profile    string // count the controls of this profile only ("" counts all of them)
 	All        bool   // every match: no paging (the export)
 	Sort       string // "name" (default), "score" (worst first, undecided last) or "last" (longest silent first)
 }
@@ -66,7 +71,7 @@ const latestScans = `SELECT id, host_row FROM scans s WHERE id = (SELECT id FROM
 
 // allHosts returns every host whose name contains query (and the host with id, when id is not
 // 0) with the counts of its latest scan, sorted by name.
-func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter time.Duration) ([]HostSummary, error) {
+func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter time.Duration, profile string) ([]HostSummary, error) {
 	if staleAfter == 0 {
 		staleAfter = 7 * 24 * time.Hour
 	}
@@ -93,7 +98,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 		return nil, err
 	}
 	_ = rs.Close()
-	counts, err := s.countsOfLatestScans(ctx, id)
+	counts, err := s.countsOfLatestScans(ctx, id, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +106,8 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 	for i := range all {
 		h := &all[i]
 		h.Counts = counts[h.LatestScan]
+		h.Profile = profile
+		h.OtherProfile = profile != "" && h.LatestScan != 0 && h.Counts == nil
 		if h.Counts == nil {
 			h.Counts = Counts{}
 		}
@@ -116,7 +123,7 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 		f.Limit = 100
 	}
 	f.Limit = min(f.Limit, 500)
-	all, err := s.allHosts(ctx, f.Query, 0, f.StaleAfter)
+	all, err := s.allHosts(ctx, f.Query, 0, f.StaleAfter, f.Profile)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -158,11 +165,11 @@ func likeEscape(s string) string {
 }
 
 // countsOfLatestScans counts the controls of every host's latest scan by status, by scan row.
-func (s *Store) countsOfLatestScans(ctx context.Context, hostRow int64) (map[int64]Counts, error) {
+func (s *Store) countsOfLatestScans(ctx context.Context, hostRow int64, profile string) (map[int64]Counts, error) {
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT c.scan_row, c.status, COUNT(*) FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
-		WHERE ? = 0 OR l.host_row = ?
-		GROUP BY c.scan_row, c.status`, hostRow, hostRow)
+		WHERE (? = 0 OR l.host_row = ?) AND (? = '' OR c.profile = ?)
+		GROUP BY c.scan_row, c.status`, hostRow, hostRow, profile, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -212,8 +219,8 @@ type HostDetail struct {
 }
 
 // Host returns one host.
-func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration) (*HostDetail, error) {
-	list, err := s.allHosts(ctx, "", id, staleAfter)
+func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration, profile string) (*HostDetail, error) {
+	list, err := s.allHosts(ctx, "", id, staleAfter, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -244,8 +251,8 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration) (*
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT s.id, s.received_at, s.started_at, s.tool_version, s.signature != '', c.status, COUNT(c.status)
 		FROM (SELECT * FROM scans WHERE host_row = ? ORDER BY received_at DESC, id DESC LIMIT 200) s
-		LEFT JOIN scan_controls c ON c.scan_row = s.id
-		GROUP BY s.id, c.status ORDER BY s.received_at DESC, s.id DESC`, id)
+		LEFT JOIN scan_controls c ON c.scan_row = s.id AND (? = '' OR c.profile = ?)
+		GROUP BY s.id, c.status ORDER BY s.received_at DESC, s.id DESC`, id, profile, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -324,9 +331,12 @@ type FailingControl struct {
 
 // Overview is the numbers of the dashboard's first page.
 type Overview struct {
-	Hosts            int                `json:"hosts"`
-	HostsFailing     int                `json:"hostsFailing"`
-	HostsStale       int                `json:"hostsStale"`
+	Hosts        int `json:"hosts"`
+	HostsFailing int `json:"hostsFailing"`
+	HostsStale   int `json:"hostsStale"`
+	// Profile is the profile the numbers are of; HostsOther counts the hosts whose latest scan has none of its controls.
+	Profile          string             `json:"profile"`
+	HostsOther       int                `json:"hostsOther"`
 	Counts           Counts             `json:"counts"`
 	Score            *float64           `json:"score"`
 	TopFailing       []FailingControl   `json:"topFailing"`
@@ -336,16 +346,20 @@ type Overview struct {
 
 // Overview computes the first page of the dashboard. A host is stale when it has not reported
 // for staleAfter; regressions are looked for in scans received within the same time.
-func (s *Store) Overview(ctx context.Context, staleAfter time.Duration) (*Overview, error) {
+func (s *Store) Overview(ctx context.Context, staleAfter time.Duration, profile string) (*Overview, error) {
 	if staleAfter == 0 {
 		staleAfter = 7 * 24 * time.Hour
 	}
-	hosts, err := s.allHosts(ctx, "", 0, staleAfter)
+	hosts, err := s.allHosts(ctx, "", 0, staleAfter, profile)
 	if err != nil {
 		return nil, err
 	}
-	o := &Overview{Counts: Counts{}, TopFailing: []FailingControl{}, RecentRegression: []RegressedControl{}, StaleAfterDays: int(staleAfter.Hours() / 24)}
+	o := &Overview{Counts: Counts{}, TopFailing: []FailingControl{}, RecentRegression: []RegressedControl{}, StaleAfterDays: int(staleAfter.Hours() / 24), Profile: profile}
 	for _, h := range hosts {
+		if h.OtherProfile {
+			o.HostsOther++ // scanned with another profile: not counted here
+			continue
+		}
 		o.Hosts++
 		if h.Counts["FAIL"] > 0 {
 			o.HostsFailing++
@@ -362,8 +376,8 @@ func (s *Store) Overview(ctx context.Context, staleAfter time.Duration) (*Overvi
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT c.profile, c.control_id, MAX(c.title), MAX(c.severity), COUNT(*)
 		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
-		WHERE c.status = 'FAIL' GROUP BY c.profile, c.control_id
-		ORDER BY COUNT(*) DESC, c.control_id LIMIT 10`)
+		WHERE c.status = 'FAIL' AND (? = '' OR c.profile = ?) GROUP BY c.profile, c.control_id
+		ORDER BY COUNT(*) DESC, c.control_id LIMIT 10`, profile, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -391,8 +405,8 @@ func (s *Store) Overview(ctx context.Context, staleAfter time.Duration) (*Overvi
 		JOIN hosts h ON h.id = l.host_row
 		JOIN scan_controls c ON c.scan_row = l.id AND c.status IN ('FAIL', 'ERROR')
 		LEFT JOIN scan_controls p ON p.scan_row = pv.id AND p.profile = c.profile AND p.control_id = c.control_id
-		WHERE l.rn = 1 AND (p.status IS NULL OR p.status NOT IN ('FAIL', 'ERROR')) AND l.received_at >= ?
-		ORDER BY l.received_at DESC, h.name, c.control_id LIMIT 20`, cutoff)
+		WHERE l.rn = 1 AND (p.status IS NULL OR p.status NOT IN ('FAIL', 'ERROR')) AND l.received_at >= ? AND (? = '' OR c.profile = ?)
+		ORDER BY l.received_at DESC, h.name, c.control_id LIMIT 20`, cutoff, profile, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -429,19 +443,23 @@ type MatrixHost struct {
 type Matrix struct {
 	Controls []MatrixControl `json:"controls"`
 	Hosts    []MatrixHost    `json:"hosts"`
+	Profile  string          `json:"profile"`
+	// Other counts the hosts left out because their latest scan has none of the profile's controls.
+	Other int `json:"other"`
 }
 
 var statusLetter = map[string]byte{"FAIL": 'F', "ERROR": 'E', "MANUAL": 'M', "WAIVED": 'W', "PASS": 'P', "NOT_APPLICABLE": 'N'}
 
 // Matrix returns the latest status of every control on every host, hosts that fail most first.
-func (s *Store) Matrix(ctx context.Context, staleAfter time.Duration) (*Matrix, error) {
-	hosts, err := s.allHosts(ctx, "", 0, staleAfter)
+func (s *Store) Matrix(ctx context.Context, staleAfter time.Duration, profile string) (*Matrix, error) {
+	hosts, err := s.allHosts(ctx, "", 0, staleAfter, profile)
 	if err != nil {
 		return nil, err
 	}
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT c.scan_row, c.profile, c.control_id, c.title, c.severity, c.status
-		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row`)
+		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
+		WHERE ? = '' OR c.profile = ?`, profile, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -477,11 +495,15 @@ func (s *Store) Matrix(ctx context.Context, staleAfter time.Duration) (*Matrix, 
 		}
 		return naturalLess(a.id, b.id)
 	})
-	m := &Matrix{Controls: make([]MatrixControl, 0, len(order)), Hosts: make([]MatrixHost, 0, len(hosts))}
+	m := &Matrix{Controls: make([]MatrixControl, 0, len(order)), Hosts: make([]MatrixHost, 0, len(hosts)), Profile: profile}
 	for _, k := range order {
 		m.Controls = append(m.Controls, cols[k])
 	}
 	for _, h := range hosts {
+		if h.OtherProfile {
+			m.Other++ // scanned with another profile: not a row of this one
+			continue
+		}
 		row := make([]byte, len(order))
 		for i, k := range order {
 			if st, ok := byScan[h.LatestScan][k]; ok && st != 0 {
@@ -544,11 +566,12 @@ type ControlSummary struct {
 }
 
 // Controls lists every control with the status counts of the latest scans.
-func (s *Store) Controls(ctx context.Context) ([]ControlSummary, error) {
+func (s *Store) Controls(ctx context.Context, profile string) ([]ControlSummary, error) {
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT c.profile, c.control_id, MAX(c.title), MAX(c.severity), c.status, COUNT(*)
 		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
-		GROUP BY c.profile, c.control_id, c.status`)
+		WHERE ? = '' OR c.profile = ?
+		GROUP BY c.profile, c.control_id, c.status`, profile, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +629,7 @@ type ControlDetail struct {
 
 // Control returns the status of one control on every host that has a scan.
 func (s *Store) Control(ctx context.Context, profile, id string, staleAfter time.Duration) (*ControlDetail, error) {
-	hosts, err := s.allHosts(ctx, "", 0, staleAfter)
+	hosts, err := s.allHosts(ctx, "", 0, staleAfter, "")
 	if err != nil {
 		return nil, err
 	}
@@ -646,4 +669,31 @@ func (s *Store) Control(ctx context.Context, profile, id string, staleAfter time
 	}
 	sort.SliceStable(d.Hosts, func(i, j int) bool { return rank[d.Hosts[i].Status] < rank[d.Hosts[j].Status] })
 	return d, nil
+}
+
+// ProfileUse is a profile that the latest scans have controls of, and how many hosts that is.
+type ProfileUse struct {
+	ID    string `json:"id"`
+	Hosts int    `json:"hosts"`
+}
+
+// Profiles lists the profiles of the latest scans, the one most hosts use first (then by name).
+func (s *Store) Profiles(ctx context.Context) ([]ProfileUse, error) {
+	rs, err := s.db.QueryContext(ctx, `
+		SELECT c.profile, COUNT(DISTINCT l.host_row)
+		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
+		GROUP BY c.profile ORDER BY COUNT(DISTINCT l.host_row) DESC, c.profile`)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	out := []ProfileUse{}
+	for rs.Next() {
+		var u ProfileUse
+		if err := rs.Scan(&u.ID, &u.Hosts); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rs.Err()
 }

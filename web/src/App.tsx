@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, setUnauthorizedHandler } from "./lib/api";
 import { useHash } from "./lib/hooks";
+import { ProfileProvider, useProfile } from "./lib/profile";
 import { useI18n } from "./lib/i18n";
 import { parseRoute } from "./lib/format";
 import { Login } from "./pages/Login";
@@ -19,7 +20,7 @@ function isDark(): boolean {
 }
 
 export function App() {
-  const { t, toggle, lang } = useI18n();
+  const { t, lang } = useI18n();
   const hash = useHash();
   const [auth, setAuth] = useState<Auth>("checking");
   const [expired, setExpired] = useState(false);
@@ -92,6 +93,17 @@ export function App() {
       />
     );
 
+  return (
+    <ProfileProvider>
+      <Shell hash={hash} dark={dark} toggleTheme={toggleTheme} logout={logout} />
+    </ProfileProvider>
+  );
+}
+
+/** The sidebar and the page, once the person is signed in and the profiles are known. */
+function Shell({ hash, dark, toggleTheme, logout }: { hash: string; dark: boolean; toggleTheme: () => void; logout: () => void }) {
+  const { t, toggle } = useI18n();
+  const { list, selected, select } = useProfile();
   const [page, arg, arg2] = parseRoute(hash);
   const hostId = Number(arg);
   let view;
@@ -126,6 +138,18 @@ export function App() {
             </a>
           ))}
         </nav>
+        {list && list.profiles.length > 1 && (
+          <div className="profile-select">
+            <label htmlFor="profile">{t("profile.label")}</label>
+            <select id="profile" value={selected} onChange={(e) => select(e.target.value)}>
+              {list.profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.id} ({t("profile.hosts", { n: p.hosts })})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="sidebar-foot">
           <button className="ghost" onClick={toggleTheme}>
             {dark ? <IconSun /> : <IconMoon />}
@@ -141,7 +165,7 @@ export function App() {
           </button>
         </div>
       </aside>
-      <main>{view}</main>
+      <main key={selected}>{view}</main>
     </div>
   );
 }

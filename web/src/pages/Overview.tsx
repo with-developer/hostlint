@@ -21,6 +21,7 @@ export function OverviewPage() {
             <Empty>{t("overview.empty")}</Empty>
           ) : (
             <div className="stack">
+              {o.hostsOther ? <p className="muted small">{t("profile.other", { n: o.hostsOther })}</p> : null}
               <section className="hero card">
                 <Gauge score={o.score} label={t("overview.score")} />
                 <div className="hero-body">

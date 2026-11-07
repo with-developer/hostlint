@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ d088772 -->
+<!-- translated from docs/fleet.md @ 36e0211 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -141,6 +141,11 @@ nginx와 [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/)의 개요�
 
 ## 결과 조회
 
+호스트는 서로 다른 프로파일(`--profile`, `essentials`, 정책 팩)로 점검할 수 있으므로 대시보드의 모든 숫자는 **프로파일 하나**의
+것입니다. 개요, 호스트 목록, 매트릭스, 컨트롤 목록은 `?profile=ID`를 받고, 없으면 가장 많은 호스트가 쓴 프로파일을 씁니다. 최신
+스캔에 그 프로파일의 컨트롤이 하나도 없는 호스트는 집계하지 않으며, 대시보드가 그런 호스트의 수를 알려 주고 목록에 표시합니다.
+대시보드에서는 프로파일이 둘 이상이면 사이드바의 선택기로 프로파일을 고르며(기억합니다).
+
 조회 토큰(`--scope api`)으로 스크립트나 CI가 서버가 아는 것을 물어볼 수 있습니다.
 
 ```sh
@@ -150,6 +155,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 
 | 요청 | 응답 |
 |---|---|
+| `GET /api/v1/profiles` | 최신 스캔의 프로파일과 호스트 수, 가장 많은 호스트가 쓰는 프로파일(`default`), 제목 |
 | `GET /api/v1/overview` | 호스트 수, 실패 컨트롤이 있는 호스트, 오래 보고하지 않은 호스트, 상태별 개수, 가장 많은 호스트에서 실패하는 컨트롤, 최근 악화(`?staleDays=7`) |
 | `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`) |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | 최신 스캔 기준 컨트롤별 상태 개수, 컨트롤 하나의 호스트 목록과 점검 내용·조치 방법 |

@@ -17,7 +17,16 @@ export function MatrixPage() {
     <>
       <PageHeader title={t("matrix.title")} subtitle={t("matrix.subtitle")} />
       <Await state={state} skeleton={<div className="card"><Skeleton height={300} /></div>}>
-        {(m) => (m.hosts.length === 0 ? <Empty>{t("overview.empty")}</Empty> : <Heatmap matrix={m} />)}
+        {(m) =>
+          m.hosts.length === 0 ? (
+            <Empty>{t("overview.empty")}</Empty>
+          ) : (
+            <>
+              {m.other ? <p className="muted small">{t("profile.other", { n: m.other })}</p> : null}
+              <Heatmap matrix={m} />
+            </>
+          )
+        }
       </Await>
     </>
   );

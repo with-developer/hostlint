@@ -140,7 +140,7 @@ func (s *Store) DeleteHost(ctx context.Context, id int64) (bool, error) {
 
 // Hosts of the database as `hostlint server host list` shows them.
 func (s *Store) HostList(ctx context.Context) ([]HostSummary, error) {
-	return s.allHosts(ctx, "", 0, 0)
+	return s.allHosts(ctx, "", 0, 0, "")
 }
 
 // SignatureReport is what VerifySignatures found.

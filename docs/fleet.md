@@ -171,6 +171,12 @@ your proxy: check it against its documentation. Things to know:
 
 ## Reading results
 
+Hosts may scan with different profiles (`--profile`, `essentials`, a policy pack), so every number of the dashboard is of
+**one profile**: the overview, the host list, the matrix and the control list take `?profile=ID` and, without it, use the
+profile that most hosts scanned with. A host whose latest scan has none of its controls is not counted: the dashboard
+says how many such hosts there are and marks them in the list. In the dashboard a selector in the sidebar picks the
+profile (and remembers it) when there is more than one.
+
 A read token (`--scope api`) lets a script or CI ask the server what it knows:
 
 ```sh
@@ -180,6 +186,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 
 | Request | Answer |
 |---|---|
+| `GET /api/v1/profiles` | The profiles of the latest scans with the number of hosts of each, the one most hosts use (`default`), and their titles |
 | `GET /api/v1/overview` | Hosts, hosts with a failing control, stale hosts, counts, the controls that fail on most hosts, recent regressions (`?staleDays=7`) |
 | `GET /api/v1/hosts` | The hosts with the counts and score of their latest scan (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`) |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | Every control with the status counts of the latest scans; one control with its hosts, and what it checks and how to fix it |

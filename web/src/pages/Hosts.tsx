@@ -113,7 +113,7 @@ function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
         {h.signed && <SignedBadge fingerprint={h.keyFingerprint} />}
       </td>
       <td className="bar-cell">
-        <StatusBar counts={h.counts} thin />
+        {h.otherProfile ? <span className="muted small">{t("profile.otherHost")}</span> : <StatusBar counts={h.counts} thin />}
         <div className="muted small counts">
           {h.counts.FAIL ? <span className="c-FAIL">{h.counts.FAIL} FAIL</span> : null}
           {h.counts.ERROR ? <span className="c-ERROR">{h.counts.ERROR} ERROR</span> : null}
@@ -121,7 +121,7 @@ function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
         </div>
       </td>
       <td className="num">
-        <ScorePill score={h.score} />
+        {h.otherProfile ? "–" : <ScorePill score={h.score} />}
       </td>
       <td className={h.stale ? "stale" : ""}>
         {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>}

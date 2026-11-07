@@ -1,4 +1,4 @@
-import type { ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ScanDoc } from "./types";
+import type { ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ProfileList, ScanDoc } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -48,20 +48,33 @@ export function hostsQuery(p: HostsParams): string {
   return q.toString();
 }
 
+let profile = "";
+/** The profile whose numbers the pages show: sent with every call that counts controls. */
+export function setProfile(p: string): void {
+  profile = p;
+}
+
+/** Adds the selected profile to a path of the read API. */
+function withProfile(path: string): string {
+  if (!profile) return path;
+  return path + (path.includes("?") ? "&" : "?") + "profile=" + encodeURIComponent(profile);
+}
+
 const json = { "Content-Type": "application/json" };
 
 export const api = {
   session: () => request<{ authenticated: boolean }>("/api/v1/session"),
   login: (token: string) => request<{ ok: boolean; name: string }>("/api/v1/login", { method: "POST", headers: json, body: JSON.stringify({ token }) }),
   logout: () => request<{ ok: boolean }>("/api/v1/logout", { method: "POST", headers: json, body: "{}" }),
-  overview: (staleDays: number) => request<Overview>(`/api/v1/overview?staleDays=${staleDays}`),
-  hosts: (params: HostsParams) => request<{ hosts: HostSummary[]; total: number }>(`/api/v1/hosts?${hostsQuery(params)}`),
-  hostsCSV: (params: HostsParams) => `/api/v1/hosts?${hostsQuery({ ...params, limit: undefined, offset: undefined })}&format=csv`,
-  controls: () => request<{ controls: ControlSummary[] }>("/api/v1/controls"),
+  profiles: () => request<ProfileList>("/api/v1/profiles"),
+  overview: (staleDays: number) => request<Overview>(withProfile(`/api/v1/overview?staleDays=${staleDays}`)),
+  hosts: (params: HostsParams) => request<{ hosts: HostSummary[]; total: number }>(withProfile(`/api/v1/hosts?${hostsQuery(params)}`)),
+  hostsCSV: (params: HostsParams) => withProfile(`/api/v1/hosts?${hostsQuery({ ...params, limit: undefined, offset: undefined })}&format=csv`),
+  controls: () => request<{ controls: ControlSummary[] }>(withProfile("/api/v1/controls")),
   control: (profile: string, id: string, staleDays: number) =>
     request<{ control: ControlDetail; info: ControlInfo | null }>(`/api/v1/controls/${encodeURIComponent(profile)}/${encodeURIComponent(id)}?staleDays=${staleDays}`),
-  matrix: (staleDays: number) => request<Matrix>(`/api/v1/matrix?staleDays=${staleDays}`),
-  host: (id: number, staleDays: number) => request<HostDetail>(`/api/v1/hosts/${id}?staleDays=${staleDays}`),
+  matrix: (staleDays: number) => request<Matrix>(withProfile(`/api/v1/matrix?staleDays=${staleDays}`)),
+  host: (id: number, staleDays: number) => request<HostDetail>(withProfile(`/api/v1/hosts/${id}?staleDays=${staleDays}`)),
   scan: (id: number) => request<ScanDoc>(`/api/v1/scans/${id}`),
   diff: (oldId: number, newId: number) => request<Diff>(`/api/v1/diff?old=${oldId}&new=${newId}`),
 };
