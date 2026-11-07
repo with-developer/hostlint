@@ -214,12 +214,12 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 	res.Attestations = attestChecks(opts.Attestations, checks, res.Host.Hostname, today)
 	notes := waiveChecks(opts.Waivers, checks, res.Host.Hostname, today)
 	for pi, profile := range profiles {
-		res.Profiles = append(res.Profiles, ProfileInfo{ID: profile.ID, Revision: profile.Revision, Digest: ProfileDigest(profile), Title: profile.Title})
+		res.Profiles = append(res.Profiles, ProfileInfo{ID: profile.ID, Revision: profile.Revision, Digest: e.content.ProfileDigest(profile), Title: profile.Title})
 		summary := ProfileSummary{Controls: map[Status]int{}, Checks: map[Status]int{}}
 		profileChecks := map[string]bool{}
 		for i, ctl := range profile.Controls {
 			cr := aggregate(profile.ID, ctl, controlRefs[pi][i], checks)
-			notes = append(notes, waiveControl(opts.Waivers, profile, &cr, checks, res.Host.Hostname, today)...)
+			notes = append(notes, waiveControl(opts.Waivers, profile, e.content.ProfileDigest(profile), &cr, checks, res.Host.Hostname, today)...)
 			cr.Customized = slices.ContainsFunc(cr.Checks, func(ref string) bool { return checks[ref].Customized })
 			summary.Controls[cr.Status]++
 			res.Controls = append(res.Controls, cr)
@@ -377,10 +377,12 @@ func manualShow(c *Check) string {
 	return c.Manual.Show
 }
 
-// profileDigest covers the mapping, not titles.
-// ProfileDigest is the digest of a profile's mapping: what a result records and a waiver of a pack's
-// control names.
-func ProfileDigest(p *Profile) string {
+// ProfileDigest is the digest of a profile: its mapping (controls, severities, checks, parameters; not
+// titles), and, for the checks of a policy pack that it maps, their logic. A waiver of a control of a
+// pack's profile names it, so it stops applying when the pack author changes what a mapped check of the
+// pack does as well as when the mapping changes. The digest of a built-in profile is its mapping only: what
+// a built-in check does belongs to the hostlint release.
+func (c *Content) ProfileDigest(p *Profile) string {
 	type ctl struct {
 		ID       string
 		Severity Severity
@@ -389,14 +391,22 @@ func ProfileDigest(p *Profile) string {
 		Params   map[string]map[string]any
 	}
 	ctls := make([]ctl, 0, len(p.Controls))
-	for _, c := range p.Controls {
-		ctls = append(ctls, ctl{c.ID, c.Severity, c.Checks, c.Manual != "", c.Params})
+	packChecks := map[string]string{}
+	for _, cc := range p.Controls {
+		ctls = append(ctls, ctl{cc.ID, cc.Severity, cc.Checks, cc.Manual != "", cc.Params})
+		for _, id := range cc.Checks {
+			if ch := c.Checks[id]; ch != nil && strings.HasPrefix(id, PackPrefix) { // the area of a pack's check
+				packChecks[id] = checkDigest(ch)
+			}
+		}
 	}
-	return "sha256:" + digestHex(struct {
+	doc := struct {
 		ID       string
 		Revision int
 		Controls []ctl
-	}{p.ID, p.Revision, ctls})
+		Pack     map[string]string `json:",omitempty"`
+	}{p.ID, p.Revision, ctls, packChecks}
+	return "sha256:" + digestHex(doc)
 }
 
 func digestHex(v any) string {

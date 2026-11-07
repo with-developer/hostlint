@@ -56,6 +56,10 @@ func (c *Content) Extend(p PackSource) (*PackContent, error) {
 				continue
 			}
 			area, _, _ := strings.Cut(ch.ID, ".")
+			if err := plainText(&ch, nil); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", name, err))
+				continue
+			}
 			if err := limitFileSpec(&ch); err != nil {
 				errs = append(errs, fmt.Errorf("%s: %w", name, err))
 				continue
@@ -108,6 +112,10 @@ func (c *Content) Extend(p PackSource) (*PackContent, error) {
 				continue
 			case titles[normalizeTitle(pr.Title)]:
 				errs = append(errs, fmt.Errorf("%s: the title %q is the title of another profile", name, pr.Title))
+				continue
+			}
+			if err := plainText(nil, &pr); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", name, err))
 				continue
 			}
 			notes, err := holdProfile(name, &pr, merged)
@@ -170,6 +178,39 @@ func limitFileSpec(c *Check) error {
 	}
 	return nil
 }
+
+// plainText refuses control characters in the text of a pack that reaches a terminal or a log: IDs and
+// titles (one line, no control character at all), and guidance (line breaks and tabs are fine).
+func plainText(c *Check, p *Profile) error {
+	line := func(what, s string) error {
+		if strings.ContainsFunc(s, isControl) {
+			return fmt.Errorf("%s has a control character", what)
+		}
+		return nil
+	}
+	prose := func(what, s string) error {
+		if strings.ContainsFunc(s, func(r rune) bool { return r != '\n' && r != '\t' && isControl(r) }) {
+			return fmt.Errorf("%s has a control character", what)
+		}
+		return nil
+	}
+	var errs []error
+	if c != nil {
+		errs = append(errs, line("title", c.Title), line("title_ko", c.TitleKo), prose("failure", c.Failure))
+		if c.Manual != nil {
+			errs = append(errs, prose("manual.guidance", c.Manual.Guidance))
+		}
+	}
+	if p != nil {
+		errs = append(errs, line("title", p.Title), line("title_ko", p.TitleKo))
+		for _, ctl := range p.Controls {
+			errs = append(errs, line("control id", ctl.ID), line("control "+ctl.ID+" title", ctl.Title), line("control "+ctl.ID+" title_ko", ctl.TitleKo), prose("control "+ctl.ID+" manual", ctl.Manual))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func isControl(r rune) bool { return r < 0x20 || (r >= 0x7f && r < 0xa0) }
 
 func normalizeTitle(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
 

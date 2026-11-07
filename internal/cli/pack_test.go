@@ -112,8 +112,8 @@ func TestPackOutputDoesNotCarryControlCharacters(t *testing.T) {
 	if err := os.WriteFile(prof, []byte(evil), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, out, _ = run(context.Background(), t, "pack", "show", dir)
-	if strings.ContainsAny(out, "\x1b") || !strings.Contains(out, "Acme") {
-		t.Errorf("a profile title: %q", out)
+	code, out, stderr := run(context.Background(), t, "pack", "show", dir)
+	if code != ExitError || strings.ContainsAny(out+stderr, "\x1b") || !strings.Contains(stderr, "has a control character") {
+		t.Errorf("a profile title with an escape sequence: exit %d, %q %q", code, out, stderr)
 	}
 }

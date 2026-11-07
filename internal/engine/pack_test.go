@@ -229,3 +229,51 @@ func TestRunRuleTestsOfRunsOnlyTheNamedChecks(t *testing.T) {
 		t.Errorf("failures = %v", got)
 	}
 }
+
+func TestExtendRefusesControlCharactersInTitles(t *testing.T) {
+	check := strings.Replace(packCheck, "title: /etc/motd is owned by root", `title: "motd \e[2K\r is owned by root"`, 1)
+	if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": check}, nil)); err == nil || !strings.Contains(err.Error(), "title has a control character") {
+		t.Errorf("a check title: %v", err)
+	}
+	prof := strings.Replace(packProfile, "title: Root login is off and the banner is root's", `title: "A \e[1A overwritten"`, 1)
+	if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": packCheck}, map[string]string{"x-acme-baseline.yaml": prof})); err == nil || !strings.Contains(err.Error(), "has a control character") {
+		t.Errorf("a control title: %v", err)
+	}
+	prof = strings.Replace(packProfile, "id: A-01", `id: "A-\e[2K01"`, 1)
+	if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": packCheck}, map[string]string{"x-acme-baseline.yaml": prof})); err == nil || !strings.Contains(err.Error(), "control id has a control character") {
+		t.Errorf("a control id: %v", err)
+	}
+}
+
+// The digest of a pack's profile follows what the pack's mapped checks do; that of a built-in profile
+// does not depend on the packs.
+func TestProfileDigestCoversThePacksChecks(t *testing.T) {
+	digestWith := func(check string) string {
+		c := builtin(t)
+		if _, err := c.Extend(source(map[string]string{"x-acme/motd-present.yaml": check}, map[string]string{"x-acme-baseline.yaml": packProfile})); err != nil {
+			t.Fatal(err)
+		}
+		return c.ProfileDigest(c.Profiles["x-acme-baseline"])
+	}
+	a := digestWith(packCheck)
+	if b := digestWith(packCheck); a != b {
+		t.Error("the digest is not stable")
+	}
+	// A broader file check: the mapping is the same, what the check does is not.
+	if b := digestWith(strings.Replace(packCheck, "mode: \"0644\"", "mode: \"0666\"", 1)); a == b {
+		t.Error("the digest ignores what the pack's check does")
+	}
+	// Prose is not logic.
+	if b := digestWith(strings.Replace(packCheck, "A banner anyone can edit is no banner.", "Another sentence.", 1)); a != b {
+		t.Error("the digest follows the prose of a check")
+	}
+	before := builtin(t)
+	d1 := before.ProfileDigest(before.Profiles["kisa-2026"])
+	after := builtin(t)
+	if _, err := after.Extend(source(map[string]string{"x-acme/motd-present.yaml": packCheck}, map[string]string{"x-acme-baseline.yaml": packProfile})); err != nil {
+		t.Fatal(err)
+	}
+	if d2 := after.ProfileDigest(after.Profiles["kisa-2026"]); d1 != d2 {
+		t.Error("a pack changed the digest of a built-in profile")
+	}
+}

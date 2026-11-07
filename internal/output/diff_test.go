@@ -225,3 +225,21 @@ func TestDiffNotesContentAndPacks(t *testing.T) {
 		t.Errorf("the same pack was reported as different: %v", d.Notes)
 	}
 }
+
+// Titles and IDs that come from a policy pack are escaped like the rest of what is printed.
+func TestTableEscapesControlCharactersInTitlesAndIDs(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	res.Controls[0].Title = "Restrict \x1b[2K\r login"
+	res.Controls[0].ID = "X-\x1b[1A01"
+	for i := range res.Checks {
+		res.Checks[i].Title = "check \x1b[2K title"
+		res.Checks[i].ID = "x-a\x1b.b"
+	}
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "table", Options{Verbose: true}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.ContainsAny(buf.String(), "\x1b\r") {
+		t.Errorf("a control character reached the table:\n%q", buf.String())
+	}
+}

@@ -215,7 +215,7 @@ func (f *File) ValidateProfiles(content *engine.Content, profileIDs []string) er
 		case w.Check != "" && (w.Revision != 0 || w.Profile != "" || w.Digest != ""):
 			add("%s: revision, profile and digest only apply to control waivers", where)
 		case w.Control != "" && strings.HasPrefix(profile.ID, engine.PackPrefix) && w.Digest == "":
-			add("%s: a waiver of a control of the pack's profile %s needs its digest (digest: %s, shown in the result and by hostlint pack show)", where, profile.ID, engine.ProfileDigest(profile))
+			add("%s: a waiver of a control of the pack's profile %s needs its digest (digest: %s, shown in the result and by hostlint pack show)", where, profile.ID, content.ProfileDigest(profile))
 		}
 		if w.Control != "" && w.Errors {
 			add("%s: errors applies to check waivers; a control with an ERROR check is not waived (waive its checks with errors: true)", where)

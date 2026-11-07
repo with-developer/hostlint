@@ -100,7 +100,8 @@ sorted paths and contents of the files that were read). `hostlint diff` and `hos
 results used different packs, or the same profile revision with another content.
 `hostlint.yaml` can refer to a pack's checks and controls (parameters, waivers). A waiver of a control of a
 pack's profile names the digest of the profile (`digest:`, shown in the error that asks for it, in the result
-and by `pack show`), because a pack author can change what a control maps without changing the revision.
+and by `pack show`). The digest covers what the control maps and what the pack's own checks that it maps do, because a pack
+author can change either without changing the revision.
 
 `--verify-pack` runs the tests of the pack's checks before the scan and refuses to scan with a pack that
 fails them. Tests catch mistakes, not malice (the author writes the logic and the tests), and they cost time

@@ -22,7 +22,7 @@ type Waiver struct {
 	Revision int
 	// Digest is the digest of the profile a waiver of a control of a pack's profile was written for: a
 	// pack author can change a mapping without changing the revision, so the waiver is bound to the
-	// content (ProfileDigest, shown by `hostlint pack show`).
+	// content (Content.ProfileDigest, shown by `hostlint pack show`).
 	Digest string
 	Reason string
 	// Expires is the last day the waiver applies (a date, UTC).
@@ -122,7 +122,7 @@ func waiveChecks(waivers []Waiver, checks map[string]*CheckResult, hostname stri
 // waiveControl applies control waivers to one aggregated control. A control
 // waiver does not apply while any of the control's checks is ERROR, and
 // goes stale when the profile revision changes.
-func waiveControl(waivers []Waiver, profile *Profile, cr *ControlResult, checks map[string]*CheckResult, hostname string, today time.Time) []WaiverNote {
+func waiveControl(waivers []Waiver, profile *Profile, digest string, cr *ControlResult, checks map[string]*CheckResult, hostname string, today time.Time) []WaiverNote {
 	var notes []WaiverNote
 	for _, w := range waivers {
 		switch {
@@ -135,10 +135,10 @@ func waiveControl(waivers []Waiver, profile *Profile, cr *ControlResult, checks 
 			notes = append(notes, w.note(fmt.Sprintf("stale: written for revision %d of %s, which is now at %d", w.Revision, profile.ID, profile.Revision)))
 			continue
 		case strings.HasPrefix(profile.ID, PackPrefix) && w.Digest == "":
-			notes = append(notes, w.note("not applied: a waiver of a control of a pack's profile names the digest of the profile (digest: "+ProfileDigest(profile)+")"))
+			notes = append(notes, w.note("not applied: a waiver of a control of a pack's profile names the digest of the profile (digest: "+digest+")"))
 			continue
-		case w.Digest != "" && w.Digest != ProfileDigest(profile):
-			notes = append(notes, w.note("stale: written for another content of "+profile.ID+" than the one scanned (its digest is now "+ProfileDigest(profile)+")"))
+		case w.Digest != "" && w.Digest != digest:
+			notes = append(notes, w.note("stale: written for another content of "+profile.ID+" than the one scanned (its digest is now "+digest+")"))
 			continue
 		}
 		erroring := slices.ContainsFunc(cr.Checks, func(ref string) bool { return checks[ref].Status == StatusError })
