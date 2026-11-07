@@ -3,9 +3,10 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
+	"maps"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -30,7 +31,7 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 			if err != nil {
 				return fmt.Errorf("built-in content: %w", err)
 			}
-			if _, err := addPacks(cmd, content, uniqueDirs(append(packs, splitPackEnv(os.Getenv("HOSTLINT_PACK"))...))); err != nil {
+			if _, err := addPacks(cmd, content, packDirsFrom(packs)); err != nil {
 				return err
 			}
 			out := cmd.OutOrStdout()
@@ -39,7 +40,11 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 				if i > 0 {
 					fmt.Fprintln(out)
 				}
-				if !explain(out, content, id) {
+				found := explain(out, content, id)
+				if !found && strings.ToUpper(id) != id {
+					found = explain(out, content, strings.ToUpper(id)) // control IDs are upper case: u-02
+				}
+				if !found {
 					fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: nothing is called %s: it is neither a check nor a control of a profile (profiles: %s)\n", oneLineText(id), strings.Join(sortedProfileIDs(content), ", "))
 					missing++
 				}
@@ -54,14 +59,7 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 	return cmd
 }
 
-func sortedProfileIDs(c *engine.Content) []string {
-	ids := make([]string, 0, len(c.Profiles))
-	for id := range c.Profiles {
-		ids = append(ids, id)
-	}
-	slices.Sort(ids)
-	return ids
-}
+func sortedProfileIDs(c *engine.Content) []string { return slices.Sorted(maps.Keys(c.Profiles)) }
 
 // explain prints a check, or the controls with this ID; it reports whether there was anything.
 func explain(w io.Writer, c *engine.Content, id string) bool {
@@ -86,7 +84,7 @@ func explain(w io.Writer, c *engine.Content, id string) bool {
 			for _, ref := range ctl.Checks {
 				if ch := c.Checks[ref]; ch != nil {
 					fmt.Fprintln(w)
-					explainCheck(w, ch, "  ")
+					explainCheckWith(w, ch, "  ", ctl.Params[ref])
 				}
 			}
 		}
@@ -94,7 +92,10 @@ func explain(w io.Writer, c *engine.Content, id string) bool {
 	return found
 }
 
-func explainCheck(w io.Writer, c *engine.Check, indent string) {
+func explainCheck(w io.Writer, c *engine.Check, indent string) { explainCheckWith(w, c, indent, nil) }
+
+// explainCheckWith is explainCheck for a check as a control maps it: set are the parameters the control gives it.
+func explainCheckWith(w io.Writer, c *engine.Check, indent string, set map[string]any) {
 	fmt.Fprintf(w, "%s%s  %s  [%s]\n", indent, oneLineText(c.ID), oneLineText(c.Title), c.Severity)
 	section := func(name, text string) {
 		if strings.TrimSpace(text) != "" {
@@ -110,34 +111,31 @@ func explainCheck(w io.Writer, c *engine.Check, indent string) {
 	if len(c.Platforms) > 0 {
 		fmt.Fprintf(w, "%sApplies to: %s\n", indent, oneLineText(strings.Join(c.Platforms, ", ")))
 	}
-	for _, name := range slices.Sorted(mapsKeysOf(c.Params)) {
+	if c.Applies != "" {
+		fmt.Fprintf(w, "%sApplies when: %s\n", indent, oneLineText(c.Applies))
+	}
+	for _, name := range slices.Sorted(maps.Keys(c.Params)) {
 		p := c.Params[name]
 		dir := ""
 		if p.Stricter != "" {
 			dir = ", stricter is " + p.Stricter
 		}
-		fmt.Fprintf(w, "%sParameter %s (default %v%s): %s\n", indent, oneLineText(name), p.Default, dir, oneLineText(p.Description))
-	}
-}
-
-func mapsKeysOf[V any](m map[string]V) func(func(string) bool) {
-	return func(yield func(string) bool) {
-		for k := range m {
-			if !yield(k) {
-				return
-			}
+		value := fmt.Sprintf("default %v%s", oneLineText(fmt.Sprint(p.Default)), dir)
+		if v, ok := set[name]; ok {
+			value = fmt.Sprintf("this control requires %v; the check's default is %v%s", oneLineText(fmt.Sprint(v)), oneLineText(fmt.Sprint(p.Default)), dir)
 		}
+		fmt.Fprintf(w, "%sParameter %s (%s): %s\n", indent, oneLineText(name), value, oneLineText(p.Description))
 	}
 }
 
 // wrap makes text one paragraph, cut into lines of about 100 characters, each starting with indent. The text
 // may come from a pack, so control characters do not reach the terminal.
 func wrap(text, indent string) string {
-	words := strings.Fields(printable(text))
+	words := strings.Fields(oneLineText(text)) // one paragraph, and what a pack wrote does not reach the terminal raw
 	var lines []string
 	line := indent
 	for _, w := range words {
-		if len(line)+len(w)+1 > 100 && strings.TrimSpace(line) != "" {
+		if utf8.RuneCountInString(line)+utf8.RuneCountInString(w)+1 > 100 && strings.TrimSpace(line) != "" {
 			lines = append(lines, line)
 			line = indent
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -262,6 +263,11 @@ func checkKind(c *engine.Check) string {
 // do not reach the terminal.
 func oneLineText(s string) string {
 	return printable(strings.Join(strings.Fields(s), " "))
+}
+
+// packDirsFrom lists the pack directories of a command: those of its --pack flags, then HOSTLINT_PACK, each once.
+func packDirsFrom(flagDirs []string) []string {
+	return uniqueDirs(append(slices.Clone(flagDirs), splitPackEnv(os.Getenv("HOSTLINT_PACK"))...))
 }
 
 // splitPackEnv reads HOSTLINT_PACK: a list of directories separated like PATH.

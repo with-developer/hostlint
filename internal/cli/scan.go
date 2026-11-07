@@ -142,7 +142,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
 	}
-	packDirs := uniqueDirs(append(slices.Clone(f.packs), splitPackEnv(os.Getenv("HOSTLINT_PACK"))...))
+	packDirs := packDirsFrom(f.packs)
 	if len(packDirs) == 0 && f.verifyPack {
 		return errors.New("--verify-pack is for --pack")
 	}
