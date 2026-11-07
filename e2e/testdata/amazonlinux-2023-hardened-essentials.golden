@@ -1,20 +1,20 @@
 os: Amazon Linux 2023.12.20261102 (id amzn, version 2023, family rhel, supported true)
-profile essentials revision 1: FAIL 1 MANUAL 2 PASS 17
+profile essentials revision 1: MANUAL 2 PASS 18
 
 ES-01 PASS
   ssh.permit-root-login PASS
-    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:1]
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:6]
   ssh.match-permit-root-login PASS
 
 ES-02 PASS
   ssh.password-authentication PASS
     - sshd.config.challengeresponseauthentication: not set
-    - sshd.config.kbdinteractiveauthentication = "no" (explicit)  [/etc/ssh/sshd_config.d/50-redhat.conf:10]
-    - sshd.config.passwordauthentication = "no" (explicit)  [/etc/ssh/sshd_config:68]
+    - sshd.config.kbdinteractiveauthentication = "no" (explicit)  [/etc/ssh/sshd_config:2]
+    - sshd.config.passwordauthentication = "no" (explicit)  [/etc/ssh/sshd_config:1]
 
 ES-03 PASS
   ssh.permit-empty-passwords PASS
-    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:69]
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:74]
   ssh.ignore-rhosts PASS
     - "yes" (default); expected one of [yes]  [sshd -T (default)]
   ssh.hostbased-authentication PASS
@@ -22,11 +22,11 @@ ES-03 PASS
   ssh.permit-user-environment PASS
     - "no" (default); expected one of [no]  [sshd -T (default)]
 
-ES-04 FAIL
-  ssh.max-auth-tries FAIL
-    - "6" (default); expected 1–4  [sshd -T (default)]
-  ssh.x11-forwarding FAIL
-    - "yes" (explicit); expected one of [no]  [/etc/ssh/sshd_config.d/50-redhat.conf:17]
+ES-04 PASS
+  ssh.max-auth-tries PASS
+    - "4" (explicit); expected 1–4  [/etc/ssh/sshd_config:4]
+  ssh.x11-forwarding PASS
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:5]
 
 ES-05 PASS
   ssh.match-hardening PASS

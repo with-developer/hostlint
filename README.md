@@ -168,7 +168,7 @@ The `essentials` profile (`--profile essentials`) is a short baseline that most 
 agree on, outside any national standard: SSH (no root login, no password logins, no empty passwords, few
 attempts, no X11 forwarding, and no `Match` block that undoes them), UID 0 and password files, password
 length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions
-and time synchronization. It has 20 controls over the same checks, with its own IDs (`ES-01`–`ES-20`).
+and time synchronization. It has 20 controls with its own IDs (`ES-01`–`ES-20`), mostly over the checks of the other profile plus eight new SSH checks.
 
 Titles and descriptions are hostlint's own; profiles reference control IDs only.
 

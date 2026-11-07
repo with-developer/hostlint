@@ -7,7 +7,8 @@ description: >-
   Lists Match blocks of the OpenSSH server configuration that set PasswordAuthentication,
   KbdInteractiveAuthentication, ChallengeResponseAuthentication, PermitEmptyPasswords,
   X11Forwarding, HostbasedAuthentication or PermitUserEnvironment to anything but "no",
-  IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries`. A Match block overrides
+  IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries` (a parameter of this
+  check; ssh.max-auth-tries has its own, so set both to change the limit). A Match block overrides
   the global value for the connections it matches.
 rationale: >-
   A hardened global value can be undone for a whole network or user group by a Match block, and
@@ -30,7 +31,7 @@ violations:
     ("hostbasedauthentication" in m.settings && m.settings["hostbasedauthentication"].value != "no") ||
     ("permituserenvironment" in m.settings && m.settings["permituserenvironment"].value != "no") ||
     ("ignorerhosts" in m.settings && m.settings["ignorerhosts"].value != "yes") ||
-    ("maxauthtries" in m.settings && (!m.settings["maxauthtries"].value.matches("^[0-9]+$") || int(m.settings["maxauthtries"].value) > params.max_tries))
+    ("maxauthtries" in m.settings && (!m.settings["maxauthtries"].value.matches("^[0-9]{1,9}$") || int(m.settings["maxauthtries"].value) > params.max_tries))
   key: m.source
   text: >-
     "Match " + m.criteria + " weakens the hardened settings (" + m.source + ")"
@@ -59,6 +60,10 @@ tests:
   - name: Match block turns rhosts back on
     facts:
       sshd: {present: true, match: [{criteria: "User a", settings: {ignorerhosts: {value: "no", explicit: true}}, source: "/etc/ssh/sshd_config:44"}]}
+    want: FAIL
+  - name: a number too large to be one
+    facts:
+      sshd: {present: true, match: [{criteria: "User a", settings: {maxauthtries: {value: "99999999999999999999", explicit: true}}, source: "/etc/ssh/sshd_config:45"}, {criteria: "User b", settings: {passwordauthentication: {value: "yes", explicit: true}}, source: "/etc/ssh/sshd_config:47"}]}
     want: FAIL
   - name: no OpenSSH server
     facts:

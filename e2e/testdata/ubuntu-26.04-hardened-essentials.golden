@@ -1,17 +1,16 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile essentials revision 1: FAIL 2 MANUAL 2 PASS 16
+profile essentials revision 1: MANUAL 2 PASS 18
 
 ES-01 PASS
   ssh.permit-root-login PASS
-    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:1]
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:6]
   ssh.match-permit-root-login PASS
 
-ES-02 FAIL
-  ssh.password-authentication FAIL
-    - The server still accepts a password, directly or through keyboard-interactive authentication.
+ES-02 PASS
+  ssh.password-authentication PASS
     - sshd.config.challengeresponseauthentication: not set
-    - sshd.config.kbdinteractiveauthentication = "no" (explicit)  [/etc/ssh/sshd_config:86]
-    - sshd.config.passwordauthentication = "yes" (default)  [sshd -T (default)]
+    - sshd.config.kbdinteractiveauthentication = "no" (explicit)  [/etc/ssh/sshd_config:2]
+    - sshd.config.passwordauthentication = "no" (explicit)  [/etc/ssh/sshd_config:1]
 
 ES-03 PASS
   ssh.permit-empty-passwords PASS
@@ -23,11 +22,11 @@ ES-03 PASS
   ssh.permit-user-environment PASS
     - "no" (default); expected one of [no]  [sshd -T (default)]
 
-ES-04 FAIL
-  ssh.max-auth-tries FAIL
-    - "6" (default); expected 1–4  [sshd -T (default)]
-  ssh.x11-forwarding FAIL
-    - "yes" (explicit); expected one of [no]  [/etc/ssh/sshd_config:114]
+ES-04 PASS
+  ssh.max-auth-tries PASS
+    - "4" (explicit); expected 1–4  [/etc/ssh/sshd_config:4]
+  ssh.x11-forwarding PASS
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:5]
 
 ES-05 PASS
   ssh.match-hardening PASS
@@ -68,7 +67,7 @@ ES-09 PASS
     - pam.lockout.login.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
     - pam.lockout.sshd.enforced = true
     - pam.lockout.sshd.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
-    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config:109]
+    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config:114]
     - sshd.present = true
 
 ES-10 PASS

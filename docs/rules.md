@@ -486,7 +486,7 @@ Checks the global IgnoreRhosts setting of the OpenSSH server. On a live host the
 
 No SSH Match block weakens the hardened settings (SSH Match 블록이 강화된 설정을 되돌리지 않음) — severity medium, lists what violates it.
 
-Lists Match blocks of the OpenSSH server configuration that set PasswordAuthentication, KbdInteractiveAuthentication, ChallengeResponseAuthentication, PermitEmptyPasswords, X11Forwarding, HostbasedAuthentication or PermitUserEnvironment to anything but "no", IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries`. A Match block overrides the global value for the connections it matches.
+Lists Match blocks of the OpenSSH server configuration that set PasswordAuthentication, KbdInteractiveAuthentication, ChallengeResponseAuthentication, PermitEmptyPasswords, X11Forwarding, HostbasedAuthentication or PermitUserEnvironment to anything but "no", IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries` (a parameter of this check; ssh.max-auth-tries has its own, so set both to change the limit). A Match block overrides the global value for the connections it matches.
 
 **Why.** A hardened global value can be undone for a whole network or user group by a Match block, and the global check would not notice.
 
@@ -524,7 +524,7 @@ Checks the global MaxAuthTries setting of the OpenSSH server, the number of auth
 
 SSH logins do not accept passwords (SSH 로그인이 비밀번호를 받지 않음) — severity medium, evaluates an expression.
 
-Checks that the OpenSSH server accepts neither PasswordAuthentication nor keyboard-interactive authentication, which is how a password is typed through PAM (named ChallengeResponseAuthentication before OpenSSH 8.7). On a live host the effective values come from `sshd -T`, so the defaults of the installed version count.
+Checks that the OpenSSH server accepts neither PasswordAuthentication nor keyboard-interactive authentication, which is how a password is typed through PAM (named ChallengeResponseAuthentication before OpenSSH 8.7). On a live host the effective values come from `sshd -T`, so the defaults of the installed version count. The check is conservative: it also fails when keyboard-interactive is on but cannot produce a password prompt (UsePAM no).
 
 **Why.** A password can be guessed, reused and phished over the network; a key pair cannot be guessed and never leaves the client.
 
