@@ -91,14 +91,14 @@ func TestSysctlOrderOfFiles(t *testing.T) {
 }
 
 func TestParseSysctl(t *testing.T) {
-	got := parseSysctl("/f", []byte(`
+	got, _ := parseSysctl("/f", []byte(`
 # a comment
 ; another
 kernel.kptr_restrict=2
   net/ipv4/tcp_syncookies   =   1
 -kernel.dmesg_restrict = 1
 fs.suid_dumpable
-net.ipv4.conf.*.rp_filter = 1
+net.ipv4.conf.*.accept_source_route = 0
 net.ipv4.conf.all.accept_redirects = 0 # not a comment of its own
 not.a.wanted.key = 5
 kernel.randomize_va_space = 2
@@ -136,8 +136,8 @@ func TestSysctlLive(t *testing.T) {
 	param(t, s, "kernel.kptr_restrict", "1")
 	param(t, s, "net.ipv4.conf.all.rp_filter", "2")
 	param(t, s, "kernel.yama.ptrace_scope", "") // no Yama in this kernel: absent
-	if got := s.Params["kernel.kptr_restrict"]; got.Explicit || got.Source != "/proc/sys/kernel/kptr_restrict" {
-		t.Errorf("a value of the running kernel is not explicit: %+v", got)
+	if got := s.Params["kernel.kptr_restrict"]; !got.Explicit || got.Source != "/proc/sys/kernel/kptr_restrict" {
+		t.Errorf("a value the running kernel holds is what it is, not a default: %+v", got)
 	}
 	// A parameter that cannot be read leaves the facts incomplete, never silently absent.
 	m.SetError("/proc/sys/kernel/dmesg_restrict", fs.ErrPermission)
@@ -161,4 +161,53 @@ func TestSysctlOfAnImageHasNothing(t *testing.T) {
 		t.Errorf("%+v %v", got, err)
 	}
 	_ = errors.New
+}
+
+// A wildcard key sets many parameters at once: after an earlier explicit value it makes that value stale, so
+// the parameter is unknown, not the old value.
+func TestSysctlWildcardMakesEarlierValuesUnknown(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/sysctl.d/10-a.conf", "net.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.all.accept_source_route = 0\nkernel.kptr_restrict = 1\n", 0o644, 0, 0).
+		AddFile("/etc/sysctl.d/99-b.conf", "net.ipv4.conf.*.rp_filter = 0\n", 0o644, 0, 0)
+	s, complete, _ := sysctlOf(t, m, false)
+	if !complete {
+		t.Fatal("incomplete")
+	}
+	param(t, s, "net.ipv4.conf.all.rp_filter", "")
+	param(t, s, "net.ipv4.conf.all.accept_source_route", "0")
+	param(t, s, "kernel.kptr_restrict", "1")
+
+	// An explicit line after the wildcard, in the same file or a later one, is the last word again.
+	m = hostfs.NewMemFS().
+		AddFile("/etc/sysctl.d/10-a.conf", "net.ipv4.conf.all.rp_filter = 1\n", 0o644, 0, 0).
+		AddFile("/etc/sysctl.d/50-b.conf", "net.ipv4.conf.*.rp_filter = 0\nnet.ipv4.conf.all.rp_filter = 2\n", 0o644, 0, 0)
+	s, _, _ = sysctlOf(t, m, false)
+	param(t, s, "net.ipv4.conf.all.rp_filter", "2")
+	// Before the wildcard in the same file: the wildcard wins.
+	m = hostfs.NewMemFS().AddFile("/etc/sysctl.d/50-b.conf", "net.ipv4.conf.all.rp_filter = 2\nnet.ipv4.conf.*.rp_filter = 0\n", 0o644, 0, 0)
+	s, _, _ = sysctlOf(t, m, false)
+	param(t, s, "net.ipv4.conf.all.rp_filter", "")
+	// Other wildcards: ones that match no parameter of the list change nothing.
+	m = hostfs.NewMemFS().AddFile("/etc/sysctl.d/50-b.conf", "kernel.kptr_restrict = 1\nnet.ipv6.conf.*.accept_ra = 0\nvm.*=1\n", 0o644, 0, 0)
+	s, _, _ = sysctlOf(t, m, false)
+	param(t, s, "kernel.kptr_restrict", "1")
+}
+
+func TestSysctlMaskedByAnyLinkToDevNull(t *testing.T) {
+	for _, target := range []string{"/dev/null", "../../dev/null", "/dev/../dev/null", "../../usr/../dev/null"} {
+		m := hostfs.NewMemFS().
+			AddFile("/usr/lib/sysctl.d/50-default.conf", "kernel.randomize_va_space = 0\n", 0o644, 0, 0).
+			AddSymlink("/etc/sysctl.d/50-default.conf", target)
+		s, _, _ := sysctlOf(t, m, false)
+		if _, ok := s.Params["kernel.randomize_va_space"]; ok {
+			t.Errorf("a link to %s did not mask the file", target)
+		}
+	}
+	m := hostfs.NewMemFS().
+		AddFile("/usr/lib/sysctl.d/50-default.conf", "kernel.randomize_va_space = 0\n", 0o644, 0, 0).
+		AddFile("/etc/other", "x", 0o644, 0, 0).
+		AddSymlink("/etc/sysctl.d/50-default.conf", "../other")
+	if s, _, _ := sysctlOf(t, m, false); s.Params["kernel.randomize_va_space"].Value == "0" {
+		t.Error("a link to some other file masked the vendor's file but was not read")
+	}
 }

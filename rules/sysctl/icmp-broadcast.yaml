@@ -4,7 +4,7 @@ title: Pings to a broadcast address are ignored
 title_ko: 브로드캐스트 주소로 온 ping을 무시함
 severity: low
 description: >-
-  Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answer them).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answer them). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   Answering broadcast pings lets an attacker use the host to amplify traffic towards a victim.
 remediation: >-

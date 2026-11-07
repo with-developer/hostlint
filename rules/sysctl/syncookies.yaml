@@ -4,7 +4,7 @@ title: TCP SYN cookies are on
 title_ko: TCP SYN 쿠키가 켜져 있음
 severity: medium
 description: >-
-  Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
 remediation: >-

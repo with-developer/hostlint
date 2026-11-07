@@ -4,7 +4,7 @@ title: Packets with a source that cannot come from their interface are dropped
 title_ko: 출발지가 인터페이스와 맞지 않는 패킷을 버림
 severity: medium
 description: >-
-  Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   Reverse path filtering drops packets with forged source addresses.
 remediation: >-

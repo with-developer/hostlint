@@ -4,7 +4,7 @@ title: Only privileged users can read the kernel log
 title_ko: 커널 로그는 권한 있는 사용자만 읽을 수 있음
 severity: low
 description: >-
-  Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   The kernel log can show addresses, device details and the traces of failed exploits.
 remediation: >-

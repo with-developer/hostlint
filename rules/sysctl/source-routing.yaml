@@ -4,7 +4,7 @@ title: Source-routed packets are refused
 title_ko: 소스 라우팅 패킷을 거부함
 severity: medium
 description: >-
-  Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore packets that name their own route).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore packets that name their own route). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   A sender that picks the route of its packets can steer them around the filters of the network.
 remediation: >-

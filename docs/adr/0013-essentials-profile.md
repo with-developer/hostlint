@@ -12,7 +12,7 @@ first of them, and a way for a user outside the KISA context to get a useful res
 
 ## Decision
 
-- A second built-in profile, **`essentials`**, with 20 controls (`ES-01`–`ES-20`) over the existing checks
+- A second built-in profile, **`essentials`**, with 20 controls (`ES-01`–`ES-20`, 22 since revision 2: see the amendment) over the existing checks
   and eight new SSH checks. The IDs, titles and grouping are hostlint's own; nothing is copied from a
   benchmark (VISION principle 5). It is selected with `--profile essentials`; **the default stays
   `kisa-2026`**, so no existing scan, result or golden changes.
@@ -43,7 +43,7 @@ first of them, and a way for a user outside the KISA context to get a useful res
 
 `essentials` revision 2 adds two controls, `ES-21` (the network stack) and `ES-22` (what the kernel lets
 unprivileged code see and do), over eleven new `sysctl.*` checks and a `sysctl` collector. The collector reads
-a fixed list of fourteen parameters, never a path a rule or a file chooses: on a running host from `/proc/sys`
+a fixed list of fifteen parameters, never a path a rule or a file chooses: on a running host from `/proc/sys`
 (the kernel is the truth, and a parameter it does not have is absent, so a check cannot decide), on a mounted
 root from the files of sysctl.d(5) in the order systemd-sysctl applies them (a file of an earlier directory hides
 the one of that name later, a link to `/dev/null` masks it, `/etc/sysctl.conf` last, the last line wins; a

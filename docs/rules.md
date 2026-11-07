@@ -576,7 +576,7 @@ Checks the global X11Forwarding setting of the OpenSSH server. On a live host th
 
 Address space layout randomization is fully on (주소 공간 배치 무작위화가 완전히 켜져 있음) — severity medium, compares one setting.
 
-Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** Randomized addresses make memory-corruption bugs much harder to turn into working exploits.
 
@@ -586,7 +586,7 @@ Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize t
 
 Only privileged users can read the kernel log (커널 로그는 권한 있는 사용자만 읽을 수 있음) — severity low, compares one setting.
 
-Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** The kernel log can show addresses, device details and the traces of failed exploits.
 
@@ -596,7 +596,7 @@ Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged 
 
 Pings to a broadcast address are ignored (브로드캐스트 주소로 온 ping을 무시함) — severity low, compares one setting.
 
-Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answer them).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answer them). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** Answering broadcast pings lets an attacker use the host to amplify traffic towards a victim.
 
@@ -606,17 +606,17 @@ Checks the kernel parameter net.ipv4.icmp_echo_ignore_broadcasts (1: do not answ
 
 ICMP redirects are neither accepted nor sent (ICMP 리다이렉트를 받지도 보내지도 않음) — severity medium, evaluates an expression.
 
-Checks net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects and net.ipv4.conf.all.send_redirects, which must all be 0. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
+Checks net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects, net.ipv4.conf.all.send_redirects and net.ipv4.conf.default.send_redirects, which must all be 0. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged. The interfaces that exist are not looked at one by one: "default" covers the ones that appear later, and "all" the setting of every interface for accepting redirects.
 
 **Why.** A forged redirect changes the routes of a host, and a host that sends redirects tells others about its network.
 
-**Fix.** Set the three parameters to 0 in a file of /etc/sysctl.d and apply them with `sysctl --system`.
+**Fix.** Set the four parameters to 0 in a file of /etc/sysctl.d and apply them with `sysctl --system`.
 
 #### `sysctl.kptr-restrict`
 
 Kernel addresses are hidden from users (커널 주소를 사용자에게 숨김) — severity medium, compares one setting.
 
-Checks the kernel parameter kernel.kptr_restrict (1 or 2 hides kernel pointers from unprivileged users).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter kernel.kptr_restrict (1 or 2 hides kernel pointers from unprivileged users). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** Kernel addresses in /proc and logs help an attacker defeat address randomization of the kernel.
 
@@ -628,7 +628,7 @@ Links in world-writable directories are protected (누구나 쓸 수 있는 디�
 
 Checks fs.protected_hardlinks and fs.protected_symlinks, which must both be 1. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
 
-**Why.** Without them a user can plant a link that makes a privileged program open a file of the user\u0027s choice.
+**Why.** Without them a user can plant a link that makes a privileged program open a file the user chose.
 
 **Fix.** Set `fs.protected_hardlinks = 1` and `fs.protected_symlinks = 1` in a file of /etc/sysctl.d and apply them with `sysctl --system`.
 
@@ -636,7 +636,7 @@ Checks fs.protected_hardlinks and fs.protected_symlinks, which must both be 1. O
 
 Processes cannot attach to unrelated processes (관련 없는 프로세스에 붙을 수 없음) — severity low, compares one setting.
 
-Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to descendants; a kernel without Yama has no such parameter and cannot be judged).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to descendants; a kernel without Yama has no such parameter and cannot be judged). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** ptrace lets a process read the memory of another one of the same user, including keys and tokens.
 
@@ -646,7 +646,7 @@ Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to
 
 Packets with a source that cannot come from their interface are dropped (출발지가 인터페이스와 맞지 않는 패킷을 버림) — severity medium, compares one setting.
 
-Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** Reverse path filtering drops packets with forged source addresses.
 
@@ -656,7 +656,7 @@ Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose rev
 
 Source-routed packets are refused (소스 라우팅 패킷을 거부함) — severity medium, compares one setting.
 
-Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore packets that name their own route).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore packets that name their own route). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** A sender that picks the route of its packets can steer them around the filters of the network.
 
@@ -666,7 +666,7 @@ Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore pac
 
 Set-ID programs do not dump core (set-ID 프로그램이 코어 덤프를 만들지 않음) — severity medium, compares one setting.
 
-Checks the kernel parameter fs.suid_dumpable (0: a program that changed its privileges leaves no core dump).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter fs.suid_dumpable (0: a program that changed its privileges leaves no core dump). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** A core dump of a set-ID program can hold secrets of a more privileged user.
 
@@ -676,7 +676,7 @@ Checks the kernel parameter fs.suid_dumpable (0: a program that changed its priv
 
 TCP SYN cookies are on (TCP SYN 쿠키가 켜져 있음) — severity medium, compares one setting.
 
-Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 
 **Why.** SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
 

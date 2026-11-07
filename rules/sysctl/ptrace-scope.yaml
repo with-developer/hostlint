@@ -4,7 +4,7 @@ title: Processes cannot attach to unrelated processes
 title_ko: 관련 없는 프로세스에 붙을 수 없음
 severity: low
 description: >-
-  Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to descendants; a kernel without Yama has no such parameter and cannot be judged).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter kernel.yama.ptrace_scope (1 or more limits ptrace to descendants; a kernel without Yama has no such parameter and cannot be judged). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   ptrace lets a process read the memory of another one of the same user, including keys and tokens.
 remediation: >-

@@ -4,7 +4,7 @@ title: Address space layout randomization is fully on
 title_ko: 주소 공간 배치 무작위화가 완전히 켜져 있음
 severity: medium
 description: >-
-  Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   Randomized addresses make memory-corruption bugs much harder to turn into working exploits.
 remediation: >-

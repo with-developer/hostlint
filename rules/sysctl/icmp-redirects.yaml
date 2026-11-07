@@ -1,14 +1,19 @@
 id: sysctl.icmp-redirects
-version: 1
+version: 2
 title: ICMP redirects are neither accepted nor sent
 title_ko: ICMP 리다이렉트를 받지도 보내지도 않음
 severity: medium
 description: >-
-  Checks net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects and net.ipv4.conf.all.send_redirects, which must all be 0. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
+  Checks net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects,
+  net.ipv4.conf.all.send_redirects and net.ipv4.conf.default.send_redirects, which must all be 0. On a
+  running host the values are what the kernel reports; for a mounted root they are what the files of
+  sysctl.d(5) set at boot, and one they do not set cannot be judged. The interfaces that exist are not
+  looked at one by one: "default" covers the ones that appear later, and "all" the setting of every
+  interface for accepting redirects.
 rationale: >-
   A forged redirect changes the routes of a host, and a host that sends redirects tells others about its network.
 remediation: >-
-  Set the three parameters to 0 in a file of /etc/sysctl.d and apply them with `sysctl --system`.
+  Set the four parameters to 0 in a file of /etc/sysctl.d and apply them with `sysctl --system`.
 applies: >-
   !target.image
 failure: >-
@@ -16,19 +21,20 @@ failure: >-
 expect: >-
   sysctl.params["net.ipv4.conf.all.accept_redirects"].value == "0" &&
   sysctl.params["net.ipv4.conf.default.accept_redirects"].value == "0" &&
-  sysctl.params["net.ipv4.conf.all.send_redirects"].value == "0"
+  sysctl.params["net.ipv4.conf.all.send_redirects"].value == "0" &&
+  sysctl.params["net.ipv4.conf.default.send_redirects"].value == "0"
 tests:
   - name: as required
     facts:
-      sysctl: {live: true, params: {"net.ipv4.conf.all.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/accept_redirects"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/accept_redirects"}, "net.ipv4.conf.all.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/send_redirects"}}}
+      sysctl: {live: true, params: {"net.ipv4.conf.all.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/accept_redirects"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/accept_redirects"}, "net.ipv4.conf.all.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/send_redirects"}, "net.ipv4.conf.default.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/send_redirects"}}}
     want: PASS
   - name: the first is set the other way
     facts:
-      sysctl: {live: true, params: {"net.ipv4.conf.all.accept_redirects": {value: "1", source: "/proc/sys/net/ipv4/conf/all/accept_redirects"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/accept_redirects"}, "net.ipv4.conf.all.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/send_redirects"}}}
+      sysctl: {live: true, params: {"net.ipv4.conf.all.accept_redirects": {value: "1", source: "/proc/sys/net/ipv4/conf/all/accept_redirects"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/accept_redirects"}, "net.ipv4.conf.all.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/send_redirects"}, "net.ipv4.conf.default.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/send_redirects"}}}
     want: FAIL
   - name: the last is set the other way
     facts:
-      sysctl: {live: true, params: {"net.ipv4.conf.all.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/accept_redirects"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/accept_redirects"}, "net.ipv4.conf.all.send_redirects": {value: "1", source: "/proc/sys/net/ipv4/conf/all/send_redirects"}}}
+      sysctl: {live: true, params: {"net.ipv4.conf.all.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/accept_redirects"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/default/accept_redirects"}, "net.ipv4.conf.all.send_redirects": {value: "0", source: "/proc/sys/net/ipv4/conf/all/send_redirects"}, "net.ipv4.conf.default.send_redirects": {value: "1", source: "/proc/sys/net/ipv4/conf/default/send_redirects"}}}
     want: FAIL
   - name: a container image has no kernel of its own
     facts:
@@ -38,5 +44,5 @@ tests:
   - name: one of them is not set in the files of a mounted root
     input: absent
     facts:
-      sysctl: {live: false, params: {"net.ipv4.conf.all.accept_redirects": {value: "0", source: "x"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "x"}}}
+      sysctl: {live: false, params: {"net.ipv4.conf.all.accept_redirects": {value: "0", source: "x"}, "net.ipv4.conf.default.accept_redirects": {value: "0", source: "x"}, "net.ipv4.conf.all.send_redirects": {value: "0", source: "x"}}}
     want: ERROR

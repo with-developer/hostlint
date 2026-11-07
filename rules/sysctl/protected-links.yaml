@@ -6,7 +6,7 @@ severity: low
 description: >-
   Checks fs.protected_hardlinks and fs.protected_symlinks, which must both be 1. On a running host the values are what the kernel reports; for a mounted root they are what the files of sysctl.d(5) set at boot, and one they do not set cannot be judged.
 rationale: >-
-  Without them a user can plant a link that makes a privileged program open a file of the user\u0027s choice.
+  Without them a user can plant a link that makes a privileged program open a file the user chose.
 remediation: >-
   Set `fs.protected_hardlinks = 1` and `fs.protected_symlinks = 1` in a file of /etc/sysctl.d and apply them with `sysctl --system`.
 applies: >-

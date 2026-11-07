@@ -4,7 +4,7 @@ title: Set-ID programs do not dump core
 title_ko: set-ID 프로그램이 코어 덤프를 만들지 않음
 severity: medium
 description: >-
-  Checks the kernel parameter fs.suid_dumpable (0: a program that changed its privileges leaves no core dump).. On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+  Checks the kernel parameter fs.suid_dumpable (0: a program that changed its privileges leaves no core dump). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
 rationale: >-
   A core dump of a set-ID program can hold secrets of a more privileged user.
 remediation: >-

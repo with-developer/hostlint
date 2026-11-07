@@ -2,9 +2,7 @@ package collect
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
 	"maps"
 	"path"
 	"reflect"
@@ -42,6 +40,7 @@ var sysctlKeys = []string{
 	"net.ipv4.conf.all.rp_filter",
 	"net.ipv4.conf.all.send_redirects",
 	"net.ipv4.conf.default.accept_redirects",
+	"net.ipv4.conf.default.send_redirects",
 	"net.ipv4.icmp_echo_ignore_broadcasts",
 	"net.ipv4.tcp_syncookies",
 }
@@ -49,6 +48,15 @@ var sysctlKeys = []string{
 // sysctlDirs are the directories of sysctl.d(5) in the order of precedence: a file of a name in a directory
 // before another hides the file of that name in the later one.
 var sysctlDirs = []string{"/etc/sysctl.d", "/run/sysctl.d", "/usr/local/lib/sysctl.d", "/usr/lib/sysctl.d", "/lib/sysctl.d"}
+
+// sysctlWanted is sysctlKeys as a set; it is never changed.
+var sysctlWanted = func() map[string]bool {
+	m := map[string]bool{}
+	for _, k := range sysctlKeys {
+		m[k] = true
+	}
+	return m
+}()
 
 type sysctlCollector struct{}
 
@@ -69,7 +77,7 @@ func (sysctlCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts,
 			data, err := h.FS.ReadFile(file)
 			switch {
 			case err == nil:
-				s.Params[key] = facts.Setting{Value: sysctlValue(string(data)), Source: file}
+				s.Params[key] = facts.Setting{Value: sysctlValue(string(data)), Explicit: true, Source: file} // what the kernel holds, from /proc/sys
 			case hostfs.IsMissing(err):
 				// The kernel has no such parameter (a module that is not loaded, no Yama): absent, so a check
 				// that needs it cannot decide.
@@ -101,7 +109,7 @@ func (sysctlCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts,
 				continue
 			}
 			if li, err := h.FS.Lstat(m); err == nil && li.IsSymlink() {
-				if target, err := h.FS.ReadLink(m); err == nil && target == "/dev/null" {
+				if target, err := h.FS.ReadLink(m); err == nil && isDevNull(path.Dir(m), target) {
 					masked[name] = true
 					continue
 				}
@@ -117,14 +125,18 @@ func (sysctlCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts,
 	for _, file := range files {
 		data, err := h.FS.ReadFile(file)
 		switch {
-		case errors.Is(err, fs.ErrNotExist):
+		case hostfs.IsMissing(err):
 			continue
 		case err != nil:
 			skipped = append(skipped, fmt.Sprintf("%s: %v", file, err))
 			continue
 		}
-		for key, set := range parseSysctl(file, data) {
-			s.Params[key] = set
+		set, invalid := parseSysctl(file, data)
+		for _, key := range invalid {
+			delete(s.Params, key) // a wildcard after an earlier value: what it set is not known
+		}
+		for key, v := range set {
+			s.Params[key] = v
 		}
 	}
 	if len(skipped) > 0 {
@@ -138,14 +150,12 @@ func sysctlValue(s string) string { return strings.Join(strings.Fields(s), " ") 
 
 // parseSysctl reads one file of sysctl.d(5): "key = value" lines, "#" and ";" comments, a leading "-" on the
 // key (an error to ignore), "/" or "." between the parts of a key. It returns the parameters of sysctlKeys
-// that the file sets, the last line of a key winning. A key with a wildcard sets many parameters at the
-// time it is applied, so it is not read as setting any of them.
-func parseSysctl(file string, data []byte) map[string]facts.Setting {
-	wanted := map[string]bool{}
-	for _, k := range sysctlKeys {
-		wanted[k] = true
-	}
-	out := map[string]facts.Setting{}
+// that the file sets, the last line of a key winning, and the parameters that a wildcard key (net.ipv4.conf.*.rp_filter)
+// set after any earlier value: the wildcard changed them to something that is not read from it, so what an earlier file
+// said about them is no longer known.
+func parseSysctl(file string, data []byte) (set map[string]facts.Setting, invalid []string) {
+	set = map[string]facts.Setting{}
+	invalidated := map[string]bool{}
 	for i, line := range strings.Split(string(data), "\n") {
 		text := strings.TrimSpace(line)
 		if text == "" || text[0] == '#' || text[0] == ';' {
@@ -157,10 +167,33 @@ func parseSysctl(file string, data []byte) map[string]facts.Setting {
 		}
 		key = strings.TrimPrefix(strings.TrimSpace(key), "-")
 		key = strings.ReplaceAll(key, "/", ".")
-		if !wanted[key] {
+		if strings.ContainsAny(key, "*?[") {
+			for _, k := range sysctlKeys {
+				if ok, _ := path.Match(strings.ReplaceAll(key, ".", "/"), strings.ReplaceAll(k, ".", "/")); ok {
+					delete(set, k)
+					invalidated[k] = true
+				}
+			}
 			continue
 		}
-		out[key] = facts.Setting{Value: sysctlValue(value), Explicit: true, Source: fmt.Sprintf("%s:%d", file, i+1)}
+		if !sysctlWanted[key] {
+			continue
+		}
+		set[key] = facts.Setting{Value: sysctlValue(value), Explicit: true, Source: fmt.Sprintf("%s:%d", file, i+1)}
+		delete(invalidated, key)
 	}
-	return out
+	for _, k := range sysctlKeys {
+		if invalidated[k] {
+			invalid = append(invalid, k)
+		}
+	}
+	return set, invalid
+}
+
+// isDevNull reports whether a link in dir with this target leads to /dev/null, however it is written.
+func isDevNull(dir, target string) bool {
+	if !path.IsAbs(target) {
+		target = path.Join(dir, target)
+	}
+	return path.Clean(target) == "/dev/null"
 }
