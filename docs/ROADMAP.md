@@ -51,21 +51,24 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 
 ## Fleet mode
 
-**Phase 1 shipped (v0.8 to v0.11; [ADR 0010](adr/0010-fleet-server-and-dashboard.md)):** `hostlint server`
-(SQLite, tokens, a hash-chained audit table, sessions) with an embedded web dashboard, `hostlint push`
-and `hostlint scan --push` (hosts send results; the server has no channel to them), `hostlint diff`,
-retention, backup, host administration, `hostlint server demo`, and signed results (v0.10: a per-host
-Ed25519 key, so the stored records are evidence even against a compromised server), a webhook for
-regressions and silent hosts (v0.11), the `essentials` profile (v0.14) and policy packs, your own checks and profiles
-(v0.15).
+**Phase 1 shipped ([ADR 0010](adr/0010-fleet-server-and-dashboard.md)):** `hostlint server` (SQLite, tokens, a
+hash-chained audit table, sessions) with an embedded web dashboard, `hostlint push` and `hostlint scan --push` (hosts
+send results; the server has no channel to them), `hostlint diff`, retention, backup, host administration,
+`hostlint server demo`, signed results (v0.10: a per-host Ed25519 key, so the stored records are evidence even
+against a compromised server) and a webhook for regressions and silent hosts (v0.11).
 
-**Next:**
-- Roles and OIDC for the dashboard.
-- Phase 2: `hostlint agent`, which dials out over a gRPC stream with mutual TLS for scheduled and
-  on-demand scans (its own ADR); PostgreSQL as an option; waivers managed in the UI.
+**Also shipped:** scanning container images from a `docker save` or OCI archive (v0.12), a GitHub Action (v0.13),
+the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy packs, your own checks and profiles
+(v0.15), a Markdown output and a job summary in the Action (v0.16), `hostlint explain` and `hostlint pack facts` (v0.18).
+
+**Next (designs waiting for the owner's decision, each with a recommendation):**
+- The outbound agent, for on-demand scans only: [ADR 0014](adr/0014-the-outbound-agent.md).
+- Roles and OIDC for the dashboard: [ADR 0015](adr/0015-dashboard-sign-in.md).
+- A profile selector for the dashboard (the overview adds up profiles today): issue #177.
+- PostgreSQL as an option; waivers managed in the UI.
 
 ## Later
 
 - CIS mapping overlays (control IDs only); packs in the fleet server and agents, packs as a signed bundle or from a registry.
-- More distros (SUSE); scanning an image straight from a registry, and zstd layers (`--image-tar` reads `docker save` and OCI archives, v0.12).
-- Remediation hints, scheduled scans, notifications.
+- More distros (SUSE); scanning an image straight from a registry, zstd layers, an OCI layout directory (#164), an Alpine package reader (#165).
+- Remediation hints in the results, notifications beyond the webhook.

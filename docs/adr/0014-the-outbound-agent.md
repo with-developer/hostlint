@@ -1,0 +1,55 @@
+# 0014. The outbound agent
+
+- Status: Proposed (waiting for the owner; each decision below has a recommendation)
+- Date: 2026-11-07
+
+## Context
+
+ADR 0001 chose a pull-based fleet: the agent dials out, the server never connects to a host. ADR 0010 shipped
+phase 1 without it: hosts push results (`hostlint scan --push`, with signed results, tokens bound to a host and a
+key, a webhook for regressions and silent hosts), and left "the agent over gRPC with mutual TLS" for its own ADR.
+
+What an agent adds over a timer that runs `hostlint scan --push` is small, and it is the dangerous part:
+
+- **Scheduling** needs no agent: a systemd timer or a cron job does it, on the host's own terms.
+- **On-demand scans** ("scan this host now", from the dashboard or after a change) need the server to be able to
+  ask a host to do something. That is the one thing the vision's principle 3 is about: whatever the server asks, the
+  agent performs only the observations its own collectors and denylist allow. A compromised server must not
+  become a compromised fleet.
+- **Enrollment and rotation of the credential** (a token today, bound to a host and optionally to a key) are done
+  by hand.
+
+## Decisions (recommendation first)
+
+1. **Do something now, and keep it small.** Recommended: ship the timer documentation first (a systemd unit and timer
+   that run `hostlint scan --push`; no code) and build `hostlint agent` only for on-demand scans. Not chosen: a full
+   agent with its own scheduling, policy distribution and remote configuration (the dangerous surface, with no
+   gain over a timer).
+2. **Transport.** Recommended: HTTPS long polling with the standard library: the agent asks `POST /api/v1/agent/poll`
+   with its token, the server holds the request for up to 60 seconds and answers with a job or `204`. No new
+   dependency, works through proxies and load balancers, and the agent still opens no port. Not chosen: gRPC
+   (ADR 0001's idea): a bidirectional stream gives nothing a long poll does not for one job type, and it adds
+   `grpc-go` and protobuf (a larger binary, HTTP/2-only proxies, a code generator).
+3. **What the server may ask.** Recommended: exactly one job, "scan now", for a profile that is in an allowlist the
+   *agent's own* configuration holds (`--allow-profile`), at most once a minute, with no arguments from the server
+   except the profile. No waivers, parameters, commands, paths or configuration travel from the server: `hostlint.yaml`
+   stays a file of the host. The result goes back the way it goes today (`POST /api/v1/results`, signed when the
+   host has a key). A server that is compromised can make hosts scan more often, up to the limit; nothing else.
+4. **Identity.** Recommended: the agent keeps using its ingest token (bound to its host name, pinned to its host ID)
+   and the server's pinned public key (`--pin`), and the result stays signed with the host's key. Mutual TLS with a
+   certificate issued at enrollment and rotated is a later step with its own ADR: it solves the lifetime of a long-lived
+   token, not the question of what the server may ask.
+5. **Dashboard.** A "scan now" button for an `api` token holder, audited like every other action; shown only for hosts
+   that have an agent that polled in the last two minutes.
+
+## Consequences
+
+- With the recommendations, the agent is about 300 lines and one new endpoint, and the new attack surface is a job that
+  can only say "scan with a profile you already allow".
+- A host behind a firewall that allows outbound HTTPS only works, as for `--push`.
+- Not decided here: scheduling inside the agent, policy distribution, remote configuration, mutual TLS enrollment.
+
+## What the owner has to decide
+
+Approve, change or decline the five points above. Declining 1 (no agent for now) leaves the documentation of timers as
+the answer to scheduling; nothing else in the roadmap waits for it.
