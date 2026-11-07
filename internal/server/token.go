@@ -16,10 +16,12 @@ import (
 // Scopes of a credential.
 const (
 	ScopeIngest = "ingest" // may submit scan results
-	ScopeAPI    = "api"    // may read (later changes)
+	ScopeAPI    = "api"    // may read
+	// ScopeOperator may read and ask a host's agent for a scan (ADR 0014, ADR 0015).
+	ScopeOperator = "operator"
 )
 
-var scopePrefix = map[string]string{ScopeIngest: "hlt_ing_", ScopeAPI: "hlt_api_"}
+var scopePrefix = map[string]string{ScopeIngest: "hlt_ing_", ScopeAPI: "hlt_api_", ScopeOperator: "hlt_opr_"}
 
 // Credential is a token known to the server. Only its hash is stored.
 type Credential struct {
@@ -116,7 +118,8 @@ func WithKey(pub string) CredentialOption { return func(o *credentialOptions) { 
 // Authenticate finds the credential a token belongs to and records its use.
 func (s *Store) Authenticate(ctx context.Context, token, scope string) (*Credential, error) {
 	prefix := scopePrefix[scope]
-	if prefix == "" || !strings.HasPrefix(token, prefix) || len(token) > 128 {
+	// An operator may read too: a read credential is a token of either scope.
+	if prefix == "" || len(token) > 128 || !hasScopePrefix(token, scope) {
 		return nil, ErrUnauthorized
 	}
 	var c Credential
@@ -140,10 +143,21 @@ func (s *Store) Authenticate(ctx context.Context, token, scope string) (*Credent
 	return &c, nil
 }
 
+// scopeCovers reports whether a credential of scope have may be used where scope want is asked for: an operator
+// may read, so a read credential is one of either scope.
+func scopeCovers(have, want string) bool {
+	return have == want || want == ScopeAPI && have == ScopeOperator
+}
+
+// hasScopePrefix reports whether a token has the prefix of a scope that covers want.
+func hasScopePrefix(token, want string) bool {
+	return strings.HasPrefix(token, scopePrefix[want]) || want == ScopeAPI && strings.HasPrefix(token, scopePrefix[ScopeOperator])
+}
+
 // usable is the one place that decides whether a credential may be used now: its scope, that it
 // is not revoked and that it has not expired. A token and a session opened with it both ask.
 func (s *Store) usable(c *Credential, scope string) bool {
-	if c.Scope != scope || c.RevokedAt != "" {
+	if !scopeCovers(c.Scope, scope) || c.RevokedAt != "" {
 		return false
 	}
 	if c.ExpiresAt != "" {

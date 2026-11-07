@@ -265,6 +265,10 @@ func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 		for i := range d.Controls {
 			d.Controls[i].TitleKo = s.titleKo(d.Controls[i].Profile, d.Controls[i].ID)
 		}
+		if d.Agent, err = s.cfg.Store.HostAgent(r.Context(), id); err != nil {
+			s.fail(w, err)
+			return
+		}
 		writeJSON(w, http.StatusOK, d)
 	}
 }
@@ -398,8 +402,14 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSession tells the dashboard whether its cookie is still good.
-func (s *Server) handleSession(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
+func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
+	cred, err := s.readCredential(r)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "a valid read token or session is required")
+		return
+	}
+	// canScan tells the dashboard whether to offer "scan now": only an operator may ask for one.
+	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true, "canScan": cred.Scope == ScopeOperator})
 }
 
 func (s *Server) handleMatrix(w http.ResponseWriter, r *http.Request) {

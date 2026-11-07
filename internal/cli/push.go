@@ -108,7 +108,7 @@ func pushScan(cmd *cobra.Command, res *engine.Result, f scanFlags, token string,
 	if err := output.Write(&doc, res, "json", output.Options{}); err != nil {
 		return err
 	}
-	got, err := push.Send(cmd.Context(), doc.Bytes(), push.Options{URL: f.pushURL, Token: token, Pin: f.pin, SignKey: signer})
+	got, err := push.Send(cmd.Context(), doc.Bytes(), push.Options{URL: f.pushURL, Token: token, Pin: f.pin, SignKey: signer, JobID: f.jobID})
 	if err != nil {
 		return fmt.Errorf("the result was not sent: %w", err)
 	}

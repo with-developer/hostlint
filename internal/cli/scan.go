@@ -54,6 +54,7 @@ type scanFlags struct {
 	profiles, packs                             []string
 	verifyPack                                  bool
 	verbose                                     bool
+	jobID                                       int64 // the agent's job this scan answers (hostlint agent)
 }
 
 func newScanCommand() *cobra.Command {

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +47,8 @@ type Config struct {
 	// Content, when set, adds what each control checks and how to fix it (the rule text of
 	// the built-in profiles) to the answers about a control.
 	Content *engine.Content
+	// PollHold is how long an agent's poll waits for a job (25 seconds when 0).
+	PollHold time.Duration
 	// Web holds the dashboard's files (index.html and assets/). Nil means the build has none
 	// and the server answers with the API only; the `web` build tag embeds the real one.
 	Web fs.FS
@@ -55,6 +58,7 @@ type Config struct {
 type Server struct {
 	cfg     Config
 	limiter *limiter
+	jobs    jobWaiters
 }
 
 // New returns a Server.
@@ -83,6 +87,9 @@ func New(cfg Config) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/results", s.handleIngest)
+	mux.HandleFunc("POST /api/v1/agent/poll", s.handleAgentPoll)
+	mux.HandleFunc("POST /api/v1/agent/jobs/{id}/fail", s.handleJobFail)
+	mux.HandleFunc("POST /api/v1/hosts/{id}/scan", s.handleScanRequest)
 	s.routesRead(mux)
 	mux.Handle("GET /{path...}", s.webHandler())
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -220,6 +227,14 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, err)
 	default:
+		// A result that answers a job of the agent says so; the host's own job, and only a claimed one, is finished.
+		if v := r.Header.Get("X-Hostlint-Job"); v != "" && !got.Duplicate {
+			if id, err := strconv.ParseInt(v, 10, 64); err == nil && id > 0 {
+				if err := s.cfg.Store.FinishJob(context.WithoutCancel(ctx), id, got.HostRow, got.ScanRow); err != nil {
+					s.cfg.Logger.Error("job", "error", err)
+				}
+			}
+		}
 		status := http.StatusCreated
 		if got.Duplicate {
 			status = http.StatusOK // a retry of a result that was stored: nothing to do again
