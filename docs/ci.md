@@ -48,6 +48,7 @@ jobs:
 | `pack` | A [policy pack](packs.md) in the repository (a directory of your own checks and profiles); select its profile with `profile` |
 | `fail-on` | `low`, `medium`, `high` (default) or `none` |
 | `config` | A [`hostlint.yaml`](configuration.md): stricter thresholds, waivers with a reason and an expiry |
+| `summary` | `true` (default): write a Markdown report of the findings to the job summary of the run, even when the scan fails the step |
 | `sarif-file` | Also write SARIF here, even when the scan fails the step |
 | `version` | The release to install; by default the one the action is pinned to (`@v0.15.0`) |
 

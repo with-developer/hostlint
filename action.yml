@@ -34,6 +34,10 @@ inputs:
     description: A hostlint.yaml (profile choice, stricter parameters, waivers with a reason and an expiry).
     required: false
     default: ""
+  summary:
+    description: Write a Markdown report of the findings to the job summary of the workflow run (true or false).
+    required: false
+    default: "true"
   sarif-file:
     description: When set, also write the result as SARIF to this file, for GitHub code scanning (github/codeql-action/upload-sarif). It is written even when the scan fails the step.
     required: false
@@ -87,6 +91,7 @@ runs:
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_CONFIG: ${{ inputs.config }}
         INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
       run: |
         set -euo pipefail
         # The inputs reach the shell as variables, never as text of the script.
@@ -135,5 +140,10 @@ runs:
         # The SARIF file first, with nothing that fails: the report is wanted when the gate fails, too.
         if [ -n "$INPUT_SARIF_FILE" ]; then
           hostlint scan "${target[@]}" "${common[@]}" --format sarif --output "$INPUT_SARIF_FILE" --fail-on none
+        fi
+        # The job summary, also written before the gate. What it shows is escaped, since it comes from the scanned image.
+        if [ "$INPUT_SUMMARY" = true ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          hostlint scan "${target[@]}" "${common[@]}" --format markdown --output "$RUNNER_TEMP/hostlint-summary.md" --fail-on none
+          cat "$RUNNER_TEMP/hostlint-summary.md" >> "$GITHUB_STEP_SUMMARY"
         fi
         hostlint scan "${target[@]}" "${common[@]}" --fail-on "$INPUT_FAIL_ON" --color always

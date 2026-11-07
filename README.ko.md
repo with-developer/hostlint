@@ -115,7 +115,7 @@ sudo hostlint scan --config hostlint.yaml
 | 플래그 | 의미 |
 |---|---|
 | `-p, --profile` | 점검할 프로파일 (기본값 `kisa-2026`), 반복하면 여러 개를 한 번에 점검 |
-| `-f, --format` | `table`, `json`, `sarif`, `junit` |
+| `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown`(작업 요약이나 댓글용) |
 | `-o, --output` | 결과를 파일로 저장 |
 | `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`(기본값), `medium`, `high`, `none` |
 | `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옴 ([docs/packs.ko.md](docs/packs.ko.md)), 팩의 프로파일은 `-p`로 선택 |

@@ -105,3 +105,11 @@ func TestScanImageErrorsDoNotCarryControlCharacters(t *testing.T) {
 		t.Errorf("exit %d, stderr %q", code, stderr)
 	}
 }
+
+func TestScanMarkdown(t *testing.T) {
+	p := imageArchive(t, "app:1", map[string]string{"etc/os-release": "ID=debian\nVERSION_ID=\"12\"\nNAME=\"Debian GNU/Linux\"\n"})
+	code, stdout, stderr := run(context.Background(), t, "scan", "--image-tar", p, "--format", "markdown", "--fail-on", "none")
+	if code != ExitOK || !strings.HasPrefix(stdout, "## hostlint: app&#58;1") || !strings.Contains(stdout, "| Profile | Controls |") {
+		t.Fatalf("exit %d\n%s\n%s", code, stdout, stderr)
+	}
+}

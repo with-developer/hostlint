@@ -48,6 +48,7 @@ jobs:
 | `pack` | 저장소에 있는 [정책 팩](packs.ko.md)(직접 만든 점검과 프로파일 디렉터리), 팩의 프로파일은 `profile`로 선택 |
 | `fail-on` | `low`, `medium`, `high`(기본값), `none` |
 | `config` | [`hostlint.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일이 있는 면제 |
+| `summary` | `true`(기본값): 점검이 단계를 실패시켜도 발견 사항의 Markdown 보고서를 실행의 작업 요약에 씁니다 |
 | `sarif-file` | 점검이 단계를 실패시켜도 SARIF를 여기에도 씁니다 |
 | `version` | 설치할 릴리스. 기본값은 액션이 고정된 릴리스(`@v0.15.0`) |
 

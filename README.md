@@ -115,7 +115,7 @@ described in [docs/configuration.md](docs/configuration.md).
 | Flag | Meaning |
 |---|---|
 | `-p, --profile` | Profile to check against (default `kisa-2026`); repeat it to check several at once |
-| `-f, --format` | `table`, `json`, `sarif` or `junit` |
+| `-f, --format` | `table`, `json`, `sarif`, `junit` or `markdown` (for a job summary or a comment) |
 | `-o, --output` | Write the report to a file |
 | `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
 | `--pack DIR` | Load a policy pack: your own checks and profiles ([docs/packs.md](docs/packs.md)); select its profile with `-p` |
