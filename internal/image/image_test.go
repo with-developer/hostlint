@@ -28,7 +28,7 @@ type ent struct {
 }
 
 // layerTar makes the tar of one layer.
-func layerTar(t *testing.T, entries ...ent) []byte {
+func layerTar(t testing.TB, entries ...ent) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
@@ -66,7 +66,7 @@ func layerTar(t *testing.T, entries ...ent) []byte {
 	return buf.Bytes()
 }
 
-func gz(t *testing.T, b []byte) []byte {
+func gz(t testing.TB, b []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
@@ -83,7 +83,7 @@ type file struct {
 	link string
 }
 
-func outer(t *testing.T, files ...file) []byte {
+func outer(t testing.TB, files ...file) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
@@ -103,7 +103,7 @@ func outer(t *testing.T, files ...file) []byte {
 	return buf.Bytes()
 }
 
-func jsonOf(t *testing.T, v any) []byte {
+func jsonOf(t testing.TB, v any) []byte {
 	t.Helper()
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -113,7 +113,7 @@ func jsonOf(t *testing.T, v any) []byte {
 }
 
 // dockerArchive is what docker save writes: layer files, a configuration, manifest.json last.
-func dockerArchive(t *testing.T, tags []string, layers ...[]byte) []byte {
+func dockerArchive(t testing.TB, tags []string, layers ...[]byte) []byte {
 	t.Helper()
 	var files []file
 	var names, diffs []string
@@ -136,7 +136,7 @@ func dockerArchive(t *testing.T, tags []string, layers ...[]byte) []byte {
 }
 
 // ociArchive is an OCI layout: blobs by digest, index.json.
-func ociArchive(t *testing.T, layers ...[]byte) []byte {
+func ociArchive(t testing.TB, layers ...[]byte) []byte {
 	t.Helper()
 	var files []file
 	var descs []map[string]any
@@ -439,6 +439,13 @@ func TestInterrupted(t *testing.T) {
 
 func FuzzLoad(f *testing.F) {
 	f.Add([]byte("not a tar"))
+	l1 := layerTar(f, ent{name: "etc/"}, ent{name: "etc/os-release", body: "ID=x\n"}, ent{name: "bin", typ: tar.TypeSymlink, link: "usr/bin"}, ent{name: "usr/bin/"},
+		ent{name: "usr/bin/su", body: "x", mode: 0o4755}, ent{name: "etc/shadow", body: "root:x"}, ent{name: "tmp/su", typ: tar.TypeLink, link: "usr/bin/su"})
+	l2 := layerTar(f, ent{name: ".wh.etc"}, ent{name: "usr/bin/.wh..wh..opq"}, ent{name: "a/"}, ent{name: "a/../b", body: "1"}, ent{name: "dev/null", typ: tar.TypeChar})
+	f.Add(dockerArchive(f, []string{"app:1"}, l1, l2))
+	f.Add(dockerArchive(f, nil, gz(f, l1)))
+	f.Add(ociArchive(f, gz(f, l1), l2))
+	f.Add(ociArchive(f, l1))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		p := filepath.Join(t.TempDir(), "f.tar")
 		if err := os.WriteFile(p, data, 0o600); err != nil {
