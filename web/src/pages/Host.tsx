@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago, compareControls, ctitle } from "../lib/format";
@@ -37,6 +37,7 @@ export function HostPage({ id }: { id: number }) {
               </div>
               <Gauge score={h.score} label={t("host.passRate")} />
             </header>
+            <ScanNow hostId={id} onDone={state.reload} />
             {h.otherProfile ? <p className="muted small">{t("profile.hostOther", { profiles: (h.profiles ?? []).join(", ") })}</p> : null}
 
             <div className="tabs" role="tablist">
@@ -268,5 +269,88 @@ function DiffView({ diff }: { diff: Diff }) {
       {section(t("diff.removed"), "", diff.removed)}
       <p className="muted small">{t("diff.unchanged", diff.unchanged)}</p>
     </>
+  );
+}
+
+/**
+ * "Scan now": asks the agent of the host for a scan (ADR 0014). It shows only for a host whose agent is connected,
+ * and the button only for a session that may ask (an operator token); the server decides either way.
+ */
+function ScanNow({ hostId, onDone }: { hostId: number; onDone: () => void }) {
+  const { t } = useI18n();
+  const session = useAsync(() => api.session(), [], false);
+  const agent = useAsync(() => api.hostAgent(hostId), [hostId], false);
+  const [profile, setProfile] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [refused, setRefused] = useState("");
+  const data = agent.data;
+  const pending = data?.job?.state === "queued" || data?.job?.state === "claimed";
+  const reloadAgent = agent.reload;
+  useEffect(() => {
+    if (!pending) return;
+    // The state of a request is asked for every few seconds while it is open.
+    const id = setInterval(reloadAgent, 3000);
+    return () => clearInterval(id);
+  }, [pending, reloadAgent]);
+  // The request this page made: when its result comes in, the host's page is loaded again once.
+  const [awaiting, setAwaiting] = useState(0);
+  const [arrived, setArrived] = useState(false);
+  const job = data?.job;
+  useEffect(() => {
+    if (awaiting && job?.id === awaiting && job.state === "done") {
+      setArrived(true);
+      setAwaiting(0);
+      onDone();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaiting, job?.id, job?.state]);
+
+  if (!data || !data.online || data.profiles.length === 0) return null;
+  const chosen = data.profiles.includes(profile) ? profile : data.profiles[0];
+  const ask = async () => {
+    setBusy(true);
+    setRefused("");
+    try {
+      const res = await api.requestScan(hostId, chosen);
+      setArrived(false);
+      setAwaiting(res.job.id);
+      reloadAgent();
+    } catch (e) {
+      const err = e as ApiError;
+      setRefused(err.status === 429 ? t("scan.tooSoon") : t("scan.refused", { error: err.message }));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card scannow" aria-label={t("scan.title")}>
+      <div className="scannow-main">
+        <span className="badge s-PASS">{t("scan.agentOnline")}</span>
+        {session.data?.canScan ? (
+          <>
+            {data.profiles.length > 1 && (
+              <label className="inline">
+                {t("scan.profile")}{" "}
+                <select value={chosen} onChange={(e) => setProfile(e.target.value)}>
+                  {data.profiles.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button className="primary" disabled={busy || pending} onClick={ask}>
+              {t("scan.button")}
+            </button>
+          </>
+        ) : (
+          <span className="muted small">{t("scan.hint")}</span>
+        )}
+      </div>
+      <p className="muted small" role="status" aria-live="polite">
+        {refused || (arrived ? t("scan.done") : job && job.state !== "done" ? (job.state === "failed" ? t("scan.failed", { error: job.error ?? "" }) : t(`scan.${job.state}`)) : "")}
+      </p>
+    </section>
   );
 }

@@ -215,7 +215,11 @@ func (s *Store) FailJob(ctx context.Context, jobID, hostRow int64, msg string) e
 func (s *Store) HostAgent(ctx context.Context, hostRow int64) (*AgentInfo, error) {
 	var seen sql.NullString
 	var allowed string
-	if err := s.db.QueryRowContext(ctx, `SELECT agent_seen_at, agent_profiles FROM hosts WHERE id = ?`, hostRow).Scan(&seen, &allowed); err != nil {
+	err := s.db.QueryRowContext(ctx, `SELECT agent_seen_at, agent_profiles FROM hosts WHERE id = ?`, hostRow).Scan(&seen, &allowed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
 		return nil, err
 	}
 	a := &AgentInfo{Profiles: strings.Fields(allowed)}
@@ -228,7 +232,7 @@ func (s *Store) HostAgent(ctx context.Context, hostRow int64) (*AgentInfo, error
 	var j Job
 	var finished sql.NullString
 	var scan sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `SELECT id, profile, state, created_at, finished_at, scan_row, error FROM agent_jobs WHERE host_row = ? ORDER BY id DESC LIMIT 1`, hostRow).
+	err = s.db.QueryRowContext(ctx, `SELECT id, profile, state, created_at, finished_at, scan_row, error FROM agent_jobs WHERE host_row = ? ORDER BY id DESC LIMIT 1`, hostRow).
 		Scan(&j.ID, &j.Profile, &j.State, &j.CreatedAt, &finished, &scan, &j.Error)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -452,5 +456,23 @@ func (s *Server) handleScanRequest(w http.ResponseWriter, r *http.Request) {
 	default:
 		s.jobs.wake(id)
 		writeJSON(w, http.StatusAccepted, map[string]any{"job": job})
+	}
+}
+
+// handleHostAgent tells the dashboard about the agent of a host: connected or not, what it allows, the latest request.
+func (s *Server) handleHostAgent(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "not a host ID")
+		return
+	}
+	a, err := s.cfg.Store.HostAgent(r.Context(), id)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		writeError(w, http.StatusNotFound, "no such host")
+	case err != nil:
+		s.fail(w, err)
+	default:
+		writeJSON(w, http.StatusOK, a)
 	}
 }

@@ -224,8 +224,6 @@ type HostDetail struct {
 	Profiles []string     `json:"profiles"`
 	Controls []ControlRow `json:"controls"`
 	Scans    []ScanRow    `json:"scans"`
-	// Agent is the host's agent (ADR 0014): whether it is connected, what it allows and the latest request.
-	Agent *AgentInfo `json:"agent"`
 }
 
 // Host returns one host.

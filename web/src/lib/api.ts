@@ -1,4 +1,4 @@
-import type { ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ProfileList, ScanDoc } from "./types";
+import type { AgentInfo, ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ProfileList, ScanDoc, ScanJob } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -63,7 +63,7 @@ function withProfile(path: string): string {
 const json = { "Content-Type": "application/json" };
 
 export const api = {
-  session: () => request<{ authenticated: boolean }>("/api/v1/session"),
+  session: () => request<{ authenticated: boolean; canScan?: boolean }>("/api/v1/session"),
   login: (token: string) => request<{ ok: boolean; name: string }>("/api/v1/login", { method: "POST", headers: json, body: JSON.stringify({ token }) }),
   logout: () => request<{ ok: boolean }>("/api/v1/logout", { method: "POST", headers: json, body: "{}" }),
   profiles: () => request<ProfileList>("/api/v1/profiles"),
@@ -75,6 +75,8 @@ export const api = {
     request<{ control: ControlDetail; info: ControlInfo | null }>(`/api/v1/controls/${encodeURIComponent(profile)}/${encodeURIComponent(id)}?staleDays=${staleDays}`),
   matrix: (staleDays: number) => request<Matrix>(withProfile(`/api/v1/matrix?staleDays=${staleDays}`)),
   host: (id: number, staleDays: number) => request<HostDetail>(withProfile(`/api/v1/hosts/${id}?staleDays=${staleDays}`)),
+  hostAgent: (id: number) => request<AgentInfo>(`/api/v1/hosts/${id}/agent`),
+  requestScan: (id: number, profile: string) => request<{ job: ScanJob }>(`/api/v1/hosts/${id}/scan`, { method: "POST", headers: json, body: JSON.stringify({ profile }) }),
   scan: (id: number) => request<ScanDoc>(`/api/v1/scans/${id}`),
   diff: (oldId: number, newId: number) => request<Diff>(`/api/v1/diff?old=${oldId}&new=${newId}`),
 };

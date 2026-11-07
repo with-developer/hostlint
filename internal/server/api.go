@@ -72,6 +72,7 @@ func (s *Server) routesRead(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/controls", s.readAPI(s.handleControls))
 	mux.HandleFunc("GET /api/v1/controls/{profile}/{id}", s.readAPI(s.handleControl))
 	mux.HandleFunc("GET /api/v1/hosts/{id}", s.readAPI(s.handleHost))
+	mux.HandleFunc("GET /api/v1/hosts/{id}/agent", s.readAPI(s.handleHostAgent))
 	mux.HandleFunc("GET /api/v1/scans/{id}", s.readAPI(s.handleScan))
 	mux.HandleFunc("GET /api/v1/diff", s.readAPI(s.handleDiff))
 }
@@ -264,10 +265,6 @@ func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 	default:
 		for i := range d.Controls {
 			d.Controls[i].TitleKo = s.titleKo(d.Controls[i].Profile, d.Controls[i].ID)
-		}
-		if d.Agent, err = s.cfg.Store.HostAgent(r.Context(), id); err != nil {
-			s.fail(w, err)
-			return
 		}
 		writeJSON(w, http.StatusOK, d)
 	}

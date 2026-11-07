@@ -21,6 +21,8 @@ export interface HostSummary {
 export interface ControlRow { profile: string; id: string; title: string; titleKo?: string; severity: string; status: Status }
 export interface ScanRow { id: number; receivedAt: string; startedAt: string; toolVersion: string; counts: Counts; score: number | null; signed: boolean }
 export interface HostDetail extends HostSummary { profiles?: string[]; controls: ControlRow[]; scans: ScanRow[] }
+export interface ScanJob { id: number; profile: string; state: "queued" | "claimed" | "done" | "failed" | "expired"; createdAt: string; finishedAt?: string; scan?: number; error?: string }
+export interface AgentInfo { online: boolean; profiles: string[]; job?: ScanJob }
 export interface FailingControl { profile: string; id: string; title: string; titleKo?: string; severity: string; hosts: number }
 export interface RegressedControl { hostId: number; host: string; profile: string; id: string; title: string; titleKo?: string; severity: string; status: Status; receivedAt: string }
 export interface Overview {

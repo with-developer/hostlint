@@ -101,10 +101,16 @@ func TestAgentJobLifecycle(t *testing.T) {
 		t.Errorf("audit entries of the request: %d", got)
 	}
 	// The host page says so.
-	var host HostDetail
-	f.json(t, "/api/v1/hosts/"+itoa(f.host), &host)
-	if host.Agent == nil || !host.Agent.Online || host.Agent.Profiles[0] != "kisa-2026" {
-		t.Errorf("host agent: %+v", host.Agent)
+	var info AgentInfo
+	f.json(t, "/api/v1/hosts/"+itoa(f.host)+"/agent", &info)
+	if !info.Online || info.Profiles[0] != "kisa-2026" || info.Job == nil || info.Job.State != "done" {
+		t.Errorf("host agent: %+v", info)
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/hosts/999/agent"); code != http.StatusNotFound {
+		t.Errorf("no such host: %d", code)
+	}
+	if code, _ := f.get(t, "", "/api/v1/hosts/1/agent"); code != http.StatusUnauthorized {
+		t.Errorf("no token: %d", code)
 	}
 }
 
