@@ -69,7 +69,6 @@ func TestExplainPackControlsAndText(t *testing.T) {
 	data, _ := os.ReadFile(check)
 	text := regexp.MustCompile(`(?m)^description: >-\n  .*$`).ReplaceAllString(string(data),
 		"description: |\n  first line\n  second line\n  "+strings.Repeat("한국어 ", 60))
-	text = strings.Replace(text, "params:", "params:", 1)
 	if err := os.WriteFile(check, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
