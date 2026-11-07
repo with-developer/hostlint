@@ -1,6 +1,6 @@
 # 0016. Images and policy-pack results in the fleet server
 
-- Status: Proposed (waiting for the owner's decision, issue #208)
+- Status: Proposed (waiting for the owner's decision, issue #209)
 - Date: 2026-11-08
 
 ## Context
