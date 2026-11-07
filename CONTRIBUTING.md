@@ -34,7 +34,7 @@ docker run --rm -v "$PWD":/src:ro -w /src -e GOCACHE=/tmp/gc golang:1.27 go test
 
 ## How a check is built
 
-1. A **collector** (`internal/collect`) reads the host and returns typed **facts**, for example
+1. A **collector** (`internal/collect`) reads the host and returns typed **facts** ([docs/facts.md](docs/facts.md) lists them all), for example
    `pam.lockout.login.enforced` or `services.started`. Collectors decide what files mean the way
    the program that reads them does, and say when what they saw is incomplete.
 2. A **check** (`rules/<area>/<name>.yaml`) compares facts with what is expected, in one of five

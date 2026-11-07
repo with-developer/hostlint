@@ -65,8 +65,8 @@ vuln: ## Scan dependencies for known vulnerabilities
 snapshot: $(GORELEASER) ## Build the release artifacts into dist/ without publishing (docs/RELEASING.md)
 	$(GORELEASER) release --snapshot --clean --skip=$(SNAPSHOT_SKIP)
 
-docs: ## Regenerate docs/rules.md from rules/ and profiles/
-	go test ./internal/rulesdoc -run TestRulesDocIsUpToDate -update
+docs: ## Regenerate docs/rules.md and docs/facts.md from rules/, profiles/ and the collectors
+	go test ./internal/rulesdoc -run 'TestRulesDocIsUpToDate|TestFactsDocIsUpToDate' -update
 
 # E2E_RUN selects distributions (e.g. debian-12); E2E_UPDATE=1 rewrites their goldens.
 E2E_RUN ?=

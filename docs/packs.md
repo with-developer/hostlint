@@ -62,7 +62,7 @@ requires_hostlint: v0.15.0              # optional: the oldest release the pack 
 
 Checks and profiles are written as described in [CONTRIBUTING](../CONTRIBUTING.md#how-a-check-is-built)
 and in the [rule reference](rules.md); [`examples/policy-pack`](../examples/policy-pack) is a small working
-pack. A profile can map built-in checks and your own:
+pack. `hostlint pack facts` lists the facts a check can read, and the [fact reference](facts.md) describes them. A profile can map built-in checks and your own:
 
 ```yaml
 id: x-acme-baseline

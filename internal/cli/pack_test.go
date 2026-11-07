@@ -117,3 +117,17 @@ func TestPackOutputDoesNotCarryControlCharacters(t *testing.T) {
 		t.Errorf("a profile title with an escape sequence: exit %d, %q %q", code, out, stderr)
 	}
 }
+
+func TestPackFacts(t *testing.T) {
+	code, out, stderr := run(context.Background(), t, "pack", "facts", "sshd")
+	if code != ExitOK || !strings.Contains(out, "sshd.config") || !strings.Contains(out, "map of setting") || strings.Contains(out, "login_defs") {
+		t.Fatalf("exit %d\n%s\n%s", code, out, stderr)
+	}
+	code, out, _ = run(context.Background(), t, "pack", "facts")
+	if code != ExitOK || !strings.Contains(out, "login_defs.settings") || !strings.Contains(out, "sshd.match[].criteria") {
+		t.Errorf("all facts: exit %d\n%.300s", code, out)
+	}
+	if code, _, stderr = run(context.Background(), t, "pack", "facts", "nothing"); code != ExitError || !strings.Contains(stderr, "no collector") {
+		t.Errorf("an unknown collector: exit %d %q", code, stderr)
+	}
+}

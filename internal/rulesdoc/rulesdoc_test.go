@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/with-developer/hostlint/internal/collect"
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/profiles"
 	"github.com/with-developer/hostlint/rules"
@@ -35,6 +36,41 @@ func TestRulesDocIsUpToDate(t *testing.T) {
 	}
 	if string(want) != got {
 		t.Error("docs/rules.md is out of date; run `make docs`")
+	}
+}
+
+// docs/facts.md is what RenderFacts makes of the fact types of the collectors. After changing one, run `make docs`.
+func TestFactsDocIsUpToDate(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := engine.New(content, collect.All()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := RenderFacts(e, os.DirFS(filepath.Join("..", "..")), "internal/collect", "internal/facts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "docs", "facts.md")
+	if *update {
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%v; run `make docs`", err)
+	}
+	if string(want) != got {
+		t.Error("docs/facts.md is out of date; run `make docs`")
+	}
+	for _, name := range []string{"## `sshd`", "`sshd.config`", "`login_defs`"} {
+		if !strings.Contains(got, name) {
+			t.Errorf("the reference lacks %s", name)
+		}
 	}
 }
 

@@ -1,4 +1,4 @@
-<!-- translated from docs/packs.md @ aa47e48 -->
+<!-- translated from docs/packs.md @ 0e1ab81 -->
 # 정책 팩: 직접 만든 점검과 프로파일
 
 정책 팩은 hostlint 자체 콘텐츠와 같은 형식으로 직접 만든 점검과 프로파일을 담은 디렉터리입니다. hostlint를
@@ -59,7 +59,7 @@ requires_hostlint: v0.15.0              # 선택: 팩이 동작하는 가장 오
 ```
 
 점검과 프로파일은 [CONTRIBUTING](../CONTRIBUTING.md#how-a-check-is-built)과 [규칙 참조](rules.md)에 설명한 대로
-작성하며, [`examples/policy-pack`](../examples/policy-pack)은 동작하는 작은 팩입니다. 프로파일은 내장 점검과 직접
+작성하며, [`examples/policy-pack`](../examples/policy-pack)은 동작하는 작은 팩입니다. `hostlint pack facts`는 점검이 읽을 수 있는 사실을 나열하고, [사실 참조](facts.md)가 설명합니다. 프로파일은 내장 점검과 직접
 만든 점검을 함께 매핑할 수 있습니다(위 영어 문서의 예시와 같습니다). 프로파일을 바꾸면 `revision`을 올리세요.
 
 ## 팩 사용하기

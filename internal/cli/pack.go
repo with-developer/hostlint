@@ -36,7 +36,7 @@ ID of every profile start with "x-". A pack can only use what the compiled-in co
 adds no collector, command or function. It is trusted like hostlint.yaml, so read it with "pack show"
 before you use it.`,
 	}
-	cmd.AddCommand(newPackTestCommand(), newPackShowCommand())
+	cmd.AddCommand(newPackTestCommand(), newPackShowCommand(), newPackFactsCommand())
 	return cmd
 }
 
@@ -343,4 +343,39 @@ func uniqueDirs(dirs []string) []string {
 		}
 	}
 	return out
+}
+
+func newPackFactsCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "facts [COLLECTOR]",
+		Short: "List the facts a check or a pack can read (docs/facts.md has them with their descriptions)",
+		Long: `Facts lists every fact path the compiled-in collectors produce, with its type: the names a check
+writes in its expressions. Give a collector (sshd, login_defs, ...) to see only its facts.`,
+		Example: "  hostlint pack facts sshd",
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			content, err := engine.Load(rules.FS, profiles.FS)
+			if err != nil {
+				return fmt.Errorf("built-in content: %w", err)
+			}
+			e, err := engine.New(content, collect.All()...)
+			if err != nil {
+				return fmt.Errorf("built-in content: %w", err)
+			}
+			out := cmd.OutOrStdout()
+			shown := 0
+			for _, f := range e.FactCatalog() {
+				root, _, _ := strings.Cut(f.Path, ".")
+				if len(args) == 1 && root != args[0] {
+					continue
+				}
+				shown++
+				fmt.Fprintf(out, "%-60s %s\n", f.Path, f.Type)
+			}
+			if shown == 0 {
+				return fmt.Errorf("no collector %q (have: %s)", args[0], strings.Join(e.FactCollectors(), ", "))
+			}
+			return nil
+		},
+	}
 }

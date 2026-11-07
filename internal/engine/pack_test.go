@@ -277,3 +277,28 @@ func TestProfileDigestCoversThePacksChecks(t *testing.T) {
 		t.Error("a pack changed the digest of a built-in profile")
 	}
 }
+
+func TestFactCatalog(t *testing.T) {
+	e, err := engine.New(builtin(t), collect.All()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := map[string]string{}
+	for _, f := range e.FactCatalog() {
+		have[f.Path] = f.Type
+	}
+	for path, typ := range map[string]string{
+		"sshd":                           "object",
+		"sshd.present":                   "bool",
+		"sshd.config":                    "map of setting",
+		"sshd.config{}.value":            "string",
+		"sshd.match":                     "list of object",
+		"sshd.match[].criteria":          "string",
+		"sshd.match[].settings{}.value":  "string",
+		"login_defs.settings{}.explicit": "bool",
+	} {
+		if have[path] != typ {
+			t.Errorf("%s = %q, want %q", path, have[path], typ)
+		}
+	}
+}
