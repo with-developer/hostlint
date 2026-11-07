@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 36e0211 -->
+<!-- translated from docs/fleet.md @ 4839232 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -110,6 +110,56 @@ sudo systemctl enable --now hostlint-scan.timer
 꺼져 있어서 놓친 점검을 실행합니다. `--fail-on none`은 실패한 컨트롤 때문에 유닛이 실패로 표시되지 않게 합니다. 유닛이 실패했다는 것은
 점검이나 전송이 동작하지 않았다는 뜻이며 알림을 보낼 만한 상태입니다. 출력은 `journalctl -u hostlint-scan`에 있습니다. cron으로는
 `/etc/cron.d/hostlint`에 같은 명령(`17 3 * * * root ...`)을 쓰세요. 서버의 `--stale-after` 웹훅이 보고를 멈춘 호스트를 알려 줍니다.
+
+## 요청 시 스캔: 에이전트
+
+타이머는 일정에 따라 스캔합니다. 호스트를 대시보드에서 *지금* 스캔하려면 그 호스트에서 `hostlint agent`를 서비스로
+실행하세요. 에이전트는 바깥으로만 연결합니다(서버는 여전히 호스트에 접속하지 않습니다). HTTPS 요청 하나(롱 폴링)를 열어
+두고, 누군가 **지금 스캔**을 누르면 서버가 그 요청에 답합니다.
+
+```sh
+sudo hostlint server token create --name web-01 --host web-01 --key <공개키>   # --push와 같은, 호스트의 수집 토큰 (--key: `key generate`가 출력한 공개키)
+sudo hostlint agent --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+```
+
+```ini
+# /etc/systemd/system/hostlint-agent.service
+[Unit]
+Description=hostlint agent (scan when the fleet server asks)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/hostlint agent --server https://hostlint.example.org:8443 --pin sha256/... \
+  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+Restart=always
+RestartSec=10
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+서버가 요청할 수 있는 것은 한 가지입니다. **이 호스트 자신의** `--allow-profile` 목록에 있는 프로파일(내장 프로파일 1~8개)로
+스캔하는 것, 그것도 1분에 한 번까지입니다. 면제, 매개변수, 경로, 명령은 보낼 수 없습니다. `hostlint.yaml`은 호스트의
+파일로 남고, 결과는 `hostlint scan --push`와 같은 방식(같은 토큰, 같은 `--pin`, 같은 서명)으로 돌아갑니다. 에이전트는 허용하지
+않은 프로파일의 요청이나 마지막 스캔 1분 안의 요청도 거절하고, 이유를 서버에 알립니다. 서버가 침해되어도 호스트가 정해진
+한도까지 더 자주 스캔하게 만들 수 있을 뿐 그 밖의 일은 할 수 없습니다. 에이전트는 `--pack`을 받지 않습니다. 정책 팩 결과는
+서버가 아직 받지 않습니다.
+
+호스트가 결과를 한 번은 보낸 적이 있어야 하고(`hostlint scan --push`), 토큰은 호스트에 묶여 있어야 합니다(`--host`). 에이전트는 새
+종류의 신원이 아니라 호스트의 토큰입니다. 예약 점검은 에이전트와 함께 계속 동작합니다.
+
+**누가 요청할 수 있나.** 버튼에는 **operator** 토큰(`hostlint server token create --scope operator --any-host --name ops`)이나 그
+토큰으로 시작한 대시보드 세션이 필요합니다. operator는 `api` 토큰처럼 읽을 수 있고, 스캔도 요청할 수 있습니다. `api` 토큰으로 시작한
+세션은 호스트의 에이전트를 볼 수는 있지만 버튼은 없습니다. 요청은 `{"profile": "kisa-2026"}`를 담은 JSON `POST
+/api/v1/hosts/{id}/scan`입니다. 브라우저 세션에서는 서버 자신의 사이트인 `Origin`이 있을 때만 받아들이므로 다른 사이트의 페이지는
+요청할 수 없습니다(세션 쿠키도 `SameSite=Strict`입니다). 응답은 작업과 함께 `202`, 최근 2분 안에 호스트의 에이전트가 폴링하지
+않았거나 에이전트가 그 프로파일을 허용하지 않으면 `409`, 그 호스트의 스캔을 1분 안에 요청했거나 아직 처리 중이면 `429`입니다. 모든
+요청은 감사 체인에 남습니다(`scan-requested`, 요청한 토큰과 주소 포함). 대시보드는 에이전트가 연결된 호스트에만 버튼을 보이고,
+요청의 진행(대기, 스캔 중, 도착, 실패)을 따라갑니다. 아무도 답하지 않은 요청은 10분 뒤 만료됩니다. `GET /api/v1/hosts/{id}/agent`도
+같은 상태를 줍니다.
 
 ## 회사의 계정으로 로그인시키기
 
@@ -307,4 +357,5 @@ hostlint server host delete --db server.db 4 --yes
 hostlint server token list   --db server.db
 hostlint server token revoke --db server.db 3
 hostlint server token create --db server.db --name ci --any-host --expires-in 2160h
+hostlint server token create --db server.db --name ops --scope operator --any-host   # 읽기, 그리고 에이전트에 스캔 요청
 ```

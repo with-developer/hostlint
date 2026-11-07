@@ -189,7 +189,8 @@ Titles and descriptions are hostlint's own; profiles reference control IDs only.
 Hosts scan themselves and push the result to a `hostlint server`, which keeps the history and shows
 the fleet in a web dashboard: pass rate, the controls that fail most, regressions since the last
 scan, a matrix of every control on every host, and the evidence behind each result. The server never
-connects to a host. Try it without any host: `hostlint server demo` starts it with a made-up fleet.
+connects to a host; to scan one on demand, its `hostlint agent` dials out and waits for a "scan now" from the
+dashboard. Try it without any host: `hostlint server demo` starts it with a made-up fleet.
 See [docs/fleet.md](docs/fleet.md).
 
 ![The overview of the dashboard](docs/demo/dashboard-overview.png)

@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 19d7e09 -->
+<!-- translated from README.md @ 4839232 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -183,7 +183,8 @@ test`로 테스트하고 `hostlint pack show`로 검토하고 `hostlint scan --p
 
 호스트가 스스로 스캔하고 결과를 `hostlint server`로 보내면, 서버가 이력을 보관하고 웹 대시보드로 플릿을
 보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스,
-각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 호스트 없이 써 보려면
+각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 요청 시 스캔은 호스트의 `hostlint agent`가 바깥으로 연결해 두고
+대시보드의 "지금 스캔"을 기다리는 방식입니다. 호스트 없이 써 보려면
 `hostlint server demo`가 가상의 플릿으로 서버를 띄웁니다. [docs/fleet.ko.md](docs/fleet.ko.md)를 참고하세요.
 
 ![대시보드 개요](docs/demo/dashboard-overview.png)

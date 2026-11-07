@@ -111,6 +111,58 @@ failed: a unit that fails means the scan or the sending did not work, and a fail
 `journalctl -u hostlint-scan` has the output. With cron, the same command in `/etc/cron.d/hostlint` (`17 3 * * * root ...`).
 The server's `--stale-after` webhook tells you about a host that stopped reporting.
 
+## On-demand scans: the agent
+
+A timer scans on a schedule. To scan a host *now* from the dashboard, run `hostlint agent` on it as a service. The
+agent only dials out (the server still never connects to a host): it keeps one HTTPS request open, a long poll, and
+the server answers it when someone clicks **Scan now**.
+
+```sh
+sudo hostlint server token create --name web-01 --host web-01 --key <public key>   # the host's ingest token, as for --push (--key: the public key `key generate` printed)
+sudo hostlint agent --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+```
+
+```ini
+# /etc/systemd/system/hostlint-agent.service
+[Unit]
+Description=hostlint agent (scan when the fleet server asks)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/hostlint agent --server https://hostlint.example.org:8443 --pin sha256/... \
+  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+Restart=always
+RestartSec=10
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+What the server can ask is one thing: a scan with a profile that **this host's own** `--allow-profile` list names
+(one to eight built-in profiles), and at most once a minute. It cannot send waivers, parameters, paths or commands:
+`hostlint.yaml` stays a file of the host, and the result goes back as `hostlint scan --push` sends it: the same
+token, the same `--pin`, the same signature. An agent also refuses a request for a profile it does not allow, or one
+that comes less than a minute after its last scan, and it tells the server why. A server that is compromised can make
+hosts scan more often, up to that limit; nothing else. The agent does not take `--pack`: a result of a policy pack is
+not accepted by the server yet.
+
+The host has to have sent a result once (`hostlint scan --push`), and its token has to be bound to it (`--host`): the
+agent is the host's token, not a new kind of identity. Scheduled scans keep working next to it.
+
+**Who may ask.** The button needs an **operator** token (`hostlint server token create --scope operator --any-host
+--name ops`), or a dashboard session started with one: an operator reads like an `api` token and may also ask for
+scans. A session started with an `api` token sees the host's agent but gets no button. The request is a JSON `POST
+/api/v1/hosts/{id}/scan` with `{"profile": "kisa-2026"}`; from a browser session it is accepted only with an `Origin`
+that is the server's own site, so a page of another site cannot make it (the session cookie is `SameSite=Strict` as
+well). It answers `202` with the job, `409` when no agent of the host polled in the last two minutes or the agent does
+not allow the profile, and `429` when a scan of that host was requested less than a minute ago or is still pending.
+Every request is in the audit chain (`scan-requested`, with the token that made it and the address). The dashboard
+shows the button only for a host whose agent is connected, and follows the request: waiting, scanning, arrived or
+failed. A request nobody answers expires after ten minutes. `GET /api/v1/hosts/{id}/agent` has the same state.
+
 ## Signing people in with your company's identity
 
 The dashboard signs a person in with a read token. To let people in with the sign-in your company already has
@@ -350,4 +402,5 @@ backup first) and the machine can start again under the same name. Deletions are
 hostlint server token list   --db server.db
 hostlint server token revoke --db server.db 3
 hostlint server token create --db server.db --name ci --any-host --expires-in 2160h
+hostlint server token create --db server.db --name ops --scope operator --any-host   # reads, and asks agents for scans
 ```

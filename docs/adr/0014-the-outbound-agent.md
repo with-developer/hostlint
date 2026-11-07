@@ -49,6 +49,23 @@ What an agent adds over a timer that runs `hostlint scan --push` is small, and i
 - A host behind a firewall that allows outbound HTTPS only works, as for `--push`.
 - Not decided here: scheduling inside the agent, policy distribution, remote configuration, mutual TLS enrollment.
 
+## Implementation notes
+
+Built as decided, with these particulars:
+
+- A poll is held for 25 seconds, not 60 (the server's write timeout and proxies that cut a request after a minute);
+  the agent asks again at once, so a healthy agent makes about three requests a minute, and a per-token limit of 12 a
+  minute stops a runaway client.
+- The button needs a new **operator** scope (ADR 0015's minimal "roles": `viewer` is `api`, `operator` is `api` plus
+  asking for scans), not an `api` token: reading the fleet and making hosts scan are different powers. An operator
+  token reads everywhere an `api` token does. Adding the scope rebuilt the `credentials` table (a `CHECK` cannot be
+  altered), keeping its rows and the dashboard sessions.
+- A browser session may ask for a scan only with a JSON body and an `Origin` that is the server's own site; sessions
+  are still never accepted for any other change.
+- A job claimed but never answered, or a request nobody took, expires after ten minutes; one request per host per
+  minute, and one open at a time.
+- The agent has no `--pack`: ADR 0012 keeps results of policy packs out of a fleet server for now.
+
 ## What the owner decided
 
 Approve, change or decline the five points above. Declining 1 (no agent for now) leaves the documentation of timers as

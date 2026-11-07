@@ -59,12 +59,13 @@ against a compromised server) and a webhook for regressions and silent hosts (v0
 
 **Also shipped:** scanning container images from a `docker save` or OCI archive (v0.12), a GitHub Action (v0.13),
 the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy packs, your own checks and profiles
-(v0.15), a Markdown output and a job summary in the Action (v0.16), `hostlint explain` and `hostlint pack facts` (v0.18).
+(v0.15), a Markdown output and a job summary in the Action (v0.16), `hostlint explain` and `hostlint pack facts` (v0.18),
+a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
+(v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)).
 
-**Next (designs waiting for the owner's decision, each with a recommendation):**
-- The outbound agent, for on-demand scans only: [ADR 0014](adr/0014-the-outbound-agent.md).
-- Roles and OIDC for the dashboard: [ADR 0015](adr/0015-dashboard-sign-in.md).
-- A profile selector for the dashboard (the overview adds up profiles today): issue #177.
+**Next:**
+- Roles beyond viewer and operator, and OIDC inside hostlint: not now ([ADR 0015](adr/0015-dashboard-sign-in.md); an
+  authenticating proxy works today).
 - PostgreSQL as an option; waivers managed in the UI.
 
 ## Later
