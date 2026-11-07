@@ -114,10 +114,11 @@ sudo hostlint scan --config hostlint.yaml
 
 | 플래그 | 의미 |
 |---|---|
-| `-p, --profile` | 점검할 프로파일 (기본값 `kisa-2026`) |
+| `-p, --profile` | 점검할 프로파일 (기본값 `kisa-2026`), 반복하면 여러 개를 한 번에 점검 |
 | `-f, --format` | `table`, `json`, `sarif`, `junit` |
 | `-o, --output` | 결과를 파일로 저장 |
 | `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`(기본값), `medium`, `high`, `none` |
+| `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옴 ([docs/packs.ko.md](docs/packs.ko.md)), 팩의 프로파일은 `-p`로 선택 |
 | `--root` | 이 디렉터리에 마운트된 파일시스템을 점검 (운영체제가 있어야 함) |
 | `--image-tar` | 이 아카이브의 컨테이너 이미지 파일시스템을 점검 ([docs/images.ko.md](docs/images.ko.md)) |
 | `--config` | 설정 파일 (기본값: `./hostlint.yaml`, 없으면 `/etc/hostlint/hostlint.yaml`) |
@@ -167,6 +168,10 @@ Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentO
 금지, 이를 되돌리는 `Match` 블록 금지), UID 0과 비밀번호 파일, 비밀번호 길이·해시·사용 기간·잠금, `su`와 sudo,
 cron, 오래된 원격 서비스, 위험한 파일 권한, 시각 동기화를 다룹니다. 컨트롤 20개(`ES-01`–`ES-20`)는 자체 ID를 쓰며, 대부분 다른
 프로파일과 같은 점검 위에 SSH 점검 8개를 더했습니다.
+
+자체 기준은 [정책 팩](docs/packs.ko.md)에 담으세요. 같은 YAML 형식의 점검과 프로파일 디렉터리이며, `hostlint pack
+test`로 테스트하고 `hostlint pack show`로 검토하고 `hostlint scan --pack`으로 씁니다. 팩은 새로운 능력을 더하지
+않으며(아무것도 실행할 수 없고 내장 점검이 읽을 수 없는 것도 읽을 수 없음), 결과에는 팩 이름과 다이제스트가 들어갑니다.
 
 제목과 설명은 hostlint가 직접 작성했고, 프로파일은 컨트롤 ID만 참조합니다.
 

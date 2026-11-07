@@ -89,14 +89,19 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 	if scanTime(newer).Before(scanTime(older)) {
 		d.Notes = append(d.Notes, "the first file is newer than the second: the changes read backwards")
 	}
-	revisions := map[string]int{}
+	revisions, digests := map[string]int{}, map[string]string{}
 	for _, p := range older.Profiles {
-		revisions[p.ID] = p.Revision
+		revisions[p.ID], digests[p.ID] = p.Revision, p.Digest
 	}
 	for _, p := range newer.Profiles {
 		if rev, ok := revisions[p.ID]; ok && rev != p.Revision {
 			d.Notes = append(d.Notes, fmt.Sprintf("profile %s changed from revision %d to %d: controls and checks may differ for that reason", oneLine(p.ID), rev, p.Revision))
+		} else if ok && digests[p.ID] != p.Digest {
+			d.Notes = append(d.Notes, fmt.Sprintf("profile %s has the same revision but another content (the digests differ): controls and checks may differ for that reason", oneLine(p.ID)))
 		}
+	}
+	if a, b := packList(older.Scan.Packs), packList(newer.Scan.Packs); a != b {
+		d.Notes = append(d.Notes, fmt.Sprintf("the scans used different policy packs (%s and %s): checks and controls of a pack are not comparable with those of another version", orNone(a), orNone(b)))
 	}
 
 	oldChecks, newChecks := map[string]engine.CheckResult{}, map[string]engine.CheckResult{}
@@ -299,4 +304,22 @@ func (d *Diff) Regressions() int {
 		}
 	}
 	return n
+}
+
+// packList names the packs of a scan, with their versions and digests, in a form that compares equal
+// exactly when the packs do.
+func packList(packs []engine.PackInfo) string {
+	var out []string
+	for _, p := range packs {
+		out = append(out, fmt.Sprintf("%s %s %s", oneLine(p.Name), oneLine(p.Version), oneLine(p.Digest)))
+	}
+	slices.Sort(out)
+	return strings.Join(out, ", ")
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
 }

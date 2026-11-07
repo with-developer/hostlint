@@ -41,6 +41,10 @@ docker run --rm -v "$PWD":/src:ro -w /src -e GOCACHE=/tmp/gc golang:1.27 go test
    kinds: `setting`, `file`, `violations`, `expect` (a CEL expression) or `manual`.
 3. A **profile** (`profiles/<id>.yaml`) maps a standard's controls to checks.
 
+Checks and profiles of your own do not need a change to hostlint: put them in a
+[policy pack](docs/packs.md) (`hostlint pack test` runs their tests). Built-in checks are the ones that
+belong to everyone; a pack's checks have an area that starts with `x-`.
+
 ### Writing a check
 
 ```yaml

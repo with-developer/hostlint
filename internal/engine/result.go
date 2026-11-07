@@ -69,6 +69,15 @@ type ScanInfo struct {
 	Tool       ToolInfo   `json:"tool"`
 	Target     TargetInfo `json:"target"`
 	Privileges Privileges `json:"privileges"`
+	// Packs are the policy packs the scan used (ADR 0012); absent for a scan of the built-in content.
+	Packs []PackInfo `json:"packs,omitempty"`
+}
+
+// PackInfo identifies a policy pack in a result: its name and version, and the digest of its files.
+type PackInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Digest  string `json:"digest"`
 }
 
 // ToolInfo identifies the hostlint build.

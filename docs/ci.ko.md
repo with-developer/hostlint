@@ -44,7 +44,8 @@ jobs:
 | `image` | 러너에 있는 이미지. `docker save`로 저장해 점검합니다 |
 | `image-tar` | 점검할 `docker save` 또는 OCI 아카이브 |
 | `root` | 러너에 마운트하거나 풀어 둔 루트 파일시스템 |
-| `profile` | 프로파일(기본값 `kisa-2026`, 또는 `config`의 것) |
+| `profile` | 프로파일, 또는 공백으로 구분한 여러 개(기본값 `kisa-2026`, 또는 `config`의 것) |
+| `pack` | 저장소에 있는 [정책 팩](packs.ko.md)(직접 만든 점검과 프로파일 디렉터리), 팩의 프로파일은 `profile`로 선택 |
 | `fail-on` | `low`, `medium`, `high`(기본값), `none` |
 | `config` | [`hostlint.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일이 있는 면제 |
 | `sarif-file` | 점검이 단계를 실패시켜도 SARIF를 여기에도 씁니다 |

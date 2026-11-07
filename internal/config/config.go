@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -61,9 +62,13 @@ type Attestation struct {
 type Waiver struct {
 	Check   string `yaml:"check"`
 	Control string `yaml:"control"`
+	// Profile names the profile of a control waiver, when several are scanned and the ID is in more than one.
+	Profile string `yaml:"profile"`
 	// Revision is the profile revision a control waiver was written for.
-	Revision int    `yaml:"revision"`
-	Reason   string `yaml:"reason"`
+	Revision int `yaml:"revision"`
+	// Digest is the digest of the profile a waiver of a control of a policy pack's profile was written for.
+	Digest string `yaml:"digest"`
+	Reason string `yaml:"reason"`
 	// Expires is the last day the waiver applies, as YYYY-MM-DD.
 	Expires string `yaml:"expires"`
 	// Errors also covers ERROR results.
@@ -145,11 +150,16 @@ func Load(name string) (*File, error) {
 // Validate checks the file against the built-in content and the profile
 // being scanned, reporting every problem.
 func (f *File) Validate(content *engine.Content, profileID string) error {
+	return f.ValidateProfiles(content, []string{profileID})
+}
+
+// ValidateProfiles is Validate for a scan of several profiles at once.
+func (f *File) ValidateProfiles(content *engine.Content, profileIDs []string) error {
 	var errs []string
 	add := func(format string, args ...any) { errs = append(errs, fmt.Sprintf(format, args...)) }
 	// The file's profile matters only when it is the one scanned: --profile
 	// overrides it.
-	if f.Profile != "" && f.Profile == profileID && content.Profiles[f.Profile] == nil {
+	if f.Profile != "" && slices.Contains(profileIDs, f.Profile) && content.Profiles[f.Profile] == nil {
 		add("profile %q does not exist", f.Profile)
 	}
 	for id, params := range f.Params {
@@ -177,20 +187,29 @@ func (f *File) Validate(content *engine.Content, profileID string) error {
 			}
 		}
 	}
-	profile := content.Profiles[profileID]
 	for i, w := range f.Waivers {
 		where := fmt.Sprintf("waivers[%d]", i)
+		// The profile a control waiver is for: the one it names, else the first scanned one that has the control.
+		var profile *engine.Profile
+		for _, id := range profileIDs {
+			if pr := content.Profiles[id]; pr != nil && (w.Profile == "" || w.Profile == id) && hasControl(pr, w.Control) {
+				profile = pr
+				break
+			}
+		}
 		switch {
 		case (w.Check == "") == (w.Control == ""):
 			add("%s: give exactly one of check and control", where)
 		case w.Check != "" && content.Checks[w.Check] == nil:
 			add("%s: unknown check %q", where, w.Check)
-		case w.Control != "" && (profile == nil || !hasControl(profile, w.Control)):
-			add("%s: profile %s has no control %q", where, profileID, w.Control)
+		case w.Control != "" && profile == nil:
+			add("%s: the scanned profile(s) %s have no control %q", where, strings.Join(profileIDs, ", "), w.Control)
 		case w.Control != "" && w.Revision < 1:
 			add("%s: a control waiver needs the profile revision it was written for (revision: %d)", where, revisionOf(profile))
-		case w.Check != "" && w.Revision != 0:
-			add("%s: revision only applies to control waivers", where)
+		case w.Check != "" && (w.Revision != 0 || w.Profile != "" || w.Digest != ""):
+			add("%s: revision, profile and digest only apply to control waivers", where)
+		case w.Control != "" && strings.HasPrefix(profile.ID, engine.PackPrefix) && w.Digest == "":
+			add("%s: a waiver of a control of the pack's profile %s needs its digest (digest: %s, shown in the result and by hostlint pack show)", where, profile.ID, engine.ProfileDigest(profile))
 		}
 		if w.Control != "" && w.Errors {
 			add("%s: errors applies to check waivers; a control with an ERROR check is not waived (waive its checks with errors: true)", where)
@@ -276,7 +295,7 @@ func (f *File) Engine() (map[string]map[string]any, []engine.Waiver) {
 	for _, w := range f.Waivers {
 		expires, _ := time.Parse("2006-01-02", w.Expires)
 		waivers = append(waivers, engine.Waiver{
-			Check: w.Check, Control: w.Control, Revision: w.Revision, Reason: w.Reason,
+			Check: w.Check, Control: w.Control, Profile: w.Profile, Revision: w.Revision, Digest: w.Digest, Reason: w.Reason,
 			Expires: expires, Errors: w.Errors, Hosts: w.Hosts,
 		})
 	}

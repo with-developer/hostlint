@@ -45,10 +45,12 @@ func (e *findingsError) Error() string {
 }
 
 type scanFlags struct {
-	profile, format, output, root, failOn, color, config string
-	pushURL, pin, tokenFile, signKey, imageTar           string
-	labels                                               []string
-	verbose                                              bool
+	format, output, root, failOn, color, config string
+	pushURL, pin, tokenFile, signKey, imageTar  string
+	labels                                      []string
+	profiles, packs                             []string
+	verifyPack                                  bool
+	verbose                                     bool
 }
 
 func newScanCommand() *cobra.Command {
@@ -76,7 +78,9 @@ need protected files (such as /etc/shadow) report ERROR.`,
 		},
 	}
 	fl := cmd.Flags()
-	fl.StringVarP(&f.profile, "profile", "p", "kisa-2026", "profile to check against")
+	fl.StringArrayVarP(&f.profiles, "profile", "p", nil, "profile to check against; repeat it to check several (default: kisa-2026, or the one in hostlint.yaml)")
+	fl.StringArrayVar(&f.packs, "pack", nil, "load a policy pack, a directory of your own checks and profiles (docs/packs.md); repeatable, also HOSTLINT_PACK (a list of directories); select its profile with --profile")
+	fl.BoolVar(&f.verifyPack, "verify-pack", false, "with --pack: run the tests of the pack's checks before the scan, and refuse to scan when one fails")
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: "+strings.Join(output.Formats, ", "))
 	fl.StringVarP(&f.output, "output", "o", "", "write the report to this file instead of stdout")
 	fl.StringVar(&f.root, "root", "/", "scan a filesystem mounted at this directory instead of the running system")
@@ -135,7 +139,20 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
 	}
-	opts := engine.Options{Labels: labels, Profile: f.profile}
+	packDirs := append(slices.Clone(f.packs), splitPackEnv(os.Getenv("HOSTLINT_PACK"))...)
+	if len(packDirs) == 0 && f.verifyPack {
+		return errors.New("--verify-pack is for --pack")
+	}
+	if len(packDirs) > 0 && f.pushURL != "" {
+		// The server cannot tell which pack a result came from, nor trust what a pack makes of it.
+		return errors.New("--push is not for a scan with a policy pack: the result of a pack is not sent to a fleet server yet")
+	}
+	opts := engine.Options{Labels: labels, Profiles: f.profiles}
+	packs, err := addPacks(cmd, content, packDirs)
+	if err != nil {
+		return err
+	}
+	opts.Packs = packs.infos
 	cfgPath, err := config.Find(f.config)
 	if err != nil {
 		return err
@@ -146,17 +163,26 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 			return err
 		}
 		if cfg.Profile != "" && !cmd.Flags().Changed("profile") {
-			opts.Profile = cfg.Profile
+			opts.Profiles = []string{cfg.Profile}
 		}
-		if err := cfg.Validate(content, opts.Profile); err != nil {
+		if len(opts.Profiles) == 0 {
+			opts.Profiles = []string{"kisa-2026"}
+		}
+		if err := cfg.ValidateProfiles(content, opts.Profiles); err != nil {
 			return fmt.Errorf("%s:\n%w", cfgPath, err)
 		}
 		opts.Params, opts.Waivers = cfg.Engine()
 		opts.Attestations = cfg.EngineAttestations()
 	}
+	if len(opts.Profiles) == 0 {
+		opts.Profiles = []string{"kisa-2026"}
+	}
 	e, err := engine.New(content, collect.All()...)
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
+	}
+	if err := packs.check(cmd, e, opts.Profiles, f.verifyPack); err != nil {
+		return err
 	}
 	var h *hostfs.Host
 	if f.imageTar != "" {

@@ -19,7 +19,11 @@ inputs:
     required: false
     default: ""
   profile:
-    description: The profile to check against (default kisa-2026, or the profile of the config file).
+    description: The profile to check against, or several separated by spaces (default kisa-2026, or the profile of the config file).
+    required: false
+    default: ""
+  pack:
+    description: A policy pack in this repository (a directory of your own checks and profiles, docs/packs.md); select its profile with profile. The pack is trusted like your workflow, so use packs of people you trust.
     required: false
     default: ""
   fail-on:
@@ -79,6 +83,7 @@ runs:
         INPUT_IMAGE_TAR: ${{ inputs.image-tar }}
         INPUT_ROOT: ${{ inputs.root }}
         INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_PACK: ${{ inputs.pack }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_CONFIG: ${{ inputs.config }}
         INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
@@ -116,7 +121,16 @@ runs:
           target=(--root "$INPUT_ROOT")
         fi
         common=()
-        if [ -n "$INPUT_PROFILE" ]; then common+=(--profile "$INPUT_PROFILE"); fi
+        set -f # no file name expansion of the profile list
+        for p in $INPUT_PROFILE; do
+          if ! [[ "$p" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "::error::profile is a profile ID, or several separated by spaces, not: $p"
+            exit 2
+          fi
+          common+=(--profile "$p")
+        done
+        set +f
+        if [ -n "$INPUT_PACK" ]; then common+=(--pack "$INPUT_PACK"); fi
         if [ -n "$INPUT_CONFIG" ]; then common+=(--config "$INPUT_CONFIG"); fi
         # The SARIF file first, with nothing that fails: the report is wanted when the gate fails, too.
         if [ -n "$INPUT_SARIF_FILE" ]; then

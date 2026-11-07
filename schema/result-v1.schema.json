@@ -109,6 +109,20 @@
             "root": {"type": "string", "minLength": 1}
           }
         },
+        "packs": {
+          "description": "The policy packs the scan used (ADR 0012). Absent for a scan of the built-in content. A check of a pack has an area that starts with x-, a profile of a pack an ID that starts with x-.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "version", "digest"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "version": {"type": "string", "minLength": 1},
+              "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+            }
+          }
+        },
         "privileges": {
           "type": "object",
           "required": ["euid"],

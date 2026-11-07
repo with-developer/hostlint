@@ -18,10 +18,20 @@ import (
 // imageArchive writes a docker save archive of one layer with the given files.
 func imageArchive(t *testing.T, tag string, files map[string]string) string {
 	t.Helper()
+	return imageArchiveModes(t, tag, files, nil)
+}
+
+// imageArchiveModes is imageArchive with the mode of some files (0644 for the others).
+func imageArchiveModes(t *testing.T, tag string, files map[string]string, modes map[string]int64) string {
+	t.Helper()
 	var layer bytes.Buffer
 	lw := tar.NewWriter(&layer)
 	for name, body := range files {
-		if err := lw.WriteHeader(&tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(body))}); err != nil {
+		mode := int64(0o644)
+		if m, ok := modes[name]; ok {
+			mode = m
+		}
+		if err := lw.WriteHeader(&tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: mode, Size: int64(len(body))}); err != nil {
 			t.Fatal(err)
 		}
 		_, _ = lw.Write([]byte(body))

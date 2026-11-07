@@ -44,7 +44,8 @@ jobs:
 | `image` | An image on the runner, saved with `docker save` and scanned |
 | `image-tar` | A `docker save` or OCI archive to scan |
 | `root` | A root filesystem mounted or unpacked on the runner |
-| `profile` | The profile (default `kisa-2026`, or the one in `config`) |
+| `profile` | The profile, or several separated by spaces (default `kisa-2026`, or the one in `config`) |
+| `pack` | A [policy pack](packs.md) in the repository (a directory of your own checks and profiles); select its profile with `profile` |
 | `fail-on` | `low`, `medium`, `high` (default) or `none` |
 | `config` | A [`hostlint.yaml`](configuration.md): stricter thresholds, waivers with a reason and an expiry |
 | `sarif-file` | Also write SARIF here, even when the scan fails the step |

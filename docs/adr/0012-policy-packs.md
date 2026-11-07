@@ -88,3 +88,11 @@ The owner approved the proposal as written on 2026-11-07 (issue #162):
    identity with `scan --pack`, repeatable `--profile` and `--verify-pack`) and released once.
 4. **Distribution and signing of packs** (a single-file bundle with its digest as the identity, a
    registry) are left for later.
+
+## Status of the work
+
+Done: the loader, `pack test` and `pack show`, `scan --pack` (also `HOSTLINT_PACK` and an input of the GitHub Action),
+repeatable `--profile`, `--verify-pack`, the pack identity in the result (`scan.packs`), the warnings of `diff` and
+`report`, waivers of pack controls bound to the profile digest, and the refusal of `--push` with a pack.
+Deferred: the lint of the literal fact and setting keys of a check against the keys the collectors emit (a
+typo in a map key passes a test with the same typo), and a total cap of the evidence a pack prints.

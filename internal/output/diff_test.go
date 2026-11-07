@@ -204,3 +204,24 @@ func TestDiffJSONListsAreNeverNull(t *testing.T) {
 		}
 	}
 }
+
+// A profile with the same revision and another content, and policy packs that differ, are said in a diff.
+func TestDiffNotesContentAndPacks(t *testing.T) {
+	a, b := readFixture(t, "web-01.json"), readFixture(t, "web-01.json")
+	b.Profiles[0].Digest = "sha256:" + strings.Repeat("a", 64)
+	d := DiffResults("a", a, "b", b)
+	if len(d.Notes) != 1 || !strings.Contains(d.Notes[0], "same revision but another content") {
+		t.Errorf("notes = %v", d.Notes)
+	}
+	pack := engine.PackInfo{Name: "acme", Version: "1.0.0", Digest: "sha256:" + strings.Repeat("b", 64)}
+	a, b = readFixture(t, "web-01.json"), readFixture(t, "web-01.json")
+	b.Scan.Packs = []engine.PackInfo{pack}
+	d = DiffResults("a", a, "b", b)
+	if len(d.Notes) != 1 || !strings.Contains(d.Notes[0], "different policy packs (none and acme 1.0.0") {
+		t.Errorf("notes = %v", d.Notes)
+	}
+	a.Scan.Packs = []engine.PackInfo{pack}
+	if d = DiffResults("a", a, "b", b); len(d.Notes) != 0 {
+		t.Errorf("the same pack was reported as different: %v", d.Notes)
+	}
+}

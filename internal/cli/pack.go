@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -261,4 +262,69 @@ func checkKind(c *engine.Check) string {
 // do not reach the terminal.
 func oneLineText(s string) string {
 	return printable(strings.Join(strings.Fields(s), " "))
+}
+
+// splitPackEnv reads HOSTLINT_PACK: a list of directories separated like PATH.
+func splitPackEnv(v string) []string {
+	var out []string
+	for _, d := range filepath.SplitList(v) {
+		if d != "" {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// loadedPacks are the policy packs a scan uses.
+type loadedPacks struct {
+	infos []engine.PackInfo
+	added []*engine.PackContent
+	notes []string
+}
+
+// addPacks loads the packs in dirs and adds them to the content, in the order given.
+func addPacks(cmd *cobra.Command, content *engine.Content, dirs []string) (*loadedPacks, error) {
+	lp := &loadedPacks{}
+	for _, dir := range dirs {
+		p, err := config.LoadPack(dir)
+		if err != nil {
+			return nil, errors.New(printable(err.Error()))
+		}
+		added, err := content.Extend(p.Source)
+		if err != nil {
+			return nil, errors.New(printable(fmt.Sprintf("pack %s: %v", p.Name, err)))
+		}
+		lp.infos = append(lp.infos, engine.PackInfo{Name: p.Name, Version: p.Version, Digest: p.Digest})
+		lp.added = append(lp.added, added)
+		for _, n := range added.Notes {
+			lp.notes = append(lp.notes, p.Name+": "+n)
+			fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: pack %s: note: %s\n", oneLineText(p.Name), oneLineText(n))
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: using pack %s %s (%s)\n", oneLineText(p.Name), oneLineText(p.Version), p.Digest)
+	}
+	return lp, nil
+}
+
+// check runs after the engine compiled the content: a pack none of whose profiles is selected is an error
+// (a scan that quietly ignores the pack would be a false assurance), and with --verify-pack the tests of
+// the pack's checks run first.
+func (lp *loadedPacks) check(cmd *cobra.Command, e *engine.Engine, selected []string, verify bool) error {
+	for i, added := range lp.added {
+		name := lp.infos[i].Name
+		if len(added.Profiles) > 0 && !slices.ContainsFunc(selected, func(id string) bool { return slices.Contains(added.Profiles, id) }) {
+			return errors.New(printable(fmt.Sprintf("pack %s is loaded, but none of its profiles is selected: add --profile %s", name, strings.Join(added.Profiles, " or --profile "))))
+		}
+		if len(added.Profiles) == 0 {
+			return fmt.Errorf("pack %s has no profile: nothing can select its checks", name)
+		}
+		if verify {
+			if failures := e.RunRuleTestsOf(cmd.Context(), added.Checks); len(failures) > 0 {
+				for _, f := range failures {
+					fmt.Fprintf(cmd.ErrOrStderr(), "FAIL %s\n", oneLineText(f.Error()))
+				}
+				return fmt.Errorf("pack %s fails %d of its own tests: not scanning with it", name, len(failures))
+			}
+		}
+	}
+	return nil
 }

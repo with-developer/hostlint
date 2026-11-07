@@ -343,6 +343,7 @@ func buildReport(inputs []ReportInput, opts ReportOptions) (*reportData, error) 
 		profiles: map[string]int{},
 	}
 	kept, notes := newestPerHost(inputs)
+	notes = append(notes, contentNotes(kept)...)
 	b.data.Notes = notes
 	b.addProfiles(kept)
 	names := map[string]int{}
@@ -560,4 +561,32 @@ func digits(s string) string {
 		i++
 	}
 	return s[:i]
+}
+
+// contentNotes warns when the results of one report were produced with different content: a profile that
+// differs in its content, or policy packs that differ, so that a control of one host may not mean the
+// same as the control of another.
+func contentNotes(inputs []ReportInput) []string {
+	variants := map[string]map[string]bool{} // profile ID and revision → digests (a revision change is shown as it is)
+	packSets := map[string]bool{}
+	for _, in := range inputs {
+		for _, p := range in.Result.Profiles {
+			key := fmt.Sprintf("%s revision %d", p.ID, p.Revision)
+			if variants[key] == nil {
+				variants[key] = map[string]bool{}
+			}
+			variants[key][p.Digest] = true
+		}
+		packSets[packList(in.Result.Scan.Packs)] = true
+	}
+	var notes []string
+	for _, key := range slices.Sorted(maps.Keys(variants)) {
+		if n := len(variants[key]); n > 1 {
+			notes = append(notes, fmt.Sprintf("profile %s was scanned with %d different contents (the digests differ): the hosts' controls may not mean the same", oneLine(key), n))
+		}
+	}
+	if len(packSets) > 1 {
+		notes = append(notes, "the results used different policy packs: checks and controls of a pack are not comparable with those of another version")
+	}
+	return notes
 }

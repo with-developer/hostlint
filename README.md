@@ -114,10 +114,11 @@ described in [docs/configuration.md](docs/configuration.md).
 
 | Flag | Meaning |
 |---|---|
-| `-p, --profile` | Profile to check against (default `kisa-2026`) |
+| `-p, --profile` | Profile to check against (default `kisa-2026`); repeat it to check several at once |
 | `-f, --format` | `table`, `json`, `sarif` or `junit` |
 | `-o, --output` | Write the report to a file |
 | `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
+| `--pack DIR` | Load a policy pack: your own checks and profiles ([docs/packs.md](docs/packs.md)); select its profile with `-p` |
 | `--root` | Scan a filesystem mounted at this directory (it must hold an operating system) |
 | `--image-tar` | Scan the filesystem of a container image from this archive ([docs/images.md](docs/images.md)) |
 | `--config` | Configuration file (default: `./hostlint.yaml`, then `/etc/hostlint/hostlint.yaml`, if present) |
@@ -169,6 +170,11 @@ agree on, outside any national standard: SSH (no root login, no password logins,
 attempts, no X11 forwarding, and no `Match` block that undoes them), UID 0 and password files, password
 length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions
 and time synchronization. It has 20 controls with its own IDs (`ES-01`–`ES-20`), mostly over the checks of the other profile plus eight new SSH checks.
+
+Your own standard goes into a [policy pack](docs/packs.md): a directory of checks and profiles in the same
+YAML format, tested with `hostlint pack test`, reviewed with `hostlint pack show`, used with `hostlint scan
+--pack`. A pack adds no capability (it cannot run anything or read anything a built-in check cannot), and its
+results name the pack and its digest.
 
 Titles and descriptions are hostlint's own; profiles reference control IDs only.
 

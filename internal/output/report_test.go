@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/with-developer/hostlint/internal/engine"
 )
 
 // The fixtures: web-01, an older scan of web-01 that the report leaves out,
@@ -242,5 +244,55 @@ func TestNewestPerHostTieDoesNotDependOnOrder(t *testing.T) {
 	second, _ := newestPerHost([]ReportInput{b, a})
 	if len(first) != 1 || len(second) != 1 || first[0].Name != second[0].Name {
 		t.Errorf("kept %v then %v", first[0].Name, second[0].Name)
+	}
+}
+
+func TestReportWarnsAboutContent(t *testing.T) {
+	a, b := readFixture(t, "web-01.json"), readFixture(t, "web-01.json")
+	b.Host.Hostname = "web-02"
+	in := []ReportInput{{Name: "a.json", Result: a}, {Name: "b.json", Result: b}}
+	d, err := buildReport(in, ReportOptions{Now: time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Notes) != 0 {
+		t.Fatalf("notes = %v", d.Notes)
+	}
+	b.Profiles[0].Digest = "sha256:" + strings.Repeat("c", 64)
+	b.Scan.Packs = []engine.PackInfo{{Name: "acme", Version: "1", Digest: "sha256:" + strings.Repeat("d", 64)}}
+	d, _ = buildReport(in, ReportOptions{Now: time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC)})
+	joined := strings.Join(d.Notes, "\n")
+	if !strings.Contains(joined, "was scanned with 2 different contents") || !strings.Contains(joined, "different policy packs") {
+		t.Errorf("notes = %v", d.Notes)
+	}
+}
+
+func TestResultWithPacksMatchesSchema(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	res.Scan.Packs = []engine.PackInfo{{Name: "acme", Version: "1.0.0", Digest: "sha256:" + strings.Repeat("e", 64)}}
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "json", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	c := jsonschema.NewCompiler()
+	c.AssertFormat()
+	sch, err := c.Compile("../../schema/result-v1.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sch.Validate(doc); err != nil {
+		t.Error(err)
+	}
+	// A pack without a digest is not a pack.
+	res.Scan.Packs[0].Digest = "x"
+	buf.Reset()
+	_ = Write(&buf, res, "json", Options{})
+	doc, _ = jsonschema.UnmarshalJSON(&buf)
+	if err := sch.Validate(doc); err == nil {
+		t.Error("a pack with a bad digest passed the schema")
 	}
 }
