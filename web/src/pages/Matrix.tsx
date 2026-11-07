@@ -19,7 +19,10 @@ export function MatrixPage() {
       <Await state={state} skeleton={<div className="card"><Skeleton height={300} /></div>}>
         {(m) =>
           m.hosts.length === 0 ? (
-            <Empty>{t("overview.empty")}</Empty>
+            <>
+              {m.other ? <p className="muted small">{t("profile.other", { n: m.other })}</p> : null}
+              <Empty>{t("overview.empty")}</Empty>
+            </>
           ) : (
             <>
               {m.other ? <p className="muted small">{t("profile.other", { n: m.other })}</p> : null}

@@ -18,7 +18,10 @@ export function OverviewPage() {
       <Await state={state}>
         {(o) =>
           o.hosts === 0 ? (
-            <Empty>{t("overview.empty")}</Empty>
+            <>
+              {o.hostsOther ? <p className="muted small">{t("profile.other", { n: o.hostsOther })}</p> : null}
+              <Empty>{t("overview.empty")}</Empty>
+            </>
           ) : (
             <div className="stack">
               {o.hostsOther ? <p className="muted small">{t("profile.other", { n: o.hostsOther })}</p> : null}

@@ -37,6 +37,7 @@ export function HostPage({ id }: { id: number }) {
               </div>
               <Gauge score={h.score} label={t("host.passRate")} />
             </header>
+            {h.otherProfile ? <p className="muted small">{t("profile.hostOther", { profiles: (h.profiles ?? []).join(", ") })}</p> : null}
 
             <div className="tabs" role="tablist">
               <button role="tab" aria-selected={tab === "controls"} className={tab === "controls" ? "on" : ""} onClick={() => setTab("controls")}>

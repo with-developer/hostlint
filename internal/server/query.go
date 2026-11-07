@@ -102,12 +102,18 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 	if err != nil {
 		return nil, err
 	}
+	var scored map[int64]Counts // every profile: told apart a scan of another profile from a scan with no controls
+	if profile != "" {
+		if scored, err = s.countsOfLatestScans(ctx, id, ""); err != nil {
+			return nil, err
+		}
+	}
 	cutoff := s.now().UTC().Add(-staleAfter).Format(stampLayout)
 	for i := range all {
 		h := &all[i]
 		h.Counts = counts[h.LatestScan]
 		h.Profile = profile
-		h.OtherProfile = profile != "" && h.LatestScan != 0 && h.Counts == nil
+		h.OtherProfile = profile != "" && h.Counts == nil && len(scored[h.LatestScan]) > 0
 		if h.Counts == nil {
 			h.Counts = Counts{}
 		}
@@ -214,6 +220,8 @@ type ScanRow struct {
 // HostDetail is a host with the controls of its latest scan and its history, newest first.
 type HostDetail struct {
 	HostSummary
+	// Profiles are the profiles of the latest scan; Controls are those of the selected one (all of them without a choice).
+	Profiles []string     `json:"profiles"`
 	Controls []ControlRow `json:"controls"`
 	Scans    []ScanRow    `json:"scans"`
 }
@@ -229,8 +237,25 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration, pr
 	}
 	d := &HostDetail{HostSummary: list[0]}
 	d.Controls = []ControlRow{}
+	d.Profiles = []string{}
 	if d.LatestScan != 0 {
-		rs, err := s.db.QueryContext(ctx, `SELECT profile, control_id, title, severity, status FROM scan_controls WHERE scan_row = ? ORDER BY profile, control_id`, d.LatestScan)
+		ps, err := s.db.QueryContext(ctx, `SELECT DISTINCT profile FROM scan_controls WHERE scan_row = ? ORDER BY profile`, d.LatestScan)
+		if err != nil {
+			return nil, err
+		}
+		for ps.Next() {
+			var p string
+			if err := ps.Scan(&p); err != nil {
+				_ = ps.Close()
+				return nil, err
+			}
+			d.Profiles = append(d.Profiles, p)
+		}
+		if err := ps.Err(); err != nil {
+			return nil, err
+		}
+		_ = ps.Close()
+		rs, err := s.db.QueryContext(ctx, `SELECT profile, control_id, title, severity, status FROM scan_controls WHERE scan_row = ? AND (? = '' OR profile = ?) ORDER BY profile, control_id`, d.LatestScan, profile, profile)
 		if err != nil {
 			return nil, err
 		}
@@ -356,16 +381,16 @@ func (s *Store) Overview(ctx context.Context, staleAfter time.Duration, profile 
 	}
 	o := &Overview{Counts: Counts{}, TopFailing: []FailingControl{}, RecentRegression: []RegressedControl{}, StaleAfterDays: int(staleAfter.Hours() / 24), Profile: profile}
 	for _, h := range hosts {
+		if h.Stale {
+			o.HostsStale++ // that a host is silent does not depend on the profile it scanned with
+		}
 		if h.OtherProfile {
-			o.HostsOther++ // scanned with another profile: not counted here
+			o.HostsOther++ // scanned with another profile: not counted in the rest
 			continue
 		}
 		o.Hosts++
 		if h.Counts["FAIL"] > 0 {
 			o.HostsFailing++
-		}
-		if h.Stale {
-			o.HostsStale++
 		}
 		for st, n := range h.Counts {
 			o.Counts[st] += n

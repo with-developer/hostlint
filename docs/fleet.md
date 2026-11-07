@@ -173,7 +173,7 @@ your proxy: check it against its documentation. Things to know:
 
 Hosts may scan with different profiles (`--profile`, `essentials`, a policy pack), so every number of the dashboard is of
 **one profile**: the overview, the host list, the matrix and the control list take `?profile=ID` and, without it, use the
-profile that most hosts scanned with. A host whose latest scan has none of its controls is not counted: the dashboard
+profile that most hosts scanned with (**a script that read these calls without `profile` before v0.19 now reads one profile: pass `?profile=all` for every profile added up, as before**). A host whose latest scan has none of its controls is not counted in the numbers (a silent host is still counted as stale, whatever it scanned with): the dashboard
 says how many such hosts there are and marks them in the list. In the dashboard a selector in the sidebar picks the
 profile (and remembers it) when there is more than one.
 

@@ -95,6 +95,9 @@ var profileParamRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 // hosts scanned with (hosts that scanned with several profiles would be counted twice otherwise, ADR 0010).
 func (s *Server) selectedProfile(r *http.Request) (string, error) {
 	if v := r.URL.Query().Get("profile"); v != "" {
+		if v == "all" {
+			return "", nil // every profile added up: what the dashboard counted before there were several
+		}
 		if !profileParamRe.MatchString(v) {
 			return "", errors.New("profile is a profile ID")
 		}
@@ -209,7 +212,7 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 func writeHostsCSV(w http.ResponseWriter, hosts []HostSummary) {
 	var b bytes.Buffer
 	cw := csv.NewWriter(&b)
-	_ = cw.Write([]string{"host", "host_id", "last_scan", "stale", "score", "FAIL", "ERROR", "MANUAL", "WAIVED", "PASS", "NOT_APPLICABLE"})
+	_ = cw.Write([]string{"host", "host_id", "last_scan", "stale", "score", "FAIL", "ERROR", "MANUAL", "WAIVED", "PASS", "NOT_APPLICABLE", "profile", "other_profile"})
 	for _, h := range hosts {
 		score := ""
 		if h.Score != nil {
@@ -219,6 +222,7 @@ func writeHostsCSV(w http.ResponseWriter, hosts []HostSummary) {
 		for _, st := range statusOrder {
 			row = append(row, strconv.Itoa(h.Counts[st]))
 		}
+		row = append(row, csvText(h.Profile), strconv.FormatBool(h.OtherProfile))
 		_ = cw.Write(row)
 	}
 	cw.Flush()

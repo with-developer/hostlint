@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Hosts that scan with different profiles are not added up: every number of the dashboard is of one profile.
@@ -101,8 +102,79 @@ func TestProfilesAreNotAddedUp(t *testing.T) {
 	if code, _ := f.get(t, f.api, "/api/v1/overview?profile=A%20b"); code != http.StatusBadRequest {
 		t.Errorf("a bad profile: %d", code)
 	}
-	if !strings.Contains(string(mustGet(t, f, "/api/v1/hosts?profile=essentials&format=csv")), "ess-01") {
-		t.Error("the export does not follow the profile")
+	csvText := string(mustGet(t, f, "/api/v1/hosts?profile=essentials&format=csv"))
+	rows := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(csvText), "\n")[1:] {
+		rows[strings.SplitN(line, ",", 2)[0]] = line
+	}
+	if !strings.HasSuffix(rows["ess-01"], ",essentials,false") || !strings.HasSuffix(rows["web-01"], ",essentials,true") {
+		t.Errorf("the export does not follow the profile:\n%s", csvText)
+	}
+	if !strings.HasPrefix(csvText, "host,host_id,last_scan,stale,score,FAIL,ERROR,MANUAL,WAIVED,PASS,NOT_APPLICABLE,profile,other_profile") {
+		t.Errorf("the columns of the export: %s", strings.SplitN(csvText, "\n", 2)[0])
+	}
+	// ?profile=all adds every profile up, as the dashboard did before there were several.
+	var all Overview
+	f.json(t, "/api/v1/overview?profile=all", &all)
+	if all.Profile != "" || all.Hosts != 4 || all.HostsOther != 0 {
+		t.Errorf("all profiles: hosts %d other %d profile %q", all.Hosts, all.HostsOther, all.Profile)
+	}
+	// The host page: the controls are those of the selected profile, and the profiles of the scan are named.
+	var web HostDetail
+	f.json(t, "/api/v1/hosts/"+strconv.FormatInt(hostID(t, hl.Hosts, "web-01"), 10)+"?profile=essentials", &web)
+	if !web.OtherProfile || len(web.Controls) != 0 || len(web.Profiles) != 1 || web.Profiles[0] != "kisa-2026" {
+		t.Errorf("a host of another profile: other %v controls %d profiles %v", web.OtherProfile, len(web.Controls), web.Profiles)
+	}
+	f.json(t, "/api/v1/hosts/"+strconv.FormatInt(hostID(t, hl.Hosts, "web-01"), 10)+"?profile=kisa-2026", &web)
+	for _, c := range web.Controls {
+		if c.Profile != "kisa-2026" {
+			t.Errorf("a control of %s on the kisa page", c.Profile)
+		}
+	}
+	if web.OtherProfile || len(web.Controls) == 0 {
+		t.Errorf("web-01 under its own profile: other %v controls %d", web.OtherProfile, len(web.Controls))
+	}
+}
+
+func hostID(t *testing.T, hosts []HostSummary, name string) int64 {
+	t.Helper()
+	for _, h := range hosts {
+		if h.Name == name {
+			return h.ID
+		}
+	}
+	t.Fatalf("no host %s", name)
+	return 0
+}
+
+// That a host is silent does not depend on the profile it scanned with, and a scan with no controls is not a scan of another profile.
+func TestProfilesAndStaleHostsAndEmptyScans(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	doc := bytes.ReplaceAll(fixture(t, "web-01.json"), []byte(`"hostname": "web-01"`), []byte(`"hostname": "silent-ess"`))
+	doc = bytes.ReplaceAll(doc, []byte(`019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10`), []byte("silent-1"))
+	doc = bytes.ReplaceAll(doc, []byte(`"kisa-2026"`), []byte(`"essentials"`))
+	if code, out := post(t, f.srv, ingest, doc); code != http.StatusCreated {
+		t.Fatalf("%d %v", code, out)
+	}
+	f.clock = f.clock.Add(30 * 24 * time.Hour) // everyone is silent now
+	var o Overview
+	f.json(t, "/api/v1/overview?profile=kisa-2026", &o)
+	if o.HostsStale != 3 || o.HostsOther != 1 {
+		t.Errorf("stale %d other %d: the silent host of another profile is stale too", o.HostsStale, o.HostsOther)
+	}
+	// A scan whose document has no controls: not "another profile".
+	if _, err := f.store.db.Exec(`DELETE FROM scan_controls WHERE scan_row = (SELECT MAX(id) FROM scans)`); err != nil {
+		t.Fatal(err)
+	}
+	var hl struct {
+		Hosts []HostSummary `json:"hosts"`
+	}
+	f.json(t, "/api/v1/hosts?profile=kisa-2026", &hl)
+	for _, h := range hl.Hosts {
+		if h.Name == "silent-ess" && h.OtherProfile {
+			t.Error("a scan without controls was called a scan of another profile")
+		}
 	}
 }
 
