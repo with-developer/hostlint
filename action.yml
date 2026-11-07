@@ -1,0 +1,107 @@
+name: hostlint
+description: Check a container image, an image archive or a mounted root filesystem against a hardening profile (KISA 2026 by default), and gate the build on what it finds.
+author: with-developer
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  image:
+    description: A container image on this runner (for example one the job just built). It is saved with docker save and scanned. Set one of image, image-tar and root.
+    required: false
+    default: ""
+  image-tar:
+    description: A docker save or OCI archive to scan.
+    required: false
+    default: ""
+  root:
+    description: A root filesystem mounted or unpacked on this runner (a VM disk, a golden image).
+    required: false
+    default: ""
+  profile:
+    description: The profile to check against.
+    required: false
+    default: kisa-2026
+  fail-on:
+    description: Fail the step when a control of this severity or higher fails or cannot be checked - low, medium, high or none.
+    required: false
+    default: high
+  config:
+    description: A hostlint.yaml (profile choice, stricter parameters, waivers with a reason and an expiry).
+    required: false
+    default: ""
+  sarif-file:
+    description: When set, also write the result as SARIF to this file, for GitHub code scanning (github/codeql-action/upload-sarif). It is written even when the scan fails the step.
+    required: false
+    default: ""
+  version:
+    description: The hostlint release to install, such as v0.12.0. By default the release the action itself is pinned to (uses ...@v0.12.0), else the latest. The archive is checked against the signed checksums of the release.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install hostlint
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        ACTION_REF: ${{ github.action_ref }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        version="$INPUT_VERSION"
+        if [ -z "$version" ]; then
+          case "$ACTION_REF" in v[0-9]*.[0-9]*.[0-9]*) version="$ACTION_REF" ;; esac
+        fi
+        bin="$RUNNER_TEMP/hostlint-bin"
+        mkdir -p "$bin"
+        args=(-b "$bin")
+        if [ -n "$version" ]; then args+=(-v "$version"); fi
+        sh "$ACTION_PATH/install.sh" "${args[@]}"
+        echo "$bin" >> "$GITHUB_PATH"
+
+    - name: Scan
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_IMAGE_TAR: ${{ inputs.image-tar }}
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_PROFILE: ${{ inputs.profile }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_SARIF_FILE: ${{ inputs.sarif-file }}
+      run: |
+        set -euo pipefail
+        # The inputs reach the shell as variables, never as text of the script.
+        chosen=0
+        target=()
+        if [ -n "$INPUT_IMAGE" ]; then
+          chosen=$((chosen + 1))
+          if ! [[ "$INPUT_IMAGE" =~ ^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$ ]]; then
+            echo "::error::image is not an image reference: $INPUT_IMAGE"
+            exit 2
+          fi
+          archive="$RUNNER_TEMP/hostlint-image.tar"
+          docker save --output "$archive" "$INPUT_IMAGE"
+          target=(--image-tar "$archive")
+        fi
+        if [ -n "$INPUT_IMAGE_TAR" ]; then
+          chosen=$((chosen + 1))
+          target=(--image-tar "$INPUT_IMAGE_TAR")
+        fi
+        if [ -n "$INPUT_ROOT" ]; then
+          chosen=$((chosen + 1))
+          target=(--root "$INPUT_ROOT")
+        fi
+        if [ "$chosen" -ne 1 ]; then
+          echo "::error::set exactly one of image, image-tar and root"
+          exit 2
+        fi
+        common=(--profile "$INPUT_PROFILE")
+        if [ -n "$INPUT_CONFIG" ]; then common+=(--config "$INPUT_CONFIG"); fi
+        # The SARIF file first, with nothing that fails: the report is wanted when the gate fails, too.
+        if [ -n "$INPUT_SARIF_FILE" ]; then
+          hostlint scan "${target[@]}" "${common[@]}" --format sarif --output "$INPUT_SARIF_FILE" --fail-on none
+        fi
+        hostlint scan "${target[@]}" "${common[@]}" --fail-on "$INPUT_FAIL_ON" --color always

@@ -91,7 +91,7 @@ sudo hostlint scan --root /mnt/image
 # 컨테이너 이미지: docker save가 쓴 아카이브에서 바로. 마운트도, 실행도, 쓰기도 없습니다
 docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
 
-# CI: 심각도 high인 컨트롤이 실패할 때만 실패 처리
+# CI: 심각도 high인 컨트롤이 실패할 때만 실패 처리 (GitHub Action, GitLab 등: docs/ci.ko.md)
 sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 
 # 여러 호스트를 HTML 보고서 하나로: 네트워크 요청을 하지 않는 파일 하나

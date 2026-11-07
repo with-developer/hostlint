@@ -1,0 +1,43 @@
+name: action
+
+# The action of this repository (action.yml), run on an image against the latest release.
+on:
+  pull_request:
+    paths:
+      - "action.yml"
+      - "install.sh"
+      - ".github/workflows/action.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker pull --quiet debian:12
+      - uses: ./
+        with:
+          image: debian:12
+          fail-on: none
+          sarif-file: hostlint.sarif
+      - name: The SARIF file is there and is JSON
+        run: python3 -c 'import json; r = json.load(open("hostlint.sarif")); assert r["runs"][0]["results"], "no results"'
+      - name: A gate that fails fails the step
+        id: gate
+        continue-on-error: true
+        uses: ./
+        with:
+          image: debian:12
+          fail-on: high
+      - name: It did
+        run: test "${{ steps.gate.outcome }}" = failure
+      - name: No input is refused
+        id: none
+        continue-on-error: true
+        uses: ./
+      - run: test "${{ steps.none.outcome }}" = failure

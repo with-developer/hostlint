@@ -91,7 +91,7 @@ sudo hostlint scan --root /mnt/image
 # A container image, from the archive docker save wrote: nothing is mounted, run or written
 docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
 
-# CI: fail only on high-severity controls
+# CI: fail only on high-severity controls (GitHub Action, GitLab and others: docs/ci.md)
 sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 
 # One HTML report for many hosts: a single file that makes no network requests
