@@ -81,6 +81,9 @@ hostlint scan --image-tar app.tar --fail-on high
 <pre>go install github.com/with-developer/hostlint/cmd/hostlint@v0.21.0
 sudo "$(go env GOPATH)/bin/hostlint" scan
 
+# or the container image (the host's root mounted read-only)
+docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root /host
+
 # many hosts, one report
 sudo hostlint scan --format json --output web-01.json
 hostlint report *.json --output report.html</pre>
