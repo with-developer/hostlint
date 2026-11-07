@@ -39,7 +39,7 @@ img.shot{display:block;width:100%;height:auto;border:1px solid var(--line);borde
 <p class="btns"><a class="p" href="#start">Get started</a><a href="https://github.com/with-developer/hostlint">GitHub</a><a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">Rule reference</a></p>
 </header>
 <h2>Why hostlint</h2>
-<ul class="f"><li><h3>Evidence for every verdict</h3><p>The value, the file and line, explicit or default. No "FAIL" without a reason.</p></li><li><h3>No false PASS</h3><p>When a control cannot be decided (an unreadable file, a cut-off scan) the result is ERROR or MANUAL, never a guessed PASS. Configuration is read the way the program reads it: PAM like libpam, login.defs like shadow-utils, shell files like bash.</p></li><li><h3>Observation only</h3><p>Rules are data, not scripts: they cannot run commands. Password hashes, keys and tokens never appear in a result.</p></li><li><h3>Hosts and images</h3><p>Scan a running system, or a filesystem mounted elsewhere (a golden image in CI).</p></li><li><h3>Built for pipelines</h3><p>Table, JSON (with a schema), SARIF and JUnit; one self-contained HTML report for many hosts; waivers with a reason and an expiry in hostlint.yaml.</p></li><li><h3>Signed releases</h3><p>Archives, .deb and .rpm packages, SBOMs and checksums, signed with Sigstore and carrying build provenance.</p></li></ul>
+<ul class="f"><li><h3>Evidence for every verdict</h3><p>The value, the file and line, explicit or default. No "FAIL" without a reason.</p></li><li><h3>No false PASS</h3><p>When a control cannot be decided (an unreadable file, a cut-off scan) the result is ERROR or MANUAL, never a guessed PASS. Configuration is read the way the program reads it: PAM like libpam, login.defs like shadow-utils, shell files like bash.</p></li><li><h3>Observation only</h3><p>Rules are data, not scripts: they cannot run commands. Password hashes, keys and tokens never appear in a result.</p></li><li><h3>Hosts and images</h3><p>Scan a running system, a filesystem mounted elsewhere, or a container image straight from the archive <code>docker save</code> wrote: nothing is mounted, run or written.</p></li><li><h3>Built for pipelines</h3><p>Table, JSON (with a schema), SARIF and JUnit; one self-contained HTML report for many hosts; waivers with a reason and an expiry in hostlint.yaml.</p></li><li><h3>Signed releases</h3><p>Archives, .deb and .rpm packages, SBOMs and checksums, signed with Sigstore and carrying build provenance.</p></li></ul>
 <h2>What it looks like</h2>
 <pre>$ sudo hostlint scan
 hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
@@ -65,6 +65,15 @@ kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
 <p>Hosts scan themselves and push the result to <code>hostlint server</code>, which keeps the history and shows the fleet: pass rate, the controls that fail most, regressions since the last scan, a matrix of every control on every host, and the evidence behind each result. The server never connects to a host. Try it with no host at all: <code>hostlint server demo</code>.</p>
 <img class="shot" src="img/dashboard-overview.png" alt="The overview of the hostlint dashboard: pass rate, status distribution, hosts, the controls that fail most and recent regressions" width="1360" height="900" loading="lazy">
 <img class="shot" src="img/dashboard-matrix.png" alt="The matrix of every control on every host, in the dark theme" width="1360" height="900" loading="lazy">
+<h2>Container images in CI</h2>
+<p>The same checks run on an image before it is deployed. <code>hostlint scan --image-tar</code> reads a <code>docker save</code> or OCI archive with no daemon and no registry, and for every supported distribution it gives the same result as a scan inside a container made from the image. The repository is also a GitHub Action that installs a verified release, uploads SARIF to code scanning and fails the build at the severity you choose.</p>
+<pre>docker save app:1.4 -o app.tar
+hostlint scan --image-tar app.tar --fail-on high
+
+# GitHub Actions
+- uses: with-developer/hostlint@v0.13.0
+  with: {image: "app:ci", fail-on: high, sarif-file: hostlint.sarif}</pre>
+<p><a href="https://github.com/with-developer/hostlint/blob/main/docs/images.md">Scanning images</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/ci.md">Using hostlint in CI</a></p>
 <h2>Supported targets</h2>
 <p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux and AlmaLinux 9, 10 · Amazon Linux 2023 · CentOS/RHEL 7 (best effort). The first profile is the KISA CII technical vulnerability assessment guide, 2026 edition (Unix, U-01–U-67); other baselines are added as profiles over the same checks.</p>
 <h2 id="start">Quick start</h2>

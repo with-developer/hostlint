@@ -39,7 +39,7 @@ img.shot{display:block;width:100%;height:auto;border:1px solid var(--line);borde
 <p class="btns"><a class="p" href="#start">시작하기</a><a href="https://github.com/with-developer/hostlint">GitHub</a><a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">규칙 참조</a></p>
 </header>
 <h2>왜 hostlint인가</h2>
-<ul class="f"><li><h3>모든 판정에 근거</h3><p>값, 그 값이 나온 파일과 줄, 명시한 값인지 기본값인지. 이유를 모르는 FAIL은 없습니다.</p></li><li><h3>잘못된 PASS 없음</h3><p>판단할 수 없으면(읽을 수 없는 파일, 중간에 끊긴 수집) 추측한 PASS 대신 ERROR나 MANUAL을 냅니다. 설정은 프로그램이 읽는 방식대로 읽습니다: PAM은 libpam처럼, login.defs는 shadow-utils처럼, 셸 파일은 bash처럼.</p></li><li><h3>관찰만 합니다</h3><p>규칙은 스크립트가 아니라 데이터라서 명령을 실행할 수 없습니다. 비밀번호 해시, 키, 토큰은 결과에 나오지 않습니다.</p></li><li><h3>운영 호스트와 이미지</h3><p>실행 중인 시스템이나 다른 곳에 마운트한 파일시스템(CI의 골든 이미지)을 점검합니다.</p></li><li><h3>파이프라인에 맞춰</h3><p>표, JSON(스키마 포함), SARIF, JUnit. 여러 호스트를 한 파일 HTML 보고서로. hostlint.yaml에는 사유와 만료일이 있는 예외(waiver).</p></li><li><h3>서명된 릴리스</h3><p>아카이브, .deb·.rpm 패키지, SBOM, 체크섬. Sigstore로 서명하고 빌드 출처 증명을 붙입니다.</p></li></ul>
+<ul class="f"><li><h3>모든 판정에 근거</h3><p>값, 그 값이 나온 파일과 줄, 명시한 값인지 기본값인지. 이유를 모르는 FAIL은 없습니다.</p></li><li><h3>잘못된 PASS 없음</h3><p>판단할 수 없으면(읽을 수 없는 파일, 중간에 끊긴 수집) 추측한 PASS 대신 ERROR나 MANUAL을 냅니다. 설정은 프로그램이 읽는 방식대로 읽습니다: PAM은 libpam처럼, login.defs는 shadow-utils처럼, 셸 파일은 bash처럼.</p></li><li><h3>관찰만 합니다</h3><p>규칙은 스크립트가 아니라 데이터라서 명령을 실행할 수 없습니다. 비밀번호 해시, 키, 토큰은 결과에 나오지 않습니다.</p></li><li><h3>운영 호스트와 이미지</h3><p>실행 중인 시스템, 다른 곳에 마운트한 파일시스템, 또는 <code>docker save</code>가 쓴 아카이브의 컨테이너 이미지를 점검합니다. 마운트도, 실행도, 쓰기도 없습니다.</p></li><li><h3>파이프라인에 맞춰</h3><p>표, JSON(스키마 포함), SARIF, JUnit. 여러 호스트를 한 파일 HTML 보고서로. hostlint.yaml에는 사유와 만료일이 있는 예외(waiver).</p></li><li><h3>서명된 릴리스</h3><p>아카이브, .deb·.rpm 패키지, SBOM, 체크섬. Sigstore로 서명하고 빌드 출처 증명을 붙입니다.</p></li></ul>
 <h2>이렇게 나옵니다</h2>
 <pre>$ sudo hostlint scan
 hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
@@ -65,6 +65,15 @@ kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
 <p>호스트가 스스로 스캔하고 결과를 <code>hostlint server</code>로 보내면, 서버가 이력을 보관하고 플릿을 보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스, 각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 호스트 없이도 <code>hostlint server demo</code>로 써 볼 수 있습니다.</p>
 <img class="shot" src="../img/dashboard-overview.png" alt="hostlint 대시보드 개요: 통과율, 상태 분포, 호스트, 가장 많이 실패하는 컨트롤, 최근 악화" width="1360" height="900" loading="lazy">
 <img class="shot" src="../img/dashboard-matrix.png" alt="모든 호스트의 모든 컨트롤 매트릭스(다크 테마)" width="1360" height="900" loading="lazy">
+<h2>CI의 컨테이너 이미지</h2>
+<p>배포하기 전의 이미지에 같은 점검을 돌립니다. <code>hostlint scan --image-tar</code>는 데몬도 레지스트리도 없이 <code>docker save</code>나 OCI 아카이브를 읽고, 지원하는 모든 배포판에서 그 이미지로 만든 컨테이너 안의 점검과 같은 결과를 냅니다. 저장소는 GitHub Action이기도 해서, 검증된 릴리스를 설치하고 SARIF를 코드 스캐닝에 올리며 고른 심각도에서 빌드를 실패시킵니다.</p>
+<pre>docker save app:1.4 -o app.tar
+hostlint scan --image-tar app.tar --fail-on high
+
+# GitHub Actions
+- uses: with-developer/hostlint@v0.13.0
+  with: {image: "app:ci", fail-on: high, sarif-file: hostlint.sarif}</pre>
+<p><a href="https://github.com/with-developer/hostlint/blob/main/docs/images.ko.md">이미지 점검</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/ci.ko.md">CI에서 hostlint 쓰기</a></p>
 <h2>지원 대상</h2>
 <p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux·AlmaLinux 9, 10 · Amazon Linux 2023 · CentOS/RHEL 7(최선 노력). 첫 프로파일은 KISA 주요정보통신기반시설 기술적 취약점 분석·평가 가이드 2026년판(Unix, U-01–U-67)이고, 다른 기준은 같은 점검 위에 프로파일로 추가합니다.</p>
 <h2 id="start">빠른 시작</h2>
