@@ -143,7 +143,11 @@ runs:
         fi
         # The job summary, also written before the gate. What it shows is escaped, since it comes from the scanned image.
         if [ "$INPUT_SUMMARY" = true ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-          hostlint scan "${target[@]}" "${common[@]}" --format markdown --output "$RUNNER_TEMP/hostlint-summary.md" --fail-on none
-          cat "$RUNNER_TEMP/hostlint-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          # Best effort: a hostlint release from before the markdown format (version: ...) has no summary to give.
+          if hostlint scan "${target[@]}" "${common[@]}" --format markdown --output "$RUNNER_TEMP/hostlint-summary.md" --fail-on none; then
+            cat "$RUNNER_TEMP/hostlint-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::no job summary: this hostlint release cannot write one (it needs v0.16.0 or later); set summary: false to silence this"
+          fi
         fi
         hostlint scan "${target[@]}" "${common[@]}" --fail-on "$INPUT_FAIL_ON" --color always

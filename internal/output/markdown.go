@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/with-developer/hostlint/internal/engine"
@@ -14,7 +15,24 @@ const (
 	maxMarkdownControls = 200
 	maxMarkdownDetails  = 30
 	maxMarkdownEvidence = 5
+	maxMarkdownChecks   = 40
+	// maxMarkdownBytes keeps the report under what a job summary takes (1 MiB) with room to spare: past it
+	// the details stop, and the report says so.
+	maxMarkdownBytes = 700 << 10
+	// maxMarkdownLine is the longest text of one cell, line or evidence line; the rest is cut.
+	maxMarkdownLine = 300
 )
+
+var wwwRe = regexp.MustCompile(`(?i)(www)\.`)
+
+// clip cuts text that is longer than a line of the report.
+func clip(s string) string {
+	r := []rune(s)
+	if len(r) <= maxMarkdownLine {
+		return s
+	}
+	return string(r[:maxMarkdownLine]) + "..."
+}
 
 // mdText makes text safe for Markdown that GitHub, GitLab and others render: what a scan prints comes from
 // the scanned host (a file name, a value in a configuration) or from a pack, and must not become a link, an
@@ -22,7 +40,7 @@ const (
 // character reference, which shows as the character and is nothing else; control characters and line
 // breaks are escaped as in the table.
 func mdText(s string) string {
-	s = oneLine(s)
+	s = clip(oneLine(s))
 	var b strings.Builder
 	for i, r := range s {
 		switch r {
@@ -34,12 +52,23 @@ func mdText(s string) string {
 			} else {
 				b.WriteRune(r)
 			}
+		case '.':
+			// "1. " at the start of a line is a list; "www." makes a link of what follows it.
+			if orderedMarker(s[:i]) {
+				b.WriteString("&#46;")
+			} else {
+				b.WriteRune(r)
+			}
 		default:
 			b.WriteRune(r)
 		}
 	}
-	// "www." makes a link of what follows it.
-	return strings.NewReplacer("www.", "www&#46;", "WWW.", "WWW&#46;", "Www.", "Www&#46;").Replace(b.String())
+	return wwwRe.ReplaceAllString(b.String(), "${1}&#46;")
+}
+
+// orderedMarker reports whether before is only digits: a dot after it starts an ordered list.
+func orderedMarker(before string) bool {
+	return before != "" && strings.Trim(before, "0123456789") == ""
 }
 
 // mdFence puts lines in a code block whose fence is longer than any run of backticks in them.
@@ -148,19 +177,31 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 	}
 	b.WriteString("\n### Details\n\n")
 	for i, c := range attention {
-		if i == maxMarkdownDetails {
-			fmt.Fprintf(&b, "%d more controls have no details here.\n", len(attention)-i)
+		if i == maxMarkdownDetails || b.Len() > maxMarkdownBytes {
+			fmt.Fprintf(&b, "%d more controls have no details here; the JSON result has everything.\n", len(attention)-i)
 			break
 		}
-		fmt.Fprintf(&b, "<details>\n<summary>%s %s &mdash; %s</summary>\n\n", mdText(c.ID), c.Status, mdText(c.Title))
+		name := mdText(c.ID)
+		if multi {
+			name = mdText(c.Profile) + " " + name
+		}
+		fmt.Fprintf(&b, "<details>\n<summary>%s %s &mdash; %s</summary>\n\n", name, c.Status, mdText(c.Title))
+		wrote := false
 		if c.Reason != "" && (len(c.Checks) == 0 || c.Waiver != nil) {
 			fmt.Fprintf(&b, "%s\n\n", mdText(c.Reason))
+			wrote = true
 		}
+		listed := 0
 		for _, ref := range c.Checks {
 			ck, ok := checks[ref]
 			if !ok || ck.Status == engine.StatusPass || ck.Status == engine.StatusNotApplicable {
 				continue
 			}
+			if listed++; listed > maxMarkdownChecks || b.Len() > maxMarkdownBytes {
+				b.WriteString("More checks of this control are not listed here.\n\n")
+				break
+			}
+			wrote = true
 			fmt.Fprintf(&b, "**%s** %s &mdash; %s\n\n", mdText(ck.ID), ck.Status, mdText(ck.Title))
 			if ck.Reason != "" && ck.Status != engine.StatusFail {
 				fmt.Fprintf(&b, "%s\n\n", mdText(ck.Reason))
@@ -171,8 +212,8 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 					ev = append(ev, fmt.Sprintf("... and %d more", len(ck.Evidence)-j))
 					break
 				}
-				text := oneLine(e.Text)
-				if src := oneLine(e.Source); src != "" && !strings.Contains(text, src) {
+				text := clip(oneLine(e.Text))
+				if src := clip(oneLine(e.Source)); src != "" && !strings.Contains(text, src) {
 					text += "  [" + src + "]"
 				}
 				ev = append(ev, text)
@@ -180,6 +221,9 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 			if len(ev) > 0 {
 				b.WriteString(mdFence(ev) + "\n")
 			}
+		}
+		if !wrote && c.Reason != "" {
+			fmt.Fprintf(&b, "%s\n\n", mdText(c.Reason))
 		}
 		b.WriteString("</details>\n\n")
 	}
