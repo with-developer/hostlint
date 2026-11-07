@@ -38,6 +38,8 @@ it is:
 - a control is raised to the severity of the checks it maps, because `--fail-on` gates on the severity of
   the control (the scan says so);
 - a file check lists at most 10 paths, with at most 2 wildcard elements each, none under `/proc`, `/sys` or `/dev`;
+- the `remediation` of a check has no control characters, only line breaks and tabs: that of a failed check is shown in the JSON result, as SARIF help, in the HTML
+  report and in the dashboard, as well as by `hostlint explain`, so it is text and nothing else;
 - every check needs a PASS test, a FAIL test and a test where its input is absent, unavailable or incomplete,
   as the built-in checks do (ADR 0006).
 

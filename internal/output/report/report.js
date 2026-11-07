@@ -286,6 +286,7 @@
       el('div', {class: 'check-head'}, badge(hk.s), ' ', el('code', {}, c.id), ' ', title(c),
         hk.o ? el('span', {class: 'muted'}, ' (was ' + NAME[hk.o] + ')') : null),
       hk.r ? el('p', {class: 'reason'}, str(hk.r)) : null,
+      c.remediation && (hk.s === 'FAIL' || hk.s === 'ERROR' || hk.s === 'WAIVED') ? el('p', {class: 'remedy'}, el('strong', {}, 'How to fix: '), str(c.remediation)) : null,
       hk.a ? attestation(hk.a) : null,
       hk.w ? waiver(hk.w) : null,
       c.params ? el('p', {class: 'muted small'}, 'Parameters: ' + JSON.stringify(c.params)) : null,

@@ -296,3 +296,37 @@ func TestResultWithPacksMatchesSchema(t *testing.T) {
 		t.Error("a pack with a bad digest passed the schema")
 	}
 }
+
+// The report shows how to fix a check once, whichever host failed it first: the first host to scan it may have passed.
+func TestReportKeepsTheFixHintOfAFailingHost(t *testing.T) {
+	inputs := reportInputs(t)
+	var hint string
+	for _, in := range inputs {
+		for i := range in.Result.Checks {
+			c := &in.Result.Checks[i]
+			if c.Status == engine.StatusFail && hint == "" {
+				hint = "Fix " + c.ID
+				c.Remediation = hint
+			}
+		}
+	}
+	if hint == "" {
+		t.Skip("no failing check in the fixtures")
+	}
+	data, err := buildReport(inputs, reportOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, c := range data.Checks {
+		if c.Remediation != "" {
+			n++
+			if c.Remediation != hint {
+				t.Errorf("remediation of %s = %q", c.ID, c.Remediation)
+			}
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d checks carry a hint, want 1", n)
+	}
+}

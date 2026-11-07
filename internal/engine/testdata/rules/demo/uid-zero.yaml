@@ -2,6 +2,8 @@ id: demo.uid-zero
 version: 1
 title: Only root has UID 0
 severity: high
+remediation: >-
+  Give every account but root its own UID, or remove it.
 violations:
   over: svc.users
   as: u

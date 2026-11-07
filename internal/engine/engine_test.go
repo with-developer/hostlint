@@ -174,6 +174,32 @@ func TestScan(t *testing.T) {
 	validateSchema(t, res)
 }
 
+// A check that failed carries the rule's guidance on fixing it; one that passed does not.
+func TestResultCarriesRemediationOfFailures(t *testing.T) {
+	res := scanDemo(t, demoSvc(), false)
+	got := map[string]string{}
+	for _, c := range res.Checks {
+		got[c.ID] = c.Remediation
+	}
+	if got["demo.uid-zero"] != "Give every account but root its own UID, or remove it." {
+		t.Errorf("a failing check: %q", got["demo.uid-zero"])
+	}
+	if got["demo.root-login"] != "" {
+		t.Errorf("a passing check carries a hint: %q", got["demo.root-login"])
+	}
+	if got["demo.conf-perms"] != "" {
+		t.Errorf("a check with no guidance shows %q", got["demo.conf-perms"])
+	}
+	// The hint is prose, not part of what a check decides: it does not change the digest.
+	e := newDemoEngine(t, demoSvc())
+	c := *e.content.Checks["demo.uid-zero"]
+	d1 := checkDigest(&c)
+	c.Remediation = "something else"
+	if checkDigest(&c) != d1 {
+		t.Error("the remediation changed the digest of the check")
+	}
+}
+
 func TestScanCollectorFailures(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -450,3 +450,33 @@ func TestTableHeaderWithoutHostName(t *testing.T) {
 		t.Errorf("header %q", first)
 	}
 }
+
+// The fix hint of a failed check reaches SARIF as the rule's help, which code scanning shows with the alert.
+func TestSARIFCarriesTheFixHintAsHelp(t *testing.T) {
+	res := sampleResult()
+	for i := range res.Checks {
+		if res.Checks[i].Status == engine.StatusFail {
+			res.Checks[i].Remediation = "Set `PermitRootLogin no`."
+		}
+	}
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "sarif", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	var log sarifLog
+	if err := json.Unmarshal(buf.Bytes(), &log); err != nil {
+		t.Fatal(err)
+	}
+	withHelp := 0
+	for _, r := range log.Runs[0].Tool.Driver.Rules {
+		if r.Help != nil {
+			withHelp++
+			if r.ID != "ssh.permit-root-login" || r.Help.Text != "Set `PermitRootLogin no`." {
+				t.Errorf("help on %s: %+v", r.ID, r.Help)
+			}
+		}
+	}
+	if withHelp != 1 {
+		t.Errorf("%d rules have help, want 1", withHelp)
+	}
+}

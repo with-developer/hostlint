@@ -39,6 +39,9 @@ jobs:
           sarif_file: hostlint.sarif
 ```
 
+A failed check carries how to fix it: the alert in code scanning shows it as the rule's help, and the JSON result has it
+in `remediation`. It is the check's own guidance text, the same as `hostlint explain`.
+
 | Input | Meaning |
 |---|---|
 | `image` | An image on the runner, saved with `docker save` and scanned |

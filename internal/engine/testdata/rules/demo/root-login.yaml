@@ -2,6 +2,8 @@ id: demo.root-login
 version: 1
 title: Demo service does not allow root login
 severity: high
+remediation: >-
+  Turn root login off.
 applies: >-
   svc.present
 setting:

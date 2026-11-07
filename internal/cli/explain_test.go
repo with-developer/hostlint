@@ -48,7 +48,7 @@ func TestExplainOfAPackIsEscaped(t *testing.T) {
 	pack := copyExamplePack(t)
 	check := filepath.Join(pack, "rules", "x-acme", "motd-owned-by-root.yaml")
 	data, _ := os.ReadFile(check)
-	text := regexp.MustCompile(`(?m)^remediation: .*$`).ReplaceAllString(string(data), `remediation: "Run \e[2J and then chmod."`)
+	text := regexp.MustCompile(`(?m)^rationale: .*$`).ReplaceAllString(string(data), `rationale: "Run \e[2J and then chmod."`)
 	if err := os.WriteFile(check, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}

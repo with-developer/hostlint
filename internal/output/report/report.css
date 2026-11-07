@@ -142,3 +142,4 @@ details.control > p, details.control > .body { margin: 8px 14px; }
   .table-wrap { max-height: none; overflow: visible; border: 0; }
   a { color: inherit; }
 }
+.remedy { margin: 4px 0; border-left: 3px solid var(--pass, #2a7); padding-left: 8px; }

@@ -60,7 +60,7 @@ against a compromised server) and a webhook for regressions and silent hosts (v0
 **Also shipped:** scanning container images from a `docker save` or OCI archive (v0.12), a GitHub Action (v0.13),
 the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy packs, your own checks and profiles
 (v0.15), a Markdown output and a job summary in the Action (v0.16), `hostlint explain` and `hostlint pack facts` (v0.18),
-a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
+fix hints in the results (v0.21), a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
 (v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)).
 
 **Next:**
@@ -72,4 +72,4 @@ a profile selector in the dashboard (v0.19) and the outbound agent for on-demand
 
 - CIS mapping overlays (control IDs only); packs in the fleet server and agents, packs as a signed bundle or from a registry.
 - More distros (SUSE); scanning an image straight from a registry, zstd layers, an OCI layout directory (#164), an Alpine package reader (#165).
-- Remediation hints in the results, notifications beyond the webhook.
+- Notifications beyond the webhook.

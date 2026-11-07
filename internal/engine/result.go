@@ -149,17 +149,20 @@ type ControlResult struct {
 
 // CheckResult is one check's result.
 type CheckResult struct {
-	Ref             string         `json:"ref"`
-	ID              string         `json:"id"`
-	Version         int            `json:"version"`
-	Digest          string         `json:"digest"`
-	Title           string         `json:"title"`
-	TitleKo         string         `json:"titleKo,omitempty"`
-	Severity        Severity       `json:"severity"`
-	Status          Status         `json:"status"`
-	OriginalStatus  Status         `json:"originalStatus,omitempty"`
-	StatusSource    string         `json:"statusSource"` // observed or attested
-	Reason          string         `json:"reason,omitempty"`
+	Ref            string   `json:"ref"`
+	ID             string   `json:"id"`
+	Version        int      `json:"version"`
+	Digest         string   `json:"digest"`
+	Title          string   `json:"title"`
+	TitleKo        string   `json:"titleKo,omitempty"`
+	Severity       Severity `json:"severity"`
+	Status         Status   `json:"status"`
+	OriginalStatus Status   `json:"originalStatus,omitempty"`
+	StatusSource   string   `json:"statusSource"` // observed or attested
+	Reason         string   `json:"reason,omitempty"`
+	// Remediation is the check's guidance on fixing a failure: static text of the rule, set for a check that
+	// failed or could not be decided, so a result says what to do about what it found.
+	Remediation     string         `json:"remediation,omitempty"`
 	Params          map[string]any `json:"params,omitempty"`
 	Customized      bool           `json:"customized,omitempty"`
 	Evidence        []Evidence     `json:"evidence"`

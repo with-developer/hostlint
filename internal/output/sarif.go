@@ -37,10 +37,12 @@ type sarifDriver struct {
 }
 
 type sarifRule struct {
-	ID               string         `json:"id"`
-	Name             string         `json:"name,omitempty"`
-	ShortDescription sarifText      `json:"shortDescription"`
-	Properties       map[string]any `json:"properties,omitempty"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name,omitempty"`
+	ShortDescription sarifText `json:"shortDescription"`
+	// Help is how to fix a failure; code scanning shows it with the alert.
+	Help       *sarifText     `json:"help,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 type sarifText struct {
@@ -98,10 +100,14 @@ func writeSARIF(w io.Writer, res *engine.Result) error {
 		if ctls == nil {
 			ctls = []string{}
 		}
-		run.Tool.Driver.Rules = append(run.Tool.Driver.Rules, sarifRule{
+		rule := sarifRule{
 			ID: c.Ref, Name: c.ID, ShortDescription: sarifText{Text: c.Title},
 			Properties: map[string]any{"severity": string(c.Severity), "controls": ctls},
-		})
+		}
+		if c.Remediation != "" {
+			rule.Help = &sarifText{Text: c.Remediation}
+		}
+		run.Tool.Driver.Rules = append(run.Tool.Driver.Rules, rule)
 		var level string
 		switch c.Status {
 		case engine.StatusFail:

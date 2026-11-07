@@ -1,4 +1,4 @@
-<!-- translated from docs/ci.md @ 0e1ab81 -->
+<!-- translated from docs/ci.md @ bb0e26f -->
 # CI에서 hostlint 쓰기
 
 hostlint는 파이프라인에 맞춰 만들었습니다. 점검은 데몬도 네트워크 접근도 없는 명령 하나이고, 종료 코드는 고른
@@ -38,6 +38,9 @@ jobs:
         with:
           sarif_file: hostlint.sarif
 ```
+
+실패한 점검에는 조치 방법이 함께 담깁니다. 코드 스캐닝의 경고는 이를 규칙 도움말로 보여 주고, JSON 결과는
+`remediation`에 담습니다. 점검 자체의 안내 문구이며 `hostlint explain`과 같습니다.
 
 | 입력 | 의미 |
 |---|---|

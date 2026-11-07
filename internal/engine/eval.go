@@ -20,12 +20,13 @@ import (
 
 // Evidence and reason bounds (ADR 0006 §8).
 const (
-	maxEvidence     = 50
-	maxEvidenceText = 300
-	maxReasonItems  = 5
-	maxReasonLen    = 1000
-	maxSkipped      = 50
-	maxShownKeys    = 20
+	maxEvidence       = 50
+	maxEvidenceText   = 300
+	maxReasonItems    = 5
+	maxReasonLen      = 1000
+	maxRemediationLen = 1500
+	maxSkipped        = 50
+	maxShownKeys      = 20
 )
 
 // evalEnv is what checks are evaluated against on one host. Evaluation reads

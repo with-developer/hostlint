@@ -160,6 +160,11 @@ function ControlDetail({ control, doc }: { control: ControlRow; doc: ScanDoc }) 
             <StatusBadge status={ch.status} /> <span className="mono">{ch.ref}</span> <span className="muted">{ch.title}</span>
           </div>
           {ch.reason && <p className="muted small">{ch.reason}</p>}
+          {ch.remediation && (
+            <p className="prose remedy small">
+              <strong>{t("host.howToFix")}</strong> {ch.remediation}
+            </p>
+          )}
           {(ch.evidence?.length ?? 0) > 0 ? (
             <pre className="evidence">
               {ch.evidence?.map((e) => `${e.text.startsWith(e.key) ? "" : `${e.key} `}${e.text}${e.source ? `   ${e.source}` : ""}`).join("\n")}

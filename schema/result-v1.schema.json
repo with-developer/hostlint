@@ -238,6 +238,7 @@
         "originalStatus": {"$ref": "#/$defs/status"},
         "statusSource": {"enum": ["observed", "attested"]},
         "reason": {"type": "string"},
+        "remediation": {"description": "How to fix a failure: the check's own guidance, present on a check that failed or could not be decided.", "type": "string"},
         "params": {"description": "Effective parameter values.", "type": "object"},
         "customized": {"type": "boolean"},
         "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},

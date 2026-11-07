@@ -196,7 +196,7 @@ func plainText(c *Check, p *Profile) error {
 	}
 	var errs []error
 	if c != nil {
-		errs = append(errs, line("title", c.Title), line("title_ko", c.TitleKo), prose("failure", c.Failure))
+		errs = append(errs, line("title", c.Title), line("title_ko", c.TitleKo), prose("failure", c.Failure), prose("remediation", c.Remediation))
 		if c.Manual != nil {
 			errs = append(errs, prose("manual.guidance", c.Manual.Guidance))
 		}

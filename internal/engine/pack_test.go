@@ -230,6 +230,19 @@ func TestRunRuleTestsOfRunsOnlyTheNamedChecks(t *testing.T) {
 	}
 }
 
+// The fix hint reaches JSON, SARIF, the report and the dashboard: a pack cannot put control characters in it,
+// though line breaks are fine in prose.
+func TestExtendRefusesControlCharactersInGuidance(t *testing.T) {
+	bad := strings.Replace(packCheck, "remediation: chown root /etc/motd", `remediation: "run \e[2J now"`, 1)
+	if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": bad}, nil)); err == nil || !strings.Contains(err.Error(), "remediation has a control character") {
+		t.Errorf("remediation: %v", err)
+	}
+	ok := strings.Replace(packCheck, "remediation: chown root /etc/motd", "remediation: |\n  chown root /etc/motd\n  then check it", 1)
+	if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": ok}, nil)); err != nil {
+		t.Errorf("a remediation with line breaks: %v", err)
+	}
+}
+
 func TestExtendRefusesControlCharactersInTitles(t *testing.T) {
 	check := strings.Replace(packCheck, "title: /etc/motd is owned by root", `title: "motd \e[2K\r is owned by root"`, 1)
 	if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": check}, nil)); err == nil || !strings.Contains(err.Error(), "title has a control character") {

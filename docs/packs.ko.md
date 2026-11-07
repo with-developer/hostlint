@@ -1,4 +1,4 @@
-<!-- translated from docs/packs.md @ 0e1ab81 -->
+<!-- translated from docs/packs.md @ bb0e26f -->
 # 정책 팩: 직접 만든 점검과 프로파일
 
 정책 팩은 hostlint 자체 콘텐츠와 같은 형식으로 직접 만든 점검과 프로파일을 담은 디렉터리입니다. hostlint를
@@ -36,6 +36,7 @@ hostlint는 팩이 결과를 실제보다 좋아 보이게 만들 수 없도록 
   시 알려 줍니다).
 - 파일 점검은 경로를 최대 10개까지, 각 경로의 와일드카드는 최대 2개까지 나열할 수 있고, `/proc`, `/sys`, `/dev`
   아래는 안 됩니다.
+- 점검의 `remediation`에는 제어 문자가 없고 줄바꿈과 탭만 있습니다. 실패한 점검의 `remediation`은 `hostlint explain`, JSON 결과, SARIF 도움말, HTML 보고서, 대시보드에 보이므로 글자만 허용합니다.
 - 모든 점검에는 내장 점검과 같이(ADR 0006) PASS 테스트, FAIL 테스트, 입력이 없거나 쓸 수 없거나 불완전한 경우의
   테스트가 필요합니다.
 
