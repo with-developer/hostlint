@@ -72,6 +72,12 @@ sudo sh install.sh -v v0.20.0     # read it first; without root, add -b DIR to c
 sudo hostlint scan
 ```
 
+Or run the image (the host's root mounted read-only; [docs/container.md](docs/container.md)):
+
+```sh
+docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root /host
+```
+
 Each [release](https://github.com/with-developer/hostlint/releases) also has `.deb` and `.rpm`
 packages, SBOMs and build provenance (`gh attestation verify FILE -R with-developer/hostlint`).
 To build instead (Go 1.26 or later; the binary itself has no dependencies):

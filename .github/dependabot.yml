@@ -21,3 +21,10 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /packaging/container
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope

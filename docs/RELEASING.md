@@ -82,6 +82,17 @@ After it is published:
 - **A published release is broken.** Mark it as a pre-release with a note pointing to the fixed
   version. Do not delete its files: people may have verified or pinned them.
 
+## The container image
+
+`.github/workflows/container.yml` runs after the Release workflow succeeded (and by hand: Actions, Container image,
+Run workflow, with the tag). It downloads the release archives, verifies `checksums.txt` with Sigstore and every
+file against it, builds `ghcr.io/with-developer/hostlint:<version>` (and `:latest` for a release that is not a
+pre-release) for amd64 and arm64 from `packaging/container/Dockerfile`, signs the image with Sigstore, and stores
+its build provenance and SBOM. It is a separate workflow so that a failure there never holds back a release; rerun it
+for the tag. The first publication creates a **private** package: make it public once (the repository's Packages,
+the package's settings, Change visibility), which GitHub does not allow from a workflow. The base image is pinned by
+digest in the Dockerfile; Dependabot proposes new digests.
+
 ## Locally
 
 `make snapshot` builds every artifact into `dist/` without publishing or signing. SBOMs need
@@ -92,4 +103,4 @@ After it is published:
 
 - Signed apt and yum repositories. They need a signing key held as a secret, which requires the
   owner's approval. Until then, packages are verified through `checksums.txt` and its signature.
-- Container images and Homebrew.
+- Homebrew.
