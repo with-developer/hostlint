@@ -18,5 +18,5 @@ Consequences. Don't edit an accepted ADR to change a decision — add a new ADR 
 | [0011](0011-scan-container-images.md) | Scanning container images from a tar: strict, in memory, bounded, no daemon (accepted) |
 | [0012](0012-policy-packs.md) | Policy packs: your own checks and profiles (accepted) |
 | [0013](0013-essentials-profile.md) | The essentials profile: a short neutral baseline next to kisa-2026 (accepted) |
-| [0014](0014-the-outbound-agent.md) | The outbound agent: on-demand scans only, HTTPS long polling, no new dependency (proposed, waiting for the owner) |
-| [0015](0015-dashboard-sign-in.md) | Signing in to the dashboard: roles with the first writing feature, an authenticating proxy for OIDC (proposed, waiting for the owner) |
+| [0014](0014-the-outbound-agent.md) | The outbound agent: on-demand scans only, HTTPS long polling, no new dependency (accepted) |
+| [0015](0015-dashboard-sign-in.md) | Signing in to the dashboard: roles with the first writing feature, an authenticating proxy for OIDC (accepted) |

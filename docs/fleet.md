@@ -111,6 +111,64 @@ failed: a unit that fails means the scan or the sending did not work, and a fail
 `journalctl -u hostlint-scan` has the output. With cron, the same command in `/etc/cron.d/hostlint` (`17 3 * * * root ...`).
 The server's `--stale-after` webhook tells you about a host that stopped reporting.
 
+## Signing people in with your company's identity
+
+The dashboard signs a person in with a read token. To let people in with the sign-in your company already has
+(Google, Entra ID, Okta, Keycloak: OIDC or SAML), put a reverse proxy that does the sign-in in front of the server
+and let it pass the request on with a read token of its own. hostlint has no sign-in code of its own for this, on
+purpose: a sign-in is the most attacked part of a web application ([ADR 0015](adr/0015-dashboard-sign-in.md)).
+
+The server listens on a loopback address, behind the proxy:
+
+```sh
+hostlint server run --db /var/lib/hostlint/server.db --listen 127.0.0.1:8443 --plain-http --behind-proxy
+hostlint server token create --db /var/lib/hostlint/server.db --scope api --name dashboard-proxy
+```
+
+An outline for nginx with [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/) (`/etc/nginx/hostlint-token.conf`
+holds `proxy_set_header Authorization "Bearer hlt_api_...";`, readable by root only and never shown to a browser):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name hostlint.example.org;
+    # ssl_certificate ...
+
+    # The hosts push with their own ingest tokens: no sign-in for this one path.
+    location = /api/v1/results {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_pass http://127.0.0.1:8443;
+    }
+    location /oauth2/ {
+        proxy_pass http://127.0.0.1:4180;
+        proxy_set_header Host $host;
+    }
+    location = /oauth2/auth {
+        internal;
+        proxy_pass http://127.0.0.1:4180;
+        proxy_set_header Content-Length "";
+        proxy_pass_request_body off;
+    }
+    location / {
+        auth_request /oauth2/auth;
+        error_page 401 = /oauth2/sign_in;
+        include /etc/nginx/hostlint-token.conf;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_pass http://127.0.0.1:8443;
+    }
+}
+```
+
+What was tested is the server's side: a read token on every request makes the dashboard work without its sign-in
+form, and the ingest path stays protected by its tokens. The proxy configuration is an outline of the usual settings of
+your proxy: check it against its documentation. Things to know:
+
+- Anyone who can reach the server's own address (another user of the machine) bypasses the sign-in: keep it on a loopback
+  address, or on a host where only the proxy can reach it, and let nothing else listen next to it.
+- The server's audit trail names the proxy's token, not the person; the proxy's access log has the person.
+- Everyone who gets through the proxy can read everything: restrict who may sign in at the proxy (a group, a domain).
+- Rotate the proxy's token like any other: `server token create`, change the file, `server token revoke`.
+
 ## Reading results
 
 A read token (`--scope api`) lets a script or CI ask the server what it knows:

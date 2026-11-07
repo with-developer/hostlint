@@ -1,6 +1,6 @@
 # 0015. Signing in to the dashboard: roles and OIDC
 
-- Status: Proposed (waiting for the owner; each decision below has a recommendation)
+- Status: Accepted (the owner approved the recommendations on 2026-11-07, issue #189)
 - Date: 2026-11-07
 
 ## Context
@@ -36,7 +36,7 @@ ROADMAP lists "roles and OIDC for the dashboard". Two things are mixed in that l
   `--behind-proxy`, a listen address that is not reachable except by the proxy, a token that never leaves the proxy).
 - The decision on roles and native OIDC is made with a real use in front of us.
 
-## What the owner has to decide
+## What the owner decided
 
 Approve, change or decline the three points. Approving the recommendations means: add the proxy section to the docs, and
 revisit roles and OIDC when a writing feature or a user asks.

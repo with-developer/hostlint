@@ -1,6 +1,6 @@
 # 0014. The outbound agent
 
-- Status: Proposed (waiting for the owner; each decision below has a recommendation)
+- Status: Accepted (the owner approved the recommendations on 2026-11-07, issue #188)
 - Date: 2026-11-07
 
 ## Context
@@ -49,7 +49,7 @@ What an agent adds over a timer that runs `hostlint scan --push` is small, and i
 - A host behind a firewall that allows outbound HTTPS only works, as for `--push`.
 - Not decided here: scheduling inside the agent, policy distribution, remote configuration, mutual TLS enrollment.
 
-## What the owner has to decide
+## What the owner decided
 
 Approve, change or decline the five points above. Declining 1 (no agent for now) leaves the documentation of timers as
 the answer to scheduling; nothing else in the roadmap waits for it.

@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ e8df1e2 -->
+<!-- translated from docs/fleet.md @ d088772 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -110,6 +110,34 @@ sudo systemctl enable --now hostlint-scan.timer
 꺼져 있어서 놓친 점검을 실행합니다. `--fail-on none`은 실패한 컨트롤 때문에 유닛이 실패로 표시되지 않게 합니다. 유닛이 실패했다는 것은
 점검이나 전송이 동작하지 않았다는 뜻이며 알림을 보낼 만한 상태입니다. 출력은 `journalctl -u hostlint-scan`에 있습니다. cron으로는
 `/etc/cron.d/hostlint`에 같은 명령(`17 3 * * * root ...`)을 쓰세요. 서버의 `--stale-after` 웹훅이 보고를 멈춘 호스트를 알려 줍니다.
+
+## 회사의 계정으로 로그인시키기
+
+대시보드는 읽기 토큰으로 사람을 로그인시킵니다. 회사에 이미 있는 로그인(Google, Entra ID, Okta, Keycloak: OIDC 또는 SAML)으로
+사람들이 들어오게 하려면, 로그인을 처리하는 리버스 프록시를 서버 앞에 두고 프록시가 자신의 읽기 토큰으로 요청을 넘기게 하세요.
+hostlint에는 이를 위한 로그인 코드가 일부러 없습니다. 로그인은 웹 애플리케이션에서 가장 많이 공격받는 부분이기 때문입니다
+([ADR 0015](adr/0015-dashboard-sign-in.md)).
+
+서버는 프록시 뒤의 루프백 주소에서 듣습니다.
+
+```sh
+hostlint server run --db /var/lib/hostlint/server.db --listen 127.0.0.1:8443 --plain-http --behind-proxy
+hostlint server token create --db /var/lib/hostlint/server.db --scope api --name dashboard-proxy
+```
+
+nginx와 [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/)의 개요입니다(`/etc/nginx/hostlint-token.conf`에는
+`proxy_set_header Authorization "Bearer hlt_api_...";`가 들어 있고, root만 읽을 수 있으며 브라우저에는 보이지 않습니다).
+설정은 위 영어 문서의 예시와 같습니다. 호스트는 자신의 수집 토큰으로 `/api/v1/results`에 보내므로 이 경로 하나만 로그인 없이
+프록시를 통과시키고, 나머지는 `auth_request`로 로그인한 사람에게만 열어 서버로 넘깁니다.
+
+시험한 것은 서버 쪽입니다. 모든 요청에 읽기 토큰이 있으면 대시보드의 로그인 폼 없이 동작하고, 수집 경로는 토큰으로 계속
+보호됩니다. 프록시 설정은 프록시의 일반적인 설정을 개요로 적은 것이니 프록시의 문서와 대조해 확인하세요. 알아 둘 것:
+
+- 서버 자신의 주소에 닿을 수 있는 사람(같은 머신의 다른 사용자)은 로그인을 우회합니다. 루프백 주소나 프록시만 닿을 수 있는
+  호스트에 두고, 그 옆에서 다른 것이 듣지 않게 하세요.
+- 서버의 감사 기록에는 사람이 아니라 프록시의 토큰이 남습니다. 사람은 프록시의 접근 로그에 있습니다.
+- 프록시를 통과한 사람은 모두 모든 것을 읽을 수 있습니다. 누가 로그인할 수 있는지(그룹, 도메인)를 프록시에서 제한하세요.
+- 프록시의 토큰도 다른 토큰처럼 교체하세요. `server token create`, 파일 변경, `server token revoke`.
 
 ## 결과 조회
 
