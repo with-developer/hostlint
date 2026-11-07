@@ -58,7 +58,9 @@ jobs:
           for arch in amd64 arm64; do
             f="hostlint_${TAG#v}_linux_${arch}.tar.gz"
             # each archive has to be listed in the signed checksums: a missing line must not pass
-            grep -F "  $f" checksums.txt | sha256sum -c -
+            line=$(awk -v f="$f" '$2 == f' checksums.txt) # the line of exactly this file
+            [ -n "$line" ] || { echo "$f is not in the signed checksums" >&2; exit 1; }
+            echo "$line" | sha256sum -c -
             mkdir -p "../ctx/linux-$arch"
             tar -xzf "$f" -C "../ctx/linux-$arch" hostlint
           done
