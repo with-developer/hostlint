@@ -311,11 +311,11 @@ func addPacks(cmd *cobra.Command, content *engine.Content, dirs []string) (*load
 func (lp *loadedPacks) check(cmd *cobra.Command, e *engine.Engine, selected []string, verify bool) error {
 	for i, added := range lp.added {
 		name := lp.infos[i].Name
-		if len(added.Profiles) > 0 && !slices.ContainsFunc(selected, func(id string) bool { return slices.Contains(added.Profiles, id) }) {
-			return errors.New(printable(fmt.Sprintf("pack %s is loaded, but none of its profiles is selected: add --profile %s", name, strings.Join(added.Profiles, " or --profile "))))
-		}
 		if len(added.Profiles) == 0 {
 			return fmt.Errorf("pack %s has no profile: nothing can select its checks", name)
+		}
+		if !slices.ContainsFunc(selected, func(id string) bool { return slices.Contains(added.Profiles, id) }) {
+			return errors.New(printable(fmt.Sprintf("pack %s is loaded, but none of its profiles is selected: add --profile %s", name, strings.Join(added.Profiles, " or --profile "))))
 		}
 		if verify {
 			if failures := e.RunRuleTestsOf(cmd.Context(), added.Checks); len(failures) > 0 {
@@ -327,4 +327,20 @@ func (lp *loadedPacks) check(cmd *cobra.Command, e *engine.Engine, selected []st
 		}
 	}
 	return nil
+}
+
+// uniqueDirs drops a directory named twice (by --pack and HOSTLINT_PACK, say), as the same path.
+func uniqueDirs(dirs []string) []string {
+	var out, seen []string
+	for _, d := range dirs {
+		abs, err := filepath.Abs(d)
+		if err != nil {
+			abs = filepath.Clean(d)
+		}
+		if !slices.Contains(seen, abs) {
+			seen = append(seen, abs)
+			out = append(out, d)
+		}
+	}
+	return out
 }

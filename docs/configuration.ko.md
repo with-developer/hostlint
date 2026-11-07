@@ -1,4 +1,4 @@
-<!-- translated from docs/configuration.md @ 3cf206c -->
+<!-- translated from docs/configuration.md @ aa47e48 -->
 # 설정
 
 hostlint는 설정 없이 동작합니다. `hostlint.yaml`을 두면 프로파일을 고르고, 점검을 더 엄격하게 만들고,
@@ -78,6 +78,8 @@ attestations:
 | `reason` | 필수. 결과를 받아들이는 이유 |
 | `expires` | 필수. 예외가 적용되는 마지막 날, `YYYY-MM-DD` (UTC) |
 | `revision` | 컨트롤 예외에서만, 필수: 예외를 작성할 때의 프로파일 리비전 |
+| `profile` | 컨트롤 예외에서만: 컨트롤의 프로파일. 점검하는 여러 프로파일(`-p` 반복)에 같은 ID의 컨트롤이 있으면 필수 |
+| `digest` | [정책 팩](packs.ko.md)의 프로파일에 있는 컨트롤 예외에서만, 필수: 예외를 작성할 때의 프로파일 다이제스트(팩 작성자가 리비전을 바꾸지 않고도 컨트롤이 매핑하는 것을 바꿀 수 있음). 검증 오류와 결과가 알려 줌 |
 | `hosts` | `web-*` 같은 호스트 이름 패턴. 생략하면 모든 호스트에 적용 |
 | `errors` | 점검 예외에만: `true`면 `ERROR`도 받아들임: 그곳에서는 점검을 실행할 수 없다는 의도적인 결정 |
 

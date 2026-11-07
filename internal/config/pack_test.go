@@ -260,3 +260,30 @@ func TestManifestFields(t *testing.T) {
 		}
 	}
 }
+
+func TestControlWaiverNeedsAProfileWhenTwoHaveTheControl(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Two profiles with a control of the same ID.
+	other := *content.Profiles["essentials"]
+	other.ID = "twin"
+	other.Controls = append([]engine.Control(nil), other.Controls...)
+	other.Controls[0].ID = "U-01"
+	content.Profiles["twin"] = &other
+	f := &File{Waivers: []Waiver{{Control: "U-01", Revision: 15, Reason: "x", Expires: "2099-01-01"}}}
+	err = f.ValidateProfiles(content, []string{"kisa-2026", "twin"})
+	if err == nil || !strings.Contains(err.Error(), "more than one scanned profile has the control") {
+		t.Errorf("err = %v", err)
+	}
+	f.Waivers[0].Profile = "kisa-2026"
+	if err := f.ValidateProfiles(content, []string{"kisa-2026", "twin"}); err != nil {
+		t.Errorf("err = %v", err)
+	}
+	// One profile: no need to say.
+	f.Waivers[0].Profile = ""
+	if err := f.ValidateProfiles(content, []string{"kisa-2026"}); err != nil {
+		t.Errorf("err = %v", err)
+	}
+}

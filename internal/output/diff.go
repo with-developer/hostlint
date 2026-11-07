@@ -96,7 +96,7 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 	for _, p := range newer.Profiles {
 		if rev, ok := revisions[p.ID]; ok && rev != p.Revision {
 			d.Notes = append(d.Notes, fmt.Sprintf("profile %s changed from revision %d to %d: controls and checks may differ for that reason", oneLine(p.ID), rev, p.Revision))
-		} else if ok && digests[p.ID] != p.Digest {
+		} else if ok && digests[p.ID] != "" && p.Digest != "" && digests[p.ID] != p.Digest {
 			d.Notes = append(d.Notes, fmt.Sprintf("profile %s has the same revision but another content (the digests differ): controls and checks may differ for that reason", oneLine(p.ID)))
 		}
 	}

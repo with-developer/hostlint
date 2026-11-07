@@ -189,12 +189,16 @@ func (f *File) ValidateProfiles(content *engine.Content, profileIDs []string) er
 	}
 	for i, w := range f.Waivers {
 		where := fmt.Sprintf("waivers[%d]", i)
-		// The profile a control waiver is for: the one it names, else the first scanned one that has the control.
+		// The profile a control waiver is for: the one it names, else the scanned one that has the control
+		// (when two have it, the waiver has to say which: it is checked against one and applied to one).
 		var profile *engine.Profile
+		holding := 0
 		for _, id := range profileIDs {
 			if pr := content.Profiles[id]; pr != nil && (w.Profile == "" || w.Profile == id) && hasControl(pr, w.Control) {
-				profile = pr
-				break
+				if profile == nil {
+					profile = pr
+				}
+				holding++
 			}
 		}
 		switch {
@@ -204,6 +208,8 @@ func (f *File) ValidateProfiles(content *engine.Content, profileIDs []string) er
 			add("%s: unknown check %q", where, w.Check)
 		case w.Control != "" && profile == nil:
 			add("%s: the scanned profile(s) %s have no control %q", where, strings.Join(profileIDs, ", "), w.Control)
+		case w.Control != "" && holding > 1:
+			add("%s: more than one scanned profile has the control %q: say which one (profile: ...)", where, w.Control)
 		case w.Control != "" && w.Revision < 1:
 			add("%s: a control waiver needs the profile revision it was written for (revision: %d)", where, revisionOf(profile))
 		case w.Check != "" && (w.Revision != 0 || w.Profile != "" || w.Digest != ""):

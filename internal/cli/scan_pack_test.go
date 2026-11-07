@@ -192,3 +192,33 @@ func TestPushWithAPackIsRefused(t *testing.T) {
 		t.Errorf("exit %d, stderr %q", code, stderr)
 	}
 }
+
+func TestSamePackTwiceIsOnePack(t *testing.T) {
+	pack := copyExamplePack(t)
+	t.Setenv("HOSTLINT_PACK", pack)
+	res, _ := scanJSON(t, "--image-tar", packImage(t, 0o644), "--pack", pack, "-p", "x-acme-baseline")
+	if len(res.Scan.Packs) != 1 {
+		t.Errorf("packs = %+v", res.Scan.Packs)
+	}
+}
+
+func TestProfileOfAConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "hostlint.yaml")
+	if err := os.WriteFile(cfg, []byte("profile: essentials\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, _ := scanJSON(t, "--image-tar", packImage(t, 0o644), "--config", cfg)
+	if len(res.Profiles) != 1 || res.Profiles[0].ID != "essentials" {
+		t.Errorf("profiles = %+v", res.Profiles)
+	}
+	// --profile wins over the file.
+	res, _ = scanJSON(t, "--image-tar", packImage(t, 0o644), "--config", cfg, "-p", "kisa-2026")
+	if len(res.Profiles) != 1 || res.Profiles[0].ID != "kisa-2026" {
+		t.Errorf("profiles = %+v", res.Profiles)
+	}
+	// And the default is kisa-2026.
+	if res, _ = scanJSON(t, "--image-tar", packImage(t, 0o644)); res.Profiles[0].ID != "kisa-2026" {
+		t.Errorf("profiles = %+v", res.Profiles)
+	}
+}

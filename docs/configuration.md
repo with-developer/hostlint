@@ -78,6 +78,8 @@ reported as `WAIVED` with the reason, and keeps its original status and evidence
 | `reason` | Required. Why the result is accepted |
 | `expires` | Required. The last day the waiver applies, `YYYY-MM-DD` (UTC) |
 | `revision` | Control waivers only, required: the profile revision the waiver was written for |
+| `profile` | Control waivers only: the profile of the control, required when several scanned profiles (`-p` repeated) have a control with this ID |
+| `digest` | Control waivers of a [policy pack](packs.md)'s profile only, required: the digest of the profile the waiver was written for (a pack author can change what a control maps without changing the revision); the validation error and the result give it |
 | `hosts` | Hostname globs such as `web-*`; the waiver applies to every host when omitted |
 | `errors` | Check waivers only: `true` to also accept `ERROR`: a deliberate decision that the check cannot run there |
 

@@ -1,4 +1,4 @@
-<!-- translated from docs/ci.md @ bf9d7cd -->
+<!-- translated from docs/ci.md @ aa47e48 -->
 # CI에서 hostlint 쓰기
 
 hostlint는 파이프라인에 맞춰 만들었습니다. 점검은 데몬도 네트워크 접근도 없는 명령 하나이고, 종료 코드는 고른

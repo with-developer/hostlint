@@ -44,6 +44,9 @@ func (e *findingsError) Error() string {
 	return fmt.Sprintf("%d control(s) failed or could not be checked at severity %s or above", e.controls, e.threshold)
 }
 
+// defaultProfile is scanned when neither --profile nor hostlint.yaml names one.
+const defaultProfile = "kisa-2026"
+
 type scanFlags struct {
 	format, output, root, failOn, color, config string
 	pushURL, pin, tokenFile, signKey, imageTar  string
@@ -139,7 +142,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
 	}
-	packDirs := append(slices.Clone(f.packs), splitPackEnv(os.Getenv("HOSTLINT_PACK"))...)
+	packDirs := uniqueDirs(append(slices.Clone(f.packs), splitPackEnv(os.Getenv("HOSTLINT_PACK"))...))
 	if len(packDirs) == 0 && f.verifyPack {
 		return errors.New("--verify-pack is for --pack")
 	}
@@ -157,25 +160,27 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return err
 	}
+	var cfg *config.File
 	if cfgPath != "" {
-		cfg, err := config.Load(cfgPath)
-		if err != nil {
+		if cfg, err = config.Load(cfgPath); err != nil {
 			return err
 		}
-		if cfg.Profile != "" && !cmd.Flags().Changed("profile") {
+	}
+	// The profiles to scan with: --profile, else the one of hostlint.yaml, else the default.
+	if len(opts.Profiles) == 0 {
+		switch {
+		case cfg != nil && cfg.Profile != "":
 			opts.Profiles = []string{cfg.Profile}
+		default:
+			opts.Profiles = []string{defaultProfile}
 		}
-		if len(opts.Profiles) == 0 {
-			opts.Profiles = []string{"kisa-2026"}
-		}
+	}
+	if cfg != nil {
 		if err := cfg.ValidateProfiles(content, opts.Profiles); err != nil {
 			return fmt.Errorf("%s:\n%w", cfgPath, err)
 		}
 		opts.Params, opts.Waivers = cfg.Engine()
 		opts.Attestations = cfg.EngineAttestations()
-	}
-	if len(opts.Profiles) == 0 {
-		opts.Profiles = []string{"kisa-2026"}
 	}
 	e, err := engine.New(content, collect.All()...)
 	if err != nil {
