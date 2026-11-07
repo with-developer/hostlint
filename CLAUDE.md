@@ -24,7 +24,7 @@ Released (see [docs/ROADMAP.md](docs/ROADMAP.md) for what each version added). K
   (proves those rules fire, using `internal/lintguard`), and a `go.mod` tidiness check. Builds the
   pinned linter into `.tools/` on first run
 - `make fmt` — format the code
-- `make docs` — regenerate `docs/rules.md` (the rule reference) from `rules/` and `profiles/`;
+- `make docs` — regenerate `docs/rules.md` (the rule reference) and `docs/facts.md` from `rules/`, `profiles/` and the collectors;
   `make test` fails when it is stale
 - `make vuln` — govulncheck
 - `make snapshot` — build every release artifact into `dist/` without publishing (GoReleaser;
