@@ -97,6 +97,9 @@ sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 # 여러 호스트를 HTML 보고서 하나로: 네트워크 요청을 하지 않는 파일 하나
 hostlint report results/*.json --output report.html
 
+# 실패한 컨트롤이 무슨 뜻이고 어떻게 고치는지
+hostlint explain U-02 ssh.permit-root-login
+
 # 지난 스캔 이후 무엇이 바뀌었나: 새로 실패한 것, 해결된 것, 그 원인이 된 점검
 hostlint diff before.json after.json
 hostlint diff baseline.json current.json --fail-on-regression   # 컨트롤이 나빠지면 종료 코드 1

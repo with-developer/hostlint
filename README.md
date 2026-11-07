@@ -97,6 +97,9 @@ sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 # One HTML report for many hosts: a single file that makes no network requests
 hostlint report results/*.json --output report.html
 
+# What a failed control means and how to fix it
+hostlint explain U-02 ssh.permit-root-login
+
 # What changed since the last scan: new failures, fixes, and the checks behind them
 hostlint diff before.json after.json
 hostlint diff baseline.json current.json --fail-on-regression   # exit 1 when a control got worse
