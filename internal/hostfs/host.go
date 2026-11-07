@@ -21,7 +21,11 @@ type Host struct {
 	// Mounts are the filesystems mounted at or below the target's root, as
 	// seen by hostlint when the target was opened; nil when unknown.
 	Mounts []Mount
+	// Image is true when the target is the filesystem of a container image (ADR 0011): nothing is mounted
+	// in it and nothing of the scanner's system is in it, so the host-only exclusions do not apply.
+	Image bool
 
+	label string // Image: what the report calls the host
 	close func() error
 }
 
@@ -29,6 +33,9 @@ type Host struct {
 // system, otherwise the first name in /etc/hostname (hostname(5): lines
 // starting with "#" are comments). It is "" when neither is available.
 func (h *Host) Hostname() string {
+	if h.Image {
+		return h.label
+	}
 	if h.Live {
 		if name, err := os.Hostname(); err == nil {
 			return name
@@ -62,4 +69,13 @@ func NewTestHost(fsys FS, runner Runner, live bool) *Host {
 		runner = unavailableRunner{reason: "not a live host"}
 	}
 	return &Host{FS: fsys, Runner: runner, Root: "/", Live: live}
+}
+
+// NewImageHost returns the Host of a container image: not live, no command can run, and the mount table is
+// known to be empty. label names it in the report (an image reference or a file name).
+func NewImageHost(fsys *ImageFS, label string) *Host {
+	return &Host{
+		FS: fsys, Runner: unavailableRunner{reason: "a container image is not a running system"},
+		Root: "image:" + label, Mounts: []Mount{}, Image: true, label: label,
+	}
 }

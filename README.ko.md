@@ -54,8 +54,8 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
   실행할 수 없습니다. 비밀번호 해시, 키, 토큰은 결과에 나오지 않습니다.
 - **기준은 덧씌우는 방식입니다.** 점검은 한 번 작성하고 컨트롤에 매핑합니다. 첫 프로파일은
   주요정보통신기반시설 기술적 취약점 분석·평가 가이드 2026년판(Unix U-01–U-67)입니다.
-- **운영 중인 호스트와 이미지 모두.** 실행 중인 시스템을 점검하거나, 다른 곳에 마운트한 루트
-  파일시스템(`--root`, 예: CI의 골든 이미지)을 점검합니다.
+- **운영 중인 호스트와 이미지 모두.** 실행 중인 시스템, 다른 곳에 마운트한 루트 파일시스템
+  (`--root`), 또는 `docker save`가 쓴 아카이브의 컨테이너 이미지(`--image-tar`)를 점검합니다.
 - **파이프라인에 맞춰 만들었습니다.** 터미널 표, JSON(스키마 포함), SARIF, JUnit을 지원하고, 종료
   코드는 지정한 심각도를 따릅니다.
 
@@ -88,6 +88,9 @@ sudo hostlint scan --format json --output web-01.json
 # 마운트한 루트 파일시스템(이미지, VM 디스크). 운영 중일 때만 알 수 있는 점검은 ERROR나 NOT_APPLICABLE
 sudo hostlint scan --root /mnt/image
 
+# 컨테이너 이미지: docker save가 쓴 아카이브에서 바로. 마운트도, 실행도, 쓰기도 없습니다
+docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
+
 # CI: 심각도 high인 컨트롤이 실패할 때만 실패 처리
 sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 
@@ -116,6 +119,7 @@ sudo hostlint scan --config hostlint.yaml
 | `-o, --output` | 결과를 파일로 저장 |
 | `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`(기본값), `medium`, `high`, `none` |
 | `--root` | 이 디렉터리에 마운트된 파일시스템을 점검 (운영체제가 있어야 함) |
+| `--image-tar` | 이 아카이브의 컨테이너 이미지 파일시스템을 점검 ([docs/images.ko.md](docs/images.ko.md)) |
 | `--config` | 설정 파일 (기본값: `./hostlint.yaml`, 없으면 `/etc/hostlint/hostlint.yaml`) |
 | `--label key=value` | 결과의 호스트 정보에 라벨 추가 |
 | `--color` | `auto`(기본값), `always`, `never` |

@@ -103,7 +103,10 @@ func (filesystemCollector) Collect(ctx context.Context, h *hostfs.Host) (engine.
 
 	excluded := map[string]string{}
 	for p, why := range excludedPaths {
-		excluded[p] = why
+		// An image can hold files anywhere; only /dev is walked on its own.
+		if !h.Image || p == "/dev" {
+			excluded[p] = why
+		}
 	}
 	if h.Mounts == nil {
 		w.skipped = append(w.skipped, "the mount table is unknown, so only well-known paths are excluded from the walk")

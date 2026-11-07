@@ -15,6 +15,7 @@ import (
 	"github.com/with-developer/hostlint/internal/config"
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/hostlint/internal/image"
 	"github.com/with-developer/hostlint/internal/output"
 	"github.com/with-developer/hostlint/internal/signing"
 	"github.com/with-developer/hostlint/internal/version"
@@ -45,7 +46,7 @@ func (e *findingsError) Error() string {
 
 type scanFlags struct {
 	profile, format, output, root, failOn, color, config string
-	pushURL, pin, tokenFile, signKey                     string
+	pushURL, pin, tokenFile, signKey, imageTar           string
 	labels                                               []string
 	verbose                                              bool
 }
@@ -64,6 +65,9 @@ need protected files (such as /etc/shadow) report ERROR.`,
   sudo hostlint scan --format json --output web-01.json
   sudo hostlint scan --root /mnt/image --fail-on high
 
+  # scan a container image from the archive docker save wrote (nothing is mounted or run)
+  docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
+
   # scan and send the result to a hostlint server (the token is in HOSTLINT_TOKEN)
   sudo hostlint scan --push https://hostlint.example.org:8443 --pin sha256/...`,
 		Args: cobra.NoArgs,
@@ -76,6 +80,7 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: "+strings.Join(output.Formats, ", "))
 	fl.StringVarP(&f.output, "output", "o", "", "write the report to this file instead of stdout")
 	fl.StringVar(&f.root, "root", "/", "scan a filesystem mounted at this directory instead of the running system")
+	fl.StringVar(&f.imageTar, "image-tar", "", "scan the filesystem of a container image from this archive (docker save, or an OCI layout) instead of a host (docs/images.md)")
 	fl.StringVar(&f.failOn, "fail-on", "low", "exit with status 1 when a control of this severity or higher fails or could not be checked (ERROR): "+strings.Join(failOnLevels, ", "))
 	fl.StringArrayVar(&f.labels, "label", nil, "add a key=value label to the host in the report (repeatable)")
 	fl.BoolVarP(&f.verbose, "verbose", "v", false, "also list passing and not-applicable controls in the table")
@@ -101,6 +106,14 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	labels, err := parseLabels(f.labels)
 	if err != nil {
 		return err
+	}
+	if f.imageTar != "" {
+		switch {
+		case f.root != "/":
+			return errors.New("--image-tar and --root exclude each other")
+		case f.pushURL != "":
+			return errors.New("--push is not for an image: it has no host identity to send results under")
+		}
 	}
 	// A scan that cannot be sent is found out before it runs, not after.
 	token := ""
@@ -145,8 +158,14 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if err != nil {
 		return fmt.Errorf("built-in content: %w", err)
 	}
-	h, err := hostfs.Open(f.root)
-	if err != nil {
+	var h *hostfs.Host
+	if f.imageTar != "" {
+		img, err := image.Load(cmd.Context(), f.imageTar)
+		if err != nil {
+			return fmt.Errorf("--image-tar %s: %w", f.imageTar, err)
+		}
+		h = hostfs.NewImageHost(img.FS, img.Label)
+	} else if h, err = hostfs.Open(f.root); err != nil {
 		return err
 	}
 	defer h.Close()
@@ -156,6 +175,10 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	res, err := e.Scan(cmd.Context(), h, opts)
 	if err != nil {
 		return err
+	}
+	if f.imageTar != "" && res.Host.OS.ID == "unknown" {
+		// A scratch or distroless image has no operating system to judge: absent files would pass.
+		return fmt.Errorf("--image-tar %s: no operating system found in the image (no os-release): a scratch or distroless image cannot be checked", f.imageTar)
 	}
 	if f.root != "/" && res.Host.OS.ID == "unknown" {
 		// Without an operating system, absent files would read as passing

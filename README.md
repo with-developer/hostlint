@@ -54,8 +54,8 @@ telnet service added (the host name is shortened).
   run commands. Password hashes, keys and tokens never appear in the output.
 - **Standards as overlays.** Checks are written once and mapped to controls; the first profile is
   the 2026 edition of Korea's KISA CII technical vulnerability guide (Unix U-01–U-67).
-- **Live hosts and images.** Scan the running system, or a root filesystem mounted elsewhere
-  (`--root`) such as a golden image in CI.
+- **Live hosts and images.** Scan the running system, a root filesystem mounted elsewhere
+  (`--root`), or a container image straight from the archive `docker save` wrote (`--image-tar`).
 - **Built for pipelines.** Terminal table, JSON (with a schema), SARIF and JUnit; the exit code
   follows the severity you choose.
 
@@ -88,6 +88,9 @@ sudo hostlint scan --format json --output web-01.json
 # A mounted root filesystem (an image, a VM disk); live-only checks report ERROR or NOT_APPLICABLE
 sudo hostlint scan --root /mnt/image
 
+# A container image, from the archive docker save wrote: nothing is mounted, run or written
+docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
+
 # CI: fail only on high-severity controls
 sudo hostlint scan --fail-on high --format junit --output hostlint.xml
 
@@ -116,6 +119,7 @@ described in [docs/configuration.md](docs/configuration.md).
 | `-o, --output` | Write the report to a file |
 | `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
 | `--root` | Scan a filesystem mounted at this directory (it must hold an operating system) |
+| `--image-tar` | Scan the filesystem of a container image from this archive ([docs/images.md](docs/images.md)) |
 | `--config` | Configuration file (default: `./hostlint.yaml`, then `/etc/hostlint/hostlint.yaml`, if present) |
 | `--label key=value` | Add a label to the host in the report |
 | `--color` | `auto` (default), `always` or `never` |

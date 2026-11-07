@@ -239,3 +239,52 @@ func diff(want, got string) string {
 	}
 	return b.String()
 }
+
+// TestE2EImage scans the stock image of every distribution from its `docker save` archive
+// (hostlint scan --image-tar, ADR 0011) and compares the control and check statuses with those of the
+// scan inside a running container: an image and the container made from it must agree.
+func TestE2EImage(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "hostlint")
+	cmd := exec.Command("go", "build", "-trimpath", "-o", bin, "../cmd/hostlint")
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v\n%s", err, out)
+	}
+	for _, d := range distros {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			run(t, "docker", "pull", "--quiet", d.image)
+			archive := filepath.Join(t.TempDir(), "image.tar")
+			run(t, "docker", "save", "--output", archive, d.image)
+			out := run(t, bin, "scan", "--image-tar", archive, "--format", "json", "--fail-on", "none")
+			var res engine.Result
+			if err := json.Unmarshal([]byte(out), &res); err != nil {
+				t.Fatalf("result: %v\n%.500s", err, out)
+			}
+			if res.Scan.Target.Kind != "root" || !strings.HasPrefix(res.Scan.Target.Root, "image:") {
+				t.Errorf("target = %+v", res.Scan.Target)
+			}
+			want, err := os.ReadFile(filepath.Join("testdata", d.name+"-stock.golden"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, w := statuses(summary(&res)), statuses(string(want)); got != w {
+				t.Errorf("the image and its container disagree:\n%s", diff(w, got))
+			}
+		})
+	}
+}
+
+// statuses keeps the lines of a summary that hold a status of a control or a check.
+func statuses(summary string) string {
+	var keep []string
+	for _, l := range strings.Split(summary, "\n") {
+		if strings.HasPrefix(l, "U-") || (strings.HasPrefix(l, "  ") && !strings.HasPrefix(l, "    ")) {
+			if i := strings.Index(l, ":"); i >= 0 {
+				l = l[:i] // the reason can name the live system
+			}
+			keep = append(keep, l)
+		}
+	}
+	return strings.Join(keep, "\n")
+}

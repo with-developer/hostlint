@@ -66,5 +66,5 @@ regressions and silent hosts (v0.11).
 ## Later
 
 - CIS mapping overlays (control IDs only), custom policy packs.
-- More distros (SUSE); scanning a container image without mounting it (`--root` scans a mounted root).
+- More distros (SUSE); scanning an image straight from a registry, and zstd layers (`--image-tar` reads `docker save` and OCI archives, v0.12).
 - Remediation hints, scheduled scans, notifications.
