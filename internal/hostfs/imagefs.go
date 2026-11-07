@@ -30,6 +30,7 @@ type imgNode struct {
 	// large", never as empty or absent.
 	notKept  bool
 	denied   bool // content reads refused (a hard link to a denylisted file)
+	links    *int // how many names the file has: hard links share it
 	target   string
 	children map[string]*imgNode
 	layer    int
@@ -127,8 +128,9 @@ func (b *ImageBuilder) Finish() *ImageFS {
 	return &ImageFS{root: b.root}
 }
 
-// Nodes is the number of files, directories and links so far.
-func (b *ImageBuilder) Nodes() int { return b.nodes }
+// Fits reports whether the contents of a file of size bytes still fit in the budget: ask before reading
+// them into memory.
+func (b *ImageBuilder) Fits(size int64) bool { return b.kept+size <= MaxImageContent }
 
 func newDir(layer int) *imgNode {
 	return &imgNode{mode: fs.ModeDir | 0o755, children: map[string]*imgNode{}, mtime: memModTime, layer: layer}
@@ -169,7 +171,7 @@ func (b *ImageBuilder) parent(p string, create bool) (*imgNode, string, error) {
 		switch {
 		case next.mode&fs.ModeSymlink != 0:
 			if links++; links > maxImageLinks {
-				return nil, "", fmt.Errorf("%s: %w", p, errLoop)
+				return nil, "", fmt.Errorf("%q: %w", p, errLoop)
 			}
 			if path.IsAbs(next.target) {
 				stack = stack[:1]
@@ -221,6 +223,9 @@ func (b *ImageBuilder) release(n *imgNode) {
 			b.kept -= int64(len(n.content.data))
 		}
 	}
+	if n.links != nil {
+		*n.links--
+	}
 	b.nodes--
 }
 
@@ -255,10 +260,11 @@ func (b *ImageBuilder) Add(e ImageEntry) error {
 	case ImageDir:
 		n.mode, n.children = fs.ModeDir|modeFromPerm(e.Perm), map[string]*imgNode{}
 	case ImageFile:
-		n.mode, n.size = modeFromPerm(e.Perm), e.Size
+		n.mode, n.size, n.links = modeFromPerm(e.Perm), e.Size, new(int)
+		*n.links = 1
 		if e.Keep {
 			if int64(len(e.Data)) != e.Size {
-				return fmt.Errorf("%s: %d bytes kept of %d", e.Path, len(e.Data), e.Size)
+				return fmt.Errorf("%q: %d bytes kept of %d", e.Path, len(e.Data), e.Size)
 			}
 			if b.kept+e.Size > MaxImageContent {
 				return fmt.Errorf("more than %d MiB of file contents: %w", MaxImageContent>>20, ErrImageLimit)
@@ -270,21 +276,21 @@ func (b *ImageBuilder) Add(e ImageEntry) error {
 		}
 	case ImageSymlink:
 		if e.Target == "" || len(e.Target) > maxImagePath || strings.ContainsRune(e.Target, 0) {
-			return fmt.Errorf("%s: not a usable link target", e.Path)
+			return fmt.Errorf("%q: not a usable link target", e.Path)
 		}
 		n.mode, n.target = fs.ModeSymlink|0o777, e.Target
 	case ImageSpecial:
 		n.mode = e.Special | modeFromPerm(e.Perm)
 	case ImageHardlink:
 		if err := checkImagePath(e.Target); err != nil {
-			return fmt.Errorf("%s: hard link target: %w", e.Path, err)
+			return fmt.Errorf("%q: hard link target: %w", e.Path, err)
 		}
 		t, err := b.lookup(e.Target)
 		if err != nil {
-			return fmt.Errorf("%s: hard link to %s: %w", e.Path, e.Target, err)
+			return fmt.Errorf("%q: hard link to %s: %w", e.Path, e.Target, err)
 		}
 		if t.mode.IsDir() {
-			return fmt.Errorf("%s: hard link to a directory", e.Path)
+			return fmt.Errorf("%q: hard link to a directory", e.Path)
 		}
 		// A hard link is the same file: mode and owner come from it, not from the link's header.
 		c := *t
@@ -293,9 +299,12 @@ func (b *ImageBuilder) Add(e ImageEntry) error {
 		if c.content != nil {
 			c.content.refs++
 		}
+		if c.links != nil {
+			*c.links++
+		}
 		n = &c
 	default:
-		return fmt.Errorf("%s: unsupported entry type", e.Path)
+		return fmt.Errorf("%q: unsupported entry type", e.Path)
 	}
 	if old != nil {
 		b.release(old) // replaced: a file over a directory removes the whole directory
@@ -427,8 +436,8 @@ func (f *ImageFS) resolve(name string, follow bool) (string, *imgNode, error) {
 
 func (f *ImageFS) info(name string, n *imgNode) FileInfo {
 	nlink := int64(1)
-	if n.content != nil && n.content.refs > 1 {
-		nlink = int64(n.content.refs)
+	if n.links != nil && *n.links > 1 {
+		nlink = int64(*n.links)
 	}
 	return FileInfo{Path: name, Mode: n.mode, UID: n.uid, GID: n.gid, Size: n.size, ModTime: n.mtime, Nlink: nlink}
 }

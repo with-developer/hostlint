@@ -449,3 +449,22 @@ func FuzzLoad(f *testing.F) {
 		}
 	})
 }
+
+// A tar whose first name begins with the letters of the bzip2 magic is a tar.
+func TestPlainTarStartingWithBZh(t *testing.T) {
+	l := layerTar(t, ent{name: "BZh-cache/"}, ent{name: "BZh-cache/x", body: "1"}, ent{name: "etc/"}, ent{name: "etc/os-release", body: "ID=x\n"})
+	img := mustLoad(t, dockerArchive(t, nil, l))
+	if read(t, img, "/BZh-cache/x") != "1" {
+		t.Error("the layer was not read")
+	}
+	if _, err := load(t, append([]byte("BZh91AY&SY"), make([]byte, 600)...)); err == nil || !strings.Contains(err.Error(), "bzip2") {
+		t.Errorf("a real bzip2 header: %v", err)
+	}
+}
+
+func TestHostileNamesDoNotReachTheTerminalRaw(t *testing.T) {
+	_, err := load(t, dockerArchive(t, nil, layerTar(t, ent{name: "\x1b]0;pwned\x07", typ: tar.TypeCont})))
+	if err == nil || strings.ContainsAny(err.Error(), "\x1b\x07") {
+		t.Errorf("err = %q", err)
+	}
+}

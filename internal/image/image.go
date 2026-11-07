@@ -65,7 +65,7 @@ func Load(ctx context.Context, file string) (img *Image, err error) {
 	if !fi.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s is not a regular file: an image archive is read from a file, not a pipe or a device", file)
 	}
-	var magic [6]byte
+	var magic [8]byte
 	if _, err := io.ReadFull(f, magic[:]); err == nil {
 		if kind := compression(magic[:]); kind != "" {
 			return nil, fmt.Errorf("%s is %s-compressed: unpack it first (the archive of docker save is a plain tar)", file, kind)
@@ -95,7 +95,7 @@ func Load(ctx context.Context, file string) (img *Image, err error) {
 			diff = p.diffIDs[i]
 		}
 		if err := applyLayer(io.NewSectionReader(f, e.off, e.size), b, st, l.digest, diff); err != nil {
-			return nil, fmt.Errorf("layer %d (%s): %w", i+1, l.name, err)
+			return nil, fmt.Errorf("layer %d (%q): %w", i+1, l.name, err)
 		}
 	}
 	return &Image{FS: b.Finish(), Label: p.label, Layers: len(p.layers)}, nil
@@ -109,8 +109,8 @@ func compression(b []byte) string {
 		return "zstd"
 	case bytes.HasPrefix(b, []byte{0xfd, '7', 'z', 'X', 'Z', 0}):
 		return "xz"
-	case bytes.HasPrefix(b, []byte("BZh")):
-		return "bzip2"
+	case len(b) >= 6 && bytes.HasPrefix(b, []byte("BZh")) && b[3] >= '1' && b[3] <= '9' && b[4] == 0x31 && b[5] == 0x41:
+		return "bzip2" // "BZh", the block size, and the start of the first block (0x314159265359)
 	}
 	return ""
 }
@@ -171,7 +171,7 @@ func resolveOuter(idx map[string]outerEntry, name string) (string, outerEntry, e
 	for range maxOuterLinks {
 		e, ok := idx[name]
 		if !ok {
-			return "", outerEntry{}, fmt.Errorf("%s is not in the archive", name)
+			return "", outerEntry{}, fmt.Errorf("%q is not in the archive", name)
 		}
 		if e.link == "" {
 			return name, e, nil
@@ -182,11 +182,11 @@ func resolveOuter(idx map[string]outerEntry, name string) (string, outerEntry, e
 		}
 		next, err := cleanName(next)
 		if err != nil {
-			return "", outerEntry{}, fmt.Errorf("%s links out of the archive", name)
+			return "", outerEntry{}, fmt.Errorf("%q links out of the archive", name)
 		}
 		name = strings.TrimPrefix(next, "/")
 	}
-	return "", outerEntry{}, fmt.Errorf("%s: too many links", name)
+	return "", outerEntry{}, fmt.Errorf("%q: too many links", name)
 }
 
 // readOuter returns a small file of the archive (a manifest, a configuration).
@@ -196,7 +196,7 @@ func readOuter(f *os.File, idx map[string]outerEntry, name string) ([]byte, erro
 		return nil, err
 	}
 	if e.size > maxJSON {
-		return nil, fmt.Errorf("%s is %d bytes: %w", found, e.size, hostfs.ErrImageLimit)
+		return nil, fmt.Errorf("%q is %d bytes: %w", found, e.size, hostfs.ErrImageLimit)
 	}
 	return io.ReadAll(io.NewSectionReader(f, e.off, e.size))
 }
@@ -248,7 +248,7 @@ func readPlan(f *os.File, idx map[string]outerEntry, fallbackLabel string) (*pla
 			for _, e := range entries {
 				tags = append(tags, e.RepoTags...)
 			}
-			return nil, fmt.Errorf("the archive holds %d images (%s): save one image per archive", len(entries), strings.Join(tags, ", "))
+			return nil, fmt.Errorf("the archive holds %d images (%q): save one image per archive", len(entries), tags)
 		}
 		e := entries[0]
 		configName = e.Config
@@ -291,7 +291,7 @@ func readPlan(f *os.File, idx map[string]outerEntry, fallbackLabel string) (*pla
 		return nil, fmt.Errorf("the image configuration: %w", err)
 	}
 	if cfg.OS != "" && cfg.OS != "linux" {
-		return nil, fmt.Errorf("the image is for %s: only linux images can be scanned", cfg.OS)
+		return nil, fmt.Errorf("the image is for %q: only linux images can be scanned", cfg.OS)
 	}
 	if len(cfg.RootFS.DiffIDs) != len(p.layers) {
 		return nil, fmt.Errorf("the image configuration lists %d layers, the manifest %d", len(cfg.RootFS.DiffIDs), len(p.layers))
@@ -459,7 +459,7 @@ func (c *countReader) Read(p []byte) (int, error) {
 func applyLayer(r io.Reader, b *hostfs.ImageBuilder, st *state, wantStored, wantUnpacked string) error {
 	stored, unpacked := sha256.New(), sha256.New()
 	br := bufio.NewReaderSize(io.TeeReader(r, stored), 64<<10)
-	head, _ := br.Peek(6)
+	head, _ := br.Peek(8)
 	var dec io.Reader = br
 	switch kind := compression(head); kind {
 	case "":
@@ -515,7 +515,7 @@ func applyEntry(tr *tar.Reader, hdr *tar.Header, b *hostfs.ImageBuilder) error {
 		return err
 	}
 	if hdr.Uid < 0 || hdr.Gid < 0 || int64(hdr.Uid) > 1<<32-1 || int64(hdr.Gid) > 1<<32-1 {
-		return fmt.Errorf("%s: an owner that is not a user ID", abs)
+		return fmt.Errorf("%q: an owner that is not a user ID", abs)
 	}
 	dir, base := path.Dir(abs), path.Base(abs)
 	if abs != "/" && strings.HasPrefix(base, ".wh.") {
@@ -536,9 +536,12 @@ func applyEntry(tr *tar.Reader, hdr *tar.Header, b *hostfs.ImageBuilder) error {
 	case tar.TypeReg:
 		e.Type, e.Size = hostfs.ImageFile, hdr.Size
 		if e.Keep = hostfs.ImageKeeps(abs, hdr.Size); e.Keep {
+			if !b.Fits(hdr.Size) {
+				return fmt.Errorf("more than %d MiB of file contents: %w", hostfs.MaxImageContent>>20, hostfs.ErrImageLimit)
+			}
 			e.Data = make([]byte, hdr.Size)
 			if _, err := io.ReadFull(tr, e.Data); err != nil {
-				return fmt.Errorf("%s: %w", abs, err)
+				return fmt.Errorf("%q: %w", abs, err)
 			}
 		}
 	case tar.TypeSymlink:
@@ -546,7 +549,7 @@ func applyEntry(tr *tar.Reader, hdr *tar.Header, b *hostfs.ImageBuilder) error {
 	case tar.TypeLink:
 		target, err := cleanName(hdr.Linkname)
 		if err != nil {
-			return fmt.Errorf("%s: %w", abs, err)
+			return fmt.Errorf("%q: %w", abs, err)
 		}
 		e.Type, e.Target = hostfs.ImageHardlink, target
 	case tar.TypeChar:
@@ -556,7 +559,7 @@ func applyEntry(tr *tar.Reader, hdr *tar.Header, b *hostfs.ImageBuilder) error {
 	case tar.TypeFifo:
 		e.Type, e.Special = hostfs.ImageSpecial, fs.ModeNamedPipe
 	default:
-		return fmt.Errorf("%s: an entry of type %q, which is not supported", abs, string(hdr.Typeflag))
+		return fmt.Errorf("%q: an entry of type %q, which is not supported", abs, string(hdr.Typeflag))
 	}
 	if e.ModTime.Before(time.Unix(0, 0)) {
 		e.ModTime = time.Unix(0, 0).UTC()

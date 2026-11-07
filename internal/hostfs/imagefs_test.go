@@ -147,3 +147,21 @@ func TestImageKeeps(t *testing.T) {
 	}
 	_ = fs.ErrNotExist
 }
+
+func TestHardLinksOfFilesWithoutContents(t *testing.T) {
+	b := NewImageBuilder()
+	b.BeginLayer()
+	if err := b.Add(ImageEntry{Path: "/big", Type: ImageFile, Perm: 0o755, Size: 5 << 20}); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Add(ImageEntry{Path: "/also", Type: ImageHardlink, Target: "/big"}); err != nil {
+		t.Fatal(err)
+	}
+	f := b.Finish()
+	if fi, err := f.Lstat("/also"); err != nil || fi.Nlink != 2 || fi.Size != 5<<20 {
+		t.Errorf("%+v %v", fi, err)
+	}
+	if !NewImageBuilder().Fits(MaxImageContent) || NewImageBuilder().Fits(MaxImageContent+1) {
+		t.Error("Fits")
+	}
+}

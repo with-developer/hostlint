@@ -49,7 +49,7 @@ func imageArchive(t *testing.T, tag string, files map[string]string) string {
 
 func TestScanImage(t *testing.T) {
 	osRelease := "ID=debian\nVERSION_ID=\"12\"\nNAME=\"Debian GNU/Linux\"\n"
-	p := imageArchive(t, "app:1", map[string]string{"etc/os-release": osRelease, "etc/passwd": "root:x:0:0:root:/root:/bin/bash\n"})
+	p := imageArchive(t, "app:1", map[string]string{"etc/os-release": osRelease, "etc/passwd": "root:x:0:0:root:/root:/bin/bash\n", "etc/machine-id": "0123456789abcdef0123456789abcdef\n"})
 	code, stdout, stderr := run(context.Background(), t, "scan", "--image-tar", p, "--format", "json", "--fail-on", "none")
 	if code != ExitOK {
 		t.Fatalf("exit %d: %s", code, stderr)
@@ -60,6 +60,9 @@ func TestScanImage(t *testing.T) {
 	}
 	if res.Scan.Target.Kind != "root" || res.Scan.Target.Root != "image:app:1" || res.Host.Hostname != "app:1" {
 		t.Errorf("target %+v host %q", res.Scan.Target, res.Host.Hostname)
+	}
+	if res.Host.HostID != "" {
+		t.Errorf("an image has no machine ID, got host ID %q", res.Host.HostID)
 	}
 	if res.Host.OS.ID != "debian" {
 		t.Errorf("os %+v", res.Host.OS)

@@ -164,6 +164,10 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		if err != nil {
 			return fmt.Errorf("--image-tar %s: %w", f.imageTar, err)
 		}
+		if !hasOSRelease(img.FS) {
+			// A scratch or distroless image has no operating system to judge: absent files would pass.
+			return fmt.Errorf("--image-tar %s: no operating system found in the image (no os-release): a scratch or distroless image cannot be checked", f.imageTar)
+		}
 		h = hostfs.NewImageHost(img.FS, img.Label)
 	} else if h, err = hostfs.Open(f.root); err != nil {
 		return err
@@ -204,6 +208,16 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return &findingsError{controls: n, threshold: f.failOn}
 	}
 	return nil
+}
+
+// hasOSRelease reports whether a filesystem has an os-release file, where an operating system names itself.
+func hasOSRelease(fsys hostfs.FS) bool {
+	for _, p := range []string{"/etc/os-release", "/usr/lib/os-release"} {
+		if _, err := fsys.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func parseLabels(raw []string) (map[string]string, error) {

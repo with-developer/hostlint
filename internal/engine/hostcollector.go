@@ -44,6 +44,10 @@ func (hostCollector) Collect(_ context.Context, h *hostfs.Host) (Facts, error) {
 	if h.Live {
 		hf.Arch = runtime.GOARCH
 	}
+	if h.Image {
+		// Every container of an image shares what is baked into it: that is no host identity (ADR 0011).
+		return Facts{Value: hf, Complete: true}, nil
+	}
 	if data, err := h.FS.ReadFile("/etc/machine-id"); err == nil {
 		if id := strings.TrimSpace(string(data)); machineIDRe.MatchString(id) {
 			mac := hmac.New(sha256.New, hostIDKey)
