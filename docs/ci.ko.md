@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t app:ci .
-      - uses: with-developer/hostlint@v0.13.0
+      - uses: with-developer/hostlint@v0.15.0
         with:
           image: app:ci
           fail-on: high
@@ -49,7 +49,7 @@ jobs:
 | `fail-on` | `low`, `medium`, `high`(기본값), `none` |
 | `config` | [`hostlint.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일이 있는 면제 |
 | `sarif-file` | 점검이 단계를 실패시켜도 SARIF를 여기에도 씁니다 |
-| `version` | 설치할 릴리스. 기본값은 액션이 고정된 릴리스(`@v0.13.0`) |
+| `version` | 설치할 릴리스. 기본값은 액션이 고정된 릴리스(`@v0.15.0`) |
 
 `image`, `image-tar`, `root` 중 정확히 하나를 지정하세요. 액션은 릴리스 태그에 고정하세요. 그 태그의
 hostlint 릴리스를 설치합니다. 커밋에 고정하면 `version`을 지정하세요(없으면 액션이 거부합니다). Linux 러너만 지원합니다. 입력은 스크립트의 일부가 아니라 변수로 셸에 전달됩니다.
@@ -66,7 +66,7 @@ hostlint:
     - apk add --no-cache curl
     - docker build -t app:ci .
     - docker save app:ci -o app.tar
-    - curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.13.0 -b /usr/local/bin
+    - curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.15.0 -b /usr/local/bin
     - hostlint scan --image-tar app.tar --fail-on high --format junit --output hostlint.xml
   artifacts:
     when: always
@@ -77,7 +77,7 @@ hostlint:
 ## 그 밖의 CI
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.13.0
+curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.15.0
 docker save app:ci -o app.tar
 hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
 ```

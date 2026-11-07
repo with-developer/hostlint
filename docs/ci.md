@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t app:ci .
-      - uses: with-developer/hostlint@v0.13.0
+      - uses: with-developer/hostlint@v0.15.0
         with:
           image: app:ci
           fail-on: high
@@ -49,7 +49,7 @@ jobs:
 | `fail-on` | `low`, `medium`, `high` (default) or `none` |
 | `config` | A [`hostlint.yaml`](configuration.md): stricter thresholds, waivers with a reason and an expiry |
 | `sarif-file` | Also write SARIF here, even when the scan fails the step |
-| `version` | The release to install; by default the one the action is pinned to (`@v0.13.0`) |
+| `version` | The release to install; by default the one the action is pinned to (`@v0.15.0`) |
 
 Set exactly one of `image`, `image-tar` and `root`. Pin the action to a release tag: it installs the
 hostlint release of that tag. Pinned to a commit, set `version` (the action refuses a commit pin without it).
@@ -68,7 +68,7 @@ hostlint:
     - apk add --no-cache curl
     - docker build -t app:ci .
     - docker save app:ci -o app.tar
-    - curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.13.0 -b /usr/local/bin
+    - curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.15.0 -b /usr/local/bin
     - hostlint scan --image-tar app.tar --fail-on high --format junit --output hostlint.xml
   artifacts:
     when: always
@@ -79,7 +79,7 @@ hostlint:
 ## Any other CI
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.13.0
+curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.15.0
 docker save app:ci -o app.tar
 hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
 ```

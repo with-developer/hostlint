@@ -44,3 +44,33 @@ jobs:
         continue-on-error: true
         uses: ./
       - run: test "${{ steps.none.outcome }}" = failure
+
+  pack:
+    name: policy pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker pull --quiet debian:12
+      - name: The example pack and its profile, with KISA
+        uses: ./
+        with:
+          image: debian:12
+          pack: examples/policy-pack
+          profile: kisa-2026 x-acme-baseline
+          fail-on: none
+          sarif-file: hostlint.sarif
+          version: v0.15.0
+      - name: The SARIF file is there
+        run: python3 -c 'import json; r = json.load(open("hostlint.sarif")); assert r["runs"][0]["results"], "no results"'
+      - name: A pack without its profile is refused
+        id: noprofile
+        continue-on-error: true
+        uses: ./
+        with:
+          image: debian:12
+          pack: examples/policy-pack
+          fail-on: none
+          version: v0.15.0
+      - run: test "${{ steps.noprofile.outcome }}" = failure
