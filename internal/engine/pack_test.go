@@ -329,7 +329,7 @@ func FuzzExtend(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	f.Fuzz(func(t *testing.T, check, prof string) {
+	f.Fuzz(func(_ *testing.T, check, prof string) {
 		c := *base // Extend returns a new content and leaves the built-in one alone
 		_, _ = c.Extend(source(map[string]string{"x-acme/fuzz.yaml": check}, map[string]string{"x-acme-fuzz.yaml": prof}))
 	})

@@ -339,7 +339,7 @@ func FuzzReadResult(f *testing.F) {
 	}
 	f.Add([]byte(`{"schemaVersion":1,"scan":{"privileges":{"euid":0}}}`))
 	f.Add([]byte(`{`))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		res, err := ReadResult(bytes.NewReader(data))
 		if err == nil && res != nil {
 			// A result that was accepted can be turned into every output without a panic.
