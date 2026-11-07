@@ -5,6 +5,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/with-developer/hostlint/internal/collect"
 	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/profiles"
 	"github.com/with-developer/hostlint/rules"
@@ -173,5 +174,58 @@ func TestPacksCannotCollide(t *testing.T) {
 	}
 	if _, err := c.Extend(s); err == nil || !strings.Contains(err.Error(), "exists already") {
 		t.Errorf("a second pack with the same IDs: %v", err)
+	}
+}
+
+func TestExtendLimitsAPacksFileChecks(t *testing.T) {
+	withPaths := func(paths string) string {
+		return strings.Replace(packCheck, "paths: [/etc/motd]", "paths: "+paths, 1)
+	}
+	for name, paths := range map[string]string{
+		"under /proc":        "[/proc/sys/kernel/modprobe]",
+		"under /sys":         "[/sys/kernel/x]",
+		"under /dev":         "[/dev/shm/x]",
+		"too many wildcards": "[/home/*/*/*]",
+		"too many paths":     "[/a, /b, /c, /d, /e, /f, /g, /h, /i, /j, /k]",
+	} {
+		_, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": withPaths(paths)}, nil))
+		if err == nil {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+	for _, paths := range []string{"[/etc/motd]", "[/home/*/.ssh]", "[/home/*/.config/*]"} {
+		// no_match is required for a glob
+		spec := withPaths(paths)
+		if strings.Contains(paths, "*") {
+			spec = strings.Replace(spec, "missing: error", "missing: error\n  no_match: pass", 1)
+		}
+		if _, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": spec}, nil)); err != nil {
+			t.Errorf("%s: %v", paths, err)
+		}
+	}
+}
+
+func TestTwoProfilesOfOnePackCannotShareATitle(t *testing.T) {
+	other := strings.Replace(packProfile, "x-acme-baseline", "x-acme-other", 1)
+	_, err := builtin(t).Extend(source(map[string]string{"x-acme/motd-present.yaml": packCheck}, map[string]string{"x-acme-baseline.yaml": packProfile, "x-acme-other.yaml": other}))
+	if err == nil || !strings.Contains(err.Error(), "title of another profile") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestRunRuleTestsOfRunsOnlyTheNamedChecks(t *testing.T) {
+	c := builtin(t)
+	if _, err := c.Extend(source(map[string]string{"x-acme/motd-present.yaml": packCheck + "  - name: expects the wrong thing\n    files:\n      /etc/motd: {mode: \"0666\"}\n    want: PASS\n"}, nil)); err != nil {
+		t.Fatal(err)
+	}
+	e, err := engine.New(c, collect.All()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := e.RunRuleTestsOf(t.Context(), nil); len(got) != 0 {
+		t.Errorf("no IDs ran %d tests", len(got))
+	}
+	if got := e.RunRuleTestsOf(t.Context(), []string{"x-acme.motd-present"}); len(got) != 1 {
+		t.Errorf("failures = %v", got)
 	}
 }

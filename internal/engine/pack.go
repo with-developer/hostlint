@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"slices"
 	"strings"
+
+	"github.com/with-developer/hostlint/internal/hostfs"
 )
 
 // PackPrefix starts the area of every check and the ID of every profile of a policy pack (ADR 0012).
@@ -54,6 +56,10 @@ func (c *Content) Extend(p PackSource) (*PackContent, error) {
 				continue
 			}
 			area, _, _ := strings.Cut(ch.ID, ".")
+			if err := limitFileSpec(&ch); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", name, err))
+				continue
+			}
 			switch {
 			case !strings.HasPrefix(area, PackPrefix):
 				errs = append(errs, fmt.Errorf("%s: the area of a pack's check starts with %q (x-%s.%s), so that it cannot be taken for a built-in one", name, PackPrefix, area, strings.TrimPrefix(ch.ID, area+"."))) //nolint:perfsprint // a sentence with the suggested name
@@ -109,6 +115,7 @@ func (c *Content) Extend(p PackSource) (*PackContent, error) {
 				errs = append(errs, err)
 				continue
 			}
+			titles[normalizeTitle(pr.Title)] = true
 			pc.Notes = append(pc.Notes, notes...)
 			profiles[pr.ID] = &pr
 		}
@@ -128,6 +135,40 @@ func (c *Content) Extend(p PackSource) (*PackContent, error) {
 	slices.Sort(pc.Profiles)
 	slices.Sort(pc.Notes)
 	return pc, nil
+}
+
+// Limits on what a pack's file check may look at: a wide glob walks a lot of the host, and the kernel's
+// interfaces are not files of the host.
+const (
+	maxPackFilePaths     = 10
+	maxPackGlobWildcards = 2
+)
+
+// limitFileSpec holds the paths of a pack's file check to those limits (ADR 0012).
+func limitFileSpec(c *Check) error {
+	if c.File == nil {
+		return nil
+	}
+	if len(c.File.Paths) > maxPackFilePaths {
+		return fmt.Errorf("a file check of a pack lists at most %d paths", maxPackFilePaths)
+	}
+	for _, p := range c.File.Paths {
+		wild := 0
+		for _, el := range strings.Split(strings.Trim(p, "/"), "/") {
+			if hostfs.HasMeta(el) {
+				wild++
+			}
+		}
+		if wild > maxPackGlobWildcards {
+			return fmt.Errorf("path %q has more than %d wildcard elements", p, maxPackGlobWildcards)
+		}
+		for _, banned := range []string{"/proc", "/sys", "/dev"} {
+			if p == banned || strings.HasPrefix(p, banned+"/") {
+				return fmt.Errorf("path %q is under %s, which a pack's check does not list", p, banned)
+			}
+		}
+	}
+	return nil
 }
 
 func normalizeTitle(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
@@ -199,5 +240,5 @@ func (e *Engine) Uses(checkID string) []string {
 	if cc == nil {
 		return nil
 	}
-	return slices.Sorted(slices.Values(slices.Clone(cc.vars)))
+	return slices.Clone(cc.vars)
 }

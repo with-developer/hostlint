@@ -139,7 +139,7 @@ func TestLoadPackRefuses(t *testing.T) {
 		want  string
 	}{
 		"no manifest":            {with(nil, "pack.yaml"), "pack.yaml is missing"},
-		"a stray file":           {with(map[string]string{"README.md": "x"}), "README.md is not part of a pack"},
+		"a stray file":           {with(map[string]string{"README.md": "x"}), `"README.md" is not part of a pack`},
 		"a stray .yml":           {with(map[string]string{"rules/x-acme/other.yml": "x"}), "nothing else is allowed there"},
 		"a file in rules":        {with(map[string]string{"rules/stray.yaml": "x"}), "rules/<area>/<name>.yaml"},
 		"nested too deep":        {with(map[string]string{"rules/x-acme/sub/a.yaml": "x"}), "nothing else is allowed there"},
@@ -216,5 +216,47 @@ func TestLoadPackTooManyEntries(t *testing.T) {
 	dir := writePack(t, files)
 	if _, err := LoadPack(dir); err == nil {
 		t.Error("a directory with too many entries was read")
+	}
+}
+
+func TestRequiresHostlint(t *testing.T) {
+	m := func(req string) *PackManifest {
+		return &PackManifest{Format: 1, Name: "acme", Version: "1", RequiresHostlint: req}
+	}
+	for _, tc := range []struct {
+		requires, current string
+		ok                bool
+	}{
+		{"v0.15.0", "v0.15.0", true},
+		{"v0.15.0", "v0.16.1", true},
+		{"v0.15.0", "v1.0.0", true},
+		{"v0.15.0", "v0.14.9", false},
+		{"v0.15.0", "v0.9.0", false},
+		{"v0.15.0", "v0.15.0-rc1", false},
+		{"v0.15.0", "v0.14.0-3-gabc1234", false},
+		{"v0.15.0", "v0.15.1-rc1", true},
+		{"v0.15.0", "dev", true},
+		{"v0.15.0", "(devel)", true},
+		{"", "v0.1.0", true},
+		{"0.15", "v0.15.0", false},
+	} {
+		err := checkManifest(m(tc.requires), tc.current)
+		if (err == nil) != tc.ok {
+			t.Errorf("requires %q with %q: %v", tc.requires, tc.current, err)
+		}
+	}
+}
+
+func TestManifestFields(t *testing.T) {
+	for name, files := range map[string]string{
+		"two documents":            "format: 1\nname: acme\nversion: 1\n---\nformat: 1\nname: other\nversion: 2\n",
+		"a version with an escape": "format: 1\nname: acme\nversion: \"1.0\\e[2J\"\n",
+		"a version with a space":   "format: 1\nname: acme\nversion: \"1 0\"\n",
+	} {
+		g := goodPack()
+		g["pack.yaml"] = files
+		if _, err := LoadPack(writePack(t, g)); err == nil {
+			t.Errorf("%s was accepted", name)
+		}
 	}
 }

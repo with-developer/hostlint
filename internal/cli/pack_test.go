@@ -50,7 +50,7 @@ func TestPackTestAndShow(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("pack show: exit %d\n%s", code, stderr)
 	}
-	for _, want := range []string{"pack acme 1.0.0", "digest sha256:", "x-acme.motd-owned-by-root  low  file", "lists the files: /etc/motd", "ACME-02  high", "parameters of accounts.password-max-age"} {
+	for _, want := range []string{"pack acme 1.0.0", "digest sha256:", "x-acme.motd-owned-by-root  low  file", "lists the files /etc/motd: owner one of [root]", "ACME-02  high", "parameters of accounts.password-max-age"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("pack show lacks %q:\n%s", want, out)
 		}
@@ -91,5 +91,29 @@ func TestPackRefusesWhatIsNotAPack(t *testing.T) {
 		if code, _, _ := run(context.Background(), t, args...); code != ExitError {
 			t.Errorf("%v: exit %d, want %d", args, code, ExitError)
 		}
+	}
+}
+
+func TestPackOutputDoesNotCarryControlCharacters(t *testing.T) {
+	dir := copyExamplePack(t)
+	// A name with an escape sequence in a place a reviewer's terminal would show it.
+	if err := os.WriteFile(filepath.Join(dir, "x\x1b]0;pwned\x07"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, out, stderr := run(context.Background(), t, "pack", "show", dir)
+	if strings.ContainsAny(out+stderr, "\x1b\x07") {
+		t.Errorf("a stray file name reached the terminal: %q %q", out, stderr)
+	}
+	// Text inside the pack: the title of a profile, and a check's parameters.
+	dir = copyExamplePack(t)
+	prof := filepath.Join(dir, "profiles", "x-acme-baseline.yaml")
+	data, _ := os.ReadFile(prof)
+	evil := strings.Replace(string(data), "title: Acme baseline", "title: \"Acme \\e[2J baseline\"", 1)
+	if err := os.WriteFile(prof, []byte(evil), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, out, _ = run(context.Background(), t, "pack", "show", dir)
+	if strings.ContainsAny(out, "\x1b") || !strings.Contains(out, "Acme") {
+		t.Errorf("a profile title: %q", out)
 	}
 }

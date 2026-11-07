@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 
@@ -45,7 +47,13 @@ type loadedPack struct {
 }
 
 // openPack loads the pack in dir next to the built-in content and compiles it.
-func openPack(dir string) (*loadedPack, error) {
+func openPack(dir string) (lp *loadedPack, err error) {
+	// What a pack's files are called and say reaches the terminal in these errors.
+	defer func() {
+		if err != nil {
+			err = errors.New(printable(err.Error()))
+		}
+	}()
 	p, err := config.LoadPack(dir)
 	if err != nil {
 		return nil, err
@@ -82,10 +90,10 @@ func newPackTestCommand() *cobra.Command {
 				tests += len(lp.content.Checks[id].Tests)
 			}
 			fmt.Fprintf(out, "pack %s %s (%s): %d checks, %d profiles, %d tests\n",
-				lp.pack.Name, lp.pack.Version, lp.pack.Digest, len(lp.added.Checks), len(lp.added.Profiles), tests)
+				oneLineText(lp.pack.Name), oneLineText(lp.pack.Version), lp.pack.Digest, len(lp.added.Checks), len(lp.added.Profiles), tests)
 			problems := 0
 			for _, n := range lp.added.Notes {
-				fmt.Fprintf(out, "note: %s\n", n)
+				fmt.Fprintf(out, "note: %s\n", oneLineText(n))
 			}
 			if len(lp.added.Profiles) == 0 {
 				fmt.Fprintln(out, "problem: the pack has no profile, so nothing can select its checks")
@@ -105,9 +113,9 @@ func newPackTestCommand() *cobra.Command {
 					problems++
 				}
 			}
-			failures := lp.engine.RunRuleTestsFor(cmd.Context(), nonNil(lp.added.Checks))
+			failures := lp.engine.RunRuleTestsOf(cmd.Context(), lp.added.Checks)
 			for _, f := range failures {
-				fmt.Fprintf(out, "FAIL %s\n", f.Error())
+				fmt.Fprintf(out, "FAIL %s\n", oneLineText(f.Error()))
 			}
 			problems += len(failures)
 			if problems == 0 {
@@ -117,13 +125,6 @@ func newPackTestCommand() *cobra.Command {
 			return &packTestError{problems: problems}
 		},
 	}
-}
-
-func nonNil(s []string) []string {
-	if s == nil {
-		return []string{}
-	}
-	return s
 }
 
 func newPackShowCommand() *cobra.Command {
@@ -147,66 +148,97 @@ for every profile the controls with their severity and the checks they map. Noth
 }
 
 func showPack(w io.Writer, lp *loadedPack) {
+	t := oneLineText // everything a pack says goes through this on its way to the terminal
 	p := lp.pack
-	fmt.Fprintf(w, "pack %s %s", p.Name, p.Version)
+	fmt.Fprintf(w, "pack %s %s", t(p.Name), t(p.Version))
 	if p.Description != "" {
-		fmt.Fprintf(w, " — %s", oneLineText(p.Description))
+		fmt.Fprintf(w, " — %s", t(p.Description))
 	}
 	fmt.Fprintf(w, "\ndigest %s (%d files)\n", p.Digest, len(p.Files))
 	if p.RequiresHostlint != "" {
-		fmt.Fprintf(w, "requires hostlint %s or later\n", p.RequiresHostlint)
+		fmt.Fprintf(w, "requires hostlint %s or later\n", t(p.RequiresHostlint))
 	}
 	fmt.Fprintf(w, "\nchecks (%d):\n", len(lp.added.Checks))
 	for _, id := range lp.added.Checks {
 		c := lp.content.Checks[id]
-		fmt.Fprintf(w, "  %s  %s  %s\n", id, c.Severity, checkKind(c))
+		fmt.Fprintf(w, "  %s  %s  %s\n", t(id), c.Severity, checkKind(c))
 		if uses := lp.engine.Uses(id); len(uses) > 0 {
-			fmt.Fprintf(w, "      reads the collectors: %s\n", strings.Join(uses, ", "))
-		}
-		if c.File != nil {
-			fmt.Fprintf(w, "      lists the files: %s\n", strings.Join(c.File.Paths, ", "))
-		}
-		if c.Violations != nil {
-			fmt.Fprintf(w, "      evidence: %s\n", oneLineText(c.Violations.Text))
-		}
-		if c.Manual != nil && c.Manual.Show != "" {
-			fmt.Fprintf(w, "      shows: %s\n", oneLineText(c.Manual.Show))
+			fmt.Fprintf(w, "      reads the collectors: %s\n", t(strings.Join(uses, ", ")))
 		}
 		if c.Applies != "" {
-			fmt.Fprintf(w, "      applies when: %s\n", oneLineText(c.Applies))
+			fmt.Fprintf(w, "      applies when: %s\n", t(c.Applies))
+		}
+		for _, line := range checkLogic(c) {
+			fmt.Fprintf(w, "      %s\n", t(line))
 		}
 	}
 	fmt.Fprintf(w, "\nprofiles (%d):\n", len(lp.added.Profiles))
 	for _, pid := range lp.added.Profiles {
 		pr := lp.content.Profiles[pid]
-		fmt.Fprintf(w, "  %s revision %d — %s\n", pr.ID, pr.Revision, oneLineText(pr.Title))
+		fmt.Fprintf(w, "  %s revision %d — %s\n", t(pr.ID), pr.Revision, t(pr.Title))
 		for _, c := range pr.Controls {
 			what := strings.Join(c.Checks, ", ")
 			if c.Manual != "" {
 				what = "(a person decides)"
 			}
-			fmt.Fprintf(w, "      %s  %s  %s: %s\n", c.ID, c.Severity, oneLineText(c.Title), what)
-			for _, id := range slices.Sorted(mapsKeys(c.Params)) {
-				fmt.Fprintf(w, "          parameters of %s: %v\n", id, c.Params[id])
+			fmt.Fprintf(w, "      %s  %s  %s: %s\n", t(c.ID), c.Severity, t(c.Title), t(what))
+			for _, id := range slices.Sorted(maps.Keys(c.Params)) {
+				fmt.Fprintf(w, "          parameters of %s: %s\n", t(id), t(fmt.Sprint(c.Params[id])))
 			}
 		}
 	}
 	if len(lp.added.Notes) > 0 {
 		fmt.Fprintln(w, "\nnotes:")
 		for _, n := range lp.added.Notes {
-			fmt.Fprintf(w, "  %s\n", n)
+			fmt.Fprintf(w, "  %s\n", t(n))
 		}
 	}
 }
 
-func mapsKeys[K comparable, V any](m map[K]V) func(func(K) bool) {
-	return func(yield func(K) bool) {
-		for k := range m {
-			if !yield(k) {
-				return
-			}
+// checkLogic says what decides PASS or FAIL in a check, and what it shows as evidence: what a reviewer
+// reads to see that a check does what its title says.
+func checkLogic(c *engine.Check) []string {
+	var out []string
+	switch {
+	case c.Setting != nil:
+		s := c.Setting
+		switch {
+		case len(s.In) > 0:
+			out = append(out, fmt.Sprintf("passes when the value is one of %q", s.In))
+		case s.Range != nil:
+			out = append(out, fmt.Sprintf("passes when the value is a number from %s to %s", bound(s.Range.Min), bound(s.Range.Max)))
+		case s.Matches != "":
+			out = append(out, fmt.Sprintf("passes when the value matches %q", s.Matches))
+		}
+		out = append(out, "when it is not set: "+s.Absent)
+	case c.File != nil:
+		f := c.File
+		out = append(out, fmt.Sprintf("lists the files %s: owner one of %v, group one of %v, mode %q or stricter; a missing file: %s", strings.Join(f.Paths, ", "), f.Owner, f.Group, f.Mode, f.Missing))
+		if f.NoMatch != "" {
+			out = append(out, "a pattern that matches nothing: "+f.NoMatch)
+		}
+	case c.Violations != nil:
+		v := c.Violations
+		out = append(out, "fails for each "+v.As+" of "+v.Over+" where: "+v.Where, "evidence, key: "+v.Key, "evidence, text: "+v.Text)
+	case c.Expect != "":
+		out = append(out, "passes when: "+c.Expect)
+	case c.Manual != nil:
+		out = append(out, "a person decides: "+c.Manual.Guidance)
+		if c.Manual.Show != "" {
+			out = append(out, "shows: "+c.Manual.Show)
 		}
 	}
+	return out
+}
+
+func bound(b *engine.Bound) string {
+	switch {
+	case b == nil:
+		return "?"
+	case b.Param != "":
+		return "params." + b.Param
+	}
+	return fmt.Sprint(b.Value)
 }
 
 func checkKind(c *engine.Check) string {
@@ -216,7 +248,7 @@ func checkKind(c *engine.Check) string {
 	case c.File != nil:
 		return "file"
 	case c.Violations != nil:
-		return "violations over " + c.Violations.Over
+		return "violations"
 	case c.Expect != "":
 		return "expect"
 	case c.Manual != nil:
