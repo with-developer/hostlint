@@ -89,8 +89,9 @@ Run workflow, with the tag). It downloads the release archives, verifies `checks
 file against it, builds `ghcr.io/with-developer/hostlint:<version>` (and `:latest` for a release that is not a
 pre-release) for amd64 and arm64 from `packaging/container/Dockerfile`, signs the image with Sigstore, and stores
 its build provenance and SBOM. It is a separate workflow so that a failure there never holds back a release; rerun it
-for the tag. The first publication creates a **private** package: make it public once (the repository's Packages,
-the package's settings, Change visibility), which GitHub does not allow from a workflow. The base image is pinned by
+for the tag. The package took the visibility of the repository (public) at its first publication; if it is ever private, change
+it once in the package's settings (GitHub does not allow that from a workflow). The run for a new tag starts by itself
+after the Release workflow, which is first exercised by the next release: if it does not, run it by hand for the tag. The base image is pinned by
 digest in the Dockerfile; Dependabot proposes new digests.
 
 ## Locally
