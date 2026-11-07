@@ -1,4 +1,4 @@
-<!-- translated from docs/images.md @ 4e2bf0d -->
+<!-- translated from docs/images.md @ 1b1b1a5 -->
 # 컨테이너 이미지 점검
 
 `hostlint scan --image-tar FILE`은 `docker save`(또는 `skopeo copy ... oci-archive:FILE`)가 쓴 아카이브에서
@@ -23,6 +23,12 @@ hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlin
 
 이미지와 그것으로 만든 컨테이너는 같은 결과를 냅니다. 엔드투엔드 테스트가 지원하는 모든 배포판의 기본 이미지를
 아카이브에서 점검해, 실행 중인 컨테이너 안의 점검과 모든 컨트롤과 점검 항목을 비교합니다.
+
+많은 컨트롤은 서비스를 실행하고 사람이 로그인하는 호스트에 관한 것입니다. 시각 동기화 서비스, 계정 잠금, 비밀번호 사용 기간 같은
+것들입니다. 컨테이너 이미지는 이를 실행하지 않으므로(호스트가 합니다) 이런 컨트롤은 이미지의 결함이 아닌데도 보통 `FAIL`입니다.
+무엇으로 막을지 고르세요. `--fail-on high`, 호스트의 몫인 컨트롤에 대한 사유가 있는 [예외](configuration.ko.md#예외waiver)(이미지의 예외는
+이미지 참조를 호스트 이름으로 봅니다: `hosts: ["app:*"]`), 또는 이미지에 중요한 컨트롤만 담은 [정책 팩](packs.ko.md)입니다.
+`essentials` 프로파일의 커널 매개변수 점검은 이미지에 적용되지 않습니다.
 
 판단할 수 없는 이미지는 거부하거나 `ERROR`로 보고합니다.
 

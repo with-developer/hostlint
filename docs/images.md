@@ -26,6 +26,13 @@ An image and a container made from it agree: the end-to-end tests scan the stock
 distribution from its archive and compare every control and check with the scan inside a running
 container.
 
+Many controls are about a host that runs services and has people logging in: a time synchronization service,
+account lockout, password aging. A container image does not run them (its host does), so such controls usually
+`FAIL` for an image although they are not a defect of it. Choose what you gate on: `--fail-on high`, a
+[waiver](configuration.md#waivers) with a reason for the controls that are the host's job (a waiver for an image
+names the image reference as the host name: `hosts: ["app:*"]`), or a [policy pack](packs.md) with the controls
+that matter for your images. The kernel parameters of the `essentials` profile do not apply to an image.
+
 Some images cannot be judged and are refused or report `ERROR`:
 
 - An image without an operating system (`scratch`, most distroless images: no `os-release`) is refused,
