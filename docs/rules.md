@@ -7,6 +7,569 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
+## essentials (revision 1)
+
+hostlint essentials — a short hardening baseline for Linux servers
+
+| Control | Severity | Title | Checks |
+|---|---|---|---|
+| ES-01 | high | SSH does not allow root to log in (SSH로 root가 직접 로그인할 수 없음) | [`ssh.permit-root-login`](#sshpermit-root-login), [`ssh.match-permit-root-login`](#sshmatch-permit-root-login) |
+| ES-02 | medium | SSH logins use keys, not passwords (SSH 로그인에 비밀번호 대신 키를 사용) | [`ssh.password-authentication`](#sshpassword-authentication) |
+| ES-03 | high | SSH accepts no empty passwords and no host-based trust (SSH가 빈 비밀번호와 호스트 기반 신뢰를 허용하지 않음) | [`ssh.permit-empty-passwords`](#sshpermit-empty-passwords), [`ssh.ignore-rhosts`](#sshignore-rhosts), [`ssh.hostbased-authentication`](#sshhostbased-authentication), [`ssh.permit-user-environment`](#sshpermit-user-environment) |
+| ES-04 | medium | SSH limits attempts and features (SSH가 시도 횟수와 기능을 제한함) | [`ssh.max-auth-tries`](#sshmax-auth-tries), [`ssh.x11-forwarding`](#sshx11-forwarding) |
+| ES-05 | medium | No Match block weakens the SSH settings (SSH Match 블록이 설정을 약화시키지 않음) | [`ssh.match-hardening`](#sshmatch-hardening) |
+| ES-06 | high | Only root has UID 0, and every account has its own UID (UID 0은 root뿐이고 계정마다 고유한 UID를 가짐) | [`accounts.uid0-only-root`](#accountsuid0-only-root), [`accounts.unique-uids`](#accountsunique-uids) |
+| ES-07 | high | Password hashes are protected (비밀번호 해시가 보호됨) | [`accounts.passwd-no-hashes`](#accountspasswd-no-hashes), [`accounts.shadow-file`](#accountsshadow-file), [`files.shadow-perms`](#filesshadow-perms), [`files.passwd-perms`](#filespasswd-perms) |
+| ES-08 | high | Passwords are long and stored with a strong hash (비밀번호가 길고 강한 해시로 저장됨) | [`accounts.password-min-length`](#accountspassword-min-length), [`accounts.password-hash-method`](#accountspassword-hash-method), [`accounts.password-hash-strength`](#accountspassword-hash-strength) |
+| ES-09 | high | Accounts lock after repeated login failures (로그인에 여러 번 실패하면 계정이 잠김) | [`accounts.lockout-threshold`](#accountslockout-threshold) |
+| ES-10 | medium | Passwords expire (비밀번호가 만료됨) | [`accounts.password-max-age`](#accountspassword-max-age), [`accounts.password-max-age-existing`](#accountspassword-max-age-existing) |
+| ES-11 | medium | su and sudo are restricted (su와 sudo가 제한됨) | [`accounts.su-wheel-only`](#accountssu-wheel-only), [`files.sudoers-perms`](#filessudoers-perms) |
+| ES-12 | high | Shells start with safe defaults (셸이 안전한 기본값으로 시작함) | [`env.path-current-dir`](#envpath-current-dir), [`env.umask-login-defs`](#envumask-login-defs) |
+| ES-13 | high | Scheduled jobs are private to root (예약 작업이 root에게만 열려 있음) | [`files.cron-commands`](#filescron-commands), [`files.cron-files`](#filescron-files), [`files.cron-scripts`](#filescron-scripts), [`files.cron-spool`](#filescron-spool), [`files.cron-spool-rhel`](#filescron-spool-rhel), [`files.cron-root-spool`](#filescron-root-spool), [`files.at-spool`](#filesat-spool) |
+| ES-14 | high | No legacy remote services (오래된 원격 서비스를 쓰지 않음) | [`services.no-telnet`](#servicesno-telnet), [`services.no-r-services`](#servicesno-r-services), [`files.rhosts`](#filesrhosts), [`files.rhosts-homes`](#filesrhosts-homes), [`services.no-tftp-talk`](#servicesno-tftp-talk), [`services.no-finger`](#servicesno-finger), [`services.no-nis`](#servicesno-nis) |
+| ES-15 | high | No stray files with dangerous permissions (위험한 권한의 파일이 방치되어 있지 않음) | [`files.world-writable`](#filesworld-writable), [`files.unowned`](#filesunowned), [`files.setid-outside-system-dirs`](#filessetid-outside-system-dirs), [`files.dev-regular-files`](#filesdev-regular-files) |
+| ES-16 | high | Start-up scripts and units cannot be changed by others (시작 스크립트와 유닛을 다른 사용자가 바꿀 수 없음) | [`files.startup-scripts`](#filesstartup-scripts) |
+| ES-17 | high | Home directories are private (홈 디렉터리가 비공개임) | [`homes.owner-perms`](#homesowner-perms), [`homes.startup-files`](#homesstartup-files) |
+| ES-18 | medium | The clock is kept in sync (시각이 동기화됨) | [`services.time-sync`](#servicestime-sync) |
+| ES-19 | medium | Set-ID programs are reviewed (Set-ID 프로그램을 검토함) | [`files.review-setid`](#filesreview-setid) |
+| ES-20 | low | Accounts that can log in are reviewed (로그인할 수 있는 계정을 검토함) | [`accounts.review-login-accounts`](#accountsreview-login-accounts), [`accounts.review-admin-groups`](#accountsreview-admin-groups) |
+
+### Checks
+
+#### `accounts.lockout-threshold`
+
+Accounts lock after repeated login failures (로그인에 여러 번 실패하면 계정이 잠김) — severity high, evaluates an expression.
+
+Checks that the login and (when an SSH server is present) sshd PAM stacks lock an account after at most `max_failures` failed attempts, with pam_faillock or pam_tally2. pam_faillock only locks with an authfail line plus a preauth or authsucc line, and sshd only uses PAM with UsePAM yes.
+
+**Why.** Without a lockout, an attacker can try passwords against an account indefinitely.
+
+**Fix.** Enable pam_faillock (authselect enable-feature with-faillock, or preauth, authfail and account lines on Debian), set `deny = 10` or less in /etc/security/faillock.conf, and keep `UsePAM yes` in sshd_config.
+
+**Parameters.**
+
+- `max_failures` (int, default `10`, lower is stricter): Failed attempts before an account locks
+
+#### `accounts.passwd-no-hashes`
+
+No password hashes or empty passwords in /etc/passwd (/etc/passwd에 비밀번호 해시나 빈 비밀번호 없음) — severity high, lists what violates it.
+
+Lists accounts whose /etc/passwd password field holds a hash or is empty instead of pointing to /etc/shadow ("x").
+
+**Why.** /etc/passwd is readable by every user, so a hash there can be cracked offline, and an empty field means no password at all.
+
+**Fix.** Run `pwconv` to move passwords to /etc/shadow, and lock or set passwords for empty ones.
+
+#### `accounts.password-hash-method`
+
+New passwords use a strong hash (새 비밀번호가 강한 해시를 씀) — severity medium, evaluates an expression.
+
+Checks that new passwords get a SHA-2, yescrypt or bcrypt hash: the hashing option of pam_unix in the passwd stack, which overrides login.defs for passwd, and ENCRYPT_METHOD in /etc/login.defs, used by the other shadow-utils tools. ENCRYPT_METHOD YESCRYPT only counts where shadow-utils is built with yescrypt (Debian 12, Ubuntu 24.04, RHEL 10 and their successors); elsewhere, such as RHEL 9 and Ubuntu 22.04, it falls back to DES.
+
+**Why.** Passwords hashed with DES or MD5 crypt can be cracked quickly once the hash leaks.
+
+**Fix.** Set `ENCRYPT_METHOD SHA512` in /etc/login.defs, use sha512 or yescrypt on the pam_unix password line, then have users change their passwords.
+
+#### `accounts.password-hash-strength`
+
+Stored passwords use a strong hash (저장된 비밀번호가 강한 해시를 씀) — severity medium, lists what violates it.
+
+Lists accounts whose /etc/shadow hash uses DES, MD5 or an unrecognized scheme. Without /etc/shadow there is nothing to check, so the check cannot pass.
+
+**Why.** Changing ENCRYPT_METHOD only affects new passwords; old weak hashes stay crackable.
+
+**Fix.** Have the listed users change their passwords (passwd -e user forces it at next login).
+
+#### `accounts.password-max-age`
+
+Passwords expire (비밀번호가 만료됨) — severity medium, compares one setting.
+
+Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new accounts. Without it, shadow-utils uses -1, which means passwords never expire.
+
+**Why.** A password that never changes stays useful to whoever obtained it.
+
+**Fix.** Set `PASS_MAX_DAYS 90` (or less) in /etc/login.defs; apply it to existing accounts with chage.
+
+**Parameters.**
+
+- `max_days` (int, default `90`, lower is stricter): Maximum password age in days
+
+#### `accounts.password-max-age-existing`
+
+Existing accounts have expiring passwords (기존 계정의 비밀번호가 만료됨) — severity medium, lists what violates it.
+
+Lists accounts with a password whose own maximum age in /etc/shadow is empty, 0 or more than `max_days`. The login.defs value only applies to accounts created after it was set, so an existing account (root keeps 99999 on many systems) can still never expire.
+
+**Why.** A password that never changes stays useful to whoever obtained it.
+
+**Fix.** Run `chage -M 90 account` for each listed account, and set `PASS_MAX_DAYS 90` in /etc/login.defs for new ones.
+
+**Parameters.**
+
+- `max_days` (int, default `90`, lower is stricter): Maximum password age in days
+
+#### `accounts.password-min-length`
+
+Passwords have a minimum length (비밀번호에 최소 길이가 있음) — severity high, evaluates an expression.
+
+Checks that the passwd service's PAM stack enforces password quality (pam_pwquality or pam_cracklib, not in warning-only mode) with a minimum length of at least `min_length` characters. Positive credits let a password be shorter by up to their sum, so they count against minlen.
+
+**Why.** Short passwords fall quickly to guessing and offline cracking.
+
+**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen = 8` or more in /etc/security/pwquality.conf, and do not set enforcing = 0 or positive credits.
+
+**Parameters.**
+
+- `min_length` (int, default `8`, higher is stricter): Minimum password length
+
+#### `accounts.review-admin-groups`
+
+Review members of administrative groups (관리자 그룹 구성원 검토) — severity medium, a review (`MANUAL`).
+
+Lists the members of the root (GID 0), wheel, sudo and admin groups: the accounts whose primary group it is (/etc/passwd), which pam_wheel and sudo count as members too, and the supplementary members listed in /etc/group.
+
+**Why.** Every member of these groups can gain or already has administrative power.
+
+**Fix.** Remove accounts that do not need administrative rights (gpasswd -d user group).
+
+#### `accounts.review-login-accounts`
+
+Review accounts that can log in (로그인할 수 있는 계정 검토) — severity low, a review (`MANUAL`).
+
+Lists every account with a login shell, for a reviewer to confirm each is still needed.
+
+**Why.** Accounts left behind by departed users or old services are easy targets.
+
+**Fix.** Remove accounts that are no longer needed (userdel). An account that must stay but should not log in gets a nologin shell and a locked password (usermod -L -s /usr/sbin/nologin).
+
+#### `accounts.shadow-file`
+
+Password hashes are kept in /etc/shadow (비밀번호 해시는 /etc/shadow에 보관) — severity high, evaluates an expression.
+
+Checks that /etc/shadow exists, so hashes are kept out of the world-readable /etc/passwd.
+
+**Why.** Without /etc/shadow, password hashes have to live in /etc/passwd where anyone can read them.
+
+**Fix.** Run `pwconv` (and `grpconv` for groups).
+
+#### `accounts.su-wheel-only`
+
+Only members of the wheel group can use su (wheel 그룹 구성원만 su를 쓸 수 있음) — severity high, compares one setting.
+
+Checks that the su PAM stack has a pam_wheel line that denies users outside the wheel group (or the group given with group=), or that su itself is restricted by its permissions (owned by root, group wheel, sudo, admin or adm, setuid, not executable by others). A line with trust or deny, a control that does not deny (optional, sufficient), or a sufficient rule earlier in the stack does not restrict su.
+
+**Why.** Without the restriction, any user who learns the root password can become root with su.
+
+**Fix.** Add `auth required pam_wheel.so use_uid` to /etc/pam.d/su, before the common-auth or system-auth include, and add administrators to the wheel group. Or restrict the program to an administrators' group (`chgrp wheel /usr/bin/su && chmod 4750 /usr/bin/su`; on Debian and Ubuntu use the group sudo and `dpkg-statoverride`, so that package updates keep it).
+
+#### `accounts.uid0-only-root`
+
+Only root has UID 0 (UID 0은 root만 가짐) — severity high, lists what violates it.
+
+Lists accounts other than root whose UID is 0.
+
+**Why.** Every UID 0 account has full root privileges, under a name that may escape notice.
+
+**Fix.** Give the account another UID (usermod -u) or remove it.
+
+#### `accounts.unique-uids`
+
+Every account has its own UID (계정마다 UID가 다름) — severity medium, lists what violates it.
+
+Lists accounts that share a UID with another account.
+
+**Why.** Accounts sharing a UID are the same user to the kernel, so access and audit trails cannot tell them apart.
+
+**Fix.** Give each account a unique UID (usermod -u) and fix the ownership of its files.
+
+#### `env.path-current-dir`
+
+PATH does not search the current directory first (PATH에서 현재 디렉터리를 먼저 찾지 않음) — severity high, lists what violates it.
+
+Lists PATH assignments in the system-wide and root's startup files that put the current directory (".", an empty entry, or a relative one such as "./bin" or "bin") anywhere but last.
+
+**Why.** With the current directory early in PATH, a program named like a system command in the directory you are in runs instead of it, as you.
+
+**Fix.** Remove "." , empty and relative entries from PATH, or move them to the end.
+
+#### `env.umask-login-defs`
+
+The default umask keeps new files unwritable by group and others (기본 umask가 그룹·기타 사용자의 쓰기를 막음 (login.defs)) — severity medium, compares one setting.
+
+Checks that UMASK in /etc/login.defs removes write permission for group and others (022 or stricter). shadow-utils and pam_umask use it for new sessions and home directories. The check reads UMASK only: with `USERGROUPS_ENAB yes` (the default of Debian and Red Hat family systems) users whose primary group is their own private group get group write added to it.
+
+**Why.** A permissive umask makes new files writable by other users.
+
+**Fix.** Set `UMASK 022` (or `027`) in /etc/login.defs.
+
+#### `files.at-spool`
+
+Queued at jobs are private (at 작업 큐는 본인만 접근할 수 있음) — severity high, reads file metadata.
+
+Checks that the queued jobs and sequence file of at (/var/spool/at on the RHEL family, /var/spool/cron/atjobs on Debian and Ubuntu) can be read, written and run by their owner only (mode 0700 or stricter).
+
+**Why.** A job other users can change runs their commands as the job's owner.
+
+**Fix.** Run `chmod 700` on each listed job.
+
+#### `files.cron-commands`
+
+Only root and a group can run crontab and at (crontab·at 명령은 일반 사용자 실행 금지) — severity high, reads file metadata.
+
+Checks that /usr/bin/crontab and /usr/bin/at are owned by root (or daemon, which owns at on Debian and Ubuntu) and cannot be run by other users (no execute permission for others; mode 6750 or stricter).
+
+**Why.** Scheduled jobs keep running after a user is gone; letting every user schedule them widens what an intruder can persist.
+
+**Fix.** Run `chmod o-x /usr/bin/crontab /usr/bin/at`, and let users who need them in through the file's group.
+
+#### `files.cron-files`
+
+cron and at configuration is owned by root and not readable by others (cron·at 설정 파일은 root 소유, 다른 사용자 읽기 금지) — severity high, reads file metadata.
+
+Checks that /etc/crontab, /etc/cron.d/*, and the cron and at allow and deny files are owned by root with mode 0640 or stricter.
+
+**Why.** These files decide what runs as root on a schedule and who may schedule jobs.
+
+**Fix.** Run `chown root` and `chmod 640` on each listed file.
+
+#### `files.cron-root-spool`
+
+Root's crontab is root's and private (root의 crontab은 root 소유이며 root만 읽고 쓸 수 있음) — severity high, reads file metadata.
+
+Checks that root's crontab (/var/spool/cron/crontabs/root on Debian and Ubuntu, /var/spool/cron/root on the RHEL family) is owned by root and can be read and written by root only (mode 0600 or stricter).
+
+**Why.** Whoever can change root's crontab runs commands as root.
+
+**Fix.** Run `chown root` and `chmod 600` on the listed crontab.
+
+#### `files.cron-scripts`
+
+Scheduled script directories are owned by root and not writable by others (cron 스크립트 디렉터리는 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
+
+Checks that /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly and /etc/cron.monthly and the scripts in them are owned by root and writable by no one else (mode 0755 or stricter).
+
+**Why.** These scripts run as root on a schedule; whoever can change one gets root at the next run.
+
+**Fix.** Run `chown root` and `chmod go-w` on each listed script or directory.
+
+#### `files.cron-spool`
+
+Users' crontabs are private (사용자 crontab은 본인만 읽고 쓸 수 있음) — severity high, reads file metadata.
+
+Checks that the crontab files in /var/spool/cron/crontabs (Debian and Ubuntu) can be read and written by their owner only (mode 0600 or stricter). Root's crontab, which must also belong to root, is files.cron-root-spool. Users' crontabs in /var/spool/cron on the RHEL family are files.cron-spool-rhel.
+
+**Why.** A crontab other users can change runs commands as its owner, root's as root.
+
+**Fix.** Run `chmod 600` on each listed crontab.
+
+#### `files.cron-spool-rhel`
+
+Users' crontabs on the RHEL family are private (RHEL 계열의 사용자 crontab은 본인만 읽고 쓸 수 있음) — severity high, reads file metadata.
+
+Checks that the crontab files in /var/spool/cron (RHEL family) can be read and written by their owner only (mode 0600 or stricter). Debian and Ubuntu keep them in /var/spool/cron/crontabs, which is files.cron-spool. Root's crontab must also belong to root (files.cron-root-spool).
+
+**Why.** A crontab other users can change runs commands as its owner, root's as root.
+
+**Fix.** Run `chmod 600` on each listed crontab.
+
+#### `files.dev-regular-files`
+
+No regular files in /dev (/dev에 일반 파일 없음) — severity high, lists what violates it.
+
+Lists regular files under /dev (outside /dev/shm and /dev/mqueue), where only devices and directories belong.
+
+**Why.** /dev is rarely looked at, which makes it a place to hide files; a regular file there holds no device.
+
+**Fix.** Check what each listed file is and remove the ones that do not belong.
+
+#### `files.passwd-perms`
+
+/etc/passwd is owned by root and not writable by others (/etc/passwd는 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
+
+Checks that /etc/passwd is owned by root with mode 0644 or stricter.
+
+**Why.** Anyone who can write /etc/passwd can add an account with UID 0.
+
+**Fix.** Run `chown root /etc/passwd` and `chmod 644 /etc/passwd`.
+
+#### `files.review-setid`
+
+Review the set-ID programs (SUID·SGID 파일 검토) — severity medium, a review (`MANUAL`).
+
+Lists every file with the set-user-ID or set-group-ID bit on local filesystems.
+
+**Why.** Each set-ID program runs with its owner's or group's rights; the ones nobody needs only add risk.
+
+**Fix.** Remove the set-ID bits (`chmod u-s,g-s`) from programs your users do not need, or limit who can run them.
+
+#### `files.rhosts`
+
+hosts.equiv and root's .rhosts are owned by root and private (hosts.equiv와 root의 .rhosts는 root 소유, 비공개) — severity high, reads file metadata.
+
+Checks that /etc/hosts.equiv and /root/.rhosts are owned by root and private (mode 0600 or stricter); the .rhosts files of other users are files.rhosts-homes. Such files should not exist unless the r-services are needed.
+
+**Why.** These files let hosts and users log in through rlogin and rsh without a password.
+
+**Fix.** Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
+
+#### `files.rhosts-homes`
+
+Users' .rhosts files are private (사용자의 .rhosts는 비공개) — severity high, reads file metadata.
+
+Checks that the .rhosts files of the home directories under /home are private (mode 0600 or stricter). The owner is not compared with the home's user: a user's own file is the normal case. Such files should not exist unless the r-services are needed.
+
+**Why.** A .rhosts file lets hosts and users log in through rlogin and rsh without a password.
+
+**Fix.** Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
+
+#### `files.setid-outside-system-dirs`
+
+No set-ID programs outside the system program directories (시스템 디렉터리 밖의 SUID·SGID 파일 없음) — severity high, lists what violates it.
+
+Lists files with the set-user-ID or set-group-ID bit outside /usr/bin, /usr/sbin, /usr/lib, /usr/lib64, /usr/libexec, /bin, /sbin, /lib and /lib64, such as in home directories, /tmp, /var, /opt or /srv.
+
+**Why.** Distributions install their set-ID programs in the system directories; one anywhere else is usually a leftover or a backdoor that grants its owner's rights to whoever runs it.
+
+**Fix.** Remove the set-ID bits (`chmod u-s,g-s`) or the file, unless the software needs them.
+
+#### `files.shadow-perms`
+
+/etc/shadow is owned by root and readable by root only (/etc/shadow는 root 소유, root만 읽기) — severity high, reads file metadata.
+
+Checks that /etc/shadow is owned by root with mode 0400 or stricter. Debian-family systems ship it as 0640 with group shadow, which this check reports.
+
+**Why.** Password hashes in /etc/shadow can be cracked offline by anyone who can read them.
+
+**Fix.** Run `chown root /etc/shadow` and `chmod 400 /etc/shadow`.
+
+#### `files.startup-scripts`
+
+Start-up scripts and units are owned by root and not writable by others (시작 스크립트와 유닛은 root 소유, 다른 사용자 쓰기 금지) — severity high, reads file metadata.
+
+Checks that SysV init scripts, rc.local and the systemd units (services, timers, sockets, paths and their drop-in files) in /etc/systemd/system, and the services in /usr/lib/systemd/system and /lib/systemd/system, are owned by root and writable by no one else (mode 0755 or stricter).
+
+**Why.** These run as root at boot; whoever can change one gets root at the next restart.
+
+**Fix.** Run `chown root` and `chmod go-w` on each listed file.
+
+#### `files.sudoers-perms`
+
+sudoers files are owned by root and not writable by others (sudoers 파일은 root 소유, 다른 사용자 쓰기 금지) — severity medium, reads file metadata.
+
+Checks that /etc/sudoers and the files in /etc/sudoers.d are owned by root with mode 0640 or stricter.
+
+**Why.** Whoever can change the sudo rules can give themselves root.
+
+**Fix.** Run `chown root` and `chmod 440` on each file (visudo keeps them that way).
+
+#### `files.unowned`
+
+No files without an owner (소유자·그룹이 없는 파일 없음) — severity high, lists what violates it.
+
+Lists files and directories on local filesystems whose owner or group has no account in /etc/passwd or /etc/group. Accounts that only a directory service (LDAP, SSSD, NIS) provides are not looked up, so files they own are listed too.
+
+**Why.** A file left behind by a deleted account belongs to whoever is next given its UID or GID.
+
+**Fix.** Give each listed file an owner and group (`chown`), or remove it.
+
+#### `files.world-writable`
+
+No world-writable files, and no world-writable directories without the sticky bit (모든 사용자 쓰기 가능 파일·디렉터리 없음) — severity high, lists what violates it.
+
+Lists regular files that every user can write, and directories every user can write that lack the sticky bit (so anyone can delete or replace others' files there), on local filesystems.
+
+**Why.** Anyone can change a world-writable file; if a privileged program or user reads or runs it, that becomes a way to gain their rights.
+
+**Fix.** Remove write permission for others (`chmod o-w`), or set the sticky bit on shared directories (`chmod +t`).
+
+#### `homes.owner-perms`
+
+Home directories belong to their accounts and others cannot write them (홈 디렉터리는 계정 본인 소유, 다른 사용자 쓰기 금지) — severity medium, lists what violates it.
+
+Lists accounts with a login shell whose home directory is owned by another account or is writable by others.
+
+**Why.** Whoever can write a home directory can replace its startup files and keys.
+
+**Fix.** Run `chown <user> <home>` and `chmod o-w <home>` for each listed account.
+
+#### `homes.startup-files`
+
+Users' startup files belong to them and others cannot change them (사용자 시작 파일은 본인·root 소유, 다른 사용자 쓰기 금지) — severity high, lists what violates it.
+
+Lists accounts whose shell startup files (.profile, .bashrc, .bash_profile, ...) are owned by someone other than the account or root, are writable by group or others, or are symbolic links to missing files.
+
+**Why.** A startup file runs whenever its user logs in; whoever can change it runs commands as that user.
+
+**Fix.** Run `chown <user>` and `chmod go-w` on each listed file, and remove links to missing files.
+
+#### `services.no-finger`
+
+The finger service is not started (finger 서비스 미사용) — severity high, lists what violates it.
+
+Lists the ways the finger service (fingerd, cfingerd) is started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
+
+**Why.** finger tells anyone on the network who your users are and when they log in.
+
+**Fix.** Disable the service: remove its inetd/xinetd entry, or `systemctl disable --now` its unit.
+
+#### `services.no-nis`
+
+NIS is not used (NIS 서비스 미사용) — severity high, lists what violates it.
+
+Lists the ways the NIS server and client daemons (ypserv, ypbind, yppasswdd, ypxfrd) are started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
+
+**Why.** NIS hands out account data, including password hashes, with weak protection.
+
+**Fix.** Disable the NIS daemons and use a directory service with encryption, such as LDAP over TLS.
+
+#### `services.no-r-services`
+
+The r-services are not started (r 계열 서비스 미사용) — severity high, lists what violates it.
+
+Lists the ways rsh, rlogin and rexec (inetd's shell, login and exec services, or their units) are started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
+
+**Why.** The r-services send passwords in clear text and trust hosts by address.
+
+**Fix.** Disable rsh, rlogin and rexec and use SSH instead.
+
+#### `services.no-telnet`
+
+Telnet is not started (텔넷 서비스 미사용) — severity medium, lists what violates it.
+
+Lists the ways the telnet service is started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
+
+**Why.** Telnet sends passwords and sessions in clear text.
+
+**Fix.** Disable telnet and use SSH.
+
+#### `services.no-tftp-talk`
+
+tftp and talk are not started (tftp, talk 서비스 미사용) — severity high, lists what violates it.
+
+Lists the ways the tftp, talk and ntalk services are started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
+
+**Why.** tftp serves files without authentication; talk is an old, unneeded chat service.
+
+**Fix.** Disable them.
+
+#### `services.time-sync`
+
+A time synchronization service is started (시각 동기화 서비스 사용) — severity medium, evaluates an expression.
+
+Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled (as a unit or an init script), or running on a live host. Which servers it uses is for services.review-time-sync.
+
+**Why.** Logs from hosts with drifting clocks cannot be correlated, and time-based protocols fail.
+
+**Fix.** Enable a time synchronization service (`systemctl enable --now chronyd`).
+
+#### `ssh.hostbased-authentication`
+
+SSH does not trust other hosts (SSH가 다른 호스트를 신뢰하지 않음) — severity medium, compares one setting.
+
+Checks the global HostbasedAuthentication setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** Host-based authentication trusts a whole machine instead of a person, so one compromised host opens every account that trusts it.
+
+**Fix.** Set `HostbasedAuthentication no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.ignore-rhosts`
+
+SSH ignores .rhosts files (SSH가 .rhosts 파일을 무시함) — severity medium, compares one setting.
+
+Checks the global IgnoreRhosts setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** Host-based trust files let a login succeed without any secret.
+
+**Fix.** Set `IgnoreRhosts yes` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.match-hardening`
+
+No SSH Match block weakens the hardened settings (SSH Match 블록이 강화된 설정을 되돌리지 않음) — severity medium, lists what violates it.
+
+Lists Match blocks of the OpenSSH server configuration that set PasswordAuthentication, KbdInteractiveAuthentication, ChallengeResponseAuthentication, PermitEmptyPasswords, X11Forwarding, HostbasedAuthentication or PermitUserEnvironment to anything but "no", IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries`. A Match block overrides the global value for the connections it matches.
+
+**Why.** A hardened global value can be undone for a whole network or user group by a Match block, and the global check would not notice.
+
+**Fix.** Remove the setting from the Match block, or give it the hardened value there as well.
+
+**Parameters.**
+
+- `max_tries` (int, default `4`, lower is stricter): Authentication attempts allowed per connection
+
+#### `ssh.match-permit-root-login`
+
+No SSH Match block allows root login (SSH Match 블록의 root 로그인 허용 금지) — severity high, lists what violates it.
+
+Lists Match blocks of the OpenSSH server configuration that set PermitRootLogin to anything but "no", which re-enables root login for the connections they match.
+
+**Why.** A Match block overrides the global setting for matching connections, so a hardened global value can be undone for a whole network or user group.
+
+**Fix.** Remove PermitRootLogin from the Match block or set it to "no" there as well.
+
+#### `ssh.max-auth-tries`
+
+SSH allows few authentication attempts per connection (SSH 연결 하나당 인증 시도를 적게 허용함) — severity low, compares one setting.
+
+Checks the global MaxAuthTries setting of the OpenSSH server, the number of authentication attempts allowed on one connection. On a live host the effective value comes from `sshd -T`, so the default of the installed version (6) counts.
+
+**Why.** Every attempt on a connection is a free guess for an attacker; a low limit makes guessing slower and noisier.
+
+**Fix.** Set `MaxAuthTries 4` (or less) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+**Parameters.**
+
+- `max_tries` (int, default `4`, lower is stricter): Authentication attempts allowed per connection
+
+#### `ssh.password-authentication`
+
+SSH logins do not accept passwords (SSH 로그인이 비밀번호를 받지 않음) — severity medium, evaluates an expression.
+
+Checks that the OpenSSH server accepts neither PasswordAuthentication nor keyboard-interactive authentication, which is how a password is typed through PAM (named ChallengeResponseAuthentication before OpenSSH 8.7). On a live host the effective values come from `sshd -T`, so the defaults of the installed version count.
+
+**Why.** A password can be guessed, reused and phished over the network; a key pair cannot be guessed and never leaves the client.
+
+**Fix.** Make sure every administrator can log in with a key, then set `PasswordAuthentication no` and `KbdInteractiveAuthentication no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.permit-empty-passwords`
+
+SSH does not accept empty passwords (SSH가 빈 비밀번호를 받지 않음) — severity high, compares one setting.
+
+Checks the global PermitEmptyPasswords setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** An account without a password would let anyone log in over the network.
+
+**Fix.** Set `PermitEmptyPasswords no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.permit-root-login`
+
+SSH does not allow direct root login (SSH root 직접 로그인 차단) — severity high, compares one setting.
+
+Checks the global PermitRootLogin setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** Direct root logins remove accountability and expose the most privileged account to password guessing and stolen keys.
+
+**Fix.** Set `PermitRootLogin no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd. Administrators log in with their own accounts and use sudo or su.
+
+#### `ssh.permit-user-environment`
+
+SSH does not let users set the environment (SSH가 사용자의 환경 변수 설정을 허용하지 않음) — severity medium, compares one setting.
+
+Checks the global PermitUserEnvironment setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** Environment settings from a user's own files can change how the login shell and PAM modules behave, which defeats restrictions set for the account.
+
+**Fix.** Set `PermitUserEnvironment no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.x11-forwarding`
+
+SSH does not forward X11 (SSH가 X11을 전달하지 않음) — severity low, compares one setting.
+
+Checks the global X11Forwarding setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** X11 forwarding exposes the client's display to the server, and anything that controls the server can then watch or drive it.
+
+**Fix.** Set `X11Forwarding no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
 ## kisa-2026 (revision 15)
 
 KISA CII technical vulnerability assessment guide, 2026 edition — Unix servers

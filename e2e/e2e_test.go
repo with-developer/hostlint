@@ -55,22 +55,25 @@ func TestE2E(t *testing.T) {
 				if variant == "hardened" {
 					image = buildHardened(t, d.name, d.image)
 				}
-				res := scan(t, installed(t, bin, image, name))
-				got := summary(res)
-				golden := filepath.Join("testdata", name+".golden")
-				if *update {
-					if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
-						t.Fatal(err)
+				scanImage := installed(t, bin, image, name)
+				// Every profile is compared: kisa-2026 (the default) and essentials.
+				for _, profile := range []struct{ id, suffix string }{{"kisa-2026", ""}, {"essentials", "-essentials"}} {
+					got := summary(scan(t, scanImage, profile.id))
+					golden := filepath.Join("testdata", name+profile.suffix+".golden")
+					if *update {
+						if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
+							t.Fatal(err)
+						}
+						continue
 					}
-					return
-				}
-				want, err := os.ReadFile(golden)
-				if err != nil {
-					t.Fatalf("%v (run make e2e E2E_RUN=%s E2E_UPDATE=1)", err, d.name)
-				}
-				if got != string(want) {
-					t.Errorf("%s differs from %s; review the change and run make e2e E2E_RUN=%s E2E_UPDATE=1\n%s",
-						name, golden, d.name, diff(string(want), got))
+					want, err := os.ReadFile(golden)
+					if err != nil {
+						t.Fatalf("%v (run make e2e E2E_RUN=%s E2E_UPDATE=1)", err, d.name)
+					}
+					if got != string(want) {
+						t.Errorf("%s differs from %s; review the change and run make e2e E2E_RUN=%s E2E_UPDATE=1\n%s",
+							name, golden, d.name, diff(string(want), got))
+					}
 				}
 			})
 		}
@@ -111,10 +114,10 @@ func installed(t *testing.T, bin, image, name string) string {
 
 // scan runs hostlint in a container without network access and returns
 // its result.
-func scan(t *testing.T, image string) *engine.Result {
+func scan(t *testing.T, image, profile string) *engine.Result {
 	t.Helper()
 	out := run(t, "docker", "run", "--rm", "--network", "none", "--hostname", "e2e-host",
-		image, "/usr/local/bin/hostlint", "scan", "--format", "json", "--fail-on", "none")
+		image, "/usr/local/bin/hostlint", "scan", "--profile", profile, "--format", "json", "--fail-on", "none")
 	var res engine.Result
 	if err := json.Unmarshal([]byte(out), &res); err != nil {
 		t.Fatalf("result: %v\n%.500s", err, out)
@@ -256,20 +259,22 @@ func TestE2EImage(t *testing.T) {
 			run(t, "docker", "pull", "--quiet", d.image)
 			archive := filepath.Join(t.TempDir(), "image.tar")
 			run(t, "docker", "save", "--output", archive, d.image)
-			out := run(t, bin, "scan", "--image-tar", archive, "--format", "json", "--fail-on", "none")
-			var res engine.Result
-			if err := json.Unmarshal([]byte(out), &res); err != nil {
-				t.Fatalf("result: %v\n%.500s", err, out)
-			}
-			if res.Scan.Target.Kind != "root" || !strings.HasPrefix(res.Scan.Target.Root, "image:") {
-				t.Errorf("target = %+v", res.Scan.Target)
-			}
-			want, err := os.ReadFile(filepath.Join("testdata", d.name+"-stock.golden"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got, w := statuses(summary(&res)), statuses(string(want)); got != w {
-				t.Errorf("the image and its container disagree:\n%s", diff(w, got))
+			for _, profile := range []struct{ id, suffix string }{{"kisa-2026", ""}, {"essentials", "-essentials"}} {
+				out := run(t, bin, "scan", "--image-tar", archive, "--profile", profile.id, "--format", "json", "--fail-on", "none")
+				var res engine.Result
+				if err := json.Unmarshal([]byte(out), &res); err != nil {
+					t.Fatalf("result: %v\n%.500s", err, out)
+				}
+				if res.Scan.Target.Kind != "root" || !strings.HasPrefix(res.Scan.Target.Root, "image:") {
+					t.Errorf("target = %+v", res.Scan.Target)
+				}
+				want, err := os.ReadFile(filepath.Join("testdata", d.name+"-stock"+profile.suffix+".golden"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got, w := statuses(summary(&res)), statuses(string(want)); got != w {
+					t.Errorf("%s: the image and its container disagree:\n%s", profile.id, diff(w, got))
+				}
 			}
 		})
 	}

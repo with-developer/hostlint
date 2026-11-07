@@ -1,0 +1,40 @@
+id: ssh.ignore-rhosts
+version: 1
+title: SSH ignores .rhosts files
+title_ko: SSH가 .rhosts 파일을 무시함
+severity: medium
+description: >-
+  Checks the global IgnoreRhosts setting of the OpenSSH server. On a live host the effective value
+  comes from `sshd -T`, so the default of the installed version counts.
+rationale: >-
+  Host-based trust files let a login succeed without any secret.
+remediation: >-
+  Set `IgnoreRhosts yes` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+applies: >-
+  sshd.present
+setting:
+  fact: sshd.config.ignorerhosts
+  in: ["yes"]
+  absent: default
+tests:
+  - name: as required
+    facts:
+      sshd: {present: true, config: {ignorerhosts: {value: "yes", explicit: true, source: "/etc/ssh/sshd_config:20"}}}
+    want: PASS
+  - name: the default of the installed version is fine
+    facts:
+      sshd: {present: true, config: {ignorerhosts: {value: "yes", source: "sshd -T (default)"}}}
+    want: PASS
+  - name: set the other way
+    facts:
+      sshd: {present: true, config: {ignorerhosts: {value: "no", explicit: true, source: "/etc/ssh/sshd_config:20"}}}
+    want: FAIL
+  - name: no SSH server
+    facts:
+      sshd: {present: false}
+    want: NOT_APPLICABLE
+  - name: the default is unknown on a mounted root
+    input: absent
+    facts:
+      sshd: {present: true, config: {}}
+    want: ERROR

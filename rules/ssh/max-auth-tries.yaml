@@ -1,0 +1,44 @@
+id: ssh.max-auth-tries
+version: 1
+title: SSH allows few authentication attempts per connection
+title_ko: SSH 연결 하나당 인증 시도를 적게 허용함
+severity: low
+description: >-
+  Checks the global MaxAuthTries setting of the OpenSSH server, the number of authentication
+  attempts allowed on one connection. On a live host the effective value comes from `sshd -T`,
+  so the default of the installed version (6) counts.
+rationale: >-
+  Every attempt on a connection is a free guess for an attacker; a low limit makes guessing
+  slower and noisier.
+remediation: >-
+  Set `MaxAuthTries 4` (or less) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+applies: >-
+  sshd.present
+params:
+  max_tries: {type: int, default: 4, stricter: lower, description: Authentication attempts allowed per connection}
+setting:
+  fact: sshd.config.maxauthtries
+  range: {min: 1, max: params.max_tries}
+  absent: default
+tests:
+  - name: four attempts
+    facts:
+      sshd: {present: true, config: {maxauthtries: {value: "4", explicit: true, source: "/etc/ssh/sshd_config:30"}}}
+    want: PASS
+  - name: the OpenSSH default of six
+    facts:
+      sshd: {present: true, config: {maxauthtries: {value: "6", source: "sshd -T (default)"}}}
+    want: FAIL
+  - name: a value that is not a number cannot be judged
+    facts:
+      sshd: {present: true, config: {maxauthtries: {value: "many", explicit: true}}}
+    want: ERROR
+  - name: no SSH server
+    facts:
+      sshd: {present: false}
+    want: NOT_APPLICABLE
+  - name: the default is unknown on a mounted root
+    input: absent
+    facts:
+      sshd: {present: true, config: {}}
+    want: ERROR

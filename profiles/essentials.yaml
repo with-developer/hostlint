@@ -1,0 +1,107 @@
+# hostlint essentials: a short baseline of the settings most Linux server hardening guides agree
+# on, over the same checks as the other profiles. The control IDs and titles are hostlint's own.
+id: essentials
+revision: 1
+title: hostlint essentials — a short hardening baseline for Linux servers
+title_ko: hostlint 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
+controls:
+  - id: ES-01
+    title: SSH does not allow root to log in
+    title_ko: SSH로 root가 직접 로그인할 수 없음
+    severity: high
+    checks: [ssh.permit-root-login, ssh.match-permit-root-login]
+  - id: ES-02
+    title: SSH logins use keys, not passwords
+    title_ko: SSH 로그인에 비밀번호 대신 키를 사용
+    severity: medium
+    checks: [ssh.password-authentication]
+  - id: ES-03
+    title: SSH accepts no empty passwords and no host-based trust
+    title_ko: SSH가 빈 비밀번호와 호스트 기반 신뢰를 허용하지 않음
+    severity: high
+    checks: [ssh.permit-empty-passwords, ssh.ignore-rhosts, ssh.hostbased-authentication, ssh.permit-user-environment]
+  - id: ES-04
+    title: SSH limits attempts and features
+    title_ko: SSH가 시도 횟수와 기능을 제한함
+    severity: medium
+    checks: [ssh.max-auth-tries, ssh.x11-forwarding]
+  - id: ES-05
+    title: No Match block weakens the SSH settings
+    title_ko: SSH Match 블록이 설정을 약화시키지 않음
+    severity: medium
+    checks: [ssh.match-hardening]
+  - id: ES-06
+    title: Only root has UID 0, and every account has its own UID
+    title_ko: UID 0은 root뿐이고 계정마다 고유한 UID를 가짐
+    severity: high
+    checks: [accounts.uid0-only-root, accounts.unique-uids]
+  - id: ES-07
+    title: Password hashes are protected
+    title_ko: 비밀번호 해시가 보호됨
+    severity: high
+    checks: [accounts.passwd-no-hashes, accounts.shadow-file, files.shadow-perms, files.passwd-perms]
+  - id: ES-08
+    title: Passwords are long and stored with a strong hash
+    title_ko: 비밀번호가 길고 강한 해시로 저장됨
+    severity: high
+    checks: [accounts.password-min-length, accounts.password-hash-method, accounts.password-hash-strength]
+  - id: ES-09
+    title: Accounts lock after repeated login failures
+    title_ko: 로그인에 여러 번 실패하면 계정이 잠김
+    severity: high
+    checks: [accounts.lockout-threshold]
+  - id: ES-10
+    title: Passwords expire
+    title_ko: 비밀번호가 만료됨
+    severity: medium
+    checks: [accounts.password-max-age, accounts.password-max-age-existing]
+  - id: ES-11
+    title: su and sudo are restricted
+    title_ko: su와 sudo가 제한됨
+    severity: medium
+    checks: [accounts.su-wheel-only, files.sudoers-perms]
+  - id: ES-12
+    title: Shells start with safe defaults
+    title_ko: 셸이 안전한 기본값으로 시작함
+    severity: high
+    checks: [env.path-current-dir, env.umask-login-defs]
+  - id: ES-13
+    title: Scheduled jobs are private to root
+    title_ko: 예약 작업이 root에게만 열려 있음
+    severity: high
+    checks: [files.cron-commands, files.cron-files, files.cron-scripts, files.cron-spool, files.cron-spool-rhel, files.cron-root-spool, files.at-spool]
+  - id: ES-14
+    title: No legacy remote services
+    title_ko: 오래된 원격 서비스를 쓰지 않음
+    severity: high
+    checks: [services.no-telnet, services.no-r-services, files.rhosts, files.rhosts-homes, services.no-tftp-talk, services.no-finger, services.no-nis]
+  - id: ES-15
+    title: No stray files with dangerous permissions
+    title_ko: 위험한 권한의 파일이 방치되어 있지 않음
+    severity: high
+    checks: [files.world-writable, files.unowned, files.setid-outside-system-dirs, files.dev-regular-files]
+  - id: ES-16
+    title: Start-up scripts and units cannot be changed by others
+    title_ko: 시작 스크립트와 유닛을 다른 사용자가 바꿀 수 없음
+    severity: high
+    checks: [files.startup-scripts]
+  - id: ES-17
+    title: Home directories are private
+    title_ko: 홈 디렉터리가 비공개임
+    severity: high
+    checks: [homes.owner-perms, homes.startup-files]
+  - id: ES-18
+    title: The clock is kept in sync
+    title_ko: 시각이 동기화됨
+    severity: medium
+    checks: [services.time-sync]
+  - id: ES-19
+    title: Set-ID programs are reviewed
+    title_ko: Set-ID 프로그램을 검토함
+    severity: medium
+    checks: [files.review-setid]
+  - id: ES-20
+    title: Accounts that can log in are reviewed
+    title_ko: 로그인할 수 있는 계정을 검토함
+    severity: low
+    checks: [accounts.review-login-accounts, accounts.review-admin-groups]

@@ -164,6 +164,12 @@ review listed under them, and `NOT_APPLICABLE` where the software is not running
 (Rocky Linux, AlmaLinux), Amazon Linux 2023, and CentOS/RHEL 7 best-effort; other versions are scanned
 best-effort and marked as such.
 
+The `essentials` profile (`--profile essentials`) is a short baseline that most Linux hardening guides
+agree on, outside any national standard: SSH (no root login, no password logins, no empty passwords, few
+attempts, no X11 forwarding, and no `Match` block that undoes them), UID 0 and password files, password
+length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions
+and time synchronization. It has 20 controls over the same checks, with its own IDs (`ES-01`–`ES-20`).
+
 Titles and descriptions are hostlint's own; profiles reference control IDs only.
 
 ## Fleet dashboard (early)

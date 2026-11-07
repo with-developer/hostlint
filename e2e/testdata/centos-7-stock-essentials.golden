@@ -1,0 +1,184 @@
+os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
+profile essentials revision 1: FAIL 5 MANUAL 2 PASS 8 NOT_APPLICABLE 5
+
+ES-01 NOT_APPLICABLE
+  ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+  ssh.match-permit-root-login NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-02 NOT_APPLICABLE
+  ssh.password-authentication NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-03 NOT_APPLICABLE
+  ssh.permit-empty-passwords NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+  ssh.ignore-rhosts NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+  ssh.hostbased-authentication NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+  ssh.permit-user-environment NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-04 NOT_APPLICABLE
+  ssh.max-auth-tries NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+  ssh.x11-forwarding NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-05 NOT_APPLICABLE
+  ssh.match-hardening NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-06 PASS
+  accounts.uid0-only-root PASS
+  accounts.unique-uids PASS
+
+ES-07 PASS
+  accounts.passwd-no-hashes PASS
+  accounts.shadow-file PASS
+    - shadow.present = true
+  files.shadow-perms PASS
+    - /etc/shadow: root:root 0000  [/etc/shadow]
+  files.passwd-perms PASS
+    - /etc/passwd: root:root 0644  [/etc/passwd]
+
+ES-08 FAIL
+  accounts.password-min-length FAIL
+    - pam.password_quality.module = "pam_pwquality.so"
+    - pam.password_quality.settings.dcredit = "1" (default)  [default (libpwquality 1.2)]
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (libpwquality 1.2)]
+    - pam.password_quality.settings.lcredit = "1" (default)  [default (libpwquality 1.2)]
+    - pam.password_quality.settings.minlen = "9" (default)  [default (libpwquality 1.2)]
+    - pam.password_quality.settings.ocredit = "1" (default)  [default (libpwquality 1.2)]
+    - pam.password_quality.settings.ucredit = "1" (default)  [default (libpwquality 1.2)]
+  accounts.password-hash-method PASS
+    - login_defs.settings.ENCRYPT_METHOD = "SHA512" (explicit)  [/etc/login.defs:71]
+    - os.family = "rhel"
+    - os.id = "centos"
+    - os.version_major = 7
+    - pam.effective.password_hash = "sha512" (explicit)  [/etc/pam.d/system-auth:11]
+  accounts.password-hash-strength PASS
+
+ES-09 FAIL
+  accounts.lockout-threshold FAIL
+    - pam.lockout.login.enforced = false
+    - pam.lockout.login.settings.deny: not set
+    - pam.lockout.sshd.enforced = false
+    - pam.lockout.sshd.settings.deny: not set
+    - sshd.config.usepam: not set
+    - sshd.present = false
+
+ES-10 FAIL
+  accounts.password-max-age FAIL
+    - "99999" (explicit); expected 1–90  [/etc/login.defs:25]
+  accounts.password-max-age-existing PASS
+
+ES-11 FAIL
+  accounts.su-wheel-only FAIL
+    - not set; expected one of [restricted]
+  files.sudoers-perms NOT_APPLICABLE: no matching files exist
+    - /etc/sudoers: does not exist  [/etc/sudoers]
+    - /etc/sudoers.d/*: no matching files  [/etc/sudoers.d/*]
+
+ES-12 PASS
+  env.path-current-dir PASS
+  env.umask-login-defs PASS
+    - "077" (explicit); expected a value matching 0*[0-7]?[2367][2367]  [/etc/login.defs:64]
+
+ES-13 PASS
+  files.cron-commands PASS
+    - /usr/bin/at: does not exist  [/usr/bin/at]
+    - /usr/bin/crontab: does not exist  [/usr/bin/crontab]
+  files.cron-files PASS
+    - /etc/at.allow: does not exist  [/etc/at.allow]
+    - /etc/at.deny: does not exist  [/etc/at.deny]
+    - /etc/cron.allow: does not exist  [/etc/cron.allow]
+    - /etc/cron.d/*: no matching files  [/etc/cron.d/*]
+    - /etc/cron.deny: does not exist  [/etc/cron.deny]
+    - /etc/crontab: does not exist  [/etc/crontab]
+  files.cron-scripts PASS
+    - /etc/cron.daily: does not exist  [/etc/cron.daily]
+    - /etc/cron.daily/*: no matching files  [/etc/cron.daily/*]
+    - /etc/cron.hourly: does not exist  [/etc/cron.hourly]
+    - /etc/cron.hourly/*: no matching files  [/etc/cron.hourly/*]
+    - /etc/cron.monthly: does not exist  [/etc/cron.monthly]
+    - /etc/cron.monthly/*: no matching files  [/etc/cron.monthly/*]
+    - /etc/cron.weekly: does not exist  [/etc/cron.weekly]
+    - /etc/cron.weekly/*: no matching files  [/etc/cron.weekly/*]
+  files.cron-spool PASS
+    - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-spool-rhel PASS
+    - /var/spool/cron/*: no matching files  [/var/spool/cron/*]
+  files.cron-root-spool PASS
+    - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
+    - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
+  files.at-spool PASS
+    - /var/spool/at/*: no matching files  [/var/spool/at/*]
+    - /var/spool/cron/atjobs/*: no matching files  [/var/spool/cron/atjobs/*]
+
+ES-14 PASS
+  services.no-telnet PASS
+  services.no-r-services PASS
+  files.rhosts PASS
+    - /etc/hosts.equiv: does not exist  [/etc/hosts.equiv]
+    - /root/.rhosts: does not exist  [/root/.rhosts]
+  files.rhosts-homes PASS
+    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
+  services.no-tftp-talk PASS
+  services.no-finger PASS
+  services.no-nis PASS
+
+ES-15 PASS
+  files.world-writable PASS
+  files.unowned PASS
+  files.setid-outside-system-dirs PASS
+  files.dev-regular-files PASS
+
+ES-16 PASS
+  files.startup-scripts PASS
+    - /etc/init.d: root:root 0755  [/etc/init.d]
+    - /etc/init.d/README: root:root 0644  [/etc/init.d/README]
+    - /etc/rc.d/init.d: root:root 0755  [/etc/rc.d/init.d]
+    - /etc/rc.d/init.d/README: root:root 0644  [/etc/rc.d/init.d/README]
+    - /etc/rc.d/rc.local: root:root 0644  [/etc/rc.d/rc.local]
+    - /etc/rc.local: root:root 0644  [/etc/rc.local]
+    - /etc/systemd/system: root:root 0755  [/etc/systemd/system]
+    - /etc/systemd/system/*.d/*.conf: no matching files  [/etc/systemd/system/*.d/*.conf]
+    - …
+
+ES-17 PASS
+  homes.owner-perms PASS
+  homes.startup-files PASS
+
+ES-18 FAIL
+  services.time-sync FAIL
+    - No time synchronization service (chrony, ntpd, ntpsec or systemd-timesyncd) is enabled or running.
+    - services.active is empty
+    - services.sysv["chrony"].enabled: not set
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
+    - services.units["chrony.service"].enabled: not set
+    - services.units["chrony.service"].masked: not set
+    - …
+
+ES-19 MANUAL
+  files.review-setid MANUAL: Check that every listed program needs its set-ID bit.
+    - /usr/bin/chage 4755 root
+    - /usr/bin/chfn 4711 root
+    - /usr/bin/chsh 4711 root
+    - /usr/bin/gpasswd 4755 root
+    - /usr/bin/mount 4755 root
+    - /usr/bin/newgrp 4755 root
+    - /usr/bin/passwd 4755 root
+    - /usr/bin/su 4755 root
+    - …
+
+ES-20 MANUAL
+  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
+    - root (uid 0, /bin/bash)
+  accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
+    - root: root (primary group), sync (primary group), shutdown (primary group), halt (primary group), operator (primary group)
+    - wheel: (no members)

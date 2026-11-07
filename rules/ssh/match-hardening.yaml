@@ -1,0 +1,72 @@
+id: ssh.match-hardening
+version: 1
+title: No SSH Match block weakens the hardened settings
+title_ko: SSH Match 블록이 강화된 설정을 되돌리지 않음
+severity: medium
+description: >-
+  Lists Match blocks of the OpenSSH server configuration that set PasswordAuthentication,
+  KbdInteractiveAuthentication, ChallengeResponseAuthentication, PermitEmptyPasswords,
+  X11Forwarding, HostbasedAuthentication or PermitUserEnvironment to anything but "no",
+  IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries`. A Match block overrides
+  the global value for the connections it matches.
+rationale: >-
+  A hardened global value can be undone for a whole network or user group by a Match block, and
+  the global check would not notice.
+remediation: >-
+  Remove the setting from the Match block, or give it the hardened value there as well.
+applies: >-
+  sshd.present
+params:
+  max_tries: {type: int, default: 4, stricter: lower, description: Authentication attempts allowed per connection}
+violations:
+  over: sshd.match
+  as: m
+  where: >-
+    ("passwordauthentication" in m.settings && m.settings["passwordauthentication"].value != "no") ||
+    ("kbdinteractiveauthentication" in m.settings && m.settings["kbdinteractiveauthentication"].value != "no") ||
+    ("challengeresponseauthentication" in m.settings && m.settings["challengeresponseauthentication"].value != "no") ||
+    ("permitemptypasswords" in m.settings && m.settings["permitemptypasswords"].value != "no") ||
+    ("x11forwarding" in m.settings && m.settings["x11forwarding"].value != "no") ||
+    ("hostbasedauthentication" in m.settings && m.settings["hostbasedauthentication"].value != "no") ||
+    ("permituserenvironment" in m.settings && m.settings["permituserenvironment"].value != "no") ||
+    ("ignorerhosts" in m.settings && m.settings["ignorerhosts"].value != "yes") ||
+    ("maxauthtries" in m.settings && (!m.settings["maxauthtries"].value.matches("^[0-9]+$") || int(m.settings["maxauthtries"].value) > params.max_tries))
+  key: m.source
+  text: >-
+    "Match " + m.criteria + " weakens the hardened settings (" + m.source + ")"
+  allow_empty: true
+tests:
+  - name: no Match blocks
+    facts:
+      sshd: {present: true, match: []}
+    want: PASS
+  - name: Match block with hardened values
+    facts:
+      sshd: {present: true, match: [{criteria: "User backup", settings: {x11forwarding: {value: "no", explicit: true}, maxauthtries: {value: "3", explicit: true}}, source: "/etc/ssh/sshd_config:40"}]}
+    want: PASS
+  - name: Match block allows passwords
+    facts:
+      sshd: {present: true, match: [{criteria: "Group contractors", settings: {passwordauthentication: {value: "yes", explicit: true}}, source: "/etc/ssh/sshd_config:41"}]}
+    want: FAIL
+  - name: Match block allows too many attempts
+    facts:
+      sshd: {present: true, match: [{criteria: "Address 10.0.0.0/8", settings: {maxauthtries: {value: "20", explicit: true}}, source: "/etc/ssh/sshd_config:42"}]}
+    want: FAIL
+  - name: Match block with a value that is not a number
+    facts:
+      sshd: {present: true, match: [{criteria: "User a", settings: {maxauthtries: {value: "many", explicit: true}}, source: "/etc/ssh/sshd_config:43"}]}
+    want: FAIL
+  - name: Match block turns rhosts back on
+    facts:
+      sshd: {present: true, match: [{criteria: "User a", settings: {ignorerhosts: {value: "no", explicit: true}}, source: "/etc/ssh/sshd_config:44"}]}
+    want: FAIL
+  - name: no OpenSSH server
+    facts:
+      sshd: {present: false, match: []}
+    want: NOT_APPLICABLE
+  - name: an unreadable include could hold a Match block
+    input: incomplete
+    incomplete: [sshd]
+    facts:
+      sshd: {present: true, match: []}
+    want: ERROR

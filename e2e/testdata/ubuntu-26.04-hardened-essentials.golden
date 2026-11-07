@@ -1,0 +1,186 @@
+os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
+profile essentials revision 1: FAIL 2 MANUAL 2 PASS 16
+
+ES-01 PASS
+  ssh.permit-root-login PASS
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:1]
+  ssh.match-permit-root-login PASS
+
+ES-02 FAIL
+  ssh.password-authentication FAIL
+    - The server still accepts a password, directly or through keyboard-interactive authentication.
+    - sshd.config.challengeresponseauthentication: not set
+    - sshd.config.kbdinteractiveauthentication = "no" (explicit)  [/etc/ssh/sshd_config:86]
+    - sshd.config.passwordauthentication = "yes" (default)  [sshd -T (default)]
+
+ES-03 PASS
+  ssh.permit-empty-passwords PASS
+    - "no" (default); expected one of [no]  [sshd -T (default)]
+  ssh.ignore-rhosts PASS
+    - "yes" (default); expected one of [yes]  [sshd -T (default)]
+  ssh.hostbased-authentication PASS
+    - "no" (default); expected one of [no]  [sshd -T (default)]
+  ssh.permit-user-environment PASS
+    - "no" (default); expected one of [no]  [sshd -T (default)]
+
+ES-04 FAIL
+  ssh.max-auth-tries FAIL
+    - "6" (default); expected 1–4  [sshd -T (default)]
+  ssh.x11-forwarding FAIL
+    - "yes" (explicit); expected one of [no]  [/etc/ssh/sshd_config:114]
+
+ES-05 PASS
+  ssh.match-hardening PASS
+
+ES-06 PASS
+  accounts.uid0-only-root PASS
+  accounts.unique-uids PASS
+
+ES-07 PASS
+  accounts.passwd-no-hashes PASS
+  accounts.shadow-file PASS
+    - shadow.present = true
+  files.shadow-perms PASS
+    - /etc/shadow: root:shadow 0400  [/etc/shadow]
+  files.passwd-perms PASS
+    - /etc/passwd: root:root 0644  [/etc/passwd]
+
+ES-08 PASS
+  accounts.password-min-length PASS
+    - pam.password_quality.module = "pam_pwquality.so"
+    - pam.password_quality.settings.dcredit = "-1" (explicit)  [/etc/security/pwquality.conf:2]
+    - pam.password_quality.settings.enforcing = "1" (default)  [default (pwquality.conf(5), libpwquality 1.3 and later)]
+    - pam.password_quality.settings.lcredit = "-1" (explicit)  [/etc/security/pwquality.conf:4]
+    - pam.password_quality.settings.minlen = "8" (explicit)  [/etc/security/pwquality.conf:1]
+    - pam.password_quality.settings.ocredit = "-1" (explicit)  [/etc/security/pwquality.conf:5]
+    - pam.password_quality.settings.ucredit = "-1" (explicit)  [/etc/security/pwquality.conf:3]
+  accounts.password-hash-method PASS
+    - login_defs.settings.ENCRYPT_METHOD = "YESCRYPT" (explicit)  [/etc/login.defs:161]
+    - os.family = "debian"
+    - os.id = "ubuntu"
+    - os.version_major = 26
+    - pam.effective.password_hash = "yescrypt" (explicit)  [/etc/pam.d/common-password:27]
+  accounts.password-hash-strength PASS
+
+ES-09 PASS
+  accounts.lockout-threshold PASS
+    - pam.lockout.login.enforced = true
+    - pam.lockout.login.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
+    - pam.lockout.sshd.enforced = true
+    - pam.lockout.sshd.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
+    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config:109]
+    - sshd.present = true
+
+ES-10 PASS
+  accounts.password-max-age PASS
+    - "90" (explicit); expected 1–90  [/etc/login.defs:97]
+  accounts.password-max-age-existing PASS
+
+ES-11 PASS
+  accounts.su-wheel-only PASS
+    - "restricted" (explicit); expected one of [restricted]  [/etc/pam.d/su:15]
+  files.sudoers-perms NOT_APPLICABLE: no matching files exist
+    - /etc/sudoers: does not exist  [/etc/sudoers]
+    - /etc/sudoers.d/*: no matching files  [/etc/sudoers.d/*]
+
+ES-12 PASS
+  env.path-current-dir PASS
+  env.umask-login-defs PASS
+    - "022" (default); expected a value matching 0*[0-7]?[2367][2367]  [default (login.defs(5))]
+
+ES-13 PASS
+  files.cron-commands PASS
+    - /usr/bin/at: does not exist  [/usr/bin/at]
+    - /usr/bin/crontab: does not exist  [/usr/bin/crontab]
+  files.cron-files PASS
+    - /etc/at.allow: does not exist  [/etc/at.allow]
+    - /etc/at.deny: does not exist  [/etc/at.deny]
+    - /etc/cron.allow: does not exist  [/etc/cron.allow]
+    - /etc/cron.d/e2scrub_all: root:root 0640  [/etc/cron.d/e2scrub_all]
+    - /etc/cron.deny: does not exist  [/etc/cron.deny]
+    - /etc/crontab: does not exist  [/etc/crontab]
+  files.cron-scripts PASS
+    - /etc/cron.daily: root:root 0755  [/etc/cron.daily]
+    - /etc/cron.daily/apt-compat: root:root 0755  [/etc/cron.daily/apt-compat]
+    - /etc/cron.daily/dpkg: root:root 0755  [/etc/cron.daily/dpkg]
+    - /etc/cron.hourly: does not exist  [/etc/cron.hourly]
+    - /etc/cron.hourly/*: no matching files  [/etc/cron.hourly/*]
+    - /etc/cron.monthly: does not exist  [/etc/cron.monthly]
+    - /etc/cron.monthly/*: no matching files  [/etc/cron.monthly/*]
+    - /etc/cron.weekly: does not exist  [/etc/cron.weekly]
+    - …
+  files.cron-spool PASS
+    - /var/spool/cron/crontabs/*: no matching files  [/var/spool/cron/crontabs/*]
+  files.cron-spool-rhel NOT_APPLICABLE: applies to rhel, not debian
+  files.cron-root-spool PASS
+    - /var/spool/cron/crontabs/root: does not exist  [/var/spool/cron/crontabs/root]
+    - /var/spool/cron/root: does not exist  [/var/spool/cron/root]
+  files.at-spool PASS
+    - /var/spool/at/*: no matching files  [/var/spool/at/*]
+    - /var/spool/cron/atjobs/*: no matching files  [/var/spool/cron/atjobs/*]
+
+ES-14 PASS
+  services.no-telnet PASS
+  services.no-r-services PASS
+  files.rhosts PASS
+    - /etc/hosts.equiv: does not exist  [/etc/hosts.equiv]
+    - /root/.rhosts: does not exist  [/root/.rhosts]
+  files.rhosts-homes PASS
+    - /home/*/.rhosts: no matching files  [/home/*/.rhosts]
+  services.no-tftp-talk PASS
+  services.no-finger PASS
+  services.no-nis PASS
+
+ES-15 PASS
+  files.world-writable PASS
+  files.unowned PASS
+  files.setid-outside-system-dirs PASS
+  files.dev-regular-files PASS
+
+ES-16 PASS
+  files.startup-scripts PASS
+    - /etc/init.d: root:root 0755  [/etc/init.d]
+    - /etc/init.d/chrony: root:root 0755  [/etc/init.d/chrony]
+    - /etc/init.d/procps: root:root 0755  [/etc/init.d/procps]
+    - /etc/init.d/ssh: root:root 0755  [/etc/init.d/ssh]
+    - /etc/rc.d/init.d: does not exist  [/etc/rc.d/init.d]
+    - /etc/rc.d/init.d/*: no matching files  [/etc/rc.d/init.d/*]
+    - /etc/rc.d/rc.local: does not exist  [/etc/rc.d/rc.local]
+    - /etc/rc.local: does not exist  [/etc/rc.local]
+    - …
+
+ES-17 PASS
+  homes.owner-perms PASS
+  homes.startup-files PASS
+
+ES-18 PASS
+  services.time-sync PASS
+    - services.active is empty
+    - services.sysv["chrony"].enabled = true
+    - services.sysv["chronyd"].enabled: not set
+    - services.sysv["ntp"].enabled: not set
+    - services.sysv["ntpd"].enabled: not set
+    - services.units["chrony.service"].enabled = true
+    - services.units["chrony.service"].masked = false
+    - services.units["chronyd.service"].enabled = false
+    - …
+
+ES-19 MANUAL
+  files.review-setid MANUAL: Check that every listed program needs its set-ID bit.
+    - /usr/bin/chage 2755 root
+    - /usr/bin/chfn 4755 root
+    - /usr/bin/chsh 4755 root
+    - /usr/bin/expiry 2755 root
+    - /usr/bin/gpasswd 4755 root
+    - /usr/bin/mount 4755 root
+    - /usr/bin/passwd 4755 root
+    - /usr/bin/ssh-agent 2755 root
+    - …
+
+ES-20 MANUAL
+  accounts.review-login-accounts MANUAL: Confirm that every listed account is still needed, especially accounts of people who have left. Default accounts such as lp, uucp or games appear here only when they were given a login shell, which they should not have.
+    - root (uid 0, /bin/bash)
+    - ubuntu (uid 1000, /bin/bash)
+  accounts.review-admin-groups MANUAL: Confirm that only administrators who need it belong to each listed group.
+    - root: root (primary group)
+    - sudo: ubuntu

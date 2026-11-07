@@ -162,6 +162,12 @@ sudo hostlint scan --config hostlint.yaml
 Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentOS/RHEL 7(최선 노력). 다른 버전도 최선
 노력으로 점검하고 결과에 그렇게 표시합니다.
 
+`essentials` 프로파일(`--profile essentials`)은 특정 국가 표준과 무관하게 대부분의 리눅스 보안 강화 가이드가 공통으로
+권하는 짧은 기준입니다. SSH(root 로그인 금지, 비밀번호 로그인 금지, 빈 비밀번호 금지, 시도 횟수 제한, X11 전달
+금지, 이를 되돌리는 `Match` 블록 금지), UID 0과 비밀번호 파일, 비밀번호 길이·해시·사용 기간·잠금, `su`와 sudo,
+cron, 오래된 원격 서비스, 위험한 파일 권한, 시각 동기화를 다룹니다. 같은 점검 위에 컨트롤 20개(`ES-01`–`ES-20`)를
+자체 ID로 둡니다.
+
 제목과 설명은 hostlint가 직접 작성했고, 프로파일은 컨트롤 ID만 참조합니다.
 
 ## 플릿 대시보드 (초기)
