@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 8497c11 -->
+<!-- translated from docs/fleet.md @ e8df1e2 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -64,6 +64,52 @@ HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
 토큰은 `HOSTLINT_TOKEN`이나 `--token-file`로 전달하며 명령줄에는 쓰지 않습니다. 공인 CA 인증서를
 쓰면 `--pin`을 생략합니다. 두 단계를 cron이나 systemd 타이머로 돌리세요. 서버가 이미 가진 결과를 다시
 보내는 것은 오류가 아닙니다.
+
+## 예약 점검
+
+서버는 점검을 시작하지 않습니다. 호스트가 일정에 따라 스스로 점검하고 결과를 보냅니다. systemd 타이머로 할 수 있습니다
+(`/etc/systemd/system/hostlint-scan.service`와 `.timer`).
+
+```ini
+# hostlint-scan.service
+[Unit]
+Description=hostlint scan, sent to the fleet server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hostlint scan --fail-on none --format json --output /dev/null \
+  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key
+NoNewPrivileges=yes
+PrivateTmp=yes
+```
+
+```ini
+# hostlint-scan.timer
+[Unit]
+Description=Daily hostlint scan
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```sh
+sudo install -m 600 /dev/null /etc/hostlint/token      # 그런 다음 토큰을 넣습니다
+sudo hostlint key generate /etc/hostlint/signing-key   # 공개 키를 출력합니다: `server token create --key`로 토큰을 묶으세요
+sudo systemctl enable --now hostlint-scan.timer
+```
+
+`RandomizedDelaySec`는 플릿을 두 시간에 걸쳐 분산하고(서버는 토큰 하나가 보내는 속도를 제한합니다), `Persistent`는 호스트가
+꺼져 있어서 놓친 점검을 실행합니다. `--fail-on none`은 실패한 컨트롤 때문에 유닛이 실패로 표시되지 않게 합니다. 유닛이 실패했다는 것은
+점검이나 전송이 동작하지 않았다는 뜻이며 알림을 보낼 만한 상태입니다. 출력은 `journalctl -u hostlint-scan`에 있습니다. cron으로는
+`/etc/cron.d/hostlint`에 같은 명령(`17 3 * * * root ...`)을 쓰세요. 서버의 `--stale-after` 웹훅이 보고를 멈춘 호스트를 알려 줍니다.
 
 ## 결과 조회
 

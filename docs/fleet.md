@@ -64,6 +64,53 @@ The token comes from `HOSTLINT_TOKEN` or `--token-file`, never from the command 
 certificate from a public CA, leave `--pin` out. Run both steps from cron or a systemd timer.
 Sending a result the server already has is not an error.
 
+## Scheduled scans
+
+The server never starts a scan; a host scans itself on a schedule and pushes the result. A systemd timer does it
+(`/etc/systemd/system/hostlint-scan.service` and `.timer`):
+
+```ini
+# hostlint-scan.service
+[Unit]
+Description=hostlint scan, sent to the fleet server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hostlint scan --fail-on none --format json --output /dev/null \
+  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key
+NoNewPrivileges=yes
+PrivateTmp=yes
+```
+
+```ini
+# hostlint-scan.timer
+[Unit]
+Description=Daily hostlint scan
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```sh
+sudo install -m 600 /dev/null /etc/hostlint/token      # then put the token in it
+sudo hostlint key generate /etc/hostlint/signing-key   # prints the public key: bind the token to it with `server token create --key`
+sudo systemctl enable --now hostlint-scan.timer
+```
+
+`RandomizedDelaySec` spreads a fleet over two hours (the server limits how fast one token may send), `Persistent`
+runs a scan that was missed while the host was off. `--fail-on none` keeps a failing control from marking the unit
+failed: a unit that fails means the scan or the sending did not work, and a failure state worth an alert.
+`journalctl -u hostlint-scan` has the output. With cron, the same command in `/etc/cron.d/hostlint` (`17 3 * * * root ...`).
+The server's `--stale-after` webhook tells you about a host that stopped reporting.
+
 ## Reading results
 
 A read token (`--scope api`) lets a script or CI ask the server what it knows:
