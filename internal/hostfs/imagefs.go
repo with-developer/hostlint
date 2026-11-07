@@ -139,11 +139,12 @@ func newDir(layer int) *imgNode {
 // parent returns the directory that holds the last element of p, following symbolic links in the parents
 // as a real extraction does (an absolute target starts at the image root), and creating the parents that
 // are missing (0755, root:root). p is absolute and clean, and not "/".
-func (b *ImageBuilder) parent(p string, create bool) (*imgNode, string, error) {
+func (b *ImageBuilder) parent(p string, create bool) (dirNode *imgNode, name, canon string, err error) {
 	dir, name := path.Split(p)
 	parts := splitPath(dir)
 	cur := b.root
 	stack := []*imgNode{b.root}
+	var names []string // the directories below the root that stack holds, for the canonical path
 	for links := 0; len(parts) > 0; {
 		comp := parts[0]
 		parts = parts[1:]
@@ -152,7 +153,7 @@ func (b *ImageBuilder) parent(p string, create bool) (*imgNode, string, error) {
 			continue
 		case "..":
 			if len(stack) > 1 {
-				stack = stack[:len(stack)-1]
+				stack, names = stack[:len(stack)-1], names[:len(names)-1]
 			}
 			cur = stack[len(stack)-1]
 			continue
@@ -160,10 +161,10 @@ func (b *ImageBuilder) parent(p string, create bool) (*imgNode, string, error) {
 		next, ok := cur.children[comp]
 		if !ok {
 			if !create {
-				return nil, "", fs.ErrNotExist
+				return nil, "", "", fs.ErrNotExist
 			}
 			if err := b.count(); err != nil {
-				return nil, "", err
+				return nil, "", "", err
 			}
 			next = newDir(b.layer)
 			cur.children[comp] = next
@@ -171,37 +172,38 @@ func (b *ImageBuilder) parent(p string, create bool) (*imgNode, string, error) {
 		switch {
 		case next.mode&fs.ModeSymlink != 0:
 			if links++; links > maxImageLinks {
-				return nil, "", fmt.Errorf("%q: %w", p, errLoop)
+				return nil, "", "", fmt.Errorf("%q: %w", p, errLoop)
 			}
 			if path.IsAbs(next.target) {
-				stack = stack[:1]
+				stack, names = stack[:1], names[:0]
 				cur = b.root
 			}
 			parts = append(splitPath(next.target), parts...)
 			continue
 		case !next.mode.IsDir():
-			return nil, "", fmt.Errorf("%s: a parent is not a directory", p)
+			return nil, "", "", fmt.Errorf("%q: a parent is not a directory", p)
 		}
-		stack = append(stack, next)
+		stack, names = append(stack, next), append(names, comp)
 		cur = next
 	}
-	return cur, name, nil
+	return cur, name, "/" + strings.Join(names, "/"), nil
 }
 
 // lookup finds the node at p, following symbolic links in the parents but not in the last element.
-func (b *ImageBuilder) lookup(p string) (*imgNode, error) {
+// It also returns the canonical path of the node, with the links in the parents resolved.
+func (b *ImageBuilder) lookup(p string) (*imgNode, string, error) {
 	if p == "/" {
-		return b.root, nil
+		return b.root, "/", nil
 	}
-	dir, name, err := b.parent(p, false)
+	dir, name, canon, err := b.parent(p, false)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	n, ok := dir.children[name]
 	if !ok {
-		return nil, fs.ErrNotExist
+		return nil, "", fs.ErrNotExist
 	}
-	return n, nil
+	return n, path.Join(canon, name), nil
 }
 
 func (b *ImageBuilder) count() error {
@@ -245,7 +247,7 @@ func (b *ImageBuilder) Add(e ImageEntry) error {
 	if err := checkImagePath(e.Path); err != nil {
 		return err
 	}
-	dir, name, err := b.parent(e.Path, true)
+	dir, name, _, err := b.parent(e.Path, true)
 	if err != nil {
 		return err
 	}
@@ -285,9 +287,9 @@ func (b *ImageBuilder) Add(e ImageEntry) error {
 		if err := checkImagePath(e.Target); err != nil {
 			return fmt.Errorf("%q: hard link target: %w", e.Path, err)
 		}
-		t, err := b.lookup(e.Target)
+		t, canon, err := b.lookup(e.Target)
 		if err != nil {
-			return fmt.Errorf("%q: hard link to %s: %w", e.Path, e.Target, err)
+			return fmt.Errorf("%q: hard link to %q: %w", e.Path, e.Target, err)
 		}
 		if t.mode.IsDir() {
 			return fmt.Errorf("%q: hard link to a directory", e.Path)
@@ -295,7 +297,7 @@ func (b *ImageBuilder) Add(e ImageEntry) error {
 		// A hard link is the same file: mode and owner come from it, not from the link's header.
 		c := *t
 		c.layer = b.layer
-		c.denied = t.denied || denied(e.Target)
+		c.denied = t.denied || denied(e.Target) || denied(canon) // by the name given and by where it really is
 		if c.content != nil {
 			c.content.refs++
 		}
@@ -325,7 +327,7 @@ func (b *ImageBuilder) Whiteout(p string) error {
 	if err := checkImagePath(p); err != nil {
 		return err
 	}
-	dir, name, err := b.parent(p, false)
+	dir, name, _, err := b.parent(p, false)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil // nothing to remove
 	}
@@ -341,7 +343,7 @@ func (b *ImageBuilder) Opaque(p string) error {
 	if err := checkImagePath(p); err != nil {
 		return err
 	}
-	n, err := b.lookup(p)
+	n, _, err := b.lookup(p)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}

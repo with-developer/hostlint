@@ -87,3 +87,11 @@ func TestScanImageRefusals(t *testing.T) {
 		}
 	}
 }
+
+func TestScanImageErrorsDoNotCarryControlCharacters(t *testing.T) {
+	p := imageArchive(t, "app:1", map[string]string{"a": "1", "a/\x1b]0;pwned\x07/x": "2"})
+	code, _, stderr := run(context.Background(), t, "scan", "--image-tar", p)
+	if code != ExitError || strings.ContainsAny(stderr, "\x1b\x07") {
+		t.Errorf("exit %d, stderr %q", code, stderr)
+	}
+}

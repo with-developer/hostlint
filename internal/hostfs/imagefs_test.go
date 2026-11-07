@@ -165,3 +165,37 @@ func TestHardLinksOfFilesWithoutContents(t *testing.T) {
 		t.Error("Fits")
 	}
 }
+
+// A hard link reached through a symbolic link in its path to the shadow file is denied like the file itself.
+func TestHardLinkThroughALinkedParentIsDenied(t *testing.T) {
+	b := NewImageBuilder()
+	b.BeginLayer()
+	for _, e := range []ImageEntry{
+		dir("/etc"), file("/etc/shadow", "root:$6$h:::", 0o640),
+		{Path: "/lnk", Type: ImageSymlink, Target: "/etc"},
+		dir("/tmp"), {Path: "/tmp/copy", Type: ImageHardlink, Target: "/lnk/shadow"},
+	} {
+		if err := b.Add(e); err != nil {
+			t.Fatalf("%+v: %v", e, err)
+		}
+	}
+	f := b.Finish()
+	if _, err := f.ReadFile("/tmp/copy"); !errors.Is(err, ErrDenied) {
+		t.Errorf("a hard link through a linked parent: %v", err)
+	}
+}
+
+func TestBuilderErrorsQuoteHostileNames(t *testing.T) {
+	b := NewImageBuilder()
+	b.BeginLayer()
+	_ = b.Add(file("/a", "1", 0o644))
+	evil := "/a/\x1b]0;pwned\x07/x"
+	err := b.Add(file(evil, "2", 0o644))
+	if err == nil || strings.ContainsAny(err.Error(), "\x1b\x07") {
+		t.Errorf("parent not a directory: %q", err)
+	}
+	err = b.Add(ImageEntry{Path: "/l", Type: ImageHardlink, Target: "/\x1b[2Knone"})
+	if err == nil || strings.ContainsAny(err.Error(), "\x1b") {
+		t.Errorf("hard link to nothing: %q", err)
+	}
+}

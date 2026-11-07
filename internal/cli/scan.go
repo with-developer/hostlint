@@ -162,7 +162,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if f.imageTar != "" {
 		img, err := image.Load(cmd.Context(), f.imageTar)
 		if err != nil {
-			return fmt.Errorf("--image-tar %s: %w", f.imageTar, err)
+			return fmt.Errorf("--image-tar %s: %s", f.imageTar, printable(err.Error()))
 		}
 		if !hasOSRelease(img.FS) {
 			// A scratch or distroless image has no operating system to judge: absent files would pass.
@@ -208,6 +208,16 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return &findingsError{controls: n, threshold: f.failOn}
 	}
 	return nil
+}
+
+// printable replaces the control characters of s: names from an image reach the terminal and CI logs.
+func printable(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r < 0x20 || (r >= 0x7f && r < 0xa0) {
+			return '?'
+		}
+		return r
+	}, s)
 }
 
 // hasOSRelease reports whether a filesystem has an os-release file, where an operating system names itself.
