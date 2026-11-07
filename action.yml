@@ -19,9 +19,9 @@ inputs:
     required: false
     default: ""
   profile:
-    description: The profile to check against.
+    description: The profile to check against (default kisa-2026, or the profile of the config file).
     required: false
-    default: kisa-2026
+    default: ""
   fail-on:
     description: Fail the step when a control of this severity or higher fails or cannot be checked - low, medium, high or none.
     required: false
@@ -35,7 +35,7 @@ inputs:
     required: false
     default: ""
   version:
-    description: The hostlint release to install, such as v0.12.0. By default the release the action itself is pinned to (uses ...@v0.12.0), else the latest. The archive is checked against the signed checksums of the release.
+    description: The hostlint release to install, such as v0.12.0. By default the release the action itself is pinned to (uses ...@v0.13.0); a commit pin needs this input. The archive is checked against the signed checksums of the release.
     required: false
     default: ""
 
@@ -50,9 +50,20 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
+        if [ "$RUNNER_OS" != Linux ]; then
+          echo "::error::hostlint runs on Linux runners, not $RUNNER_OS"
+          exit 2
+        fi
         version="$INPUT_VERSION"
         if [ -z "$version" ]; then
-          case "$ACTION_REF" in v[0-9]*.[0-9]*.[0-9]*) version="$ACTION_REF" ;; esac
+          if [[ "$ACTION_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            version="$ACTION_REF"
+          elif [[ "$ACTION_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::the action is pinned to a commit: set the version input to the hostlint release to install (a commit says nothing about which one)"
+            exit 2
+          elif [ -n "$ACTION_REF" ]; then
+            echo "::warning::the action is pinned to $ACTION_REF, which is not a release tag: installing the latest hostlint release. Pin the action to a release tag, or set the version input."
+          fi
         fi
         bin="$RUNNER_TEMP/hostlint-bin"
         mkdir -p "$bin"
@@ -74,31 +85,38 @@ runs:
       run: |
         set -euo pipefail
         # The inputs reach the shell as variables, never as text of the script.
+        # All of them are checked before anything is done.
         chosen=0
-        target=()
-        if [ -n "$INPUT_IMAGE" ]; then
-          chosen=$((chosen + 1))
-          if ! [[ "$INPUT_IMAGE" =~ ^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$ ]]; then
-            echo "::error::image is not an image reference: $INPUT_IMAGE"
-            exit 2
-          fi
-          archive="$RUNNER_TEMP/hostlint-image.tar"
-          docker save --output "$archive" "$INPUT_IMAGE"
-          target=(--image-tar "$archive")
-        fi
-        if [ -n "$INPUT_IMAGE_TAR" ]; then
-          chosen=$((chosen + 1))
-          target=(--image-tar "$INPUT_IMAGE_TAR")
-        fi
-        if [ -n "$INPUT_ROOT" ]; then
-          chosen=$((chosen + 1))
-          target=(--root "$INPUT_ROOT")
-        fi
+        for v in "$INPUT_IMAGE" "$INPUT_IMAGE_TAR" "$INPUT_ROOT"; do
+          if [ -n "$v" ]; then chosen=$((chosen + 1)); fi
+        done
         if [ "$chosen" -ne 1 ]; then
           echo "::error::set exactly one of image, image-tar and root"
           exit 2
         fi
-        common=(--profile "$INPUT_PROFILE")
+        case "$INPUT_FAIL_ON" in
+          low | medium | high | none) ;;
+          *)
+            echo "::error::fail-on is low, medium, high or none, not: $INPUT_FAIL_ON"
+            exit 2
+            ;;
+        esac
+        if [ -n "$INPUT_IMAGE" ] && ! [[ "$INPUT_IMAGE" =~ ^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$ ]]; then
+          echo "::error::image is not an image reference: $INPUT_IMAGE"
+          exit 2
+        fi
+        target=()
+        if [ -n "$INPUT_IMAGE" ]; then
+          archive="$RUNNER_TEMP/hostlint-image.tar"
+          docker save --output "$archive" "$INPUT_IMAGE"
+          target=(--image-tar "$archive")
+        elif [ -n "$INPUT_IMAGE_TAR" ]; then
+          target=(--image-tar "$INPUT_IMAGE_TAR")
+        else
+          target=(--root "$INPUT_ROOT")
+        fi
+        common=()
+        if [ -n "$INPUT_PROFILE" ]; then common+=(--profile "$INPUT_PROFILE"); fi
         if [ -n "$INPUT_CONFIG" ]; then common+=(--config "$INPUT_CONFIG"); fi
         # The SARIF file first, with nothing that fails: the report is wanted when the gate fails, too.
         if [ -n "$INPUT_SARIF_FILE" ]; then

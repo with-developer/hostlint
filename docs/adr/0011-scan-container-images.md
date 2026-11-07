@@ -15,7 +15,7 @@ save` or `skopeo copy ... oci-archive:` wrote.
 
 - `hostlint scan --image-tar FILE` scans the merged filesystem of an image archive, with the same checks
   and the same result document as `--root`. The target is a non-live root (`target.kind` stays `root`,
-  `target.root` and the host name are `image:<reference or file name>`, cleaned to printable characters),
+  `target.root` is `image:<reference or file name>` and the host name is the reference, cleaned to printable characters),
   so no check that needs a running system (sockets, commands, `/proc`) applies, and no schema change is
   needed.
 - **Strict loader.** The archive is untrusted. Anything ambiguous, over a limit or possibly different

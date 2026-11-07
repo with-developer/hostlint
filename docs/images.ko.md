@@ -10,8 +10,8 @@ docker save app:1.4 -o app.tar
 hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
 ```
 
-보고서에는 이미지 이름이 `host.hostname`과 `scan.target.root`에 `image:<참조>`로 들어갑니다(아카이브의 첫
-태그, 없으면 파일 이름). `scan.target.kind`는 `--root`와 같이 `root`입니다.
+보고서에는 `host.hostname`이 이미지 참조(아카이브의 첫 태그, 없으면 파일 이름)이고 `scan.target.root`는
+`image:<참조>`입니다. `scan.target.kind`는 `--root`와 같이 `root`입니다.
 
 ## 이미지 점검이 다루는 것
 

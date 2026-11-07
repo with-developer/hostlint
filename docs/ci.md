@@ -44,14 +44,15 @@ jobs:
 | `image` | An image on the runner, saved with `docker save` and scanned |
 | `image-tar` | A `docker save` or OCI archive to scan |
 | `root` | A root filesystem mounted or unpacked on the runner |
-| `profile` | The profile (default `kisa-2026`) |
+| `profile` | The profile (default `kisa-2026`, or the one in `config`) |
 | `fail-on` | `low`, `medium`, `high` (default) or `none` |
 | `config` | A [`hostlint.yaml`](configuration.md): stricter thresholds, waivers with a reason and an expiry |
 | `sarif-file` | Also write SARIF here, even when the scan fails the step |
 | `version` | The release to install; by default the one the action is pinned to (`@v0.13.0`) |
 
-Set exactly one of `image`, `image-tar` and `root`. Pin the action to a release tag, or to the commit of
-one: it installs the hostlint release of that tag. The inputs reach the shell as variables, never as part
+Set exactly one of `image`, `image-tar` and `root`. Pin the action to a release tag: it installs the
+hostlint release of that tag. Pinned to a commit, set `version` (the action refuses a commit pin without it).
+Linux runners only. The inputs reach the shell as variables, never as part
 of a script.
 
 A waiver for an image matches the image reference as the host name: `hosts: ["app:*"]`.

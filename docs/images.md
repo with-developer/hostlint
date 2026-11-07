@@ -10,8 +10,8 @@ docker save app:1.4 -o app.tar
 hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
 ```
 
-The report names the image: `host.hostname` and `scan.target.root` are `image:<reference>` (the first
-tag of the archive, else the file name), and `scan.target.kind` is `root`, as for `--root`.
+The report names the image: `host.hostname` is its reference (the first tag of the archive, else the file
+name) and `scan.target.root` is `image:<reference>`, and `scan.target.kind` is `root`, as for `--root`.
 
 ## What an image scan covers
 

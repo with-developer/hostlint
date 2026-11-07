@@ -1,6 +1,7 @@
 name: action
 
-# The action of this repository (action.yml), run on an image against the latest release.
+# The action of this repository (action.yml), run on an image against a fixed release (a later release may
+# change what debian:12 fails).
 on:
   pull_request:
     paths:
@@ -25,6 +26,7 @@ jobs:
           image: debian:12
           fail-on: none
           sarif-file: hostlint.sarif
+          version: v0.12.0
       - name: The SARIF file is there and is JSON
         run: python3 -c 'import json; r = json.load(open("hostlint.sarif")); assert r["runs"][0]["results"], "no results"'
       - name: A gate that fails fails the step
@@ -34,6 +36,7 @@ jobs:
         with:
           image: debian:12
           fail-on: high
+          version: v0.12.0
       - name: It did
         run: test "${{ steps.gate.outcome }}" = failure
       - name: No input is refused

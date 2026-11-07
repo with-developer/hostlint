@@ -44,14 +44,14 @@ jobs:
 | `image` | 러너에 있는 이미지. `docker save`로 저장해 점검합니다 |
 | `image-tar` | 점검할 `docker save` 또는 OCI 아카이브 |
 | `root` | 러너에 마운트하거나 풀어 둔 루트 파일시스템 |
-| `profile` | 프로파일(기본값 `kisa-2026`) |
+| `profile` | 프로파일(기본값 `kisa-2026`, 또는 `config`의 것) |
 | `fail-on` | `low`, `medium`, `high`(기본값), `none` |
 | `config` | [`hostlint.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일이 있는 면제 |
 | `sarif-file` | 점검이 단계를 실패시켜도 SARIF를 여기에도 씁니다 |
 | `version` | 설치할 릴리스. 기본값은 액션이 고정된 릴리스(`@v0.13.0`) |
 
-`image`, `image-tar`, `root` 중 정확히 하나를 지정하세요. 액션은 릴리스 태그나 그 커밋에 고정하세요. 그 태그의
-hostlint 릴리스를 설치합니다. 입력은 스크립트의 일부가 아니라 변수로 셸에 전달됩니다.
+`image`, `image-tar`, `root` 중 정확히 하나를 지정하세요. 액션은 릴리스 태그에 고정하세요. 그 태그의
+hostlint 릴리스를 설치합니다. 커밋에 고정하면 `version`을 지정하세요(없으면 액션이 거부합니다). Linux 러너만 지원합니다. 입력은 스크립트의 일부가 아니라 변수로 셸에 전달됩니다.
 
 이미지에 대한 면제는 이미지 참조를 호스트 이름으로 봅니다: `hosts: ["app:*"]`.
 
