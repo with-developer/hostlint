@@ -35,10 +35,11 @@ The image is signed by the release pipeline (Sigstore keyless) and carries build
 
 ```sh
 cosign verify ghcr.io/with-developer/hostlint:0.21.0 \
-  --certificate-identity-regexp '^https://github.com/with-developer/hostlint/\.github/workflows/container\.yml@' \
+  --certificate-identity-regexp '^https://github\.com/with-developer/hostlint/\.github/workflows/container\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 gh attestation verify oci://ghcr.io/with-developer/hostlint:0.21.0 --repo with-developer/hostlint
 ```
 
 The binary inside is the one of the release archive (`checksums.txt` is verified, then each file, before the image is
-built); it prints the version of the tag it is named for.
+built); it prints the version of the tag it is named for. The image writes nothing, so `--read-only`
+is fine.

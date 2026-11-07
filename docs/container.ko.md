@@ -34,10 +34,10 @@ docker run --rm -v /:/host:ro -v /etc/hostlint:/etc/hostlint:ro ghcr.io/with-dev
 
 ```sh
 cosign verify ghcr.io/with-developer/hostlint:0.21.0 \
-  --certificate-identity-regexp '^https://github.com/with-developer/hostlint/\.github/workflows/container\.yml@' \
+  --certificate-identity-regexp '^https://github\.com/with-developer/hostlint/\.github/workflows/container\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 gh attestation verify oci://ghcr.io/with-developer/hostlint:0.21.0 --repo with-developer/hostlint
 ```
 
 안의 바이너리는 릴리스 아카이브의 것입니다(`checksums.txt`를 검증하고 각 파일을 확인한 뒤 이미지를 만듭니다). 이름
-붙은 태그의 버전을 출력합니다.
+붙은 태그의 버전을 출력합니다. 이미지는 아무것도 쓰지 않으므로 `--read-only`로 실행해도 됩니다.

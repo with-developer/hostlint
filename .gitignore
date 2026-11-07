@@ -17,3 +17,4 @@ CLAUDE.local.md
 .DS_Store
 /.tools/
 /web/node_modules/
+/ctx/
