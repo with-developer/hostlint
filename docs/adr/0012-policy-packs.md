@@ -1,6 +1,6 @@
 # 0012. Policy packs: your own checks and profiles
 
-- Status: Proposed (needs the owner's decision before any code; see "Open decisions")
+- Status: Accepted (the owner approved it on 2026-11-07, as proposed; see "Decisions")
 - Date: 2026-11-07
 
 ## Context
@@ -75,15 +75,16 @@ has to say so.
   change in a minor release, and the release notes say when a pack has to change (`requires`).
 - The JSON schema of the result gets a new optional member, and `diff` and `report` get new warnings.
 
-## Open decisions (for the owner)
+## Decisions
 
-1. **Do we want packs at all before v1.0, given that they weaken "a PASS means the profile's thresholds"
-   to "a PASS means the thresholds of a pack you trust"?** The safeguards above make misuse visible, not
-   impossible. The alternative is to keep the content built in and accept contributions.
-2. **The result schema change** (pack name, version and digest): additive, but every validator with
-   `additionalProperties: false` rejects it.
-3. **The reserved `x-` prefix** as the provenance mechanism, and the size of the first release (the
-   manifest, `pack test`, `pack show`, `--verify-pack`, repeatable `--profile`, the lint of fact keys are
-   each a part; the digest, the schema change and the `diff` and `report` warnings must come together).
+The owner approved the proposal as written on 2026-11-07 (issue #162):
+
+1. **Packs are wanted before v1.0**, with the safeguards above: trusted like `hostlint.yaml`, never
+   weaker than a built-in check, visible in the result, never loaded implicitly.
+2. **The result schema gets an additive member** for the pack's name, version and digest.
+3. **The reserved `x-` prefix** is the provenance mechanism. The pack identity (digest, schema member),
+   the `diff` and `report` warnings and the refusal of `--push` ship together with `scan --pack`; the
+   work is staged in separate pull requests (loader, `pack test` and `pack show`; then the result
+   identity with `scan --pack`, repeatable `--profile` and `--verify-pack`) and released once.
 4. **Distribution and signing of packs** (a single-file bundle with its digest as the identity, a
    registry) are left for later.

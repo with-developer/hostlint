@@ -16,5 +16,5 @@ Consequences. Don't edit an accepted ADR to change a decision — add a new ADR 
 | [0009](0009-bounded-filesystem-walk.md) | Bounded filesystem walks: local filesystems only, partial lists never pass |
 | [0010](0010-fleet-server-and-dashboard.md) | Fleet server and dashboard: hosts push results first, the outbound agent comes later (accepted) |
 | [0011](0011-scan-container-images.md) | Scanning container images from a tar: strict, in memory, bounded, no daemon (accepted) |
-| [0012](0012-policy-packs.md) | Policy packs: your own checks and profiles (proposed, waiting for the owner) |
+| [0012](0012-policy-packs.md) | Policy packs: your own checks and profiles (accepted) |
 | [0013](0013-essentials-profile.md) | The essentials profile: a short neutral baseline next to kisa-2026 (accepted) |
