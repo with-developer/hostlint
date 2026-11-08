@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile essentials revision 2: FAIL 7 MANUAL 2 PASS 6 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host)
+profile essentials revision 3: FAIL 7 MANUAL 2 PASS 6 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host) (and 2 controls of the firewall and updates of a host)
 
 ES-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -193,3 +193,10 @@ ES-22 (the kernel of the host)
   sysctl.suid-dumpable
   sysctl.ptrace-scope
   sysctl.protected-links
+
+ES-23 (the firewall and updates of a host)
+  firewall.enabled
+  firewall.review-rules
+
+ES-24 (the firewall and updates of a host)
+  updates.security-automatic

@@ -178,25 +178,36 @@ func summary(r *engine.Result) string {
 	// The kernel parameters of a container are those of the machine that runs Docker (Docker Desktop, a
 	// CI runner): the checks of them are tested by their own rule tests and collector tests, and their
 	// results stay out of the goldens, which would otherwise differ from one machine to the next.
-	kernel := func(c engine.ControlResult) bool {
+	only := func(c engine.ControlResult, areas ...string) bool {
 		if len(c.Checks) == 0 {
 			return false
 		}
 		for _, ref := range c.Checks {
-			if !strings.HasPrefix(checks[ref].ID, "sysctl.") {
+			ok := false
+			for _, a := range areas {
+				ok = ok || strings.HasPrefix(checks[ref].ID, a)
+			}
+			if !ok {
 				return false
 			}
 		}
 		return true
 	}
+	kernel := func(c engine.ControlResult) bool { return only(c, "sysctl.") }
+	// The firewall and the automatic updates of a container are those of nobody: a container is not a host that has
+	// them (an image, which is what is deployed, has no such checks: they do not apply to it), so their results stay out
+	// of the goldens too, and the rule tests carry them.
+	services := func(c engine.ControlResult) bool { return only(c, "firewall.", "updates.") }
 	for _, p := range r.Profiles {
 		counts := map[engine.Status]int{}
-		hostKernel := 0
+		hostKernel, hostServices := 0, 0
 		for _, c := range r.Controls {
 			switch {
 			case c.Profile != p.ID:
 			case kernel(c):
 				hostKernel++
+			case services(c):
+				hostServices++
 			default:
 				counts[c.Status]++
 			}
@@ -210,6 +221,9 @@ func summary(r *engine.Result) string {
 		if hostKernel > 0 {
 			fmt.Fprintf(&b, " (and %d controls of the kernel of the host)", hostKernel)
 		}
+		if hostServices > 0 {
+			fmt.Fprintf(&b, " (and %d controls of the firewall and updates of a host)", hostServices)
+		}
 		b.WriteByte('\n')
 	}
 	for _, c := range r.Collectors {
@@ -221,6 +235,13 @@ func summary(r *engine.Result) string {
 		}
 	}
 	for _, c := range r.Controls {
+		if services(c) {
+			fmt.Fprintf(&b, "\n%s (the firewall and updates of a host)\n", c.ID)
+			for _, ref := range c.Checks {
+				fmt.Fprintf(&b, "  %s\n", checks[ref].ID)
+			}
+			continue
+		}
 		if kernel(c) {
 			fmt.Fprintf(&b, "\n%s (the kernel of the host)\n", c.ID)
 			for _, ref := range c.Checks {

@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 9c5f0fa -->
+<!-- translated from README.md @ 616e0ec -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -202,8 +202,9 @@ Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentO
 권하는 짧은 기준입니다. SSH(root 로그인 금지, 비밀번호 로그인 금지, 빈 비밀번호 금지, 시도 횟수 제한, X11 전달
 금지, 이를 되돌리는 `Match` 블록 금지), UID 0과 비밀번호 파일, 비밀번호 길이·해시·사용 기간·잠금, `su`와 sudo,
 cron, 오래된 원격 서비스, 위험한 파일 권한, 시각 동기화, 중요한 커널 매개변수(주소 무작위화, `kptr_restrict`, ICMP 리다이렉트,
-역방향 경로 필터링, SYN 쿠키 등)를 다룹니다. 컨트롤 22개(`ES-01`–`ES-22`)는 자체 ID를 쓰며, 대부분 다른 프로파일과 같은 점검 위에
-SSH 점검 8개와 커널 매개변수 점검 11개를 더했습니다. 커널 매개변수 점검은 자체 커널이 없는 컨테이너 이미지에는 적용되지 않습니다.
+역방향 경로 필터링, SYN 쿠키 등)와 호스트 방화벽, 자동 보안 업데이트를 다룹니다. 컨트롤 24개(`ES-01`–`ES-24`)는 자체 ID를 쓰며, 대부분
+다른 프로파일과 같은 점검 위에 SSH 점검 8개, 커널 매개변수 점검 11개, 방화벽과 업데이트 점검을 더했습니다. 이들은 자체 커널, 방화벽,
+업데이트가 없는 컨테이너 이미지에는 적용되지 않습니다.
 
 자체 기준은 [정책 팩](docs/packs.ko.md)에 담으세요. 같은 YAML 형식의 점검과 프로파일 디렉터리이며, `hostlint pack
 test`로 테스트하고 `hostlint pack show`로 검토하고 `hostlint scan --pack`으로 씁니다. 팩은 새로운 능력을 더하지

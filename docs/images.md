@@ -31,7 +31,7 @@ account lockout, password aging. A container image does not run them (its host d
 `FAIL` for an image although they are not a defect of it. Choose what you gate on: `--fail-on high`, a
 [waiver](configuration.md#waivers) with a reason for the controls that are the host's job (a waiver for an image
 names the image reference as the host name: `hosts: ["app:*"]`), or a [policy pack](packs.md) with the controls
-that matter for your images. The kernel parameters of the `essentials` profile do not apply to an image.
+that matter for your images. The kernel parameters, the firewall and the automatic updates of the `essentials` profile do not apply to an image.
 
 Some images cannot be judged and are refused or report `ERROR`:
 

@@ -206,9 +206,9 @@ agree on, outside any national standard: SSH (no root login, no password logins,
 attempts, no X11 forwarding, and no `Match` block that undoes them), UID 0 and password files, password
 length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions,
 time synchronization and the kernel parameters that matter (address randomization, `kptr_restrict`, ICMP redirects,
-reverse path filtering, SYN cookies, ...). It has 22 controls with its own IDs (`ES-01`–`ES-22`), mostly over the checks
-of the other profile plus eight new SSH checks and eleven of kernel parameters; the kernel parameters do not apply to a
-container image, which has no kernel of its own.
+reverse path filtering, SYN cookies, ...), a host firewall and automatic security updates. It has 24 controls with its own
+IDs (`ES-01`–`ES-24`), mostly over the checks of the other profile plus eight new SSH checks, eleven of kernel parameters, and
+the firewall and the updates; those do not apply to a container image, which has no kernel, firewall or updates of its own.
 
 Your own standard goes into a [policy pack](docs/packs.md): a directory of checks and profiles in the same
 YAML format, tested with `hostlint pack test`, reviewed with `hostlint pack show`, used with `hostlint scan

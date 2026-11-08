@@ -1,7 +1,7 @@
 # hostlint essentials: a short baseline of the settings most Linux server hardening guides agree
 # on, over the same checks as the other profiles. The control IDs and titles are hostlint's own.
 id: essentials
-revision: 2
+revision: 3
 title: hostlint essentials — a short hardening baseline for Linux servers
 title_ko: hostlint 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 controls:
@@ -115,3 +115,13 @@ controls:
     title_ko: 커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함
     severity: medium
     checks: [sysctl.aslr, sysctl.kptr-restrict, sysctl.dmesg-restrict, sysctl.suid-dumpable, sysctl.ptrace-scope, sysctl.protected-links]
+  - id: ES-23
+    title: A host firewall is enabled
+    title_ko: 호스트 방화벽이 켜져 있음
+    severity: medium
+    checks: [firewall.enabled, firewall.review-rules]
+  - id: ES-24
+    title: Security updates are installed automatically
+    title_ko: 보안 업데이트가 자동으로 설치됨
+    severity: medium
+    checks: [updates.security-automatic]

@@ -1,0 +1,168 @@
+id: updates.security-automatic
+version: 1
+title: Security updates are installed automatically
+title_ko: 보안 업데이트가 자동으로 설치됨
+severity: medium
+description: >-
+  Debian and Ubuntu: unattended-upgrades is installed, APT::Periodic::Unattended-Upgrade and APT::Periodic::Update-Package-Lists are not 0 (and
+  APT::Periodic::Enable is not 0, which turns the periodic runs of apt off as a whole, as in container images), and the apt-daily and apt-daily-upgrade timers are enabled.
+  RHEL and its relatives: dnf-automatic with its install timer enabled, or its timer enabled with apply_updates = yes (the default is no: it only reports), or
+  yum-cron enabled with apply_updates = yes. It does not read what may be installed (the origins of unattended-upgrades, the upgrade_type of dnf-automatic): the
+  defaults are the security updates, and a host patched by a pipeline instead is a choice to record as a waiver with its reason.
+rationale: >-
+  Most compromises use a flaw that has been fixed for weeks; a host that waits for someone to remember is behind.
+remediation: >-
+  On Debian or Ubuntu: `apt install unattended-upgrades` and `dpkg-reconfigure -plow unattended-upgrades`, which writes /etc/apt/apt.conf.d/20auto-upgrades with
+  `APT::Periodic::Update-Package-Lists "1";` and `APT::Periodic::Unattended-Upgrade "1";`. On RHEL and its relatives: `dnf install dnf-automatic` and
+  `systemctl enable --now dnf-automatic-install.timer` (or set `apply_updates = yes` in /etc/dnf/automatic.conf and enable dnf-automatic.timer).
+applies: >-
+  !target.image && services.systemd && (packages.manager == "dpkg" || packages.manager == "rpm")
+expect: >-
+  (packages.manager == "dpkg" &&
+    "unattended-upgrades" in packages.installed &&
+    updates.apt.settings["unattended_upgrade"].value.matches("^[1-9][0-9]*$") &&
+    updates.apt.settings["update_package_lists"].value.matches("^[1-9][0-9]*$") &&
+    (!("enable" in updates.apt.settings) || updates.apt.settings["enable"].value != "0") &&
+    ("apt-daily.timer" in services.units && services.units["apt-daily.timer"].enabled && !services.units["apt-daily.timer"].masked) &&
+    ("apt-daily-upgrade.timer" in services.units && services.units["apt-daily-upgrade.timer"].enabled && !services.units["apt-daily-upgrade.timer"].masked)) ||
+  (packages.manager == "rpm" &&
+    "dnf-automatic" in packages.installed &&
+    (("dnf-automatic-install.timer" in services.units && services.units["dnf-automatic-install.timer"].enabled && !services.units["dnf-automatic-install.timer"].masked) ||
+     ("dnf-automatic.timer" in services.units && services.units["dnf-automatic.timer"].enabled && !services.units["dnf-automatic.timer"].masked &&
+      "apply_updates" in updates.dnf_automatic.settings && updates.dnf_automatic.settings["apply_updates"].value == "yes"))) ||
+  (packages.manager == "rpm" &&
+    "yum-cron" in packages.installed &&
+    "yum-cron.service" in services.units && services.units["yum-cron.service"].enabled && !services.units["yum-cron.service"].masked &&
+    "apply_updates" in updates.yum_cron.settings && updates.yum_cron.settings["apply_updates"].value == "yes")
+failure: >-
+  security updates are not installed automatically: the tool is missing, off, or only reports
+tests:
+  - name: Debian with unattended-upgrades on
+    facts:
+      packages: {manager: dpkg, installed: {unattended-upgrades: [{version: "2.9.1", arch: all, state: installed}]}}
+      updates:
+        apt: {present: true, settings: {update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "1", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}
+    want: PASS
+  - name: periodic runs are off as a whole (a container image's docker-disable-periodic-update)
+    facts:
+      packages: {manager: dpkg, installed: {unattended-upgrades: [{version: "2.9.1", arch: all, state: installed}]}}
+      updates:
+        apt: {present: true, settings: {enable: {value: "0", explicit: true}, update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "1", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}
+    want: FAIL
+  - name: unattended-upgrades is not installed
+    facts:
+      packages: {manager: dpkg, installed: {}}
+      updates:
+        apt: {present: true, settings: {update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "1", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}
+    want: FAIL
+  - name: installed and set to 0
+    facts:
+      packages: {manager: dpkg, installed: {unattended-upgrades: [{version: "2.9.1", arch: all, state: installed}]}}
+      updates:
+        apt: {present: true, settings: {update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "0", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}
+    want: FAIL
+  - name: the upgrade timer is masked
+    facts:
+      packages: {manager: dpkg, installed: {unattended-upgrades: [{version: "2.9.1", arch: all, state: installed}]}}
+      updates:
+        apt: {present: true, settings: {update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "1", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: true, file: /dev/null}}}
+    want: FAIL
+  - name: RHEL with the install timer of dnf-automatic
+    facts:
+      packages: {manager: rpm, installed: {dnf-automatic: [{version: "4.14.0-1", arch: noarch, state: installed}]}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: true, settings: {apply_updates: {value: "no", explicit: true}}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"dnf-automatic-install.timer": {enabled: true, masked: false, file: x}}}
+    want: PASS
+  - name: RHEL with the timer that follows the configuration, which says no
+    facts:
+      packages: {manager: rpm, installed: {dnf-automatic: [{version: "4.14.0-1", arch: noarch, state: installed}]}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: true, settings: {apply_updates: {value: "no", explicit: true}}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"dnf-automatic.timer": {enabled: true, masked: false, file: x}}}
+    want: FAIL
+  - name: RHEL with that timer and apply_updates = yes
+    facts:
+      packages: {manager: rpm, installed: {dnf-automatic: [{version: "4.14.0-1", arch: noarch, state: installed}]}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: true, settings: {apply_updates: {value: "yes", explicit: true}}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"dnf-automatic.timer": {enabled: true, masked: false, file: x}}}
+    want: PASS
+  - name: dnf-automatic is installed and nothing is enabled
+    facts:
+      packages: {manager: rpm, installed: {dnf-automatic: [{version: "4.14.0-1", arch: noarch, state: installed}]}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: true, settings: {apply_updates: {value: "yes", explicit: true}}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"dnf-automatic.timer": {enabled: false, masked: false, file: x}}}
+    want: FAIL
+  - name: CentOS 7 with yum-cron applying updates
+    facts:
+      packages: {manager: rpm, installed: {yum-cron: [{version: "3.4.3-168", arch: noarch, state: installed}]}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: true, settings: {apply_updates: {value: "yes", explicit: true}}}
+      services: {systemd: true, units: {"yum-cron.service": {enabled: true, masked: false, file: x}}}
+    want: PASS
+  - name: nothing of the kind on an rpm host
+    facts:
+      packages: {manager: rpm, installed: {}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: a container image
+    facts:
+      target: {live: false, image: true}
+      packages: {manager: dpkg, installed: {}}
+      updates:
+        apt: {present: true, settings: {}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {}}
+    want: NOT_APPLICABLE
+  - name: a package manager that is not read
+    facts:
+      packages: {manager: "", installed: {}}
+      updates:
+        apt: {present: false, settings: {}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {}}
+    want: NOT_APPLICABLE
+  - name: the configuration of apt could not be read in full
+    input: incomplete
+    incomplete: [updates]
+    facts:
+      packages: {manager: dpkg, installed: {unattended-upgrades: [{version: "2.9.1", arch: all, state: installed}]}}
+      updates:
+        apt: {present: true, settings: {update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "1", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}
+    want: ERROR

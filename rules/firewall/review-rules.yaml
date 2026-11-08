@@ -1,0 +1,50 @@
+id: firewall.review-rules
+version: 1
+title: Review the rules of the firewall
+title_ko: 방화벽 규칙 검토
+severity: medium
+description: >-
+  Asks for the rules to be read when the only firewall found is an nftables, netfilter-persistent or iptables service: a service that starts at boot
+  says nothing about what its rules allow, and hostlint does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a
+  person set with their commands, nor when no such service is enabled (the check before it fails then).
+rationale: >-
+  A firewall whose rules accept everything protects nothing, and a default of "accept" is what a fresh nftables or iptables setup has.
+remediation: >-
+  List the rules (`nft list ruleset`, or `iptables-save`) and check that the input chain drops what the host does not serve; set the policy of the chain to drop and allow SSH first.
+applies: >-
+  !target.image && services.systemd &&
+  !((firewall.ufw.present && "enabled" in firewall.ufw.settings && firewall.ufw.settings["enabled"].value == "yes") && "ufw.service" in services.units && services.units["ufw.service"].enabled && !services.units["ufw.service"].masked) &&
+  !("firewalld.service" in services.units && services.units["firewalld.service"].enabled && !services.units["firewalld.service"].masked) &&
+  ["nftables.service", "netfilter-persistent.service", "iptables.service"].exists(n, n in services.units && services.units[n].enabled && !services.units[n].masked)
+manual:
+  guidance: >-
+    A firewall service is enabled, which is not the same as rules that protect the host. Read the rules and check that the input chain drops what the host does not serve.
+  show: >-
+    ["nftables.service", "netfilter-persistent.service", "iptables.service"].filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked).map(n, "firewall service enabled: " + n)
+tests:
+  - name: only an nftables service
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"nftables.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/nftables.service}}}
+    want: MANUAL
+  - name: ufw is on, so ufw's own rules are what there is
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "yes", explicit: true}}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/ufw.service}, "nftables.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/nftables.service}}}
+    want: NOT_APPLICABLE
+  - name: firewalld is enabled
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"firewalld.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/firewalld.service}}}
+    want: NOT_APPLICABLE
+  - name: no firewall service at all (the check before fails)
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: NOT_APPLICABLE
+  - name: a container image
+    facts:
+      target: {live: false, image: true}
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"nftables.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/nftables.service}}}
+    want: NOT_APPLICABLE

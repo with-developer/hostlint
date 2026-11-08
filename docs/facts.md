@@ -133,6 +133,21 @@ everything, so what it holds can fail a check but never make one pass.
 | `filesystem.excluded` | list of string | Excluded lists the mount points that were not walked, as "path (type)". |
 | `filesystem.entries` | int | Entries is the number of entries the walk visited. |
 
+## `firewall`
+
+Firewall are the `firewall` facts: what the configuration of the host firewalls says, where the state of the unit is not
+enough. ufw is the case: its unit is enabled by installing the package, while the firewall is on only when
+/etc/ufw/ufw.conf says ENABLED=yes. (Whether a unit is enabled is in the `services` facts.)
+
+| Path | Type | |
+|---|---|---|
+| `firewall.ufw` | object |  |
+| `firewall.ufw.present` | bool | Present is true when the file exists. |
+| `firewall.ufw.settings` | map of setting | Settings has "enabled", the ENABLED of the file: "yes" or "no" (case and quotes do not matter); absent when the file does not set it. |
+| `firewall.ufw.settings{}.value` | string | Value is the effective value as text. |
+| `firewall.ufw.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
+| `firewall.ufw.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
+
 ## `ftp`
 
 FTP is the `ftp` facts: how vsftpd is configured. Other FTP servers are not
@@ -489,3 +504,29 @@ Target describes what is being scanned: the `target` variable.
 |---|---|---|
 | `target.live` | bool | Live is true when the target is the running system, so live facts (running services, sockets) describe it; false for a mounted root (--root), where nothing runs. Checks use it to require live facts on live targets only. |
 | `target.image` | bool | Image is true when the target is a container image (--image-tar): its files, with nothing running and no kernel of its own. Checks of kernel parameters do not apply to it. |
+
+## `updates`
+
+Updates are the `updates` facts: the configuration of the tools that install updates by themselves. Whether their units
+(timers, services) are enabled is in the `services` facts, and whether a package is installed in `packages`.
+
+| Path | Type | |
+|---|---|---|
+| `updates.apt` | object | Apt is what apt's configuration says about periodic runs (unattended-upgrades). |
+| `updates.apt.present` | bool | Present is true when a file of the apt configuration directory or /etc/apt/apt.conf exists. |
+| `updates.apt.settings` | map of setting | Settings has "enable", "update_package_lists" and "unattended_upgrade" (APT::Periodic::Enable and so on). |
+| `updates.apt.settings{}.value` | string | Value is the effective value as text. |
+| `updates.apt.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
+| `updates.apt.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
+| `updates.dnf_automatic` | object | Dnf is /etc/dnf/automatic.conf (dnf-automatic) and Yum is /etc/yum/yum-cron.conf (yum-cron). |
+| `updates.dnf_automatic.present` | bool |  |
+| `updates.dnf_automatic.settings` | map of setting | Settings has "apply_updates", "yes" or "no" (yes, true, on and 1 are yes; the other spellings of no are no), and "upgrade_type", what is installed: "security" or "default" (everything); for yum-cron it is update_cmd, which has the same usual values. |
+| `updates.dnf_automatic.settings{}.value` | string | Value is the effective value as text. |
+| `updates.dnf_automatic.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
+| `updates.dnf_automatic.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
+| `updates.yum_cron` | object |  |
+| `updates.yum_cron.present` | bool |  |
+| `updates.yum_cron.settings` | map of setting | Settings has "apply_updates", "yes" or "no" (yes, true, on and 1 are yes; the other spellings of no are no), and "upgrade_type", what is installed: "security" or "default" (everything); for yum-cron it is update_cmd, which has the same usual values. |
+| `updates.yum_cron.settings{}.value` | string | Value is the effective value as text. |
+| `updates.yum_cron.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
+| `updates.yum_cron.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |

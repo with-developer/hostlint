@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
 [hostlint.yaml](configuration.md).
 
-## essentials (revision 2)
+## essentials (revision 3)
 
 hostlint essentials — a short hardening baseline for Linux servers
 
@@ -35,6 +35,8 @@ hostlint essentials — a short hardening baseline for Linux servers
 | ES-20 | low | Accounts that can log in are reviewed (로그인할 수 있는 계정을 검토함) | [`accounts.review-login-accounts`](#accountsreview-login-accounts), [`accounts.review-admin-groups`](#accountsreview-admin-groups) |
 | ES-21 | medium | The network stack ignores what it should (네트워크 스택이 무시해야 할 것을 무시함) | [`sysctl.syncookies`](#sysctlsyncookies), [`sysctl.rp-filter`](#sysctlrp-filter), [`sysctl.icmp-redirects`](#sysctlicmp-redirects), [`sysctl.source-routing`](#sysctlsource-routing), [`sysctl.icmp-broadcast`](#sysctlicmp-broadcast) |
 | ES-22 | medium | The kernel limits what unprivileged code can see and do (커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함) | [`sysctl.aslr`](#sysctlaslr), [`sysctl.kptr-restrict`](#sysctlkptr-restrict), [`sysctl.dmesg-restrict`](#sysctldmesg-restrict), [`sysctl.suid-dumpable`](#sysctlsuid-dumpable), [`sysctl.ptrace-scope`](#sysctlptrace-scope), [`sysctl.protected-links`](#sysctlprotected-links) |
+| ES-23 | medium | A host firewall is enabled (호스트 방화벽이 켜져 있음) | [`firewall.enabled`](#firewallenabled), [`firewall.review-rules`](#firewallreview-rules) |
+| ES-24 | medium | Security updates are installed automatically (보안 업데이트가 자동으로 설치됨) | [`updates.security-automatic`](#updatessecurity-automatic) |
 
 ### Checks
 
@@ -384,6 +386,26 @@ Lists regular files that every user can write, and directories every user can wr
 
 **Fix.** Remove write permission for others (`chmod o-w`), or set the sticky bit on shared directories (`chmod +t`).
 
+#### `firewall.enabled`
+
+A host firewall is enabled (호스트 방화벽이 켜져 있음) — severity medium, evaluates an expression.
+
+Looks for a host firewall that starts at boot: ufw with ENABLED=yes in /etc/ufw/ufw.conf (installing the package enables its unit, so the unit alone says nothing), firewalld, or an nftables, netfilter-persistent or iptables service. It does not read the rules: a firewall that starts can still allow everything (the check that follows asks for them to be reviewed when only such a service is found). A network that filters before the host, such as a cloud security group, is a choice to record as a waiver with its reason.
+
+**Why.** Without a firewall, every service that listens on an address is open to everyone who can reach it, including the one that was started by mistake.
+
+**Fix.** Turn one on and allow what the host serves: `ufw allow 22/tcp` and `ufw enable` on Ubuntu or Debian, `systemctl enable --now firewalld` on RHEL and its relatives. Allow your own SSH connection first.
+
+#### `firewall.review-rules`
+
+Review the rules of the firewall (방화벽 규칙 검토) — severity medium, a review (`MANUAL`).
+
+Asks for the rules to be read when the only firewall found is an nftables, netfilter-persistent or iptables service: a service that starts at boot says nothing about what its rules allow, and hostlint does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a person set with their commands, nor when no such service is enabled (the check before it fails then).
+
+**Why.** A firewall whose rules accept everything protects nothing, and a default of "accept" is what a fresh nftables or iptables setup has.
+
+**Fix.** List the rules (`nft list ruleset`, or `iptables-save`) and check that the input chain drops what the host does not serve; set the policy of the chain to drop and allow SSH first.
+
 #### `homes.owner-perms`
 
 Home directories belong to their accounts and others cannot write them (홈 디렉터리는 계정 본인 소유, 다른 사용자 쓰기 금지) — severity medium, lists what violates it.
@@ -681,6 +703,16 @@ Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connec
 **Why.** SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
 
 **Fix.** Set `net.ipv4.tcp_syncookies = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `updates.security-automatic`
+
+Security updates are installed automatically (보안 업데이트가 자동으로 설치됨) — severity medium, evaluates an expression.
+
+Debian and Ubuntu: unattended-upgrades is installed, APT::Periodic::Unattended-Upgrade and APT::Periodic::Update-Package-Lists are not 0 (and APT::Periodic::Enable is not 0, which turns the periodic runs of apt off as a whole, as in container images), and the apt-daily and apt-daily-upgrade timers are enabled. RHEL and its relatives: dnf-automatic with its install timer enabled, or its timer enabled with apply_updates = yes (the default is no: it only reports), or yum-cron enabled with apply_updates = yes. It does not read what may be installed (the origins of unattended-upgrades, the upgrade_type of dnf-automatic): the defaults are the security updates, and a host patched by a pipeline instead is a choice to record as a waiver with its reason.
+
+**Why.** Most compromises use a flaw that has been fixed for weeks; a host that waits for someone to remember is behind.
+
+**Fix.** On Debian or Ubuntu: `apt install unattended-upgrades` and `dpkg-reconfigure -plow unattended-upgrades`, which writes /etc/apt/apt.conf.d/20auto-upgrades with `APT::Periodic::Update-Package-Lists "1";` and `APT::Periodic::Unattended-Upgrade "1";`. On RHEL and its relatives: `dnf install dnf-automatic` and `systemctl enable --now dnf-automatic-install.timer` (or set `apply_updates = yes` in /etc/dnf/automatic.conf and enable dnf-automatic.timer).
 
 ## kisa-2026 (revision 15)
 

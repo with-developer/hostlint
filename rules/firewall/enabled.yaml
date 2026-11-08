@@ -1,0 +1,86 @@
+id: firewall.enabled
+version: 1
+title: A host firewall is enabled
+title_ko: 호스트 방화벽이 켜져 있음
+severity: medium
+description: >-
+  Looks for a host firewall that starts at boot: ufw with ENABLED=yes in /etc/ufw/ufw.conf (installing the package enables its unit, so the unit
+  alone says nothing), firewalld, or an nftables, netfilter-persistent or iptables service. It does not read the rules: a firewall that starts can still allow
+  everything (the check that follows asks for them to be reviewed when only such a service is found). A network that filters before the host, such as a cloud
+  security group, is a choice to record as a waiver with its reason.
+rationale: >-
+  Without a firewall, every service that listens on an address is open to everyone who can reach it, including the one that was started by mistake.
+remediation: >-
+  Turn one on and allow what the host serves: `ufw allow 22/tcp` and `ufw enable` on Ubuntu or Debian, `systemctl enable --now firewalld` on RHEL and its relatives.
+  Allow your own SSH connection first.
+applies: >-
+  !target.image && services.systemd
+expect: >-
+  ((firewall.ufw.present && "enabled" in firewall.ufw.settings && firewall.ufw.settings["enabled"].value == "yes") && ("ufw.service" in services.units && services.units["ufw.service"].enabled && !services.units["ufw.service"].masked)) ||
+  ("firewalld.service" in services.units && services.units["firewalld.service"].enabled && !services.units["firewalld.service"].masked) ||
+  ("nftables.service" in services.units && services.units["nftables.service"].enabled && !services.units["nftables.service"].masked) ||
+  ("netfilter-persistent.service" in services.units && services.units["netfilter-persistent.service"].enabled && !services.units["netfilter-persistent.service"].masked) ||
+  ("iptables.service" in services.units && services.units["iptables.service"].enabled && !services.units["iptables.service"].masked)
+failure: >-
+  no host firewall starts at boot: ufw is off or not installed, and neither firewalld nor an nftables or iptables service is enabled
+tests:
+  - name: ufw is on and its unit is enabled
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "yes", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/ufw.service}}}
+    want: PASS
+  - name: ufw is installed, its unit is enabled, and it is off (what installing the package leaves)
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "no", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/ufw.service}}}
+    want: FAIL
+  - name: ufw says yes and its unit is masked
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "yes", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: true, masked: true, file: /dev/null}}}
+    want: FAIL
+  - name: firewalld is enabled
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"firewalld.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/firewalld.service}}}
+    want: PASS
+  - name: an nftables service is enabled (its rules are for the review that follows)
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"nftables.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/nftables.service}}}
+    want: PASS
+  - name: firewalld is installed and not enabled
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"firewalld.service": {enabled: false, masked: false, file: /usr/lib/systemd/system/firewalld.service}}}
+    want: FAIL
+  - name: no firewall at all
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: a container image has no firewall of its own
+    facts:
+      target: {live: false, image: true}
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: NOT_APPLICABLE
+  - name: no systemd to read the units of
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: false, units: {}}
+    want: NOT_APPLICABLE
+  - name: the unit of ufw is enabled and its configuration could not be read, so it is not known whether ufw is on
+    input: incomplete
+    incomplete: [firewall]
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/ufw.service}}}
+    want: ERROR
+  - name: the configuration of ufw could not be read, and ufw cannot be on at boot anyway
+    input: incomplete
+    incomplete: [firewall]
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: FAIL

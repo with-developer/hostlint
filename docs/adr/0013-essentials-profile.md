@@ -52,3 +52,22 @@ A container image shares the kernel of its host, so the checks do not apply to i
 The end-to-end goldens leave the results of these checks out: a container's parameters are those of the machine
 that runs Docker, which differ between a laptop and a CI runner; the rule tests and the collector tests (with
 the `sysctl.d` files of Ubuntu, Rocky Linux, CentOS and Amazon Linux) cover them.
+
+## Amendment: revision 3 (2026-11-08, issue #212, approved by the owner)
+
+`essentials` revision 3 adds `ES-23` (a host firewall is enabled) and `ES-24` (security updates are installed automatically): 24
+controls. Both read configuration files with two small collectors, `firewall` (ufw.conf) and `updates` (APT::Periodic,
+dnf-automatic, yum-cron), plus the unit and package facts that exist. They do not apply to an image (`target.image`) or to a
+target without systemd, and they never read a command.
+
+- **ES-23** is two checks. `firewall.enabled` passes when ufw is on (`ENABLED=yes` and its unit enabled: installing ufw enables the
+  unit and leaves it off, which is what a real Ubuntu does), or firewalld, nftables, netfilter-persistent or an iptables service is
+  enabled; it fails when none is. `firewall.review-rules` is a manual check that applies only when the sole firewall is an nftables or
+  iptables service: a service that starts says nothing about its rules, and hostlint does not read them, so the control is
+  `MANUAL` there instead of a guessed `PASS`.
+- **ES-24** `updates.security-automatic`: Debian and Ubuntu need unattended-upgrades installed, `Unattended-Upgrade` and
+  `Update-Package-Lists` not 0, `APT::Periodic::Enable` not 0 (container images set it to 0) and the apt-daily and apt-daily-upgrade
+  timers enabled; RHEL and its relatives need dnf-automatic's install timer enabled, or its timer with `apply_updates = yes`, or
+  yum-cron enabled with `apply_updates = yes`. What may be installed (the origins, `upgrade_type`) is not read.
+- Not added: auditd and persistent-journal checks (a legitimate "no" is too common for a default `FAIL`).
+- The e2e goldens leave the results of these controls out for containers, like the kernel's.
