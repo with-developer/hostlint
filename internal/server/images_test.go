@@ -230,3 +230,59 @@ func TestImagesAreNeverStaleAndNewestFirst(t *testing.T) {
 		t.Errorf("the overview counts %d stale hosts, the list %d", ov.HostsStale, len(out.Hosts))
 	}
 }
+
+// The host list can be narrowed to the hosts with a label, as the dashboard does when a label is clicked.
+func TestHostsByLabel(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	withLabels := func(name, id string, labels map[string]string) {
+		t.Helper()
+		var doc map[string]any
+		if err := json.Unmarshal(fixture(t, "web-01.json"), &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["host"].(map[string]any)["hostname"] = name
+		doc["host"].(map[string]any)["hostId"] = "id-" + name
+		doc["host"].(map[string]any)["labels"] = labels
+		doc["scan"].(map[string]any)["id"] = id
+		body, _ := json.Marshal(doc)
+		if code, out := post(t, f.srv, ingest, body); code != http.StatusCreated {
+			t.Fatalf("%s: %d %v", name, code, out)
+		}
+	}
+	withLabels("lab-a", "l-a", map[string]string{"env": "prod", "role": "web"})
+	withLabels("lab-b", "l-b", map[string]string{"env": "staging", "role": "web"})
+	withLabels("lab-c", "l-c", map[string]string{"role": "db"})
+	names := func(query string) []string {
+		var out struct {
+			Hosts []HostSummary `json:"hosts"`
+			Total int           `json:"total"`
+		}
+		f.json(t, "/api/v1/hosts?"+query, &out)
+		var got []string
+		for _, h := range out.Hosts {
+			if strings.HasPrefix(h.Name, "lab-") { // the hosts of the fixture have labels of their own
+				got = append(got, h.Name)
+			}
+		}
+		return got
+	}
+	for query, want := range map[string]string{
+		"label=env%3Dprod":         "lab-a",
+		"label=role%3Dweb":         "lab-a lab-b",
+		"label=env%3Dnone":         "",
+		"label=nokey%3Dprod":       "",
+		"label=role%3Ddb":          "lab-c",
+		"label=env%3D":             "", // an empty value is a value: no host has env set to nothing
+		"label=role%3Dweb&q=lab-b": "lab-b",
+	} {
+		if got := strings.Join(names(query), " "); got != want {
+			t.Errorf("%s: %q, want %q", query, got, want)
+		}
+	}
+	for _, bad := range []string{"label=nokeyvalue", "label=%3Dvalue", "label=" + strings.Repeat("k", 33) + "%3Dv", "label=k%3D" + strings.Repeat("v", 65)} {
+		if code, _ := f.get(t, f.api, "/api/v1/hosts?"+bad); code != http.StatusBadRequest {
+			t.Errorf("%s: %d, want 400", bad, code)
+		}
+	}
+}

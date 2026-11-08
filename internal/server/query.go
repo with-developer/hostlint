@@ -77,6 +77,7 @@ const trendScans = 14
 // HostFilter selects and pages the host list.
 type HostFilter struct {
 	Kind       string        // "image" lists the images; "host" or "" the hosts
+	Label      string        // "key=value": only the hosts with that label
 	Query      string        // part of the host name
 	Status     string        // "failing" (a FAIL control), "stale", or "" for all
 	StaleAfter time.Duration // a host that has not reported for this long is stale (7 days when 0)
@@ -174,8 +175,14 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 	if err != nil {
 		return nil, 0, err
 	}
+	labelKey, labelValue, byLabel := strings.Cut(f.Label, "=")
 	out := make([]HostSummary, 0, len(all)) // never nil: the JSON is [], not null
 	for _, h := range all {
+		if byLabel {
+			if v, ok := h.Labels[labelKey]; !ok || v != labelValue {
+				continue
+			}
+		}
 		switch {
 		case f.Status == "failing" && h.Counts["FAIL"] == 0, f.Status == "stale" && !h.Stale:
 			continue

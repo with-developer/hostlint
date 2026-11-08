@@ -166,6 +166,9 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, o)
 }
 
+// labelParamRe is a label filter: a key and a value of the sizes a result may carry (maxLabelKey, maxLabelValue).
+var labelParamRe = regexp.MustCompile(`^[^=]{1,32}=.{0,64}$`)
+
 func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	after, err := staleAfter(r)
@@ -179,6 +182,10 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f := HostFilter{Query: q.Get("q"), Status: q.Get("status"), StaleAfter: after, Sort: q.Get("sort"), Profile: profile, Kind: q.Get("kind")}
+	if f.Label = q.Get("label"); f.Label != "" && !labelParamRe.MatchString(f.Label) {
+		writeError(w, http.StatusBadRequest, `label is "key=value"`)
+		return
+	}
 	if f.Kind != "" && f.Kind != kindHost && f.Kind != kindImage {
 		writeError(w, http.StatusBadRequest, `kind is "host" or "image"`)
 		return

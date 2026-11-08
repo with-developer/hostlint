@@ -229,7 +229,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/profiles` | 최신 스캔의 프로파일과 호스트 수, 가장 많은 호스트가 쓰는 프로파일(`default`), 제목 |
 | `GET /api/v1/trend` | 최근 며칠간의 플릿을 하루에 한 점씩, 오래된 것부터: 호스트 수, 실패 컨트롤이 있는 호스트, 그날 기준의 상태별 개수와 통과율(`?days=30`, 1~90). 저장된 스캔으로 계산하므로 `server prune`이 다룰 수 있는 날짜를 바꾸고, 30초 동안 같은 답을 돌려줍니다 |
 | `GET /api/v1/overview` | 호스트 수, 실패 컨트롤이 있는 호스트, 오래 보고하지 않은 호스트, 상태별 개수, 가장 많은 호스트에서 실패하는 컨트롤, 최근 악화(`?staleDays=7`) |
-| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`, 이미지는 `?kind=image`). 호스트마다 `os`, `labels`(최신 결과가 말하는 것, 길이 제한 있음), `agentOnline`, 최근 스캔의 통과율 `trend`도 있습니다 |
+| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`, 이미지는 `?kind=image`, 라벨이 있는 호스트는 `?label=env%3Dprod`. 대시보드는 누른 라벨로 거릅니다). 호스트마다 `os`, `labels`(최신 결과가 말하는 것, 길이 제한 있음), `agentOnline`, 최근 스캔의 통과율 `trend`도 있습니다 |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | 최신 스캔 기준 컨트롤별 상태 개수, 컨트롤 하나의 호스트 목록과 점검 내용·조치 방법 |
 | `GET /api/v1/matrix` | 모든 호스트의 모든 컨트롤의 최신 상태, 가장 많이 실패한 호스트가 먼저 |
 | `GET /api/v1/hosts/ID` | 호스트 하나: 최신 컨트롤과 이력 |

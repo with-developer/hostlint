@@ -36,6 +36,7 @@ export interface HostsParams {
   limit?: number;
   offset?: number;
   kind?: "host" | "image";
+  label?: string;
   staleDays: number;
 }
 
@@ -47,6 +48,7 @@ export function hostsQuery(p: HostsParams): string {
   if (p.limit !== undefined) q.set("limit", String(p.limit));
   if (p.offset !== undefined) q.set("offset", String(p.offset));
   if (p.kind) q.set("kind", p.kind);
+  if (p.label) q.set("label", p.label);
   return q.toString();
 }
 

@@ -281,6 +281,16 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   .login { grid-template-columns: 1fr; }
   .login-art { display: none; }
   .control-row { grid-template-columns: 16px 3rem 1fr 6.2rem; }
+  /* a row of the host and image lists is a card, not a line of a wide table: the name, the bar with the pass rate, the last scan */
+  table.hosts thead { display: none; }
+  table.hosts, table.hosts tbody { display: block; }
+  table.hosts tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem .9rem; align-items: center; padding: .85rem 1rem; border-top: 1px solid var(--border); }
+  table.hosts tbody tr:first-child { border-top: 0; }
+  table.hosts td { display: block; padding: 0; border: 0; min-width: 0; width: auto; }
+  table.hosts td:first-child, table.hosts td:last-child { grid-column: 1 / -1; }
+  table.hosts td:last-child { color: var(--muted); font-size: .84rem; }
+  table.hosts td.bar-cell { min-width: 0; width: auto; }
+  table.hosts tr.clickable:hover td { background: none; }
   .control-row .sev { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -328,3 +338,5 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
 .command pre { flex: 1; margin: 0; overflow-x: auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .6rem .8rem; font: .85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .prose code, .remedy code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 0 .3em; font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; }
 .packs { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+button.chip-label { font: inherit; font-size: .76rem; color: inherit; cursor: pointer; }
+button.chip-label:hover, button.chip-label.active { border-color: var(--accent); color: var(--accent); }

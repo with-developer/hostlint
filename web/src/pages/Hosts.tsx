@@ -19,12 +19,13 @@ export function HostsPage() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("");
   const [sort, setSort] = useState<Sort>("name");
+  const [label, setLabel] = useState(""); // "key=value": only the hosts with that label
   const [pages, setPages] = useState(1);
   const query = useDebounced(q, 250);
-  useEffect(() => setPages(1), [query, filter, sort]);
-  const params = { q: query, status: filter, sort, staleDays: STALE_DAYS };
+  useEffect(() => setPages(1), [query, filter, sort, label]);
+  const params = { q: query, status: filter, sort, label, staleDays: STALE_DAYS };
   // One request for everything shown so far: the server sorts the whole fleet, not a page of it.
-  const state = useAsync(() => api.hosts({ ...params, limit: PAGE * pages, offset: 0 }), [query, filter, sort, pages]);
+  const state = useAsync(() => api.hosts({ ...params, limit: PAGE * pages, offset: 0 }), [query, filter, sort, label, pages]);
 
   const filters: [Filter, string][] = [
     ["", t("hosts.all")],
@@ -60,6 +61,11 @@ export function HostsPage() {
             </button>
           ))}
         </div>
+        {label && (
+          <button className="chip-label active" onClick={() => setLabel("")} title={t("hosts.clearLabel")}>
+            {label} ×
+          </button>
+        )}
         <div className="segmented" role="group" aria-label={t("hosts.sortBy")}>
           {sorts.map(([value, label]) => (
             <button key={value} className={sort === value ? "on" : ""} aria-pressed={sort === value} onClick={() => setSort(value)}>
@@ -86,7 +92,7 @@ export function HostsPage() {
                   </thead>
                   <tbody>
                     {d.hosts.map((h) => (
-                      <HostRow key={h.id} host={h} now={now} />
+                      <HostRow key={h.id} host={h} now={now} onLabel={(k, v) => setLabel(`${k}=${v}`)} />
                     ))}
                   </tbody>
                 </table>
@@ -103,7 +109,7 @@ export function HostsPage() {
   );
 }
 
-function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
+function HostRow({ host: h, now, onLabel }: { host: HostSummary; now: number; onLabel: (key: string, value: string) => void }) {
   const { t } = useI18n();
   return (
     <tr onClick={() => (location.hash = `#/hosts/${h.id}`)} className="clickable">
@@ -121,9 +127,17 @@ function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
           <div className="hostmeta muted small">
             {h.os && <span>{h.os}</span>}
             {Object.entries(h.labels ?? {}).map(([k, v]) => (
-              <span key={k} className="chip-label" title={`${k}=${v}`}>
+              <button
+                key={k}
+                className="chip-label"
+                title={t("hosts.filterLabel", { label: `${k}=${v}` })}
+                onClick={(e) => {
+                  e.stopPropagation(); // the row opens the host: the label filters the list
+                  onLabel(k, v);
+                }}
+              >
                 {k}={v}
-              </span>
+              </button>
             ))}
           </div>
         )}
