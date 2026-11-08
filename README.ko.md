@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 8f8f335 -->
+<!-- translated from README.md @ 9c5f0fa -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -91,8 +91,8 @@ hostlint server demo      # 가상의 호스트 12대. 스캔도 저장도 하�
 `cosign`이 있으면 체크섬의 Sigstore 서명도 확인합니다.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.23.0/install.sh
-sudo sh install.sh -v v0.23.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
+curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.24.0/install.sh
+sudo sh install.sh -v v0.24.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
 sudo hostlint scan
 ```
 
@@ -107,7 +107,7 @@ docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root
 (Go 1.26 이상, 바이너리 자체는 의존성이 없습니다):
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.23.0
+go install github.com/with-developer/hostlint/cmd/hostlint@v0.24.0
 sudo "$(go env GOPATH)/bin/hostlint" scan
 ```
 
@@ -244,7 +244,7 @@ hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 
 SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
 패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스, 컨테이너 이미지 점검
 ([docs/images.ko.md](docs/images.ko.md)), GitHub Action([docs/ci.ko.md](docs/ci.ko.md)), 대시보드가 있는 플릿
-서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md))이 갖춰졌고, v0.23.0이 최신 릴리스입니다. 요청 시 스캔을 위한 아웃바운드 에이전트([docs/fleet.ko.md](docs/fleet.ko.md))와 컨테이너 이미지
+서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md))이 갖춰졌고, v0.24.0이 최신 릴리스입니다. 요청 시 스캔을 위한 아웃바운드 에이전트([docs/fleet.ko.md](docs/fleet.ko.md))와 컨테이너 이미지
 ([docs/container.ko.md](docs/container.ko.md))도 갖춰졌습니다. [로드맵](docs/ROADMAP.md)을 참고하세요.
 
 ## 라이선스
