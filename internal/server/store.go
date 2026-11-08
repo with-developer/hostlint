@@ -259,6 +259,10 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	if res.Scan.Target.Image != nil {
 		kind = kindImage
 	}
+	// A prefix token is for the images of an organization's CI: it does not make hosts that count in the fleet's numbers.
+	if kind != kindImage && strings.HasSuffix(cred.BoundName, "*") {
+		return nil, fmt.Errorf("%w: a token bound to a prefix is for images, and this is the result of a host", ErrIdentity)
+	}
 	var otherKind int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM hosts WHERE name = ? AND kind != ?`, name, kind).Scan(&otherKind); err != nil {
 		return nil, err

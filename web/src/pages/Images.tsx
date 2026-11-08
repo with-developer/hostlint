@@ -15,7 +15,7 @@ export function ImagesPage() {
   const now = useNow();
   const [q, setQ] = useState("");
   const query = useDebounced(q, 250);
-  const state = useAsync(() => api.hosts({ q: query, kind: "image", sort: "last", limit: 200, staleDays: STALE_DAYS }), [query]);
+  const state = useAsync(() => api.hosts({ q: query, kind: "image", sort: "recent", limit: 200, staleDays: STALE_DAYS }), [query]);
   return (
     <>
       <PageHeader title={t("images.title")} subtitle={t("images.subtitle")} />

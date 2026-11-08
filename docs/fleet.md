@@ -181,8 +181,9 @@ A scan of an image archive (`hostlint scan --image-tar app.tar --push ...`, [doc
 lists images apart from hosts (**Images**, once there is one), and the fleet's numbers (overview, trend, matrix, controls,
 stale and silent-host alerts) are those of the hosts. `GET /api/v1/hosts?kind=image` lists the images; every host entry has
 a `kind`, and a scan row of an image its `imageRef` and `imageDigest`. A token for CI is bound to a prefix
-(`server token create --host 'ghcr.io/acme/*'`); a prefix has its `*` at the end and at least three characters before it,
-and it is an ingest token's alone (an agent speaks for one host). A name is a host or an image, never both.
+(`server token create --host 'ghcr.io/acme/*'`); a prefix ends with `/*` after an owner (so `ghcr.io/acme*` is refused: it would take `ghcr.io/acme-evil` too), it is an
+ingest token's alone, and a prefix token is for images (a host result under the prefix is refused; an agent speaks for one
+host). Images are listed newest scan first (`?sort=recent`). A name is a host or an image, never both.
 
 ## Signing people in with your company's identity
 

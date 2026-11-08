@@ -25,6 +25,9 @@ type Host struct {
 	// in it and nothing of the scanner's system is in it, so the host-only exclusions do not apply.
 	Image bool
 
+	// Asset is the name an image goes by on a fleet server (ADR 0016), "" for the label: it is the host name of the scan, so
+	// waivers by host name match what the server shows.
+	Asset string
 	label string // Image: what the report calls the host
 	close func() error
 }
@@ -34,6 +37,9 @@ type Host struct {
 // starting with "#" are comments). It is "" when neither is available.
 func (h *Host) Hostname() string {
 	if h.Image {
+		if h.Asset != "" {
+			return h.Asset
+		}
 		return h.label
 	}
 	if h.Live {

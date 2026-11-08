@@ -84,7 +84,7 @@ type HostFilter struct {
 	Offset     int
 	Profile    string // count the controls of this profile only ("" counts all of them)
 	All        bool   // every match: no paging (the export)
-	Sort       string // "name" (default), "score" (worst first, undecided last) or "last" (longest silent first)
+	Sort       string // "name" (default), "score" (worst first, undecided last), "last" (longest silent first) or "recent" (newest scan first)
 }
 
 // Kinds of asset a host row can be (ADR 0016): a host that reports for itself, or a container image whose scans CI pushes.
@@ -155,7 +155,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, kind strin
 			h.Counts = Counts{}
 		}
 		h.Score = h.Counts.Score()
-		h.Stale = h.LastScanAt == "" || h.LastScanAt < cutoff
+		h.Stale = h.Kind != kindImage && (h.LastScanAt == "" || h.LastScanAt < cutoff) // nothing reports for an image on a schedule
 	}
 	return all, nil
 }
@@ -196,6 +196,8 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 		})
 	case "last":
 		sort.SliceStable(out, func(i, j int) bool { return out[i].LastScanAt < out[j].LastScanAt })
+	case "recent":
+		sort.SliceStable(out, func(i, j int) bool { return out[i].LastScanAt > out[j].LastScanAt })
 	}
 	total := len(out)
 	if f.All {

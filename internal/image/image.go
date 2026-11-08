@@ -370,10 +370,12 @@ func readOCI(f *os.File, idx map[string]outerEntry, p *plan, configName *string,
 		p.layers = append(p.layers, layerRef{name: name, digest: hex})
 	}
 	p.label = fallbackLabel
-	for _, key := range []string{"org.opencontainers.image.ref.name", "io.containerd.image.name"} {
+	// io.containerd.image.name holds the full reference; ref.name is often only a tag ("latest"), which is a label to
+	// show but not a name for the image.
+	for _, key := range []string{"io.containerd.image.name", "org.opencontainers.image.ref.name"} {
 		if v := d.Annotations[key]; v != "" {
 			p.label = v
-			p.fromRef = true
+			p.fromRef = strings.ContainsAny(v, ":/@") // a repository, or a tag with one
 			break
 		}
 	}

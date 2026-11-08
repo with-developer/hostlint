@@ -225,8 +225,8 @@ func (s *Store) RevokeCredential(ctx context.Context, id int64) (bool, error) {
 }
 
 // checkBoundName allows what an ingest token may be bound to: one name, or the names that start with a prefix
-// ("ghcr.io/acme/*", for the CI of an organization that pushes many images). A prefix has its star at the end and is long
-// enough to name an owner: "*" alone is --any-host, which is a choice of its own.
+// ("ghcr.io/acme/*", for the CI of an organization that pushes many images). A prefix ends with "/*" after an owner, so it
+// stops at a path boundary ("ghcr.io/acme*" would take ghcr.io/acme-evil too): "*" alone is --any-host, a choice of its own.
 func checkBoundName(scope, name string) error {
 	if !strings.Contains(name, "*") {
 		return nil
@@ -237,8 +237,8 @@ func checkBoundName(scope, name string) error {
 		return errors.New("only an ingest token is bound to a host or a prefix")
 	case !ok || strings.Contains(prefix, "*"):
 		return errors.New("a prefix has one *, at the end: ghcr.io/acme/*")
-	case len(prefix) < 3:
-		return errors.New("a prefix is at least three characters before the *: use --any-host to speak for every name")
+	case len(prefix) < 3 || !strings.HasSuffix(prefix, "/"):
+		return errors.New("a prefix ends with /* after an owner: ghcr.io/acme/* (use --any-host to speak for every name)")
 	}
 	return nil
 }

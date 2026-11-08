@@ -183,8 +183,8 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, `kind is "host" or "image"`)
 		return
 	}
-	if f.Sort != "" && f.Sort != "name" && f.Sort != "score" && f.Sort != "last" {
-		writeError(w, http.StatusBadRequest, `sort is "name", "score" or "last"`)
+	if f.Sort != "" && f.Sort != "name" && f.Sort != "score" && f.Sort != "last" && f.Sort != "recent" {
+		writeError(w, http.StatusBadRequest, `sort is "name", "score", "last" or "recent"`)
 		return
 	}
 	if f.Status != "" && f.Status != "failing" && f.Status != "stale" {

@@ -138,6 +138,12 @@ func dockerArchive(t testing.TB, tags []string, layers ...[]byte) []byte {
 // ociArchive is an OCI layout: blobs by digest, index.json.
 func ociArchive(t testing.TB, layers ...[]byte) []byte {
 	t.Helper()
+	return ociArchiveAnnotated(t, map[string]string{"org.opencontainers.image.ref.name": "app:1"}, layers...)
+}
+
+// ociArchiveAnnotated is ociArchive with the annotations of the manifest entry in index.json.
+func ociArchiveAnnotated(t testing.TB, annotations map[string]string, layers ...[]byte) []byte {
+	t.Helper()
 	var files []file
 	var descs []map[string]any
 	var diffs []string
@@ -158,7 +164,7 @@ func ociArchive(t testing.TB, layers ...[]byte) []byte {
 	files = append(files, file{name: "blobs/sha256/" + hexsum(manifest), body: manifest})
 	files = append(files, file{name: "index.json", body: jsonOf(t, map[string]any{"schemaVersion": 2, "manifests": []map[string]any{{
 		"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": "sha256:" + hexsum(manifest),
-		"annotations": map[string]string{"org.opencontainers.image.ref.name": "app:1"},
+		"annotations": annotations,
 	}}})})
 	return outer(t, files...)
 }
@@ -473,5 +479,37 @@ func TestHostileNamesDoNotReachTheTerminalRaw(t *testing.T) {
 	_, err := load(t, dockerArchive(t, nil, layerTar(t, ent{name: "\x1b]0;pwned\x07", typ: tar.TypeCont})))
 	if err == nil || strings.ContainsAny(err.Error(), "\x1b\x07") {
 		t.Errorf("err = %q", err)
+	}
+}
+
+// What an archive names the image with: a reference (repository, with or without a tag) is the image's name; a bare tag, as
+// OCI layouts often have in ref.name, is only a label; and the containerd annotation, which holds the full reference, wins.
+func TestImageReference(t *testing.T) {
+	layer := layerTar(t, ent{name: "etc/", mode: 0o755}, ent{name: "etc/os-release", body: "ID=debian\n"})
+	for name, tc := range map[string]struct {
+		archive   []byte
+		ref, want string
+	}{
+		"docker save":                  {dockerArchive(t, []string{"ghcr.io/acme/app:1.4"}, layer), "ghcr.io/acme/app:1.4", "ghcr.io/acme/app:1.4"},
+		"docker save without a tag":    {dockerArchive(t, nil, layer), "", ""},
+		"docker save, an empty tag":    {dockerArchive(t, []string{""}, layer), "", ""},
+		"docker save, <none>":          {dockerArchive(t, []string{"<none>:<none>"}, layer), "", ""},
+		"oci, a reference in ref.name": {ociArchiveAnnotated(t, map[string]string{"org.opencontainers.image.ref.name": "app:1"}, layer), "app:1", "app:1"},
+		"oci, a bare tag":              {ociArchiveAnnotated(t, map[string]string{"org.opencontainers.image.ref.name": "latest"}, layer), "", ""},
+		"oci, containerd wins":         {ociArchiveAnnotated(t, map[string]string{"org.opencontainers.image.ref.name": "latest", "io.containerd.image.name": "docker.io/library/nginx:latest"}, layer), "docker.io/library/nginx:latest", "docker.io/library/nginx:latest"},
+		"oci, no annotation":           {ociArchiveAnnotated(t, nil, layer), "", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			img := mustLoad(t, tc.archive)
+			if img.Ref != tc.ref {
+				t.Errorf("Ref = %q, want %q", img.Ref, tc.ref)
+			}
+			if tc.ref != "" && img.Label != tc.want {
+				t.Errorf("Label = %q, want %q", img.Label, tc.want)
+			}
+			if !strings.HasPrefix(img.Digest, "sha256:") || len(img.Digest) != len("sha256:")+64 {
+				t.Errorf("Digest = %q", img.Digest)
+			}
+		})
 	}
 }

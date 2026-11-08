@@ -63,3 +63,22 @@ func TestPushAnImage(t *testing.T) {
 		t.Errorf("outside the prefix: exit %d, stderr %q", code, stderr)
 	}
 }
+
+// The name of an image is its host name for the whole scan, not patched into the result afterwards: waivers by host name
+// match what a fleet server shows, and the result says which image it was.
+func TestImageNameIsTheHostNameOfTheScan(t *testing.T) {
+	files := map[string]string{"etc/os-release": "ID=debian\nVERSION_ID=\"12\"\n"}
+	res, stderr := scanJSON(t, "--image-tar", imageArchive(t, "ghcr.io/acme/app:1.4", files), "--name", "ghcr.io/acme/app")
+	if res.Host.Hostname != "ghcr.io/acme/app" {
+		t.Errorf("host name %q (stderr %q)", res.Host.Hostname, stderr)
+	}
+	img := res.Scan.Target.Image
+	if img == nil || img.Ref != "ghcr.io/acme/app:1.4" || !strings.HasPrefix(img.Digest, "sha256:") || res.Scan.Target.Kind != "root" || res.Scan.Target.Root != "image:ghcr.io/acme/app:1.4" {
+		t.Errorf("target: %+v image %+v", res.Scan.Target, img)
+	}
+	// without --name or --push the image goes by its label, as before
+	res, _ = scanJSON(t, "--image-tar", imageArchive(t, "ghcr.io/acme/app:1.4", files))
+	if res.Host.Hostname != "ghcr.io/acme/app:1.4" {
+		t.Errorf("host name without --name: %q", res.Host.Hostname)
+	}
+}

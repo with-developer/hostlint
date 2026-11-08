@@ -152,7 +152,7 @@ func TestImageIdentity(t *testing.T) {
 // A token may be bound to a prefix (an organization's CI pushing many images), checked on every result.
 func TestTokenBoundToAPrefix(t *testing.T) {
 	f := newAPIFixture(t)
-	for _, bad := range []string{"*", "a*", "ab*", "ghcr.io/*/app*", "ghcr.io/ac*me", "**"} {
+	for _, bad := range []string{"*", "a*", "ab*", "ghcr.io/*/app*", "ghcr.io/ac*me", "**", "ghcr.io/acme*", "web*"} {
 		if _, _, err := f.store.CreateCredential(t.Context(), ScopeIngest, "ci", bad, 0); err == nil {
 			t.Errorf("a token bound to %q was made", bad)
 		}
@@ -173,9 +173,60 @@ func TestTokenBoundToAPrefix(t *testing.T) {
 	if code, out := post(t, f.srv, tok, fixture(t, "web-01.json")); code != http.StatusConflict {
 		t.Errorf("a host with a prefix token: %d %v", code, out)
 	}
+	// A prefix token is for images: a host result under the prefix is refused, though its name matches.
+	var hostDoc map[string]any
+	if err := json.Unmarshal(fixture(t, "web-01.json"), &hostDoc); err != nil {
+		t.Fatal(err)
+	}
+	hostDoc["host"].(map[string]any)["hostname"] = "ghcr.io/acme/looks-like-a-host"
+	hostDoc["scan"].(map[string]any)["id"] = "p-host"
+	asHost, _ := json.Marshal(hostDoc)
+	if code, out := post(t, f.srv, tok, asHost); code != http.StatusConflict || !strings.Contains(fmt.Sprint(out["error"]), "bound to a prefix is for images") {
+		t.Errorf("a host result with a prefix token: %d %v", code, out)
+	}
 	// A prefix is not an agent's identity: an agent speaks for one host.
 	cred := mustAuth(t, f.store, tok)
 	if _, err := f.store.AgentSeen(t.Context(), cred, []string{"kisa-2026"}); err == nil {
 		t.Error("a prefix token served as an agent's")
+	}
+}
+
+// Nothing reports for an image on a schedule: it is never stale, however long since its last scan; the images are listed
+// newest scan first.
+func TestImagesAreNeverStaleAndNewestFirst(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	for i, name := range []string{"ghcr.io/acme/old", "ghcr.io/acme/new"} {
+		f.clock = f.clock.Add(time.Hour)
+		if code, out := post(t, f.srv, ingest, imageDoc(t, name, name+":1", imageDigest1, fmt.Sprintf("s-%d", i), 20+i)); code != http.StatusCreated {
+			t.Fatalf("%d %v", code, out)
+		}
+	}
+	f.clock = f.clock.Add(30 * 24 * time.Hour)
+	var out struct {
+		Hosts []HostSummary `json:"hosts"`
+	}
+	f.json(t, "/api/v1/hosts?kind=image&sort=recent", &out)
+	if len(out.Hosts) != 2 || out.Hosts[0].Name != "ghcr.io/acme/new" || out.Hosts[1].Name != "ghcr.io/acme/old" {
+		t.Fatalf("newest first: %+v", out.Hosts)
+	}
+	for _, h := range out.Hosts {
+		if h.Stale {
+			t.Errorf("%s is stale after a month", h.Name)
+		}
+	}
+	f.json(t, "/api/v1/hosts?kind=image&status=stale", &out)
+	if len(out.Hosts) != 0 {
+		t.Errorf("images listed as stale: %+v", out.Hosts)
+	}
+	// the hosts of the fixture are stale after that month
+	f.json(t, "/api/v1/hosts?status=stale", &out)
+	if len(out.Hosts) == 0 {
+		t.Error("the hosts are not stale after a month")
+	}
+	var ov Overview
+	f.json(t, "/api/v1/overview", &ov)
+	if ov.HostsStale != len(out.Hosts) {
+		t.Errorf("the overview counts %d stale hosts, the list %d", ov.HostsStale, len(out.Hosts))
 	}
 }

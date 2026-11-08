@@ -208,6 +208,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 			}
 		}
 		h = hostfs.NewImageHost(img.FS, img.Label)
+		h.Asset = name
 		imageInfo = &engine.ImageInfo{Ref: img.Ref, Digest: img.Digest}
 	} else if h, err = hostfs.Open(f.root); err != nil {
 		return err
@@ -222,9 +223,6 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	}
 	if imageInfo != nil {
 		res.Scan.Target.Image = imageInfo
-		if name != "" {
-			res.Host.Hostname = name
-		}
 	}
 	if f.imageTar != "" && res.Host.OS.ID == "unknown" {
 		// A scratch or distroless image has no operating system to judge: absent files would pass.
