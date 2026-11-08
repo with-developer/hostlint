@@ -5,10 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,7 +55,18 @@ type HostSummary struct {
 	// Signed is true when the host signs its results; KeyFingerprint names the key it registered.
 	Signed         bool   `json:"signed"`
 	KeyFingerprint string `json:"keyFingerprint,omitempty"`
+	// OS and Labels are what the host's latest result says of itself (bounded text, ADR 0010 limits).
+	OS     string            `json:"os,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
+	// AgentOnline is true when the host's agent polled lately (ADR 0014).
+	AgentOnline bool `json:"agentOnline"`
+	// Trend is the pass rate of the host's latest scans, oldest first (at most trendScans); scans with nothing
+	// decided are left out. It is set for the hosts of a list page, not for the export.
+	Trend []float64 `json:"trend,omitempty"`
 }
+
+// trendScans is how many scans a host's trend has.
+const trendScans = 14
 
 // HostFilter selects and pages the host list.
 type HostFilter struct {
@@ -76,7 +89,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 		staleAfter = 7 * 24 * time.Hour
 	}
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT h.id, h.name, h.host_id, COALESCE(h.last_scan_at, ''), COALESCE(l.id, 0), h.pubkey
+		SELECT h.id, h.name, h.host_id, COALESCE(h.last_scan_at, ''), COALESCE(l.id, 0), h.pubkey, h.os, h.labels, COALESCE(h.agent_seen_at, '')
 		FROM hosts h LEFT JOIN (`+latestScans+`) l ON l.host_row = h.id
 		WHERE h.name LIKE ? ESCAPE '\' AND (? = 0 OR h.id = ?)
 		ORDER BY h.name, h.id`, "%"+likeEscape(query)+"%", id, id)
@@ -86,12 +99,18 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 	var all []HostSummary
 	for rs.Next() {
 		var h HostSummary
-		var key string
-		if err := rs.Scan(&h.ID, &h.Name, &h.HostID, &h.LastScanAt, &h.LatestScan, &key); err != nil {
+		var key, labels, seen string
+		if err := rs.Scan(&h.ID, &h.Name, &h.HostID, &h.LastScanAt, &h.LatestScan, &key, &h.OS, &labels, &seen); err != nil {
 			_ = rs.Close()
 			return nil, err
 		}
 		h.Signed, h.KeyFingerprint = key != "", signing.Fingerprint(key)
+		if labels != "" {
+			_ = json.Unmarshal([]byte(labels), &h.Labels) // written by hostInfo: bounded
+		}
+		if t, err := time.Parse(stampLayout, seen); err == nil && s.now().UTC().Sub(t) <= agentOnlineFor {
+			h.AgentOnline = true
+		}
 		all = append(all, h)
 	}
 	if err := rs.Err(); err != nil {
@@ -163,7 +182,67 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 	if f.Offset >= len(out) {
 		return []HostSummary{}, total, nil
 	}
-	return out[f.Offset:min(len(out), f.Offset+f.Limit)], total, nil
+	page := out[f.Offset:min(len(out), f.Offset+f.Limit)]
+	if err := s.addTrends(ctx, page, f.Profile); err != nil {
+		return nil, 0, err
+	}
+	return page, total, nil
+}
+
+// addTrends sets the trend of the hosts of one page: the pass rate of each of their latest scans.
+func (s *Store) addTrends(ctx context.Context, page []HostSummary, profile string) error {
+	if len(page) == 0 {
+		return nil
+	}
+	ids := make([]any, 0, len(page)+2)
+	marks := make([]string, 0, len(page))
+	byHost := map[int64]*HostSummary{}
+	for i := range page {
+		ids = append(ids, page[i].ID)
+		marks = append(marks, "?")
+		byHost[page[i].ID] = &page[i]
+	}
+	ids = append(ids, profile, profile)
+	rs, err := s.db.QueryContext(ctx, `
+		WITH ranked AS (
+		  SELECT id, host_row, ROW_NUMBER() OVER (PARTITION BY host_row ORDER BY received_at DESC, id DESC) AS rn
+		  FROM scans WHERE host_row IN (`+strings.Join(marks, ",")+`)
+		)
+		SELECT r.host_row, r.rn, c.status, COUNT(*) FROM ranked r JOIN scan_controls c ON c.scan_row = r.id
+		WHERE r.rn <= `+strconv.Itoa(trendScans)+` AND (? = '' OR c.profile = ?)
+		GROUP BY r.host_row, r.rn, c.status`, ids...)
+	if err != nil {
+		return err
+	}
+	defer rs.Close()
+	type key struct {
+		host int64
+		rn   int
+	}
+	perScan := map[key]Counts{}
+	for rs.Next() {
+		var k key
+		var status string
+		var n int
+		if err := rs.Scan(&k.host, &k.rn, &status, &n); err != nil {
+			return err
+		}
+		if perScan[k] == nil {
+			perScan[k] = Counts{}
+		}
+		perScan[k][status] = n
+	}
+	if err := rs.Err(); err != nil {
+		return err
+	}
+	for id, h := range byHost {
+		for rn := trendScans; rn >= 1; rn-- { // oldest first
+			if sc := perScan[key{id, rn}].Score(); sc != nil {
+				h.Trend = append(h.Trend, *sc)
+			}
+		}
+	}
+	return nil
 }
 
 func likeEscape(s string) string {
@@ -721,4 +800,64 @@ func (s *Store) Profiles(ctx context.Context) ([]ProfileUse, error) {
 		out = append(out, u)
 	}
 	return out, rs.Err()
+}
+
+// TrendPoint is the fleet at one moment: each host's latest scan until then, counted.
+type TrendPoint struct {
+	At      string   `json:"at"`
+	Hosts   int      `json:"hosts"`
+	Failing int      `json:"failing"` // hosts with a FAIL control
+	Score   *float64 `json:"score"`
+	Counts  Counts   `json:"counts"`
+}
+
+// Trend is the fleet over the last days, one point a day, the last one now (oldest first). A host counts from its
+// first scan on; what a host did not report yet is not counted (a day before the first scan has no hosts).
+func (s *Store) Trend(ctx context.Context, days int, profile string) ([]TrendPoint, error) {
+	days = max(1, min(days, 90))
+	now := s.now().UTC()
+	points := make([]TrendPoint, 0, days)
+	for i := days - 1; i >= 0; i-- {
+		at := now.Add(-time.Duration(i) * 24 * time.Hour)
+		stamp := at.Format(stampLayout)
+		p := TrendPoint{At: at.Format(time.RFC3339), Counts: Counts{}}
+		rs, err := s.db.QueryContext(ctx, `
+			SELECT c.status, COUNT(*), COUNT(DISTINCT s.id)
+			FROM hosts h
+			JOIN scans s ON s.id = (SELECT id FROM scans WHERE host_row = h.id AND received_at <= ? ORDER BY received_at DESC, id DESC LIMIT 1)
+			JOIN scan_controls c ON c.scan_row = s.id
+			WHERE (? = '' OR c.profile = ?)
+			GROUP BY c.status`, stamp, profile, profile)
+		if err != nil {
+			return nil, err
+		}
+		for rs.Next() {
+			var status string
+			var n, scans int
+			if err := rs.Scan(&status, &n, &scans); err != nil {
+				_ = rs.Close()
+				return nil, err
+			}
+			p.Counts[status] = n
+			if status == "FAIL" {
+				p.Failing = scans
+			}
+		}
+		if err := rs.Err(); err != nil {
+			_ = rs.Close()
+			return nil, err
+		}
+		_ = rs.Close()
+		if err := s.db.QueryRowContext(ctx, `
+			SELECT COUNT(DISTINCT s.id)
+			FROM hosts h
+			JOIN scans s ON s.id = (SELECT id FROM scans WHERE host_row = h.id AND received_at <= ? ORDER BY received_at DESC, id DESC LIMIT 1)
+			JOIN scan_controls c ON c.scan_row = s.id
+			WHERE (? = '' OR c.profile = ?)`, stamp, profile, profile).Scan(&p.Hosts); err != nil {
+			return nil, err
+		}
+		p.Score = p.Counts.Score()
+		points = append(points, p)
+	}
+	return points, nil
 }

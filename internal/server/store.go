@@ -14,6 +14,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -279,6 +280,11 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 			return nil, err
 		}
 	}
+	// What the list shows of the host comes from its latest result.
+	osName, labels := hostInfo(res)
+	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET os = ?, labels = ? WHERE id = ?`, osName, labels, hostRow); err != nil {
+		return nil, err
+	}
 	r, err := tx.ExecContext(ctx,
 		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (host_row, scan_id) DO NOTHING`,
@@ -457,4 +463,49 @@ func (s *Store) VerifyAudit(ctx context.Context) (rows int, last string, err err
 		rows++
 	}
 	return rows, prev, rs.Err()
+}
+
+// maxLabels and the lengths bound what a result may put in the host list: it is shown on every page.
+const (
+	maxLabels     = 10
+	maxLabelKey   = 32
+	maxLabelValue = 64
+	maxOSName     = 100
+)
+
+// hostInfo is the operating system name and the labels (as JSON) the host list keeps of a result: bounded, and
+// only printable text, so what a host says about itself cannot break the page that shows it.
+func hostInfo(res *engine.Result) (osName, labels string) {
+	osName = strings.TrimSpace(res.Host.OS.Name)
+	if osName == "" {
+		osName = strings.TrimSpace(res.Host.OS.ID + " " + res.Host.OS.VersionID)
+	}
+	if !printable(osName) {
+		osName = ""
+	}
+	osName = truncate(osName, maxOSName)
+	keys := make([]string, 0, len(res.Host.Labels))
+	for k := range res.Host.Labels {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	kept := map[string]string{}
+	for _, k := range keys {
+		v := res.Host.Labels[k]
+		if len(kept) == maxLabels {
+			break
+		}
+		if k == "" || len(k) > maxLabelKey || len(v) > maxLabelValue || !printable(k) || !printable(v) {
+			continue
+		}
+		kept[k] = v
+	}
+	if len(kept) == 0 {
+		return osName, ""
+	}
+	b, err := json.Marshal(kept)
+	if err != nil {
+		return osName, ""
+	}
+	return osName, string(b)
 }

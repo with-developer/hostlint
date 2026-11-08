@@ -67,6 +67,7 @@ func (s *Server) routesRead(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/session", s.readAPI(s.handleSession))
 	mux.HandleFunc("GET /api/v1/profiles", s.readAPI(s.handleProfiles))
 	mux.HandleFunc("GET /api/v1/overview", s.readAPI(s.handleOverview))
+	mux.HandleFunc("GET /api/v1/trend", s.readAPI(s.handleTrend))
 	mux.HandleFunc("GET /api/v1/hosts", s.readAPI(s.handleHosts))
 	mux.HandleFunc("GET /api/v1/matrix", s.readAPI(s.handleMatrix))
 	mux.HandleFunc("GET /api/v1/controls", s.readAPI(s.handleControls))
@@ -527,4 +528,28 @@ func (s *Server) titleKo(profile, id string) string {
 		}
 	}
 	return ""
+}
+
+// handleTrend is the fleet's pass rate over the last days, one point a day (?days=30, at most 90).
+func (s *Server) handleTrend(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if v := r.URL.Query().Get("days"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > 90 {
+			writeError(w, http.StatusBadRequest, "days is 1 to 90")
+			return
+		}
+		days = n
+	}
+	profile, err := s.selectedProfile(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	points, err := s.cfg.Store.Trend(r.Context(), days, profile)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"points": points})
 }
