@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	_ "modernc.org/sqlite" // the pure-Go SQLite driver: the binary stays static
@@ -280,11 +281,6 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 			return nil, err
 		}
 	}
-	// What the list shows of the host comes from its latest result.
-	osName, labels := hostInfo(res)
-	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET os = ?, labels = ? WHERE id = ?`, osName, labels, hostRow); err != nil {
-		return nil, err
-	}
 	r, err := tx.ExecContext(ctx,
 		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (host_row, scan_id) DO NOTHING`,
@@ -308,6 +304,12 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	}
 	scanRow, err := r.LastInsertId()
 	if err != nil {
+		return nil, err
+	}
+	// What the list shows of the host comes from the result just stored, not from a retry of an older one (which
+	// returned above).
+	osName, labels := hostInfo(res)
+	if _, err := tx.ExecContext(ctx, `UPDATE hosts SET os = ?, labels = ? WHERE id = ?`, osName, labels, hostRow); err != nil {
 		return nil, err
 	}
 	insControl, err := tx.PrepareContext(ctx, `INSERT INTO scan_controls (scan_row, profile, control_id, severity, status, title) VALUES (?, ?, ?, ?, ?, ?)`)
@@ -477,11 +479,14 @@ const (
 // only printable text, so what a host says about itself cannot break the page that shows it.
 func hostInfo(res *engine.Result) (osName, labels string) {
 	osName = strings.TrimSpace(res.Host.OS.Name)
+	if !plainText(osName) { // a name with a stray control character falls back to the ID and version
+		osName = ""
+	}
 	if osName == "" {
 		osName = strings.TrimSpace(res.Host.OS.ID + " " + res.Host.OS.VersionID)
-	}
-	if !printable(osName) {
-		osName = ""
+		if !plainText(osName) {
+			osName = ""
+		}
 	}
 	osName = truncate(osName, maxOSName)
 	keys := make([]string, 0, len(res.Host.Labels))
@@ -495,7 +500,7 @@ func hostInfo(res *engine.Result) (osName, labels string) {
 		if len(kept) == maxLabels {
 			break
 		}
-		if k == "" || len(k) > maxLabelKey || len(v) > maxLabelValue || !printable(k) || !printable(v) {
+		if k == "" || len(k) > maxLabelKey || len(v) > maxLabelValue || !plainText(k) || !plainText(v) {
 			continue
 		}
 		kept[k] = v
@@ -508,4 +513,10 @@ func hostInfo(res *engine.Result) (osName, labels string) {
 		return osName, ""
 	}
 	return osName, string(b)
+}
+
+// plainText is valid UTF-8 with no control characters and no format characters (the right-to-left override and the
+// zero-width ones among them): text a host chose that the list shows beside names the reader trusts.
+func plainText(s string) bool {
+	return utf8.ValidString(s) && !strings.ContainsFunc(s, func(r rune) bool { return unicode.IsControl(r) || unicode.Is(unicode.Cf, r) })
 }

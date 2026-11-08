@@ -223,10 +223,6 @@ td.stale { color: var(--manual); }
 .scans { list-style: none; padding: 0; }
 .scans li { display: flex; align-items: center; gap: 1rem; padding: .7rem 1.1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .scans li:last-child { border-bottom: 0; }
-.spark { display: block; }
-.spark-line { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
-.spark-area { fill: color-mix(in srgb, var(--accent) 14%, transparent); }
-.spark circle { fill: var(--accent); }
 .titlebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .diffgroup { margin: 1rem 0; padding-left: .9rem; border-left: 3px solid var(--na); }
 .diffgroup.bad { border-color: var(--fail); } .diffgroup.good { border-color: var(--pass); } .diffgroup.warn { border-color: var(--manual); }

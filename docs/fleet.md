@@ -240,7 +240,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | Request | Answer |
 |---|---|
 | `GET /api/v1/profiles` | The profiles of the latest scans with the number of hosts of each, the one most hosts use (`default`), and their titles |
-| `GET /api/v1/trend` | The fleet over the last days, one point a day, oldest first: hosts, hosts with a failing control, counts and pass rate as of that day (`?days=30`, 1 to 90) |
+| `GET /api/v1/trend` | The fleet over the last days, one point a day, oldest first: hosts, hosts with a failing control, counts and pass rate as of that day (`?days=30`, 1 to 90). It is computed from the scans that are stored, so `server prune` changes the days it covers, and is served again for 30 seconds |
 | `GET /api/v1/overview` | Hosts, hosts with a failing control, stale hosts, counts, the controls that fail on most hosts, recent regressions (`?staleDays=7`) |
 | `GET /api/v1/hosts` | The hosts with the counts and score of their latest scan (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`); each host also has its `os`, `labels` (what its latest result says, bounded), `agentOnline` and a `trend` of the pass rate of its latest scans |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | Every control with the status counts of the latest scans; one control with its hosts, and what it checks and how to fix it |

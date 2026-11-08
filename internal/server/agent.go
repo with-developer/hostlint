@@ -187,7 +187,7 @@ func (s *Store) CreateJob(ctx context.Context, cred *Credential, remote string, 
 		return nil, err
 	}
 	now := s.now().UTC()
-	if t, err := time.Parse(stampLayout, seen.String); err != nil || now.Sub(t) > agentOnlineFor {
+	if !agentOnline(seen.String, now) {
 		return nil, ErrAgentOffline
 	}
 	if !slices.Contains(strings.Fields(allowed), profile) {
@@ -248,7 +248,7 @@ func (s *Store) HostAgent(ctx context.Context, hostRow int64) (*AgentInfo, error
 	if a.Profiles == nil {
 		a.Profiles = []string{}
 	}
-	if t, err := time.Parse(stampLayout, seen.String); err == nil && s.now().UTC().Sub(t) <= agentOnlineFor {
+	if agentOnline(seen.String, s.now().UTC()) {
 		a.Online = true
 	}
 	var j Job
@@ -513,4 +513,11 @@ func (s *Server) handleHostAgent(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusOK, a)
 	}
+}
+
+// agentOnline is the one rule for "connected": the agent polled within agentOnlineFor of now (seen is the stamp of its
+// last poll, "" for an agent that never did).
+func agentOnline(seen string, now time.Time) bool {
+	t, err := time.Parse(stampLayout, seen)
+	return err == nil && now.Sub(t) <= agentOnlineFor
 }

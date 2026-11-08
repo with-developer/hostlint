@@ -76,7 +76,7 @@ export function TrendChart({ points, label }: { points: ChartPoint[]; label: str
   const baseline = H - PAD.b;
   const date = (iso: string) => new Date(iso).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US", { month: "short", day: "numeric" });
   const ticks = Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, k) => lo + k * step);
-  const labelAt = n <= 2 ? [0, n - 1] : [0, Math.floor((n - 1) / 2), n - 1];
+  const labelAt = n <= 1 ? [0] : n === 2 ? [0, 1] : [0, Math.floor((n - 1) / 2), n - 1];
 
   const move = (e: React.MouseEvent<SVGSVGElement>) => {
     const r = box.current?.getBoundingClientRect();

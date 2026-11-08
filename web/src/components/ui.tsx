@@ -131,29 +131,6 @@ export function Donut({ counts, label }: { counts: Counts; label: string }) {
 }
 
 /** The pass rate over scans, oldest to newest. */
-export function Sparkline({ points }: { points: (number | null)[] }) {
-  const w = 260;
-  const h = 56;
-  const vals = points.map((p, i) => ({ p, i })).filter((x): x is { p: number; i: number } => x.p !== null);
-  if (vals.length < 3) return null; // two points are a line, not a trend
-  // The scale follows the data, so a change of a few points shows.
-  const lo = Math.max(0, Math.min(...vals.map((v) => v.p)) - 0.05);
-  const hi = Math.min(1, Math.max(...vals.map((v) => v.p)) + 0.05);
-  const x = (i: number) => (i / (points.length - 1)) * (w - 12) + 6;
-  const y = (p: number) => h - 8 - ((p - lo) / (hi - lo || 1)) * (h - 16);
-  const line = vals.map((v, k) => `${k === 0 ? "M" : "L"}${x(v.i).toFixed(1)} ${y(v.p).toFixed(1)}`).join(" ");
-  const first = vals[0];
-  const last = vals[vals.length - 1];
-  const area = `${line} L${x(last.i).toFixed(1)} ${h - 4} L${x(first.i).toFixed(1)} ${h - 4} Z`;
-  return (
-    <svg className="spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={vals.map((v) => percent(v.p)).join(" → ")}>
-      <path className="spark-area" d={area} />
-      <path className="spark-line" d={line} />
-      <circle cx={x(last.i)} cy={y(last.p)} r="3.5" />
-    </svg>
-  );
-}
-
 export function Stat({ icon, value, label, tone, help }: { icon: ReactNode; value: ReactNode; label: string; tone?: "bad" | "warn" | "good"; help?: string }) {
   return (
     <div className={`stat ${tone ?? ""}`} title={help}>

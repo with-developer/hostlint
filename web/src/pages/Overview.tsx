@@ -128,7 +128,7 @@ function TrendCard() {
   const all = state.data?.points ?? [];
   const first = all.findIndex((p) => p.score !== null);
   const points = first < 0 ? [] : all.slice(first);
-  const any = points.length > 0;
+  const any = points.length >= 2; // one day is a dot, not a trend
   return (
     <section className="card">
       <div className="titlebar">

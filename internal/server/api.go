@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/with-developer/hostlint/internal/engine"
@@ -535,8 +536,8 @@ func (s *Server) handleTrend(w http.ResponseWriter, r *http.Request) {
 	days := 30
 	if v := r.URL.Query().Get("days"); v != "" {
 		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > 90 {
-			writeError(w, http.StatusBadRequest, "days is 1 to 90")
+		if err != nil || n < 1 || n > maxTrendDays {
+			writeError(w, http.StatusBadRequest, "days is 1 to "+strconv.Itoa(maxTrendDays))
 			return
 		}
 		days = n
@@ -546,10 +547,46 @@ func (s *Server) handleTrend(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	points, err := s.cfg.Store.Trend(r.Context(), days, profile)
+	points, err := s.trends.get(s.cfg.Now(), days, profile, func() ([]TrendPoint, error) { return s.cfg.Store.Trend(r.Context(), days, profile) })
 	if err != nil {
 		s.fail(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"points": points})
+}
+
+// trendTTL is how long a computed trend is served again: the overview asks for it on every load, and it moves one
+// point a day.
+const trendTTL = 30 * time.Second
+
+// trendCache keeps the last trend of each (days, profile) for trendTTL.
+type trendCache struct {
+	mu sync.Mutex
+	m  map[string]trendEntry
+}
+
+type trendEntry struct {
+	at     time.Time
+	points []TrendPoint
+}
+
+func (c *trendCache) get(now time.Time, days int, profile string, compute func() ([]TrendPoint, error)) ([]TrendPoint, error) {
+	key := strconv.Itoa(days) + "|" + profile
+	c.mu.Lock()
+	if e, ok := c.m[key]; ok && now.Sub(e.at) < trendTTL && now.Sub(e.at) >= 0 {
+		c.mu.Unlock()
+		return e.points, nil
+	}
+	c.mu.Unlock()
+	points, err := compute()
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.m == nil || len(c.m) > 64 { // days and profile are few; a flood of profile names does not grow it
+		c.m = map[string]trendEntry{}
+	}
+	c.m[key] = trendEntry{at: now, points: points}
+	return points, nil
 }

@@ -108,9 +108,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 		if labels != "" {
 			_ = json.Unmarshal([]byte(labels), &h.Labels) // written by hostInfo: bounded
 		}
-		if t, err := time.Parse(stampLayout, seen); err == nil && s.now().UTC().Sub(t) <= agentOnlineFor {
-			h.AgentOnline = true
-		}
+		h.AgentOnline = agentOnline(seen, s.now().UTC())
 		all = append(all, h)
 	}
 	if err := rs.Err(); err != nil {
@@ -202,13 +200,14 @@ func (s *Store) addTrends(ctx context.Context, page []HostSummary, profile strin
 		marks = append(marks, "?")
 		byHost[page[i].ID] = &page[i]
 	}
-	ids = append(ids, profile, profile)
+	ids = append(ids, profile, profile, profile, profile) // the ranking and the counting both look at the profile
 	// The IN list is only "?" marks and the limit is a constant: nothing a request says is in the text of the query.
 	//nolint:gosec // only "?" marks and a constant are joined in
 	query := `
 		WITH ranked AS (
 		  SELECT id, host_row, ROW_NUMBER() OVER (PARTITION BY host_row ORDER BY received_at DESC, id DESC) AS rn
 		  FROM scans WHERE host_row IN (` + strings.Join(marks, ",") + `)
+		    AND (? = '' OR EXISTS (SELECT 1 FROM scan_controls x WHERE x.scan_row = scans.id AND x.profile = ?))
 		)
 		SELECT r.host_row, r.rn, c.status, COUNT(*) FROM ranked r JOIN scan_controls c ON c.scan_row = r.id
 		WHERE r.rn <= ` + strconv.Itoa(trendScans) + ` AND (? = '' OR c.profile = ?)
@@ -814,36 +813,43 @@ type TrendPoint struct {
 	Counts  Counts   `json:"counts"`
 }
 
+// maxTrendDays is the longest trend the API gives.
+const maxTrendDays = 90
+
 // Trend is the fleet over the last days, one point a day, the last one now (oldest first). A host counts from its
-// first scan on; what a host did not report yet is not counted (a day before the first scan has no hosts).
+// first scan on; what a host did not report yet is not counted (a day before the first scan has no hosts). It is
+// computed from the scans that are stored: scans that retention has pruned no longer count for the days they were
+// the latest of their host.
 func (s *Store) Trend(ctx context.Context, days int, profile string) ([]TrendPoint, error) {
-	days = max(1, min(days, 90))
+	days = max(1, min(days, maxTrendDays))
 	now := s.now().UTC()
 	points := make([]TrendPoint, 0, days)
 	for i := days - 1; i >= 0; i-- {
 		at := now.Add(-time.Duration(i) * 24 * time.Hour)
-		stamp := at.Format(stampLayout)
 		p := TrendPoint{At: at.Format(time.RFC3339), Counts: Counts{}}
 		rs, err := s.db.QueryContext(ctx, `
-			SELECT c.status, COUNT(*), COUNT(DISTINCT s.id)
+			SELECT s.id, c.status, COUNT(*)
 			FROM hosts h
 			JOIN scans s ON s.id = (SELECT id FROM scans WHERE host_row = h.id AND received_at <= ? ORDER BY received_at DESC, id DESC LIMIT 1)
 			JOIN scan_controls c ON c.scan_row = s.id
 			WHERE (? = '' OR c.profile = ?)
-			GROUP BY c.status`, stamp, profile, profile)
+			GROUP BY s.id, c.status`, at.Format(stampLayout), profile, profile)
 		if err != nil {
 			return nil, err
 		}
+		scans, failing := map[int64]bool{}, map[int64]bool{} // a host's latest scan: one per host
 		for rs.Next() {
+			var scan int64
 			var status string
-			var n, scans int
-			if err := rs.Scan(&status, &n, &scans); err != nil {
+			var n int
+			if err := rs.Scan(&scan, &status, &n); err != nil {
 				_ = rs.Close()
 				return nil, err
 			}
-			p.Counts[status] = n
+			p.Counts[status] += n
+			scans[scan] = true
 			if status == "FAIL" {
-				p.Failing = scans
+				failing[scan] = true
 			}
 		}
 		if err := rs.Err(); err != nil {
@@ -851,14 +857,7 @@ func (s *Store) Trend(ctx context.Context, days int, profile string) ([]TrendPoi
 			return nil, err
 		}
 		_ = rs.Close()
-		if err := s.db.QueryRowContext(ctx, `
-			SELECT COUNT(DISTINCT s.id)
-			FROM hosts h
-			JOIN scans s ON s.id = (SELECT id FROM scans WHERE host_row = h.id AND received_at <= ? ORDER BY received_at DESC, id DESC LIMIT 1)
-			JOIN scan_controls c ON c.scan_row = s.id
-			WHERE (? = '' OR c.profile = ?)`, stamp, profile, profile).Scan(&p.Hosts); err != nil {
-			return nil, err
-		}
+		p.Hosts, p.Failing = len(scans), len(failing)
 		p.Score = p.Counts.Score()
 		points = append(points, p)
 	}

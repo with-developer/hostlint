@@ -59,6 +59,7 @@ type Server struct {
 	cfg     Config
 	limiter *limiter
 	jobs    jobWaiters
+	trends  trendCache
 }
 
 // New returns a Server.
