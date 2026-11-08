@@ -185,14 +185,6 @@ func scanWithConfig(t *testing.T, args []string) *engine.Result {
 	return &res
 }
 
-func TestPushWithAPackIsRefused(t *testing.T) {
-	t.Setenv("HOSTLINT_TOKEN", "hlt_ing_x")
-	code, _, stderr := run(context.Background(), t, "scan", "--pack", copyExamplePack(t), "-p", "x-acme-baseline", "--push", "https://x.example")
-	if code != ExitError || !strings.Contains(stderr, "not for a scan with a policy pack") {
-		t.Errorf("exit %d, stderr %q", code, stderr)
-	}
-}
-
 func TestSamePackTwiceIsOnePack(t *testing.T) {
 	pack := copyExamplePack(t)
 	t.Setenv("HOSTLINT_PACK", pack)

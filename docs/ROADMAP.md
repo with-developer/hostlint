@@ -70,6 +70,6 @@ fix hints in the results (v0.21), a container image of every release (ghcr.io, [
 
 ## Later
 
-- CIS mapping overlays (control IDs only); packs in the fleet server and agents, packs as a signed bundle or from a registry.
+- CIS mapping overlays (control IDs only); packs in the agents, packs as a signed bundle or from a registry.
 - More distros (SUSE); scanning an image straight from a registry, zstd layers, an OCI layout directory (#164), an Alpine package reader (#165).
 - Notifications beyond the webhook.

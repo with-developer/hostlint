@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/signing"
 )
 
@@ -305,6 +306,8 @@ type HostDetail struct {
 	Profiles []string     `json:"profiles"`
 	Controls []ControlRow `json:"controls"`
 	Scans    []ScanRow    `json:"scans"`
+	// Packs are the policy packs the latest scan was made with (ADR 0012, 0016), "" of none.
+	Packs []engine.PackInfo `json:"packs"`
 }
 
 // Host returns one host.
@@ -319,7 +322,9 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration, pr
 	d := &HostDetail{HostSummary: list[0]}
 	d.Controls = []ControlRow{}
 	d.Profiles = []string{}
+	d.Packs = []engine.PackInfo{}
 	if d.LatestScan != 0 {
+		d.Packs = s.packsOf(ctx, d.LatestScan)
 		ps, err := s.db.QueryContext(ctx, `SELECT DISTINCT profile FROM scan_controls WHERE scan_row = ? ORDER BY profile`, d.LatestScan)
 		if err != nil {
 			return nil, err
@@ -862,4 +867,32 @@ func (s *Store) Trend(ctx context.Context, days int, profile string) ([]TrendPoi
 		points = append(points, p)
 	}
 	return points, nil
+}
+
+// packsOf is the policy packs a stored scan names (what the host said, kept to what ingest allows: a few short texts).
+// A document that cannot be read has none.
+func (s *Store) packsOf(ctx context.Context, scanRow int64) []engine.PackInfo {
+	raw, err := s.ScanDoc(ctx, scanRow)
+	if err != nil {
+		return []engine.PackInfo{}
+	}
+	var doc struct {
+		Scan struct {
+			Packs []engine.PackInfo `json:"packs"`
+		} `json:"scan"`
+	}
+	if json.Unmarshal(raw, &doc) != nil {
+		return []engine.PackInfo{}
+	}
+	out := []engine.PackInfo{}
+	for _, p := range doc.Scan.Packs {
+		if len(out) == maxPacks {
+			break
+		}
+		if len(p.Name) > maxPackText || len(p.Version) > maxPackText || len(p.Digest) > maxPackDigest || !plainText(p.Name) || !plainText(p.Version) || !plainText(p.Digest) {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
 }

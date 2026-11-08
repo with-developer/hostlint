@@ -147,10 +147,6 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if len(packDirs) == 0 && f.verifyPack {
 		return errors.New("--verify-pack is for --pack")
 	}
-	if len(packDirs) > 0 && f.pushURL != "" {
-		// The server cannot tell which pack a result came from, nor trust what a pack makes of it.
-		return errors.New("--push is not for a scan with a policy pack: the result of a pack is not sent to a fleet server yet")
-	}
 	opts := engine.Options{Labels: labels, Profiles: f.profiles}
 	packs, err := addPacks(cmd, content, packDirs)
 	if err != nil {

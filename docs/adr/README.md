@@ -20,4 +20,4 @@ Consequences. Don't edit an accepted ADR to change a decision — add a new ADR 
 | [0013](0013-essentials-profile.md) | The essentials profile: a short neutral baseline next to kisa-2026 (accepted) |
 | [0014](0014-the-outbound-agent.md) | The outbound agent: on-demand scans only, HTTPS long polling, no new dependency (accepted) |
 | [0015](0015-dashboard-sign-in.md) | Signing in to the dashboard: roles with the first writing feature, an authenticating proxy for OIDC (accepted) |
-| [0016](0016-images-and-packs-in-the-fleet-server.md) | Images and policy-pack results in the fleet server (proposed) |
+| [0016](0016-images-and-packs-in-the-fleet-server.md) | Images and policy-pack results in the fleet server (accepted) |

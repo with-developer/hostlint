@@ -1,6 +1,6 @@
 # 0016. Images and policy-pack results in the fleet server
 
-- Status: Proposed (waiting for the owner's decision, issue #209)
+- Status: Accepted (the owner approved option (a) on 2026-11-08, issue #209); step 1 (packs) is built, step 2 (images) next
 - Date: 2026-11-08
 
 ## Context

@@ -294,6 +294,15 @@ func checkLimits(res *engine.Result, now time.Time) error {
 			return fmt.Errorf("check %.40q has a remediation that is too long or not text", c.Ref)
 		}
 	}
+	// The packs a result names are shown on the host's page: a few, short, and text.
+	if len(res.Scan.Packs) > maxPacks {
+		return fmt.Errorf("the result names %d policy packs, at most %d are kept", len(res.Scan.Packs), maxPacks)
+	}
+	for _, p := range res.Scan.Packs {
+		if len(p.Name) > maxPackText || len(p.Version) > maxPackText || len(p.Digest) > maxPackDigest || !plainText(p.Name) || !plainText(p.Version) || !plainText(p.Digest) {
+			return errors.New("a policy pack of the result has a name, version or digest that is too long or not text")
+		}
+	}
 	// The server orders scans by its own clock; a start time far from it is not believed.
 	started, err := time.Parse(time.RFC3339, res.Scan.StartedAt)
 	if err != nil {
@@ -307,6 +316,13 @@ func checkLimits(res *engine.Result, now time.Time) error {
 	}
 	return nil
 }
+
+// maxPacks, maxPackText and maxPackDigest bound the packs a received result names.
+const (
+	maxPacks      = 8
+	maxPackText   = 100
+	maxPackDigest = 100
+)
 
 // maxRemediation bounds the fix hint of a check in a received result (the engine writes at most 1500 bytes).
 const maxRemediation = 2000

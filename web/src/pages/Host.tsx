@@ -39,6 +39,16 @@ export function HostPage({ id }: { id: number }) {
               <Gauge score={h.score} label={t("host.passRate")} />
             </header>
             <ScanNow hostId={id} onDone={state.reload} />
+            {(h.packs?.length ?? 0) > 0 && (
+              <p className="muted small packs">
+                {t("host.packs")}:{" "}
+                {h.packs?.map((p) => (
+                  <span key={p.digest || p.name} className="chip-label" title={p.digest}>
+                    {p.name} {p.version} <span className="mono">{p.digest.slice(0, 19)}</span>
+                  </span>
+                ))}
+              </p>
+            )}
             {h.otherProfile ? <p className="muted small">{t("profile.hostOther", { profiles: (h.profiles ?? []).join(", ") })}</p> : null}
 
             <div className="tabs" role="tablist">

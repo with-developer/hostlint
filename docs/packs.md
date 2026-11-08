@@ -109,7 +109,10 @@ author can change either without changing the revision.
 fails them. Tests catch mistakes, not malice (the author writes the logic and the tests), and they cost time
 on every host, so they belong to the pack's own CI: run `hostlint pack test` there.
 
-`--push` is refused for a scan with a pack: the fleet server cannot tell which pack a result came from yet.
+`--push` works with a pack: the result names the pack (name, version and digest) and the fleet server keeps it as it keeps
+any result (docs/fleet.md). The pack's profile is one the dashboard can choose, and the host's page names the pack. The
+server does not know the pack's content, so the pages of a control show what the result carries (title, severity, status)
+and not the "what it checks" text. A pack is the choice of the host, like a profile and its waivers.
 
 ## How a pack is read
 
