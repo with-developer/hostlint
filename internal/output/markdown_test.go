@@ -54,6 +54,7 @@ func TestMarkdownIsInertForHostileText(t *testing.T) {
 			res.Checks[i].Title = payload
 			res.Checks[i].Status = engine.StatusFail
 			res.Checks[i].Reason = payload
+			res.Checks[i].Remediation = payload
 			res.Checks[i].Evidence = []engine.Evidence{{Text: payload, Source: payload}, {Text: "a ``` b"}}
 		}
 		var buf bytes.Buffer
@@ -178,5 +179,45 @@ func TestMarkdownDetailsNameTheProfileOfSeveral(t *testing.T) {
 func TestMarkdownIsAFormat(t *testing.T) {
 	if !ValidFormat("markdown") {
 		t.Error("markdown is not a format")
+	}
+}
+
+// A failed check shows how to fix it, in the same inert text as the rest, cut at a bound.
+func TestMarkdownShowsTheFixHint(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	hinted := ""
+	for i := range res.Checks {
+		if res.Checks[i].Status == engine.StatusFail {
+			res.Checks[i].Remediation = "Set `PermitRootLogin no` in sshd_config.\nThen reload sshd."
+			hinted = res.Checks[i].ID
+			break
+		}
+	}
+	if hinted == "" {
+		t.Skip("no failing check in the fixture")
+	}
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "markdown", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "**How to fix:** Set &#96;PermitRootLogin no&#96; in sshd&#95;config. Then reload sshd.") {
+		t.Errorf("no fix hint, or not escaped:\n%s", out)
+	}
+	if strings.Count(out, "How to fix") != 1 {
+		t.Errorf("%d hints, want 1", strings.Count(out, "How to fix"))
+	}
+	// A hint longer than the bound is cut.
+	for i := range res.Checks {
+		if res.Checks[i].Remediation != "" {
+			res.Checks[i].Remediation = strings.Repeat("x", 5*maxMarkdownFix)
+		}
+	}
+	buf.Reset()
+	if err := Write(&buf, res, "markdown", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), strings.Repeat("x", maxMarkdownFix+1)) {
+		t.Error("a hint over the bound is not cut")
 	}
 }

@@ -58,8 +58,8 @@ telnet service added (the host name is shortened).
   (`--root`), or a container image straight from the archive `docker save` wrote (`--image-tar`).
 - **Built for pipelines.** Terminal table, JSON (with a schema), SARIF and JUnit; the exit code
   follows the severity you choose. A failed check says how to fix it: in `explain`, the JSON
-  (`remediation`), SARIF (the rule's help, which code scanning shows with the alert), the HTML report
-  and the dashboard.
+  (`remediation`), SARIF (the rule's help, which code scanning shows with the alert), the Markdown summary,
+  the HTML report and the dashboard.
 
 ## Quick start
 

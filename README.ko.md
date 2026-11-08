@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 92af6e2 -->
+<!-- translated from README.md @ f8d0985 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -58,7 +58,7 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
   (`--root`), 또는 `docker save`가 쓴 아카이브의 컨테이너 이미지(`--image-tar`)를 점검합니다.
 - **파이프라인에 맞춰 만들었습니다.** 터미널 표, JSON(스키마 포함), SARIF, JUnit을 지원하고, 종료
   코드는 지정한 심각도를 따릅니다. 실패한 점검은 조치 방법을 함께 알려 줍니다: `explain`, JSON(`remediation`),
-  SARIF(코드 스캐닝이 경고와 함께 보여 주는 규칙 도움말), HTML 보고서, 대시보드.
+  SARIF(코드 스캐닝이 경고와 함께 보여 주는 규칙 도움말), Markdown 요약, HTML 보고서, 대시보드.
 
 ## 빠른 시작
 

@@ -21,17 +21,21 @@ const (
 	maxMarkdownBytes = 700 << 10
 	// maxMarkdownLine is the longest text of one cell, line or evidence line; the rest is cut.
 	maxMarkdownLine = 300
+	// maxMarkdownFix is the longest fix hint of a check; the hints of the built-in checks are shorter.
+	maxMarkdownFix = 700
 )
 
 var wwwRe = regexp.MustCompile(`(?i)(www)\.`)
 
 // clip cuts text that is longer than a line of the report.
-func clip(s string) string {
+func clip(s string) string { return clipTo(s, maxMarkdownLine) }
+
+func clipTo(s string, n int) string {
 	r := []rune(s)
-	if len(r) <= maxMarkdownLine {
+	if len(r) <= n {
 		return s
 	}
-	return string(r[:maxMarkdownLine]) + "..."
+	return string(r[:n]) + "..."
 }
 
 // mdText makes text safe for Markdown that GitHub, GitLab and others render: what a scan prints comes from
@@ -39,8 +43,11 @@ func clip(s string) string {
 // image, HTML, a mention or an issue reference. Every character that means something is written as a
 // character reference, which shows as the character and is nothing else; control characters and line
 // breaks are escaped as in the table.
-func mdText(s string) string {
-	s = clip(oneLine(s))
+func mdText(s string) string { return mdTextTo(s, maxMarkdownLine) }
+
+// mdTextTo is mdText with another limit for the length.
+func mdTextTo(s string, n int) string {
+	s = clipTo(oneLine(s), n)
 	var b strings.Builder
 	for i, r := range s {
 		switch r {
@@ -220,6 +227,10 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 			}
 			if len(ev) > 0 {
 				b.WriteString(mdFence(ev) + "\n")
+			}
+			if ck.Remediation != "" {
+				// The rule's own guidance (or a pack's), written like any text from outside: as character references.
+				fmt.Fprintf(&b, "**How to fix:** %s\n\n", mdTextTo(ck.Remediation, maxMarkdownFix))
 			}
 		}
 		if !wrote && c.Reason != "" {
