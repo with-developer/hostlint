@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { compareControls, ctitle } from "../lib/format";
-import { Avatar, Await, Empty, PageHeader, Severity, Skeleton, StatusBadge, StatusBar } from "../components/ui";
+import { Avatar, Await, Empty, Inline, PageHeader, Severity, Skeleton, StatusBadge, StatusBar } from "../components/ui";
 import { IconSearch } from "../components/icons";
 import { STATUSES, type Status } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
@@ -126,19 +126,19 @@ export function ControlPage({ profile, id }: { profile: string; id: string }) {
                   {ch.description && (
                     <>
                       <h3>{t("controls.what")}</h3>
-                      <p className="prose">{ch.description}</p>
+                      <p className="prose"><Inline text={ch.description} /></p>
                     </>
                   )}
                   {ch.rationale && (
                     <>
                       <h3>{t("controls.why")}</h3>
-                      <p className="prose">{ch.rationale}</p>
+                      <p className="prose"><Inline text={ch.rationale} /></p>
                     </>
                   )}
                   {ch.remediation && (
                     <>
                       <h3>{t("controls.fix")}</h3>
-                      <p className="prose remedy">{ch.remediation}</p>
+                      <p className="prose remedy"><Inline text={ch.remediation} /></p>
                     </>
                   )}
                 </section>

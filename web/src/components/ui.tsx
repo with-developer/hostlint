@@ -209,3 +209,21 @@ export function Await<T>({ state, children, skeleton }: { state: Async<T>; child
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty">{children}</div>;
 }
+
+/**
+ * Text with `code` spans, as the rules write their prose. Every part is React text (escaped); only the backticks mean
+ * anything, and an odd one out stays a plain character.
+ */
+export function Inline({ text }: { text: string }) {
+  const parts = text.split("`");
+  if (parts.length % 2 === 0) {
+    // an unclosed backtick: the last two parts are plain text again
+    const tail = parts.splice(-2).join("`");
+    parts.push(tail);
+  }
+  return (
+    <>
+      {parts.map((p, i) => (i % 2 === 1 ? <code key={i}>{p}</code> : <span key={i}>{p}</span>))}
+    </>
+  );
+}

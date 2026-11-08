@@ -5,7 +5,7 @@
 
 **eslint for Linux servers.** One static Go binary that checks a host's security configuration
 against a hardening baseline and reports a result for every control — with the evidence behind
-it.
+it — and a dashboard that shows the whole fleet.
 
 [한국어](README.ko.md)
 
@@ -39,6 +39,28 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 The output above is abridged, from a Debian 12 container with `PermitRootLogin yes` and an inetd
 telnet service added (the host name is shortened).
 
+## A dashboard for the whole fleet
+
+Hosts scan themselves and push the result to `hostlint server`, which keeps the history and shows the
+fleet in a web dashboard (English and Korean, light and dark, fits a phone):
+
+![A tour of the hostlint dashboard: overview, hosts, a host with evidence and how to fix it, a control, the matrix, Korean](docs/demo/dashboard-tour.gif)
+
+```sh
+hostlint server demo      # a made-up fleet of twelve hosts, nothing scanned, nothing written: open the address it prints
+```
+
+- **Pass rate over time** for the whole fleet (7, 30 or 90 days), and a trend line on every host.
+- **What fails most, and what just got worse:** the controls that fail on most hosts, and the regressions of the last scans.
+- **The evidence behind every result,** the file and the line, with **how to fix it** next to each failure.
+- **A matrix of every control on every host,** one click from a cell to the host.
+- **One profile at a time** (KISA, essentials, your own policy pack), with host OS and labels in the list.
+- **Scan now:** an agent on a host dials out and scans when someone asks, with a profile the host allows; the
+  server never connects to a host.
+- **Signed results:** every stored result can be checked against the key its host signs with.
+
+Try it in ten seconds with the demo above, or send real results: [docs/fleet.md](docs/fleet.md).
+
 > 🚧 **Early release.** Expect rough edges in the less common setups, and report them. See the
 > [roadmap](docs/ROADMAP.md) and the [release history](docs/RELEASING.md).
 
@@ -56,6 +78,8 @@ telnet service added (the host name is shortened).
   the 2026 edition of Korea's KISA CII technical vulnerability guide (Unix U-01–U-67).
 - **Live hosts and images.** Scan the running system, a root filesystem mounted elsewhere
   (`--root`), or a container image straight from the archive `docker save` wrote (`--image-tar`).
+- **A fleet view without an agent to trust.** Hosts push; the server never connects, keeps the history
+  and signed results, and shows trends, regressions and a matrix ([above](#a-dashboard-for-the-whole-fleet)).
 - **Built for pipelines.** Terminal table, JSON (with a schema), SARIF and JUnit; the exit code
   follows the severity you choose. A failed check says how to fix it: in `explain`, the JSON
   (`remediation`), SARIF (the rule's help, which code scanning shows with the alert), the Markdown summary,
@@ -192,20 +216,17 @@ results name the pack and its digest.
 
 Titles and descriptions are hostlint's own; profiles reference control IDs only.
 
-## Fleet dashboard (early)
+## The dashboard in pictures
 
-Hosts scan themselves and push the result to a `hostlint server`, which keeps the history and shows
-the fleet in a web dashboard: pass rate, the controls that fail most, regressions since the last
-scan, a matrix of every control on every host, and the evidence behind each result. The server never
-connects to a host; to scan one on demand, its `hostlint agent` dials out and waits for a "scan now" from the
-dashboard. Try it without any host: `hostlint server demo` starts it with a made-up fleet.
-See [docs/fleet.md](docs/fleet.md).
-
-![The overview of the dashboard](docs/demo/dashboard-overview.png)
-
-| Matrix of every control on every host | A host: its controls, evidence and history |
+| Overview | Hosts, with trend, OS and labels |
 |---|---|
-| ![The matrix](docs/demo/dashboard-matrix.png) | ![A host](docs/demo/dashboard-host.png) |
+| ![The overview of the dashboard: pass rate, pass rate over time, what fails most](docs/demo/dashboard-overview.png) | ![The list of hosts](docs/demo/dashboard-hosts.png) |
+
+| A host: its controls, the evidence and how to fix each failure | Matrix of every control on every host (dark) |
+|---|---|
+| ![A host](docs/demo/dashboard-host.png) | ![The matrix](docs/demo/dashboard-matrix.png) |
+
+How it works, the API, signing, notifications and the agent: [docs/fleet.md](docs/fleet.md).
 
 ## Principles
 
@@ -226,7 +247,8 @@ with waivers, the release pipeline (signed archives, packages, SBOMs and `instal
 container test matrix over every supported distribution, scanning container images
 ([docs/images.md](docs/images.md)), a GitHub Action ([docs/ci.md](docs/ci.md)) and the fleet server with its
 dashboard, signed results and webhook ([docs/fleet.md](docs/fleet.md)) are in place, and v0.22.0 is the
-latest release. The outbound agent for scheduled scans is planned. See the [roadmap](docs/ROADMAP.md).
+latest release. The outbound agent for on-demand scans ([docs/fleet.md](docs/fleet.md)) and a container image
+([docs/container.md](docs/container.md)) are in place too. See the [roadmap](docs/ROADMAP.md).
 
 ## License
 

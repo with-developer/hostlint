@@ -148,11 +148,15 @@ func demoResult(content *engine.Content, profile *engine.Profile, h demoHost, da
 			}
 			st := demoCheckStatus(check, ctl.ID, mixed, h, failRate)
 			cr.Checks = append(cr.Checks, id)
-			res.Checks = append(res.Checks, engine.CheckResult{
+			cres := engine.CheckResult{
 				Ref: id, ID: id, Version: check.Version, Digest: digest, Title: check.Title, TitleKo: check.TitleKo, Severity: check.Severity,
 				Status: st, StatusSource: "observed", Reason: demoReason(st),
 				Evidence: demoEvidence(st, id), DurationMs: 3,
-			})
+			}
+			if st == engine.StatusFail { // as a real scan does: the rule's own guidance on a failed check
+				cres.Remediation = truncate(strings.TrimSpace(check.Remediation), maxRemediation)
+			}
+			res.Checks = append(res.Checks, cres)
 			if rank(st) > rank(worst) {
 				worst = st
 			}

@@ -3,7 +3,7 @@ import { ApiError, api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago, compareControls, ctitle } from "../lib/format";
-import { Avatar, Await, Empty, Gauge, ScorePill, Severity, SignedBadge, StatusBadge, StatusBar } from "../components/ui";
+import { Avatar, Await, Empty, Gauge, Inline, ScorePill, Severity, SignedBadge, StatusBadge, StatusBar } from "../components/ui";
 import { TrendChart } from "../components/charts";
 import { IconChevron, IconSearch } from "../components/icons";
 import { STATUSES, type ControlChange, type ControlRow, type Diff, type ScanDoc, type ScanRow, type Status } from "../lib/types";
@@ -163,7 +163,7 @@ function ControlDetail({ control, doc }: { control: ControlRow; doc: ScanDoc }) 
           {ch.reason && <p className="muted small">{ch.reason}</p>}
           {ch.remediation && (
             <p className="prose remedy small">
-              <strong>{t("host.howToFix")}</strong> {ch.remediation}
+              <strong>{t("host.howToFix")}</strong> <Inline text={ch.remediation} />
             </p>
           )}
           {(ch.evidence?.length ?? 0) > 0 ? (

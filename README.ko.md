@@ -1,11 +1,11 @@
-<!-- translated from README.md @ bf547b7 -->
+<!-- translated from README.md @ ef6f086 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **리눅스 서버를 위한 eslint.** 정적 Go 바이너리 하나로 호스트의 보안 설정을 하드닝 기준과 비교하고,
-컨트롤마다 결과와 그 근거를 함께 보여 줍니다.
+컨트롤마다 결과와 그 근거를 함께 보여 주고, 플릿 전체를 한눈에 보여 주는 대시보드도 있습니다.
 
 [English](README.md)
 
@@ -39,6 +39,28 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 위 출력은 `PermitRootLogin yes`와 inetd telnet 서비스를 추가한 Debian 12 컨테이너의 결과를 줄인 것입니다
 (호스트 이름은 줄였습니다).
 
+## 플릿 전체를 보는 대시보드
+
+호스트가 스스로 스캔하고 결과를 `hostlint server`로 보내면, 서버가 이력을 보관하고 웹 대시보드로 플릿을
+보여 줍니다(영어와 한국어, 라이트·다크, 휴대폰 화면 지원).
+
+![hostlint 대시보드 투어: 개요, 호스트, 근거와 조치 방법이 있는 호스트, 컨트롤, 매트릭스, 한국어](docs/demo/dashboard-tour.gif)
+
+```sh
+hostlint server demo      # 가상의 호스트 12대. 스캔도 저장도 하지 않습니다. 출력된 주소를 여세요
+```
+
+- **플릿 전체의 시간에 따른 통과율**(7, 30, 90일)과 호스트마다의 추이선.
+- **가장 많이 실패하는 것과 방금 나빠진 것:** 대부분의 호스트에서 실패하는 컨트롤과 최근 스캔의 악화.
+- **모든 결과의 근거**(파일과 줄)와 실패마다 **조치 방법**.
+- **모든 호스트의 모든 컨트롤 매트릭스.** 셀 하나로 그 호스트로 이동합니다.
+- **한 번에 프로파일 하나**(KISA, essentials, 직접 만든 정책 팩), 목록에 호스트의 OS와 라벨.
+- **지금 스캔:** 호스트의 에이전트가 바깥으로 연결해 두고, 요청이 오면 호스트가 허용한 프로파일로 스캔합니다.
+  서버는 호스트에 접속하지 않습니다.
+- **서명된 결과:** 저장된 모든 결과를 호스트가 서명한 키로 확인할 수 있습니다.
+
+데모로 10초 만에 써 보거나 실제 결과를 보내 보세요: [docs/fleet.ko.md](docs/fleet.ko.md).
+
 > 🚧 **초기 릴리스입니다.** 흔치 않은 환경에서는 거친 부분이 있을 수 있으니 알려 주세요.
 > [로드맵](docs/ROADMAP.md)과 [릴리스 이력](docs/RELEASING.md)을 참고하세요.
 
@@ -56,6 +78,8 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
   주요정보통신기반시설 기술적 취약점 분석·평가 가이드 2026년판(Unix U-01–U-67)입니다.
 - **운영 중인 호스트와 이미지 모두.** 실행 중인 시스템, 다른 곳에 마운트한 루트 파일시스템
   (`--root`), 또는 `docker save`가 쓴 아카이브의 컨테이너 이미지(`--image-tar`)를 점검합니다.
+- **신뢰할 에이전트 없이 보는 플릿.** 호스트가 보내고 서버는 접속하지 않습니다. 이력과 서명된 결과를 보관하고
+  추이, 악화, 매트릭스를 보여 줍니다([위](#플릿-전체를-보는-대시보드)).
 - **파이프라인에 맞춰 만들었습니다.** 터미널 표, JSON(스키마 포함), SARIF, JUnit을 지원하고, 종료
   코드는 지정한 심각도를 따릅니다. 실패한 점검은 조치 방법을 함께 알려 줍니다: `explain`, JSON(`remediation`),
   SARIF(코드 스캐닝이 경고와 함께 보여 주는 규칙 도움말), Markdown 요약, HTML 보고서, 대시보드.
@@ -186,19 +210,17 @@ test`로 테스트하고 `hostlint pack show`로 검토하고 `hostlint scan --p
 
 제목과 설명은 hostlint가 직접 작성했고, 프로파일은 컨트롤 ID만 참조합니다.
 
-## 플릿 대시보드 (초기)
+## 대시보드 화면
 
-호스트가 스스로 스캔하고 결과를 `hostlint server`로 보내면, 서버가 이력을 보관하고 웹 대시보드로 플릿을
-보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스,
-각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 요청 시 스캔은 호스트의 `hostlint agent`가 바깥으로 연결해 두고
-대시보드의 "지금 스캔"을 기다리는 방식입니다. 호스트 없이 써 보려면
-`hostlint server demo`가 가상의 플릿으로 서버를 띄웁니다. [docs/fleet.ko.md](docs/fleet.ko.md)를 참고하세요.
-
-![대시보드 개요](docs/demo/dashboard-overview.png)
-
-| 모든 호스트의 모든 컨트롤 매트릭스 | 호스트 하나: 컨트롤, 근거, 이력 |
+| 개요 | 호스트 목록: 추이, OS, 라벨 |
 |---|---|
-| ![매트릭스](docs/demo/dashboard-matrix.png) | ![호스트](docs/demo/dashboard-host.png) |
+| ![대시보드 개요: 통과율, 시간에 따른 통과율, 가장 많이 실패하는 것](docs/demo/dashboard-overview.png) | ![호스트 목록](docs/demo/dashboard-hosts.png) |
+
+| 호스트 하나: 컨트롤, 근거, 실패마다 조치 방법 | 모든 호스트의 모든 컨트롤 매트릭스(다크) |
+|---|---|
+| ![호스트](docs/demo/dashboard-host.png) | ![매트릭스](docs/demo/dashboard-matrix.png) |
+
+동작 방식, API, 서명, 알림, 에이전트: [docs/fleet.ko.md](docs/fleet.ko.md).
 
 ## 원칙
 
@@ -217,8 +239,8 @@ hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 
 SARIF·JUnit·여러 호스트 HTML 출력, 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브,
 패키지, SBOM, `install.sh`), 지원하는 모든 배포판에 대한 컨테이너 테스트 매트릭스, 컨테이너 이미지 점검
 ([docs/images.ko.md](docs/images.ko.md)), GitHub Action([docs/ci.ko.md](docs/ci.ko.md)), 대시보드가 있는 플릿
-서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md))이 갖춰졌고, v0.22.0이 최신 릴리스입니다. 예약
-점검을 위한 아웃바운드 에이전트는 계획 중입니다. [로드맵](docs/ROADMAP.md)을 참고하세요.
+서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md))이 갖춰졌고, v0.22.0이 최신 릴리스입니다. 요청 시 스캔을 위한 아웃바운드 에이전트([docs/fleet.ko.md](docs/fleet.ko.md))와 컨테이너 이미지
+([docs/container.ko.md](docs/container.ko.md))도 갖춰졌습니다. [로드맵](docs/ROADMAP.md)을 참고하세요.
 
 ## 라이선스
 
