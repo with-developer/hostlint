@@ -174,6 +174,16 @@ result of a pack's profile (an ID that starts with `x-`) has to name its pack. T
 together even when hosts ran different revisions of the pack: the digest of each scan tells them apart in its stored
 document, not on the pages.
 
+## Container images
+
+A scan of an image archive (`hostlint scan --image-tar app.tar --push ...`, [docs/images.md](images.md)) is stored as an
+**image**: an asset named by its repository, with no host ID, whose scans each record the tag and the image ID. The dashboard
+lists images apart from hosts (**Images**, once there is one), and the fleet's numbers (overview, trend, matrix, controls,
+stale and silent-host alerts) are those of the hosts. `GET /api/v1/hosts?kind=image` lists the images; every host entry has
+a `kind`, and a scan row of an image its `imageRef` and `imageDigest`. A token for CI is bound to a prefix
+(`server token create --host 'ghcr.io/acme/*'`); a prefix has its `*` at the end and at least three characters before it,
+and it is an ingest token's alone (an agent speaks for one host). A name is a host or an image, never both.
+
 ## Signing people in with your company's identity
 
 The dashboard signs a person in with a read token. To let people in with the sign-in your company already has
@@ -252,7 +262,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/profiles` | The profiles of the latest scans with the number of hosts of each, the one most hosts use (`default`), and their titles |
 | `GET /api/v1/trend` | The fleet over the last days, one point a day, oldest first: hosts, hosts with a failing control, counts and pass rate as of that day (`?days=30`, 1 to 90). It is computed from the scans that are stored, so `server prune` changes the days it covers, and is served again for 30 seconds |
 | `GET /api/v1/overview` | Hosts, hosts with a failing control, stale hosts, counts, the controls that fail on most hosts, recent regressions (`?staleDays=7`) |
-| `GET /api/v1/hosts` | The hosts with the counts and score of their latest scan (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`); each host also has its `os`, `labels` (what its latest result says, bounded), `agentOnline` and a `trend` of the pass rate of its latest scans |
+| `GET /api/v1/hosts` | The hosts with the counts and score of their latest scan (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`, `?kind=image` for the images); each host also has its `os`, `labels` (what its latest result says, bounded), `agentOnline` and a `trend` of the pass rate of its latest scans |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | Every control with the status counts of the latest scans; one control with its hosts, and what it checks and how to fix it |
 | `GET /api/v1/matrix` | The latest status of every control on every host, hosts that fail most first |
 | `GET /api/v1/hosts/ID` | One host: its latest controls and its history |

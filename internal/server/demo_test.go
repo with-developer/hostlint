@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -94,5 +95,40 @@ func TestDemoUnknownProfile(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 	if _, err := server.SeedDemo(context.Background(), store, content, "nope", time.Now()); err == nil {
 		t.Error("an unknown profile was accepted")
+	}
+}
+
+// The demo fleet has images too, as assets of their own, each tag a scan, with the IDs a real result would have.
+func TestDemoHasImages(t *testing.T) {
+	srv, tok := seeded(t)
+	get := func(path string, into any) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s: %d %s", path, rec.Code, rec.Body)
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), into); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var images, hosts struct {
+		Hosts []server.HostSummary `json:"hosts"`
+		Total int                  `json:"total"`
+	}
+	get("/api/v1/hosts?kind=image", &images)
+	get("/api/v1/hosts", &hosts)
+	if images.Total != 3 || hosts.Total != 12 {
+		t.Fatalf("%d images and %d hosts, want 3 and 12 (an image is not a host)", images.Total, hosts.Total)
+	}
+	for _, h := range images.Hosts {
+		if h.Kind != "image" || h.HostID != "" || len(h.ImageDigest) != len("sha256:")+64 || !strings.HasPrefix(h.ImageRef, h.Name+":") {
+			t.Errorf("image: %+v", h)
+		}
+		if len(h.Trend) < 3 {
+			t.Errorf("%s has a history of %d scans", h.Name, len(h.Trend))
+		}
 	}
 }

@@ -1,4 +1,4 @@
-<!-- translated from docs/ci.md @ f8d0985 -->
+<!-- translated from docs/ci.md @ 8f8f335 -->
 # CI에서 hostlint 쓰기
 
 hostlint는 파이프라인에 맞춰 만들었습니다. 점검은 데몬도 네트워크 접근도 없는 명령 하나이고, 종료 코드는 고른
@@ -88,6 +88,13 @@ hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlin
 
 `install.sh`는 아카이브를 릴리스의 SHA-256과 대조하고, `cosign`이 설치되어 있으면 체크섬의 서명도 확인합니다.
 셸로 파이프하기 전에 스크립트를 읽어 보고, 버전을 고정하세요.
+
+이미지의 이력을 [플릿 서버](fleet.ko.md)에 남기려면 결과도 보내세요(토큰은 CI의 시크릿에서 가져오고
+`ghcr.io/acme/*` 같은 접두어에 묶습니다. [docs/images.ko.md](images.ko.md)).
+
+```sh
+HOSTLINT_TOKEN="$FLEET_TOKEN" hostlint scan --image-tar app.tar --push https://hostlint.example.org:8443 --fail-on high
+```
 
 hostlint가 지원하는 모든 배포판에서 이미지의 결과는 그 이미지로 만든 컨테이너의 결과와 같습니다. 빌드가
 통과했다는 것은 이미지 파일시스템이 프로파일이 요구하는 대로 설정되어 있다는 뜻이지, 컨테이너가 보안 강화되어

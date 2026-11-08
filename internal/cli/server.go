@@ -161,7 +161,7 @@ host by --host: it can only send results of that host, and its host ID is pinned
 	}
 	fl := create.Flags()
 	fl.StringVar(&name, "name", "", "a name to recognize the token by (required)")
-	fl.StringVar(&host, "host", "", "the host name the token may speak for")
+	fl.StringVar(&host, "host", "", "the host name the token may speak for; an ingest token may be bound to a prefix of names, such as 'ghcr.io/acme/*' for the CI of an organization")
 	fl.BoolVar(&anyHost, "any-host", false, "a token for every host")
 	fl.StringVar(&scope, "scope", server.ScopeIngest, "ingest (send results), api (read) or operator (read, and ask agents for scans)")
 	fl.DurationVar(&expires, "expires-in", 0, "make the token expire after this long, such as 2160h (default: never)")

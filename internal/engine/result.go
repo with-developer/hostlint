@@ -91,6 +91,15 @@ type ToolInfo struct {
 type TargetInfo struct {
 	Kind string `json:"kind"` // host or root
 	Root string `json:"root"`
+	// Image says which container image a scan of an archive was of (kind stays root, ADR 0011).
+	Image *ImageInfo `json:"image,omitempty"`
+}
+
+// ImageInfo identifies the image of a scan: the reference it was named with (repository and tag, when the archive names one)
+// and its image ID.
+type ImageInfo struct {
+	Ref    string `json:"ref,omitempty"`
+	Digest string `json:"digest"`
 }
 
 // Privileges the scan ran with.

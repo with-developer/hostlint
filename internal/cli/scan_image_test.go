@@ -88,7 +88,8 @@ func TestScanImageRefusals(t *testing.T) {
 	}{
 		{[]string{"scan", "--image-tar", scratch, "--fail-on", "none"}, "no operating system"},
 		{[]string{"scan", "--image-tar", good, "--root", "/mnt"}, "exclude each other"},
-		{[]string{"scan", "--image-tar", good, "--push", "https://x.example"}, "no host identity"},
+		{[]string{"scan", "--root", "/", "--name", "x"}, "--name is for --image-tar"},
+		{[]string{"scan", "--image-tar", good, "--name", "bad name"}, "--name is letters"},
 		{[]string{"scan", "--image-tar", filepath.Join(t.TempDir(), "missing.tar")}, "--image-tar"},
 	} {
 		code, _, stderr := run(context.Background(), t, tc.args...)
@@ -111,5 +112,32 @@ func TestScanMarkdown(t *testing.T) {
 	code, stdout, stderr := run(context.Background(), t, "scan", "--image-tar", p, "--format", "markdown", "--fail-on", "none")
 	if code != ExitOK || !strings.HasPrefix(stdout, "## hostlint: app&#58;1") || !strings.Contains(stdout, "| Profile | Controls |") {
 		t.Fatalf("exit %d\n%s\n%s", code, stdout, stderr)
+	}
+}
+
+// What an image goes by on a fleet server: --name, else the repository of the archive's reference (no tag, no digest,
+// but a registry port stays); an archive that names no image needs --name.
+func TestAssetName(t *testing.T) {
+	for _, tc := range []struct {
+		flag, ref, want string
+		wantErr         bool
+	}{
+		{"", "app:1.4", "app", false},
+		{"", "ghcr.io/acme/app:1.4", "ghcr.io/acme/app", false},
+		{"", "localhost:5000/app", "localhost:5000/app", false},
+		{"", "localhost:5000/app:2", "localhost:5000/app", false},
+		{"", "ghcr.io/acme/app@sha256:abcd", "ghcr.io/acme/app", false},
+		{"", "ghcr.io/acme/app:1.4@sha256:abcd", "ghcr.io/acme/app", false},
+		{"my/app", "ghcr.io/acme/app:1.4", "my/app", false},
+		{"my/app", "", "my/app", false},
+		{"", "", "", true},
+		{"bad name", "app:1", "", true},
+		{"-lead", "app:1", "", true},
+		{"a\nb", "app:1", "", true},
+	} {
+		got, err := assetName(tc.flag, tc.ref)
+		if (err != nil) != tc.wantErr || got != tc.want {
+			t.Errorf("assetName(%q, %q) = %q, %v; want %q (error %v)", tc.flag, tc.ref, got, err, tc.want, tc.wantErr)
+		}
 	}
 }

@@ -55,6 +55,7 @@ hostlint server demo      # a made-up fleet of twelve hosts, nothing scanned, no
 - **The evidence behind every result,** the file and the line, with **how to fix it** next to each failure.
 - **A matrix of every control on every host,** one click from a cell to the host.
 - **One profile at a time** (KISA, essentials, your own policy pack), with host OS and labels in the list.
+- **Images from CI:** `scan --image-tar app.tar --push` gives every image its own page: one history, a tag for every build.
 - **Scan now:** an agent on a host dials out and scans when someone asks, with a profile the host allows; the
   server never connects to a host.
 - **Signed results:** every stored result can be checked against the key its host signs with.
@@ -155,7 +156,7 @@ described in [docs/configuration.md](docs/configuration.md).
 | `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
 | `--pack DIR` | Load a policy pack: your own checks and profiles ([docs/packs.md](docs/packs.md)); select its profile with `-p` |
 | `--root` | Scan a filesystem mounted at this directory (it must hold an operating system) |
-| `--image-tar` | Scan the filesystem of a container image from this archive ([docs/images.md](docs/images.md)) |
+| `--image-tar` | Scan the filesystem of a container image from this archive ([docs/images.md](docs/images.md)); with `--push` the image is an asset of its own on the fleet server, `--name` gives it a name |
 | `--config` | Configuration file (default: `./hostlint.yaml`, then `/etc/hostlint/hostlint.yaml`, if present) |
 | `--label key=value` | Add a label to the host in the report |
 | `--color` | `auto` (default), `always` or `never` |
@@ -225,6 +226,10 @@ Titles and descriptions are hostlint's own; profiles reference control IDs only.
 | A host: its controls, the evidence and how to fix each failure | Matrix of every control on every host (dark) |
 |---|---|
 | ![A host](docs/demo/dashboard-host.png) | ![The matrix](docs/demo/dashboard-matrix.png) |
+
+| Images that CI pushed: one history per image, a tag for every build |
+|---|
+| ![The list of images](docs/demo/dashboard-images.png) |
 
 How it works, the API, signing, notifications and the agent: [docs/fleet.md](docs/fleet.md).
 

@@ -69,8 +69,28 @@ checks for absent files pass.
   kept as metadata; reading it fails as "too large", never as "absent", so a check that needs it reports
   `ERROR` or `MANUAL` instead of passing.
 
+## Sending the result to a fleet server
+
+An image is an asset of its own on a [fleet server](fleet.md), next to the hosts: the dashboard has an **Images** list, and an
+image is never "stale" (nothing reports for it on a schedule) and not one of the fleet's hosts in its numbers.
+
+```sh
+docker save ghcr.io/acme/app:1.4 -o app.tar
+HOSTLINT_TOKEN=hlt_ing_... hostlint scan --image-tar app.tar --push https://hostlint.example.org:8443 --fail-on high
+```
+
+The image goes by its repository (`ghcr.io/acme/app`: the reference of the archive without its tag), so the tags of one
+image are one history: every scan records the tag and the image ID (the digest of its configuration). An archive that names
+no image (saved without a tag) needs `--name ghcr.io/acme/app`, and `--name` overrides the name of a tagged one. The token
+of CI is bound to a prefix, so one token serves an organization and no further:
+
+```sh
+hostlint server token create --name ci --host 'ghcr.io/acme/*'
+```
+
+A name is a host or an image, never both, and an image has no host ID. Results can be signed like any other (`--sign-key`).
+
 ## Not yet
 
-Pushing an image scan to a fleet server (`--push` is refused: an image has no host identity),
-streaming from a registry, zstd layers, a directory-form OCI layout, and file capabilities
+Streaming from a registry, zstd layers, a directory-form OCI layout, and file capabilities
 (`security.capability`), which the set-ID checks cannot see in an image.

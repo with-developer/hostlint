@@ -1,4 +1,4 @@
-<!-- translated from README.md @ a098ddf -->
+<!-- translated from README.md @ 8f8f335 -->
 # hostlint
 
 [![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
@@ -55,6 +55,7 @@ hostlint server demo      # 가상의 호스트 12대. 스캔도 저장도 하�
 - **모든 결과의 근거**(파일과 줄)와 실패마다 **조치 방법**.
 - **모든 호스트의 모든 컨트롤 매트릭스.** 셀 하나로 그 호스트로 이동합니다.
 - **한 번에 프로파일 하나**(KISA, essentials, 직접 만든 정책 팩), 목록에 호스트의 OS와 라벨.
+- **CI의 이미지:** `scan --image-tar app.tar --push`로 이미지마다 자기 페이지가 생깁니다: 이력 하나, 빌드마다 태그 하나.
 - **지금 스캔:** 호스트의 에이전트가 바깥으로 연결해 두고, 요청이 오면 호스트가 허용한 프로파일로 스캔합니다.
   서버는 호스트에 접속하지 않습니다.
 - **서명된 결과:** 저장된 모든 결과를 호스트가 서명한 키로 확인할 수 있습니다.
@@ -154,7 +155,7 @@ sudo hostlint scan --config hostlint.yaml
 | `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 점검할 수 없으면(`ERROR`) 종료 코드 1: `low`(기본값), `medium`, `high`, `none` |
 | `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옴 ([docs/packs.ko.md](docs/packs.ko.md)), 팩의 프로파일은 `-p`로 선택 |
 | `--root` | 이 디렉터리에 마운트된 파일시스템을 점검 (운영체제가 있어야 함) |
-| `--image-tar` | 이 아카이브의 컨테이너 이미지 파일시스템을 점검 ([docs/images.ko.md](docs/images.ko.md)) |
+| `--image-tar` | 이 아카이브의 컨테이너 이미지 파일시스템을 점검 ([docs/images.ko.md](docs/images.ko.md)). `--push`와 함께 쓰면 이미지는 플릿 서버의 독립된 자산이 되고, `--name`으로 이름을 붙입니다 |
 | `--config` | 설정 파일 (기본값: `./hostlint.yaml`, 없으면 `/etc/hostlint/hostlint.yaml`) |
 | `--label key=value` | 결과의 호스트 정보에 라벨 추가 |
 | `--color` | `auto`(기본값), `always`, `never` |
@@ -219,6 +220,10 @@ test`로 테스트하고 `hostlint pack show`로 검토하고 `hostlint scan --p
 | 호스트 하나: 컨트롤, 근거, 실패마다 조치 방법 | 모든 호스트의 모든 컨트롤 매트릭스(다크) |
 |---|---|
 | ![호스트](docs/demo/dashboard-host.png) | ![매트릭스](docs/demo/dashboard-matrix.png) |
+
+| CI가 보낸 이미지: 이미지마다 이력 하나, 빌드마다 태그 하나 |
+|---|
+| ![이미지 목록](docs/demo/dashboard-images.png) |
 
 동작 방식, API, 서명, 알림, 에이전트: [docs/fleet.ko.md](docs/fleet.ko.md).
 

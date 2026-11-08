@@ -295,6 +295,15 @@ func checkLimits(res *engine.Result, now time.Time) error {
 			return fmt.Errorf("check %.40q has a remediation that is too long or not text", c.Ref)
 		}
 	}
+	// An image has no machine: no host ID, and a digest that says which image it was (the ID of its configuration).
+	if img := res.Scan.Target.Image; img != nil {
+		if res.Host.HostID != "" {
+			return errors.New("the result of an image has a host ID: an image is not a machine")
+		}
+		if !imageDigestRe.MatchString(img.Digest) || len(img.Ref) > maxImageRef || !plainText(img.Ref) {
+			return errors.New("the image of the result has a digest that is not sha256:<64 hex digits>, or a reference that is too long or not text")
+		}
+	}
 	// The packs a result names are shown on the host's page: a few, short, and text.
 	if len(res.Scan.Packs) > maxPacks {
 		return fmt.Errorf("the result names %d policy packs, at most %d are kept", len(res.Scan.Packs), maxPacks)
@@ -332,6 +341,11 @@ const (
 	maxPackText   = 100
 	maxPackDigest = 100
 )
+
+var imageDigestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// maxImageRef bounds the reference of an image in a received result.
+const maxImageRef = 200
 
 var packDigestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 

@@ -59,6 +59,11 @@ type HostSummary struct {
 	// OS and Labels are what the host's latest result says of itself (bounded text, ADR 0010 limits).
 	OS     string            `json:"os,omitempty"`
 	Labels map[string]string `json:"labels,omitempty"`
+	// Kind is "host", or "image" for a container image (ADR 0016).
+	Kind string `json:"kind"`
+	// ImageRef and ImageDigest are what the latest scan of an image was of (empty for a host).
+	ImageRef    string `json:"imageRef,omitempty"`
+	ImageDigest string `json:"imageDigest,omitempty"`
 	// AgentOnline is true when the host's agent polled lately (ADR 0014).
 	AgentOnline bool `json:"agentOnline"`
 	// Trend is the pass rate of the host's latest scans, oldest first (at most trendScans); scans with nothing
@@ -71,6 +76,7 @@ const trendScans = 14
 
 // HostFilter selects and pages the host list.
 type HostFilter struct {
+	Kind       string        // "image" lists the images; "host" or "" the hosts
 	Query      string        // part of the host name
 	Status     string        // "failing" (a FAIL control), "stale", or "" for all
 	StaleAfter time.Duration // a host that has not reported for this long is stale (7 days when 0)
@@ -81,19 +87,32 @@ type HostFilter struct {
 	Sort       string // "name" (default), "score" (worst first, undecided last) or "last" (longest silent first)
 }
 
-const latestScans = `SELECT id, host_row FROM scans s WHERE id = (SELECT id FROM scans WHERE host_row = s.host_row ORDER BY received_at DESC, id DESC LIMIT 1)`
+// Kinds of asset a host row can be (ADR 0016): a host that reports for itself, or a container image whose scans CI pushes.
+const (
+	kindHost  = "host"
+	kindImage = "image"
+	kindAny   = "" // for a lookup by ID, and for the commands that list everything
+)
+
+// latestScans is the latest scan of every host: the fleet. Images are not in it: nothing reports for an image on a
+// schedule, so it is never stale, and its numbers are not the fleet's.
+const latestScans = `SELECT s.id AS id, s.host_row AS host_row FROM scans s JOIN hosts k ON k.id = s.host_row AND k.kind = 'host' WHERE s.id = (SELECT id FROM scans WHERE host_row = s.host_row ORDER BY received_at DESC, id DESC LIMIT 1)`
+
+// latestAnyScans is the latest scan of every host row of either kind: for a lookup by ID and for the counts of a page.
+const latestAnyScans = `SELECT id, host_row FROM scans s WHERE id = (SELECT id FROM scans WHERE host_row = s.host_row ORDER BY received_at DESC, id DESC LIMIT 1)`
 
 // allHosts returns every host whose name contains query (and the host with id, when id is not
 // 0) with the counts of its latest scan, sorted by name.
-func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter time.Duration, profile string) ([]HostSummary, error) {
+func (s *Store) allHosts(ctx context.Context, query string, id int64, kind string, staleAfter time.Duration, profile string) ([]HostSummary, error) {
 	if staleAfter == 0 {
 		staleAfter = 7 * 24 * time.Hour
 	}
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT h.id, h.name, h.host_id, COALESCE(h.last_scan_at, ''), COALESCE(l.id, 0), h.pubkey, h.os, h.labels, COALESCE(h.agent_seen_at, '')
-		FROM hosts h LEFT JOIN (`+latestScans+`) l ON l.host_row = h.id
-		WHERE h.name LIKE ? ESCAPE '\' AND (? = 0 OR h.id = ?)
-		ORDER BY h.name, h.id`, "%"+likeEscape(query)+"%", id, id)
+		SELECT h.id, h.name, h.host_id, COALESCE(h.last_scan_at, ''), COALESCE(l.id, 0), h.pubkey, h.os, h.labels, COALESCE(h.agent_seen_at, ''), h.kind,
+		       COALESCE(ls.image_ref, ''), COALESCE(ls.image_digest, '')
+		FROM hosts h LEFT JOIN (`+latestAnyScans+`) l ON l.host_row = h.id LEFT JOIN scans ls ON ls.id = l.id
+		WHERE h.name LIKE ? ESCAPE '\' AND (? = 0 OR h.id = ?) AND (? = '' OR h.kind = ?)
+		ORDER BY h.name, h.id`, "%"+likeEscape(query)+"%", id, id, kind, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +120,7 @@ func (s *Store) allHosts(ctx context.Context, query string, id int64, staleAfter
 	for rs.Next() {
 		var h HostSummary
 		var key, labels, seen string
-		if err := rs.Scan(&h.ID, &h.Name, &h.HostID, &h.LastScanAt, &h.LatestScan, &key, &h.OS, &labels, &seen); err != nil {
+		if err := rs.Scan(&h.ID, &h.Name, &h.HostID, &h.LastScanAt, &h.LatestScan, &key, &h.OS, &labels, &seen, &h.Kind, &h.ImageRef, &h.ImageDigest); err != nil {
 			_ = rs.Close()
 			return nil, err
 		}
@@ -147,7 +166,11 @@ func (s *Store) Hosts(ctx context.Context, f HostFilter) ([]HostSummary, int, er
 		f.Limit = 100
 	}
 	f.Limit = min(f.Limit, 500)
-	all, err := s.allHosts(ctx, f.Query, 0, f.StaleAfter, f.Profile)
+	kind := f.Kind
+	if kind == "" {
+		kind = kindHost
+	}
+	all, err := s.allHosts(ctx, f.Query, 0, kind, f.StaleAfter, f.Profile)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -255,7 +278,7 @@ func likeEscape(s string) string {
 // countsOfLatestScans counts the controls of every host's latest scan by status, by scan row.
 func (s *Store) countsOfLatestScans(ctx context.Context, hostRow int64, profile string) (map[int64]Counts, error) {
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT c.scan_row, c.status, COUNT(*) FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
+		SELECT c.scan_row, c.status, COUNT(*) FROM scan_controls c JOIN (`+latestAnyScans+`) l ON l.id = c.scan_row
 		WHERE (? = 0 OR l.host_row = ?) AND (? = '' OR c.profile = ?)
 		GROUP BY c.scan_row, c.status`, hostRow, hostRow, profile, profile)
 	if err != nil {
@@ -297,6 +320,9 @@ type ScanRow struct {
 	Counts      Counts   `json:"counts"`
 	Score       *float64 `json:"score"`
 	Signed      bool     `json:"signed"`
+	// ImageRef and ImageDigest say which image a scan of an image was of: the tag it had and its image ID (ADR 0016).
+	ImageRef    string `json:"imageRef,omitempty"`
+	ImageDigest string `json:"imageDigest,omitempty"`
 }
 
 // HostDetail is a host with the controls of its latest scan and its history, newest first.
@@ -312,7 +338,7 @@ type HostDetail struct {
 
 // Host returns one host.
 func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration, profile string) (*HostDetail, error) {
-	list, err := s.allHosts(ctx, "", id, staleAfter, profile)
+	list, err := s.allHosts(ctx, "", id, kindAny, staleAfter, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +399,7 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration, pr
 	}
 	d.Scans = []ScanRow{}
 	rs, err := s.db.QueryContext(ctx, `
-		SELECT s.id, s.received_at, s.started_at, s.tool_version, s.signature != '', c.status, COUNT(c.status)
+		SELECT s.id, s.received_at, s.started_at, s.tool_version, s.signature != '', s.image_ref, s.image_digest, c.status, COUNT(c.status)
 		FROM (SELECT * FROM scans WHERE host_row = ? ORDER BY received_at DESC, id DESC LIMIT 200) s
 		LEFT JOIN scan_controls c ON c.scan_row = s.id AND (? = '' OR c.profile = ?)
 		GROUP BY s.id, c.status ORDER BY s.received_at DESC, s.id DESC`, id, profile, profile)
@@ -386,7 +412,7 @@ func (s *Store) Host(ctx context.Context, id int64, staleAfter time.Duration, pr
 		var r ScanRow
 		var status sql.NullString
 		var n int
-		if err := rs.Scan(&r.ID, &r.ReceivedAt, &r.StartedAt, &r.ToolVersion, &r.Signed, &status, &n); err != nil {
+		if err := rs.Scan(&r.ID, &r.ReceivedAt, &r.StartedAt, &r.ToolVersion, &r.Signed, &r.ImageRef, &r.ImageDigest, &status, &n); err != nil {
 			return nil, err
 		}
 		row := byID[r.ID]
@@ -474,7 +500,7 @@ func (s *Store) Overview(ctx context.Context, staleAfter time.Duration, profile 
 	if staleAfter == 0 {
 		staleAfter = 7 * 24 * time.Hour
 	}
-	hosts, err := s.allHosts(ctx, "", 0, staleAfter, profile)
+	hosts, err := s.allHosts(ctx, "", 0, kindHost, staleAfter, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +547,8 @@ func (s *Store) Overview(ctx context.Context, staleAfter time.Duration, profile 
 	cutoff := s.now().UTC().Add(-staleAfter).Format(stampLayout)
 	rr, err := s.db.QueryContext(ctx, `
 		WITH ranked AS (
-		  SELECT id, host_row, received_at, ROW_NUMBER() OVER (PARTITION BY host_row ORDER BY received_at DESC, id DESC) AS rn FROM scans
+		  SELECT s.id AS id, s.host_row AS host_row, s.received_at AS received_at, ROW_NUMBER() OVER (PARTITION BY s.host_row ORDER BY s.received_at DESC, s.id DESC) AS rn
+		  FROM scans s JOIN hosts k ON k.id = s.host_row AND k.kind = 'host'
 		)
 		SELECT h.id, h.name, c.profile, c.control_id, c.title, c.severity, c.status, l.received_at
 		FROM ranked l
@@ -576,7 +603,7 @@ var statusLetter = map[string]byte{"FAIL": 'F', "ERROR": 'E', "MANUAL": 'M', "WA
 
 // Matrix returns the latest status of every control on every host, hosts that fail most first.
 func (s *Store) Matrix(ctx context.Context, staleAfter time.Duration, profile string) (*Matrix, error) {
-	hosts, err := s.allHosts(ctx, "", 0, staleAfter, profile)
+	hosts, err := s.allHosts(ctx, "", 0, kindHost, staleAfter, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -753,7 +780,7 @@ type ControlDetail struct {
 
 // Control returns the status of one control on every host that has a scan.
 func (s *Store) Control(ctx context.Context, profile, id string, staleAfter time.Duration) (*ControlDetail, error) {
-	hosts, err := s.allHosts(ctx, "", 0, staleAfter, "")
+	hosts, err := s.allHosts(ctx, "", 0, kindHost, staleAfter, "")
 	if err != nil {
 		return nil, err
 	}
@@ -805,7 +832,7 @@ type ProfileUse struct {
 func (s *Store) Profiles(ctx context.Context) ([]ProfileUse, error) {
 	rs, err := s.db.QueryContext(ctx, `
 		SELECT c.profile, COUNT(DISTINCT l.host_row)
-		FROM scan_controls c JOIN (`+latestScans+`) l ON l.id = c.scan_row
+		FROM scan_controls c JOIN (`+latestAnyScans+`) l ON l.id = c.scan_row
 		GROUP BY c.profile ORDER BY COUNT(DISTINCT l.host_row) DESC, c.profile`)
 	if err != nil {
 		return nil, err
@@ -850,7 +877,7 @@ func (s *Store) Trend(ctx context.Context, days int, profile string) ([]TrendPoi
 			FROM hosts h
 			JOIN scans s ON s.id = (SELECT id FROM scans WHERE host_row = h.id AND received_at <= ? ORDER BY received_at DESC, id DESC LIMIT 1)
 			JOIN scan_controls c ON c.scan_row = s.id
-			WHERE (? = '' OR c.profile = ?)
+			WHERE h.kind = 'host' AND (? = '' OR c.profile = ?)
 			GROUP BY s.id, c.status`, at.Format(stampLayout), profile, profile)
 		if err != nil {
 			return nil, err

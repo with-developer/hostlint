@@ -20,6 +20,10 @@ export interface HostSummary {
   /** What the host's latest result says of itself. */
   os?: string;
   labels?: Record<string, string>;
+  /** "host", or "image" for a container image (ADR 0016); an image has no host ID and its scans say which tag and image ID they were of. */
+  kind?: "host" | "image";
+  imageRef?: string;
+  imageDigest?: string;
   /** The host's agent polled lately (ADR 0014). */
   agentOnline?: boolean;
   /** The pass rate of the host's latest scans, oldest first. */
@@ -27,7 +31,7 @@ export interface HostSummary {
 }
 export interface TrendPoint { at: string; hosts: number; failing: number; score: number | null; counts: Counts }
 export interface ControlRow { profile: string; id: string; title: string; titleKo?: string; severity: string; status: Status }
-export interface ScanRow { id: number; receivedAt: string; startedAt: string; toolVersion: string; counts: Counts; score: number | null; signed: boolean }
+export interface ScanRow { id: number; receivedAt: string; startedAt: string; toolVersion: string; counts: Counts; score: number | null; signed: boolean; imageRef?: string; imageDigest?: string }
 export interface PackInfo { name: string; version: string; digest: string }
 export interface HostDetail extends HostSummary { profiles?: string[]; controls: ControlRow[]; scans: ScanRow[]; packs?: PackInfo[] }
 export interface ScanJob { id: number; profile: string; state: "queued" | "claimed" | "done" | "failed" | "expired"; createdAt: string; finishedAt?: string; scan?: number; error?: string }

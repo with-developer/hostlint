@@ -100,3 +100,9 @@ export const IconCheck = () => (
     <path d="m5 12.5 4.5 4.5L19 7.5" />
   </Icon>
 );
+export const IconBox = () => (
+  <Icon>
+    <path d="M12 3 4 7v10l8 4 8-4V7z" />
+    <path d="M4 7l8 4 8-4M12 11v10" />
+  </Icon>
+);

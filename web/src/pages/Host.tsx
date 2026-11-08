@@ -16,12 +16,12 @@ export function HostPage({ id }: { id: number }) {
   const state = useAsync(() => api.host(id, STALE_DAYS), [id], false);
   return (
     <>
-      <p className="crumb">
-        <a href="#/hosts">{t("host.back")}</a>
-      </p>
-      <Await state={state}>
+      <Await state={state} skeleton={<p className="crumb"><a href="#/hosts">{t("host.back")}</a></p>}>
         {(h) => (
           <div className="stack">
+            <p className="crumb">
+              {h.kind === "image" ? <a href="#/images">{t("host.backImages")}</a> : <a href="#/hosts">{t("host.back")}</a>}
+            </p>
             <header className="card hosthead">
               <Avatar name={h.name} size={52} />
               <div className="hosthead-main">
@@ -32,13 +32,25 @@ export function HostPage({ id }: { id: number }) {
                       {t("host.hostId")}: <span className="mono">{h.hostId}</span> ·{" "}
                     </>
                   )}
+                  {h.kind === "image" && (
+                    <>
+                      <span className="badge s-WAIVED">{t("host.image")}</span>{" "}
+                      {h.imageRef && <span className="mono">{h.imageRef}</span>}{" "}
+                      {h.imageDigest && (
+                        <span className="mono" title={h.imageDigest}>
+                          {t("host.imageId")} {h.imageDigest.slice(7, 19)}
+                        </span>
+                      )}{" "}
+                      ·{" "}
+                    </>
+                  )}
                   {t("host.lastScan")}: {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>} {h.signed && <SignedBadge fingerprint={h.keyFingerprint} />}
                 </p>
                 <StatusBar counts={h.counts} legend />
               </div>
               <Gauge score={h.score} label={t("host.passRate")} />
             </header>
-            <ScanNow hostId={id} onDone={state.reload} />
+            {h.kind !== "image" && <ScanNow hostId={id} onDone={state.reload} />}
             {(h.packs?.length ?? 0) > 0 && (
               <p className="muted small packs">
                 {t("host.packs")}:{" "}
@@ -221,7 +233,13 @@ function History({ scans }: { scans: ScanRow[] }) {
                   {t("host.scan", { id: s.id })}
                 </a>
                 <span className="muted small">{ago(s.receivedAt, now, t)}</span>
-                <span className="muted small mono">{s.toolVersion}</span>
+                {s.imageRef ? (
+                  <span className="muted small mono" title={s.imageDigest}>
+                    {s.imageRef} {(s.imageDigest ?? "").slice(7, 19)}
+                  </span>
+                ) : (
+                  <span className="muted small mono">{s.toolVersion}</span>
+                )}
                 <ScorePill score={s.score} />
                 {s.signed && <SignedBadge />}
                 <span className="small">

@@ -60,7 +60,7 @@ against a compromised server) and a webhook for regressions and silent hosts (v0
 **Also shipped:** scanning container images from a `docker save` or OCI archive (v0.12), a GitHub Action (v0.13),
 the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy packs, your own checks and profiles
 (v0.15), a Markdown output and a job summary in the Action (v0.16), `hostlint explain` and `hostlint pack facts` (v0.18),
-fix hints in the results (v0.21), a container image of every release (ghcr.io, [docs/container.md](container.md)), a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
+fix hints in the results (v0.21), policy-pack and image results in the fleet server (ADR 0016), a container image of every release (ghcr.io, [docs/container.md](container.md)), a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
 (v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)).
 
 **Next:**

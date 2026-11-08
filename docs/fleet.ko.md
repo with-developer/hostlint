@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ fd36140 -->
+<!-- translated from docs/fleet.md @ 8f8f335 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고
@@ -170,6 +170,16 @@ WantedBy=multi-user.target
 밝혀야 합니다. 호스트마다 팩의 개정이 달라도 페이지는 한 프로파일의 결과를 함께 셉니다. 스캔마다의 다이제스트는 저장된
 문서에서 구분되고 페이지에서는 구분되지 않습니다.
 
+## 컨테이너 이미지
+
+이미지 아카이브의 점검(`hostlint scan --image-tar app.tar --push ...`, [docs/images.ko.md](images.ko.md))은 **이미지**로
+저장됩니다. 저장소 이름으로 불리고 호스트 ID가 없으며, 스캔마다 태그와 이미지 ID가 기록되는 자산입니다. 대시보드는 이미지를
+호스트와 따로 보여 주고(이미지가 생기면 **이미지** 메뉴), 플릿의 숫자(개요, 추이, 매트릭스, 컨트롤, 오래 보고하지 않음과
+침묵 호스트 알림)는 호스트만의 것입니다. `GET /api/v1/hosts?kind=image`가 이미지를 나열하고, 모든 호스트 항목에는 `kind`가,
+이미지의 스캔 행에는 `imageRef`와 `imageDigest`가 있습니다. CI용 토큰은 접두어에 묶습니다
+(`server token create --host 'ghcr.io/acme/*'`). 접두어는 끝에 `*`가 있고 그 앞에 세 글자 이상이어야 하며 수집 토큰만
+쓸 수 있습니다(에이전트는 호스트 하나를 대신합니다). 이름은 호스트이거나 이미지이거나 둘 중 하나입니다.
+
 ## 회사의 계정으로 로그인시키기
 
 대시보드는 읽기 토큰으로 사람을 로그인시킵니다. 회사에 이미 있는 로그인(Google, Entra ID, Okta, Keycloak: OIDC 또는 SAML)으로
@@ -217,7 +227,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/profiles` | 최신 스캔의 프로파일과 호스트 수, 가장 많은 호스트가 쓰는 프로파일(`default`), 제목 |
 | `GET /api/v1/trend` | 최근 며칠간의 플릿을 하루에 한 점씩, 오래된 것부터: 호스트 수, 실패 컨트롤이 있는 호스트, 그날 기준의 상태별 개수와 통과율(`?days=30`, 1~90). 저장된 스캔으로 계산하므로 `server prune`이 다룰 수 있는 날짜를 바꾸고, 30초 동안 같은 답을 돌려줍니다 |
 | `GET /api/v1/overview` | 호스트 수, 실패 컨트롤이 있는 호스트, 오래 보고하지 않은 호스트, 상태별 개수, 가장 많은 호스트에서 실패하는 컨트롤, 최근 악화(`?staleDays=7`) |
-| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`). 호스트마다 `os`, `labels`(최신 결과가 말하는 것, 길이 제한 있음), `agentOnline`, 최근 스캔의 통과율 `trend`도 있습니다 |
+| `GET /api/v1/hosts` | 호스트별 최신 스캔의 개수와 점수 (`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`, 이미지는 `?kind=image`). 호스트마다 `os`, `labels`(최신 결과가 말하는 것, 길이 제한 있음), `agentOnline`, 최근 스캔의 통과율 `trend`도 있습니다 |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | 최신 스캔 기준 컨트롤별 상태 개수, 컨트롤 하나의 호스트 목록과 점검 내용·조치 방법 |
 | `GET /api/v1/matrix` | 모든 호스트의 모든 컨트롤의 최신 상태, 가장 많이 실패한 호스트가 먼저 |
 | `GET /api/v1/hosts/ID` | 호스트 하나: 최신 컨트롤과 이력 |

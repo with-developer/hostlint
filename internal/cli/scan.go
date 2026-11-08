@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -50,6 +51,7 @@ const defaultProfile = "kisa-2026"
 type scanFlags struct {
 	format, output, root, failOn, color, config string
 	pushURL, pin, tokenFile, signKey, imageTar  string
+	name                                        string // the asset name of an image in the result (--name)
 	labels                                      []string
 	profiles, packs                             []string
 	verifyPack                                  bool
@@ -88,6 +90,7 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: "+strings.Join(output.Formats, ", "))
 	fl.StringVarP(&f.output, "output", "o", "", "write the report to this file instead of stdout")
 	fl.StringVar(&f.root, "root", "/", "scan a filesystem mounted at this directory instead of the running system")
+	fl.StringVar(&f.name, "name", "", "with --image-tar: the name the image goes by in the result and on a fleet server, such as ghcr.io/acme/app (default: the reference of the archive without its tag)")
 	fl.StringVar(&f.imageTar, "image-tar", "", "scan the filesystem of a container image from this archive (docker save, or an OCI layout) instead of a host (docs/images.md)")
 	fl.StringVar(&f.failOn, "fail-on", "low", "exit with status 1 when a control of this severity or higher fails or could not be checked (ERROR): "+strings.Join(failOnLevels, ", "))
 	fl.StringArrayVar(&f.labels, "label", nil, "add a key=value label to the host in the report (repeatable)")
@@ -116,12 +119,11 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return err
 	}
 	if f.imageTar != "" {
-		switch {
-		case f.root != "/":
+		if f.root != "/" {
 			return errors.New("--image-tar and --root exclude each other")
-		case f.pushURL != "":
-			return errors.New("--push is not for an image: it has no host identity to send results under")
 		}
+	} else if f.name != "" {
+		return errors.New("--name is for --image-tar")
 	}
 	// A scan that cannot be sent is found out before it runs, not after.
 	token := ""
@@ -187,6 +189,8 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return err
 	}
 	var h *hostfs.Host
+	var imageInfo *engine.ImageInfo
+	name := ""
 	if f.imageTar != "" {
 		img, err := image.Load(cmd.Context(), f.imageTar)
 		if err != nil {
@@ -196,7 +200,15 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 			// A scratch or distroless image has no operating system to judge: absent files would pass.
 			return fmt.Errorf("--image-tar %s: no operating system found in the image (no os-release): a scratch or distroless image cannot be checked", f.imageTar)
 		}
+		// An image goes to a fleet server as an asset of its own (ADR 0016): named by its repository, with no host ID; every
+		// scan records the tag and the image ID.
+		if f.pushURL != "" || f.name != "" {
+			if name, err = assetName(f.name, img.Ref); err != nil {
+				return fmt.Errorf("--image-tar %s: %w", f.imageTar, err)
+			}
+		}
 		h = hostfs.NewImageHost(img.FS, img.Label)
+		imageInfo = &engine.ImageInfo{Ref: img.Ref, Digest: img.Digest}
 	} else if h, err = hostfs.Open(f.root); err != nil {
 		return err
 	}
@@ -207,6 +219,12 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	res, err := e.Scan(cmd.Context(), h, opts)
 	if err != nil {
 		return err
+	}
+	if imageInfo != nil {
+		res.Scan.Target.Image = imageInfo
+		if name != "" {
+			res.Host.Hostname = name
+		}
 	}
 	if f.imageTar != "" && res.Host.OS.ID == "unknown" {
 		// A scratch or distroless image has no operating system to judge: absent files would pass.
@@ -309,4 +327,32 @@ func isTerminal(w io.Writer) bool {
 	}
 	fi, err := f.Stat()
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
+
+var assetNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$`)
+
+// assetName is the name an image goes by on a fleet server: --name when given, else the repository of the reference the
+// archive names it with (no tag, no digest), so the tags of one image are the history of one asset. An archive that names
+// no image needs --name.
+func assetName(flag, ref string) (string, error) {
+	if flag != "" {
+		if !assetNameRe.MatchString(flag) {
+			return "", errors.New("--name is letters, digits and . _ : / @ + -, at most 200 characters")
+		}
+		return flag, nil
+	}
+	if ref == "" {
+		return "", errors.New("the archive names no image (it was saved without a tag): give the image a name with --name")
+	}
+	repo := ref
+	if i := strings.Index(repo, "@"); i >= 0 {
+		repo = repo[:i]
+	}
+	if i := strings.LastIndex(repo, ":"); i > strings.LastIndex(repo, "/") {
+		repo = repo[:i] // a colon after the last slash is a tag, one before it a registry port
+	}
+	if !assetNameRe.MatchString(repo) {
+		return "", fmt.Errorf("%q is not a name for an image: give one with --name", ref)
+	}
+	return repo, nil
 }

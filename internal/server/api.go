@@ -178,7 +178,11 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	f := HostFilter{Query: q.Get("q"), Status: q.Get("status"), StaleAfter: after, Sort: q.Get("sort"), Profile: profile}
+	f := HostFilter{Query: q.Get("q"), Status: q.Get("status"), StaleAfter: after, Sort: q.Get("sort"), Profile: profile, Kind: q.Get("kind")}
+	if f.Kind != "" && f.Kind != kindHost && f.Kind != kindImage {
+		writeError(w, http.StatusBadRequest, `kind is "host" or "image"`)
+		return
+	}
 	if f.Sort != "" && f.Sort != "name" && f.Sort != "score" && f.Sort != "last" {
 		writeError(w, http.StatusBadRequest, `sort is "name", "score" or "last"`)
 		return

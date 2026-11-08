@@ -1,4 +1,4 @@
-<!-- translated from docs/images.md @ 1b1b1a5 -->
+<!-- translated from docs/images.md @ 8f8f335 -->
 # 컨테이너 이미지 점검
 
 `hostlint scan --image-tar FILE`은 `docker save`(또는 `skopeo copy ... oci-archive:FILE`)가 쓴 아카이브에서
@@ -64,8 +64,29 @@ hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlin
   데이터베이스)에 대해 메모리에 둡니다. 더 큰 파일은 메타데이터만 두며, 읽으면 "없음"이 아니라 "너무 큼"으로
   실패하므로 그 파일이 필요한 점검은 통과하지 않고 `ERROR`나 `MANUAL`이 됩니다.
 
+## 결과를 플릿 서버로 보내기
+
+이미지는 [플릿 서버](fleet.ko.md)에서 호스트 옆의 독립된 자산입니다. 대시보드에 **이미지** 목록이 생기고, 이미지는 "오래
+보고하지 않음"이 되지 않으며(이미지는 일정에 따라 보고하지 않으므로) 플릿 호스트의 숫자에도 들어가지 않습니다.
+
+```sh
+docker save ghcr.io/acme/app:1.4 -o app.tar
+HOSTLINT_TOKEN=hlt_ing_... hostlint scan --image-tar app.tar --push https://hostlint.example.org:8443 --fail-on high
+```
+
+이미지는 저장소 이름(`ghcr.io/acme/app`: 아카이브의 참조에서 태그를 뺀 것)으로 불리므로, 한 이미지의 태그들이 하나의
+이력입니다. 스캔마다 태그와 이미지 ID(설정 파일의 다이제스트)가 기록됩니다. 이미지 이름이 없는 아카이브(태그 없이 저장)는
+`--name ghcr.io/acme/app`이 필요하고, `--name`은 태그가 있는 이미지의 이름도 덮어씁니다. CI의 토큰은 접두어에 묶어 한 토큰이
+조직 하나만 맡게 합니다.
+
+```sh
+hostlint server token create --name ci --host 'ghcr.io/acme/*'
+```
+
+이름은 호스트이거나 이미지이거나 둘 중 하나이고, 이미지에는 호스트 ID가 없습니다. 결과는 다른 결과처럼 서명할 수 있습니다
+(`--sign-key`).
+
 ## 아직 안 되는 것
 
-이미지 점검 결과를 플릿 서버로 보내기(`--push`는 거부합니다: 이미지에는 호스트 식별 정보가 없습니다), 레지스트리에서
-바로 읽기, zstd 레이어, 디렉터리 형태의 OCI 레이아웃, 그리고 이미지에서 SetID 점검이 볼 수 없는 파일 capabilities
+레지스트리에서 바로 읽기, zstd 레이어, 디렉터리 형태의 OCI 레이아웃, 그리고 이미지에서 SetID 점검이 볼 수 없는 파일 capabilities
 (`security.capability`).

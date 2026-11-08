@@ -91,6 +91,13 @@ hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlin
 `install.sh` checks the archive against the SHA-256 of the release and, when `cosign` is installed, the
 signature of the checksums too. Read the script before you pipe it into a shell, and pin a version.
 
+To keep the history of an image on a [fleet server](fleet.md), send the result too (the token comes from a secret of the
+CI, and is bound to a prefix such as `ghcr.io/acme/*`; [docs/images.md](images.md)):
+
+```sh
+HOSTLINT_TOKEN="$FLEET_TOKEN" hostlint scan --image-tar app.tar --push https://hostlint.example.org:8443 --fail-on high
+```
+
 Every distribution hostlint supports gives the same result for an image as for a container made from it,
 so a green build means the image filesystem is configured as the profile asks. It does not mean the container
 is hardened: the user it runs as, capabilities and volumes are decided by the runtime.

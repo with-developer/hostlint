@@ -92,7 +92,44 @@ func SeedDemo(ctx context.Context, store *Store, content *engine.Content, profil
 			n++
 		}
 	}
+	// The images CI built over the same two weeks: one asset each, a tag for every build.
+	for _, img := range demoImages {
+		for build := range img.builds {
+			daysAgo := days - 1 - build*(days-2)/max(1, img.builds-1)
+			at := now.Add(-time.Duration(daysAgo)*24*time.Hour - time.Duration(len(img.name))*3*time.Minute)
+			store.now = func() time.Time { return at.Add(2 * time.Minute) }
+			tag := fmt.Sprintf("%s:1.%d", img.name, build)
+			res := demoResult(content, profile, demoHost{name: img.name, os: img.os, family: img.family, base: img.base, drift: img.drift, every: 1}, daysAgo, days, at)
+			res.Host.HostID, res.Host.Labels = "", nil
+			res.Scan.Target = engine.TargetInfo{Kind: "root", Root: "image:" + tag, Image: &engine.ImageInfo{Ref: tag, Digest: demoImageDigest(tag)}}
+			raw, err := json.Marshal(res)
+			if err != nil {
+				return n, err
+			}
+			parsed, err := output.ReadResult(bytes.NewReader(raw))
+			if err != nil {
+				return n, fmt.Errorf("demo result of %s: %w", tag, err)
+			}
+			if _, err := store.IngestScan(ctx, cred, parsed, raw, "demo"); err != nil {
+				return n, fmt.Errorf("demo result of %s: %w", tag, err)
+			}
+			n++
+		}
+	}
 	return n, nil
+}
+
+// demoImage is a made-up image and how its builds behave: each new tag is a bit better (negative drift) or worse.
+type demoImage struct {
+	name, os, family string
+	base, drift      float64
+	builds           int
+}
+
+var demoImages = []demoImage{
+	{"ghcr.io/acme/web", "Debian 12", "debian", 0.34, -0.22, 6},
+	{"ghcr.io/acme/api", "Debian 12", "debian", 0.18, -0.10, 5},
+	{"ghcr.io/acme/worker", "Alpine Linux 3.20", "alpine", 0.28, 0.0, 4},
 }
 
 // demoRand is a number in [0,1) that is the same for the same inputs.
@@ -266,4 +303,10 @@ func demoLabels(name string) map[string]string {
 		env = "staging"
 	}
 	return map[string]string{"role": role, "env": env}
+}
+
+// demoImageDigest is a made-up image ID: the sha256 of the tag, so it is the same on every run.
+func demoImageDigest(tag string) string {
+	sum := sha256.Sum256([]byte(tag))
+	return "sha256:" + hex.EncodeToString(sum[:])
 }

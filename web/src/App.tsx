@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, setUnauthorizedHandler } from "./lib/api";
-import { useHash } from "./lib/hooks";
+import { useAsync, useHash } from "./lib/hooks";
 import { ProfileProvider, useProfile } from "./lib/profile";
 import { useI18n } from "./lib/i18n";
 import { parseRoute } from "./lib/format";
@@ -9,8 +9,9 @@ import { OverviewPage } from "./pages/Overview";
 import { HostsPage } from "./pages/Hosts";
 import { HostPage } from "./pages/Host";
 import { MatrixPage } from "./pages/Matrix";
+import { ImagesPage } from "./pages/Images";
 import { ControlPage, ControlsPage } from "./pages/Controls";
-import { IconGlobe, IconGrid, IconList, IconLogout, IconMoon, IconOverview, IconServer, IconShield, IconSun } from "./components/icons";
+import { IconBox, IconGlobe, IconGrid, IconList, IconLogout, IconMoon, IconOverview, IconServer, IconShield, IconSun } from "./components/icons";
 
 type Auth = "checking" | "in" | "out" | "failed";
 
@@ -104,16 +105,19 @@ export function App() {
 function Shell({ hash, dark, toggleTheme, logout }: { hash: string; dark: boolean; toggleTheme: () => void; logout: () => void }) {
   const { t, toggle } = useI18n();
   const { list, selected, select } = useProfile();
+  const images = useAsync(() => api.hosts({ kind: "image", limit: 1, staleDays: 7 }), []);
   const [page, arg, arg2] = parseRoute(hash);
   const hostId = Number(arg);
   let view;
-  if (page === "hosts" && arg && Number.isInteger(hostId) && hostId > 0) view = <HostPage key={hostId} id={hostId} />;
+  // an image's page is the host page of its row, under Images in the menu
+  if ((page === "hosts" || page === "images") && arg && Number.isInteger(hostId) && hostId > 0) view = <HostPage key={hostId} id={hostId} />;
   else if (page === "hosts") view = <HostsPage />;
   else if (page === "matrix") view = <MatrixPage />;
+  else if (page === "images") view = <ImagesPage />;
   else if (page === "controls" && arg && arg2) view = <ControlPage key={`${arg}/${arg2}`} profile={arg} id={arg2} />;
   else if (page === "controls") view = <ControlsPage />;
   else view = <OverviewPage />;
-  const current = page === "hosts" || page === "matrix" || page === "controls" ? page : "overview";
+  const current = page === "hosts" || page === "matrix" || page === "controls" || page === "images" ? page : "overview";
 
   const nav: [string, string, string, JSX.Element][] = [
     ["overview", "#/", t("nav.overview"), <IconOverview key="o" />],
@@ -121,6 +125,8 @@ function Shell({ hash, dark, toggleTheme, logout }: { hash: string; dark: boolea
     ["controls", "#/controls", t("nav.controls"), <IconList key="c" />],
     ["matrix", "#/matrix", t("nav.matrix"), <IconGrid key="m" />],
   ];
+  // Images show up once CI has pushed one.
+  if ((images.data?.total ?? 0) > 0) nav.splice(2, 0, ["images", "#/images", t("nav.images"), <IconBox key="i" />]);
 
   return (
     <div className="app">

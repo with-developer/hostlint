@@ -106,7 +106,17 @@
               "description": "host: the running system. root: a filesystem mounted at `root` (live facts unavailable).",
               "enum": ["host", "root"]
             },
-            "root": {"type": "string", "minLength": 1}
+            "root": {"type": "string", "minLength": 1},
+            "image": {
+              "description": "A scan of a container image archive (ADR 0011): the reference the archive names the image with, when it names one, and the image ID.",
+              "type": "object",
+              "required": ["digest"],
+              "additionalProperties": false,
+              "properties": {
+                "ref": {"type": "string", "minLength": 1, "maxLength": 200},
+                "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+              }
+            }
           }
         },
         "packs": {

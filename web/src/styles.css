@@ -273,7 +273,7 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   .legend { justify-content: flex-start; }
   .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: .6rem .9rem; gap: .5rem; }
   /* four equal tabs that always fit: icon over label, like a tab bar */
-  .sidebar nav { display: grid; grid-template-columns: repeat(4, 1fr); order: 3; width: 100%; gap: .25rem; }
+  .sidebar nav { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; order: 3; width: 100%; gap: .25rem; }
   .sidebar nav a { flex-direction: column; gap: .15rem; padding: .45rem .2rem; font-size: .76rem; text-align: center; }
   .nav-section { display: none; }
   .sidebar-foot { margin: 0 0 0 auto; display: flex; }

@@ -225,7 +225,7 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	}
 	name, hostID := res.Host.Hostname, res.Host.HostID
 	if cred.BoundName != "" {
-		if name != cred.BoundName {
+		if !boundMatches(cred.BoundName, name) {
 			return nil, fmt.Errorf("%w: the token is for host %q, the result is of %q", ErrIdentity, cred.BoundName, name)
 		}
 		// The first result pins the host ID; after that it must match. The pin is read in
@@ -254,6 +254,18 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	case other > 0:
 		return nil, fmt.Errorf("%w: the name %q is known with a host ID and this result has none", ErrIdentity, name)
 	}
+	// A name is a host or an image, not both: a result must not take over the row of the other kind.
+	kind := kindHost
+	if res.Scan.Target.Image != nil {
+		kind = kindImage
+	}
+	var otherKind int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM hosts WHERE name = ? AND kind != ?`, name, kind).Scan(&otherKind); err != nil {
+		return nil, err
+	}
+	if otherKind > 0 {
+		return nil, fmt.Errorf("%w: the name %q is already used by %s", ErrIdentity, name, map[string]string{kindHost: "an image", kindImage: "a host"}[kind])
+	}
 	received := s.stamp()
 	if hostID != "" {
 		// A host that first sent no ID and now sends one is the same host: its row takes the ID.
@@ -261,7 +273,7 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 			return nil, err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO hosts (name, host_id, created_at) VALUES (?, ?, ?)`, name, hostID, received); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO hosts (name, host_id, created_at, kind) VALUES (?, ?, ?, ?)`, name, hostID, received, kind); err != nil {
 		return nil, err
 	}
 	var hostRow int64
@@ -281,10 +293,14 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 			return nil, err
 		}
 	}
+	imageRef, imageDigest := "", ""
+	if img := res.Scan.Target.Image; img != nil {
+		imageRef, imageDigest = img.Ref, img.Digest // bounded by checkLimits
+	}
 	r, err := tx.ExecContext(ctx,
-		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature, packs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature, packs, image_ref, image_digest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (host_row, scan_id) DO NOTHING`,
-		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes(), in.key, in.sig, packsJSON(res.Scan.Packs))
+		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes(), in.key, in.sig, packsJSON(res.Scan.Packs), imageRef, imageDigest)
 	if err != nil {
 		return nil, err
 	}

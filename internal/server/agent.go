@@ -105,8 +105,8 @@ func cleanProfiles(in []string) ([]string, bool) {
 // AgentHost returns the row of the host a token is bound to: an agent's token is bound to a host that has sent a
 // result, with the host ID the token is pinned to.
 func (s *Store) AgentHost(ctx context.Context, cred *Credential) (int64, error) {
-	if cred.BoundName == "" {
-		return 0, fmt.Errorf("%w: an agent's token is bound to a host (server token create --host NAME)", ErrIdentity)
+	if cred.BoundName == "" || strings.HasSuffix(cred.BoundName, "*") {
+		return 0, fmt.Errorf("%w: an agent's token is bound to one host (server token create --host NAME)", ErrIdentity)
 	}
 	var row int64
 	var hostID string
