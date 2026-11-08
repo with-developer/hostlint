@@ -194,7 +194,7 @@ func TestMarkdownShowsTheFixHint(t *testing.T) {
 		}
 	}
 	if hinted == "" {
-		t.Skip("no failing check in the fixture")
+		t.Fatal("the fixture has no failing check: the test needs one")
 	}
 	var buf bytes.Buffer
 	if err := Write(&buf, res, "markdown", Options{}); err != nil {
@@ -206,6 +206,33 @@ func TestMarkdownShowsTheFixHint(t *testing.T) {
 	}
 	if strings.Count(out, "How to fix") != 1 {
 		t.Errorf("%d hints, want 1", strings.Count(out, "How to fix"))
+	}
+	// Checks of one control that share a hint show it once.
+	dup := readFixture(t, "web-01.json")
+	var first *engine.CheckResult
+	for i := range dup.Checks {
+		if dup.Checks[i].Status == engine.StatusFail {
+			first = &dup.Checks[i]
+			break
+		}
+	}
+	second := *first
+	second.Ref, second.ID = "x.second-check", "x.second-check"
+	first.Remediation, second.Remediation = "Same hint.", "Same hint."
+	dup.Checks = append(dup.Checks, second)
+	for i := range dup.Controls {
+		for _, ref := range dup.Controls[i].Checks {
+			if ref == first.Ref {
+				dup.Controls[i].Checks = append(dup.Controls[i].Checks, second.Ref)
+			}
+		}
+	}
+	buf.Reset()
+	if err := Write(&buf, dup, "markdown", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(buf.String(), "Same hint."); n != 1 || !strings.Contains(buf.String(), "x&#46;second") && !strings.Contains(buf.String(), "x.second-check") {
+		t.Errorf("a hint shared by two failing checks of a control is shown %d times (second check listed: %v)", n, strings.Contains(buf.String(), "second-check"))
 	}
 	// A hint longer than the bound is cut.
 	for i := range res.Checks {

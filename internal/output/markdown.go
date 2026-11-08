@@ -21,8 +21,9 @@ const (
 	maxMarkdownBytes = 700 << 10
 	// maxMarkdownLine is the longest text of one cell, line or evidence line; the rest is cut.
 	maxMarkdownLine = 300
-	// maxMarkdownFix is the longest fix hint of a check; the hints of the built-in checks are shorter.
-	maxMarkdownFix = 700
+	// maxMarkdownFix is the longest fix hint of a check shown whole: what the engine keeps of one (1500 bytes), so
+	// a hint is never cut in the middle of a step.
+	maxMarkdownFix = 1500
 )
 
 var wwwRe = regexp.MustCompile(`(?i)(www)\.`)
@@ -199,6 +200,7 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 			wrote = true
 		}
 		listed := 0
+		hinted := map[string]bool{} // checks of one control often share a hint: it is shown once
 		for _, ref := range c.Checks {
 			ck, ok := checks[ref]
 			if !ok || ck.Status == engine.StatusPass || ck.Status == engine.StatusNotApplicable {
@@ -228,7 +230,8 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 			if len(ev) > 0 {
 				b.WriteString(mdFence(ev) + "\n")
 			}
-			if ck.Remediation != "" {
+			if ck.Remediation != "" && !hinted[ck.Remediation] {
+				hinted[ck.Remediation] = true
 				// The rule's own guidance (or a pack's), written like any text from outside: as character references.
 				fmt.Fprintf(&b, "**How to fix:** %s\n\n", mdTextTo(ck.Remediation, maxMarkdownFix))
 			}
