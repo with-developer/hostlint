@@ -1,9 +1,12 @@
 import { api } from "../lib/api";
+import { useState } from "react";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago, ctitle } from "../lib/format";
 import { Avatar, Await, Donut, Empty, Gauge, PageHeader, Severity, StatusBadge, StatusBar, Stat } from "../components/ui";
 import { IconAlert, IconClock, IconServer } from "../components/icons";
+import { TrendChart } from "../components/charts";
+import { GettingStarted } from "../components/start";
 
 export const STALE_DAYS = 7;
 
@@ -20,7 +23,7 @@ export function OverviewPage() {
           o.hosts === 0 ? (
             <>
               {o.hostsOther ? <p className="muted small">{t("profile.other", { n: o.hostsOther })}</p> : null}
-              <Empty>{t("overview.empty")}</Empty>
+              {o.hostsOther ? <Empty>{t("overview.empty")}</Empty> : <GettingStarted />}
             </>
           ) : (
             <div className="stack">
@@ -32,8 +35,10 @@ export function OverviewPage() {
                   <StatusBar counts={o.counts} legend />
                   <p className="muted small">{t("overview.scoreHelp")}</p>
                 </div>
-                <Donut counts={o.counts} label={t("overview.hosts")} />
+                <Donut counts={o.counts} label={t("overview.results")} />
               </section>
+
+              <TrendCard />
 
               <section className="grid3">
                 <Stat icon={<IconServer />} value={o.hosts} label={t("overview.hosts")} />
@@ -111,5 +116,46 @@ export function OverviewPage() {
         }
       </Await>
     </>
+  );
+}
+
+/** The fleet's pass rate over the last days (7, 30 or 90), one point a day. */
+function TrendCard() {
+  const { t } = useI18n();
+  const [days, setDays] = useState(30);
+  const state = useAsync(() => api.trend(days), [days]);
+  // The chart starts where the fleet does: days before the first scan have nothing to show.
+  const all = state.data?.points ?? [];
+  const first = all.findIndex((p) => p.score !== null);
+  const points = first < 0 ? [] : all.slice(first);
+  const any = points.length > 0;
+  return (
+    <section className="card">
+      <div className="titlebar">
+        <div>
+          <h2>{t("overview.trend")}</h2>
+          <p className="muted small">{t("overview.trendHelp")}</p>
+        </div>
+        <div className="segmented" role="group" aria-label={t("overview.trend")}>
+          {[7, 30, 90].map((d) => (
+            <button key={d} className={days === d ? "on" : ""} aria-pressed={days === d} onClick={() => setDays(d)}>
+              {t("trend.days", { n: d })}
+            </button>
+          ))}
+        </div>
+      </div>
+      {state.error ? (
+        <p className="error-text">{state.error.message}</p>
+      ) : !state.data ? (
+        <p className="muted">{t("loading")}</p>
+      ) : !any ? (
+        <Empty>{t("trend.none")}</Empty>
+      ) : (
+        <TrendChart
+          label={t("overview.trend")}
+          points={points.map((p) => ({ at: p.at, score: p.score, detail: p.hosts === 0 ? "" : t("trend.detail", { hosts: p.hosts, failing: p.failing }) }))}
+        />
+      )}
+    </section>
   );
 }

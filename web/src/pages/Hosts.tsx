@@ -4,6 +4,7 @@ import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago } from "../lib/format";
 import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, SignedBadge, StatusBar } from "../components/ui";
+import { MiniSpark } from "../components/charts";
 import { IconDownload, IconSearch } from "../components/icons";
 import type { HostSummary } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
@@ -111,6 +112,21 @@ function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
           <Avatar name={h.name} /> {h.name}
         </a>{" "}
         {h.signed && <SignedBadge fingerprint={h.keyFingerprint} />}
+        {h.agentOnline && (
+          <span className="agent-badge" title={t("hosts.agentHelp")}>
+            <span className="agent-dot" /> {t("hosts.agent")}
+          </span>
+        )}
+        {(h.os || h.labels) && (
+          <div className="hostmeta muted small">
+            {h.os && <span>{h.os}</span>}
+            {Object.entries(h.labels ?? {}).map(([k, v]) => (
+              <span key={k} className="chip-label" title={`${k}=${v}`}>
+                {k}={v}
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       <td className="bar-cell">
         {h.otherProfile ? <span className="muted small">{t("profile.otherHost")}</span> : <StatusBar counts={h.counts} thin />}
@@ -120,8 +136,13 @@ function HostRow({ host: h, now }: { host: HostSummary; now: number }) {
           {h.counts.MANUAL ? <span>{h.counts.MANUAL} MANUAL</span> : null}
         </div>
       </td>
-      <td className="num">
-        {h.otherProfile ? "–" : <ScorePill score={h.score} />}
+      <td className="num scorecell">
+        {h.otherProfile ? "–" : (
+          <>
+            {h.trend && <MiniSpark values={h.trend} />}
+            <ScorePill score={h.score} />
+          </>
+        )}
       </td>
       <td className={h.stale ? "stale" : ""}>
         {ago(h.lastScanAt, now, t)} {h.stale && <span className="badge s-MANUAL">{t("stale")}</span>}

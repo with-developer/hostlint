@@ -1,4 +1,4 @@
-import type { AgentInfo, ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ProfileList, ScanDoc, ScanJob } from "./types";
+import type { AgentInfo, ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ProfileList, ScanDoc, ScanJob, TrendPoint } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -70,6 +70,7 @@ export const api = {
   overview: (staleDays: number) => request<Overview>(withProfile(`/api/v1/overview?staleDays=${staleDays}`)),
   hosts: (params: HostsParams) => request<{ hosts: HostSummary[]; total: number }>(withProfile(`/api/v1/hosts?${hostsQuery(params)}`)),
   hostsCSV: (params: HostsParams) => withProfile(`/api/v1/hosts?${hostsQuery({ ...params, limit: undefined, offset: undefined })}&format=csv`),
+  trend: (days: number) => request<{ points: TrendPoint[] }>(withProfile(`/api/v1/trend?days=${days}`)),
   controls: () => request<{ controls: ControlSummary[] }>(withProfile("/api/v1/controls")),
   control: (profile: string, id: string, staleDays: number) =>
     request<{ control: ControlDetail; info: ControlInfo | null }>(`/api/v1/controls/${encodeURIComponent(profile)}/${encodeURIComponent(id)}?staleDays=${staleDays}`),

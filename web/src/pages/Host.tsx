@@ -3,7 +3,8 @@ import { ApiError, api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago, compareControls, ctitle } from "../lib/format";
-import { Avatar, Await, Empty, Gauge, ScorePill, Severity, SignedBadge, Sparkline, StatusBadge, StatusBar } from "../components/ui";
+import { Avatar, Await, Empty, Gauge, ScorePill, Severity, SignedBadge, StatusBadge, StatusBar } from "../components/ui";
+import { TrendChart } from "../components/charts";
 import { IconChevron, IconSearch } from "../components/icons";
 import { STATUSES, type ControlChange, type ControlRow, type Diff, type ScanDoc, type ScanRow, type Status } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
@@ -189,7 +190,16 @@ function History({ scans }: { scans: ScanRow[] }) {
     <div className="stack">
       <section className="card">
         <h2>{t("host.history")}</h2>
-        <Sparkline points={[...scans].reverse().map((s) => s.score)} />
+        {scans.length >= 2 && (
+          <TrendChart
+            label={t("host.history")}
+            points={[...scans].reverse().map((s) => ({
+              at: s.receivedAt,
+              score: s.score,
+              detail: t("trend.scanDetail", { scan: t("host.scan", { id: s.id }), fail: s.counts.FAIL ?? 0 }),
+            }))}
+          />
+        )}
       </section>
       <section className="card flush">
         <ul className="scans">
@@ -208,7 +218,11 @@ function History({ scans }: { scans: ScanRow[] }) {
                   {s.counts.FAIL ? <span className="badge s-FAIL">{s.counts.FAIL}</span> : null}
                   {s.counts.ERROR ? <span className="badge s-ERROR">{s.counts.ERROR}</span> : null}
                 </span>
-                <span className="push">{previous && <button onClick={() => setPair([previous.id, s.id])}>{t("host.compare")}</button>}</span>
+                <span className="push">{previous && (
+                    <button title={t("host.compare")} onClick={() => setPair([previous.id, s.id])}>
+                      {t("host.compare")}
+                    </button>
+                  )}</span>
               </li>
             );
           })}

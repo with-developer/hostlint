@@ -17,7 +17,15 @@ export interface HostSummary {
   /** The profile the counts are of, and whether the host scanned with another one (it has no counts here). */
   profile?: string;
   otherProfile?: boolean;
+  /** What the host's latest result says of itself. */
+  os?: string;
+  labels?: Record<string, string>;
+  /** The host's agent polled lately (ADR 0014). */
+  agentOnline?: boolean;
+  /** The pass rate of the host's latest scans, oldest first. */
+  trend?: number[];
 }
+export interface TrendPoint { at: string; hosts: number; failing: number; score: number | null; counts: Counts }
 export interface ControlRow { profile: string; id: string; title: string; titleKo?: string; severity: string; status: Status }
 export interface ScanRow { id: number; receivedAt: string; startedAt: string; toolVersion: string; counts: Counts; score: number | null; signed: boolean }
 export interface HostDetail extends HostSummary { profiles?: string[]; controls: ControlRow[]; scans: ScanRow[] }

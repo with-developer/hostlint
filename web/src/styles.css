@@ -276,7 +276,9 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   .gauge svg { max-width: 180px; }
   .legend { justify-content: flex-start; }
   .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: .6rem .9rem; gap: .5rem; }
-  .sidebar nav { display: flex; order: 3; width: 100%; overflow-x: auto; }
+  /* four equal tabs that always fit: icon over label, like a tab bar */
+  .sidebar nav { display: grid; grid-template-columns: repeat(4, 1fr); order: 3; width: 100%; gap: .25rem; }
+  .sidebar nav a { flex-direction: column; gap: .15rem; padding: .45rem .2rem; font-size: .76rem; text-align: center; }
   .nav-section { display: none; }
   .sidebar-foot { margin: 0 0 0 auto; display: flex; }
   .sidebar-foot button span { display: none; }
@@ -295,3 +297,36 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
 .scannow-main { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
 .scannow p { margin: 0; min-height: 1.2em; }
 .scannow label.inline { display: inline-flex; align-items: center; gap: .4rem; }
+
+/* Trend chart */
+.trend { position: relative; }
+.trend-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.trend-grid { stroke: var(--border); stroke-width: 1; }
+.trend-axis { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.trend-line { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.trend-area { fill: color-mix(in srgb, var(--accent) 13%, transparent); }
+.trend-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.trend-guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.trend-tip { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 6px 18px rgb(0 0 0 / 14%); padding: .4rem .65rem; white-space: nowrap; z-index: 2; }
+.titlebar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.titlebar h2 { margin-bottom: .15rem; }
+
+/* A host in the list: where it runs, its labels, its agent, its trend */
+.hostmeta { display: flex; flex-wrap: wrap; gap: .3rem .5rem; margin-top: .15rem; padding-left: 2.1rem; }
+.chip-label { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 0 .5rem; font-size: .76rem; }
+.agent-badge { display: inline-flex; align-items: center; gap: .3rem; margin-left: .4rem; font-size: .76rem; color: var(--pass); }
+.agent-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--pass); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pass) 22%, transparent); }
+.scorecell { white-space: nowrap; }
+.scorecell .mini { margin-right: .6rem; vertical-align: middle; }
+.mini path { fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.mini-up path, .mini-up circle { stroke: var(--pass); fill: none; }
+.mini-up circle { fill: var(--pass); }
+.mini-down path { stroke: var(--fail); }
+.mini-down circle { fill: var(--fail); }
+.mini-flat path { stroke: var(--muted); }
+.mini-flat circle { fill: var(--muted); }
+
+/* First run */
+.start h3 { margin-top: 1.1rem; }
+.command { display: flex; align-items: stretch; gap: .5rem; margin: .35rem 0; }
+.command pre { flex: 1; margin: 0; overflow-x: auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .6rem .8rem; font: .85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
