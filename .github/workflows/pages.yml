@@ -1,10 +1,11 @@
 name: Pages
 
-# Publishes site/ to GitHub Pages. Run by hand until Pages is enabled for this
-# repository (Settings > Pages > Source: GitHub Actions); then add
-#   push: {branches: [main], paths: ["site/**"]}
-# above. A custom domain needs the owner's approval.
+# Publishes site/ to GitHub Pages when a change to it reaches main, and by hand (Actions, Run workflow). A custom domain needs the
+# owner's approval.
 on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
