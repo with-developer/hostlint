@@ -43,8 +43,8 @@ export function HostPage({ id }: { id: number }) {
               <p className="muted small packs">
                 {t("host.packs")}:{" "}
                 {h.packs?.map((p) => (
-                  <span key={p.digest || p.name} className="chip-label" title={p.digest}>
-                    {p.name} {p.version} <span className="mono">{p.digest.slice(0, 19)}</span>
+                  <span key={`${p.name}/${p.version}/${p.digest}`} className="chip-label" title={p.digest}>
+                    {p.name} {p.version} <span className="mono">{(p.digest ?? "").slice(0, 19)}</span>
                   </span>
                 ))}
               </p>

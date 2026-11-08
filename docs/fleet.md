@@ -169,7 +169,10 @@ failed. A request nobody answers expires after ten minutes. `GET /api/v1/hosts/{
 A scan made with a [policy pack](packs.md) is sent like any other (`hostlint scan --pack DIR -p x-acme-baseline --push ...`).
 The server keeps the result as it is; the pack's profile appears in the dashboard's profile selector, and the host's page
 names the pack (name, version, digest). The server does not read packs: a control's "what it checks" text is not there for
-a pack's controls. At most eight packs are named by a result, each as short plain text.
+a pack's controls. At most eight packs are named by a result, each with a name, a version and its sha256 digest, and a
+result of a pack's profile (an ID that starts with `x-`) has to name its pack. The pages count the results of one profile
+together even when hosts ran different revisions of the pack: the digest of each scan tells them apart in its stored
+document, not on the pages.
 
 ## Signing people in with your company's identity
 

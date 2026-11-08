@@ -1,6 +1,6 @@
 # 0012. Policy packs: your own checks and profiles
 
-- Status: Accepted (the owner approved it on 2026-11-07, as proposed; see "Decisions")
+- Status: Accepted (the owner approved it on 2026-11-07, as proposed; see "Decisions"). The refusal of `--push` with a pack is superseded by [ADR 0016](0016-images-and-packs-in-the-fleet-server.md).
 - Date: 2026-11-07
 
 ## Context
@@ -63,7 +63,7 @@ has to say so.
   `/sys` or `/dev`). The ownership rule will refuse common setups (`sudo` over files of another user,
   a root container over a CI workspace, Kubernetes ConfigMap symlinks): the errors name the fix.
 - `scan --push --pack` is refused until the result carries the pack's identity; the server and the
-  agents ignore packs. (ADR 0016 lifts the refusal: the server stores a pack's results; the agent still has no `--pack`.)
+  agents ignore packs.
 
 ## Consequences
 

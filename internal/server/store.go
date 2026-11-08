@@ -282,9 +282,9 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 		}
 	}
 	r, err := tx.ExecContext(ctx,
-		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO scans (host_row, received_at, scan_id, started_at, schema_version, tool_version, digest, doc, pubkey, signature, packs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (host_row, scan_id) DO NOTHING`,
-		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes(), in.key, in.sig)
+		hostRow, received, res.Scan.ID, res.Scan.StartedAt, res.SchemaVersion, res.Scan.Tool.Version, digest, gz.Bytes(), in.key, in.sig, packsJSON(res.Scan.Packs))
 	if err != nil {
 		return nil, err
 	}
@@ -519,4 +519,16 @@ func hostInfo(res *engine.Result) (osName, labels string) {
 // zero-width ones among them): text a host chose that the list shows beside names the reader trusts.
 func plainText(s string) bool {
 	return utf8.ValidString(s) && !strings.ContainsFunc(s, func(r rune) bool { return unicode.IsControl(r) || unicode.Is(unicode.Cf, r) })
+}
+
+// packsJSON is the packs a result names, as the scans table keeps them ("" for none); checkLimits has bounded them.
+func packsJSON(packs []engine.PackInfo) string {
+	if len(packs) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(packs)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }

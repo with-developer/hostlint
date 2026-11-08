@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -299,8 +300,16 @@ func checkLimits(res *engine.Result, now time.Time) error {
 		return fmt.Errorf("the result names %d policy packs, at most %d are kept", len(res.Scan.Packs), maxPacks)
 	}
 	for _, p := range res.Scan.Packs {
-		if len(p.Name) > maxPackText || len(p.Version) > maxPackText || len(p.Digest) > maxPackDigest || !plainText(p.Name) || !plainText(p.Version) || !plainText(p.Digest) {
-			return errors.New("a policy pack of the result has a name, version or digest that is too long or not text")
+		if !validPack(p) {
+			return errors.New("a policy pack of the result has no name, or a name, version or digest that is not short plain text, or a digest that is not sha256:<64 hex digits>")
+		}
+	}
+	// A result of a pack's profile says which pack it came from: its profile IDs start with x- (ADR 0012), the built-in ones never do.
+	if len(res.Scan.Packs) == 0 {
+		for _, c := range res.Controls {
+			if strings.HasPrefix(c.Profile, "x-") {
+				return fmt.Errorf("control %.40q is of a pack's profile, and the result names no policy pack", c.ID)
+			}
 		}
 	}
 	// The server orders scans by its own clock; a start time far from it is not believed.
@@ -323,6 +332,15 @@ const (
 	maxPackText   = 100
 	maxPackDigest = 100
 )
+
+var packDigestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// validPack is a pack as a result may name it: a name, a version that may be empty, and the digest that is its identity,
+// all short plain text.
+func validPack(p engine.PackInfo) bool {
+	return p.Name != "" && len(p.Name) <= maxPackText && len(p.Version) <= maxPackText &&
+		plainText(p.Name) && plainText(p.Version) && packDigestRe.MatchString(p.Digest)
+}
 
 // maxRemediation bounds the fix hint of a check in a received result (the engine writes at most 1500 bytes).
 const maxRemediation = 2000
