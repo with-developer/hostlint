@@ -39,6 +39,16 @@ tests:
       firewall: {ufw: {present: true, settings: {enabled: {value: "yes", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
       services: {systemd: true, units: {"ufw.service": {enabled: true, masked: true, file: /dev/null}}}
     want: FAIL
+  - name: ufw says yes and its unit is not enabled (it does not start at boot)
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "yes", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: false, masked: false, file: /usr/lib/systemd/system/ufw.service}}}
+    want: FAIL
+  - name: the unit of ufw is enabled and the file does not set ENABLED
+    facts:
+      firewall: {ufw: {present: true, settings: {}}}
+      services: {systemd: true, units: {"ufw.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/ufw.service}}}
+    want: FAIL
   - name: firewalld is enabled
     facts:
       firewall: {ufw: {present: false, settings: {}}}

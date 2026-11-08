@@ -120,53 +120,88 @@ func (updatesCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts
 }
 
 var (
-	aptStatement = regexp.MustCompile(`(?i)^\s*APT::Periodic::(Enable|Update-Package-Lists|Unattended-Upgrade)\s+"([^"]*)"\s*;`)
-	aptBlock     = regexp.MustCompile(`(?i)\bAPT::Periodic\s*\{|^\s*Periodic\s*\{`)
+	// aptStatement is one APT::Periodic statement alone on its line: the only form that is read.
+	aptStatement = regexp.MustCompile(`(?i)^\s*APT::Periodic::([A-Za-z-]+)\s+"([^"]*)"\s*;\s*$`)
+	aptPeriodic  = regexp.MustCompile(`(?i)periodic`)
+	aptInterval  = regexp.MustCompile(`^([0-9]+)([smhdw]?)$`)
 )
 
-// parseAptPeriodic reads the statements of one apt configuration file into a: later statements replace earlier ones.
-// apt's block form (APT::Periodic { ... };) is not read: what it sets is not known, so the problem is returned and the
-// facts are incomplete (a check then cannot decide, instead of reading an old value).
+// parseAptPeriodic reads the APT::Periodic statements of one apt configuration file into a: later statements replace earlier
+// ones. Only a statement alone on its line is read. What else a file does with Periodic (the block form
+// APT::Periodic { ... };, several statements on a line, APT { Periodic { ... } }, a /* */ comment, #clear, a value that
+// is not an interval) is returned as a problem and the facts are incomplete: what the file sets is not known, so a
+// check cannot decide on a value that may be old or wrong.
 func parseAptPeriodic(file string, data []byte, a *AptPeriodic) (problems []string) {
+	if !aptPeriodic.Match(data) {
+		return nil // nothing about Periodic in the file: nothing to read, nothing to be unsure about
+	}
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	problem := func(line int, why string) { problems = append(problems, fmt.Sprintf("%s:%d: %s", file, line, why)) }
 	for line := 1; sc.Scan(); line++ {
 		text := sc.Text()
+		trimmed := strings.TrimSpace(text)
+		switch {
+		case strings.HasPrefix(trimmed, "#clear") || strings.HasPrefix(trimmed, "#include"):
+			if aptPeriodic.MatchString(trimmed) {
+				problem(line, "a #clear or #include directive about Periodic is not read")
+			}
+			continue
+		case trimmed == "" || trimmed[0] == '#' || strings.HasPrefix(trimmed, "//"):
+			continue
+		}
 		if i := strings.Index(text, "//"); i >= 0 {
 			text = text[:i]
 		}
-		if t := strings.TrimSpace(text); t == "" || t[0] == '#' {
+		if strings.Contains(text, "/*") || strings.Contains(text, "*/") {
+			problem(line, "a /* */ comment is not read")
 			continue
 		}
-		if aptBlock.MatchString(text) {
-			problems = append(problems, fmt.Sprintf("%s:%d: the block form of APT::Periodic is not read", file, line))
+		if !aptPeriodic.MatchString(text) {
 			continue
 		}
 		m := aptStatement.FindStringSubmatch(text)
 		if m == nil {
+			problem(line, "this form of APT::Periodic is not read")
 			continue
 		}
-		set := facts.Setting{Value: aptDays(m[2]), Explicit: true, Source: fmt.Sprintf("%s:%d", file, line)}
+		var name string
 		switch strings.ToLower(m[1]) {
 		case "enable":
-			a.Settings["enable"] = set
+			name = "enable"
 		case "update-package-lists":
-			a.Settings["update_package_lists"] = set
+			name = "update_package_lists"
 		case "unattended-upgrade":
-			a.Settings["unattended_upgrade"] = set
+			name = "unattended_upgrade"
+		default:
+			continue // another key of Periodic, none a check reads
 		}
+		days, ok := aptDays(m[2])
+		if !ok {
+			problem(line, fmt.Sprintf("the value %q of APT::Periodic::%s is not an interval", m[2], m[1]))
+		}
+		a.Settings[name] = facts.Setting{Value: days, Explicit: true, Source: fmt.Sprintf("%s:%d", file, line)}
 	}
 	return problems
 }
 
-// aptDays is a Periodic value as a number of days in text: "1", "7"; "0" for off and for what is not a number, which apt
-// reads as 0 too ("true" is not a number to it).
-func aptDays(v string) string {
-	n, err := strconv.Atoi(strings.TrimSpace(v))
-	if err != nil || n < 0 {
-		return "0"
+// aptDays is a Periodic value as a number in text, whatever the unit: "1" and "1d" are 1, "12h" is 12, "always" is 1 (it
+// runs every time) and "0" is off. ok is false for what is none of these: apt would read it as 0, but it is not certain
+// that it is what the author meant, so the facts are incomplete.
+func aptDays(v string) (days string, ok bool) {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if v == "always" {
+		return "1", true
 	}
-	return strconv.Itoa(n)
+	m := aptInterval.FindStringSubmatch(v)
+	if m == nil {
+		return "0", false
+	}
+	n, err := strconv.Atoi(m[1])
+	if err != nil {
+		return "0", false
+	}
+	return strconv.Itoa(n), true
 }
 
 // parseAutomatic reads the [commands] section of an INI file for the two keys: the last line of a key wins.
@@ -191,9 +226,7 @@ func parseAutomatic(file string, data []byte, keys [2]string, into *Automatic) {
 			continue
 		}
 		key = strings.TrimSpace(key)
-		if i := strings.Index(value, " #"); i >= 0 {
-			value = value[:i]
-		}
+		value = stripInlineComment(value)
 		value = strings.ToLower(strings.Trim(strings.TrimSpace(value), `"'`))
 		set := facts.Setting{Explicit: true, Source: fmt.Sprintf("%s:%d", file, line)}
 		switch key {
@@ -215,6 +248,16 @@ func yesNo(v string) string {
 		return "yes"
 	case "no", "false", "off", "0":
 		return "no"
+	}
+	return v
+}
+
+// stripInlineComment removes a comment that follows white space: "yes # all" and "yes\t; all" are yes.
+func stripInlineComment(v string) string {
+	for i := 1; i < len(v); i++ {
+		if (v[i] == '#' || v[i] == ';') && (v[i-1] == ' ' || v[i-1] == '\t') {
+			return v[:i]
+		}
 	}
 	return v
 }

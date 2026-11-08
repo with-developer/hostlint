@@ -99,21 +99,40 @@ func TestParseAptPeriodic(t *testing.T) {
 	if a.Settings["unattended_upgrade"].Value != "1" || a.Settings["update_package_lists"].Value != "3" || a.Settings["enable"].Explicit {
 		t.Errorf("last wins: %+v", a)
 	}
-	// a value is days: "true" and a negative number are what apt reads as 0
-	a, _ = read(map[string]string{"/etc/apt/apt.conf.d/20x": "APT::Periodic::Unattended-Upgrade \"true\";\nAPT::Periodic::Update-Package-Lists \"-2\";\nAPT::Periodic::Enable \"1\";\n"})
-	if a.Settings["unattended_upgrade"].Value != "0" || a.Settings["update_package_lists"].Value != "0" || a.Settings["enable"].Value != "1" {
-		t.Errorf("days: %+v", a)
+	// a value is an interval, in whatever unit apt takes: "1d" is 1, "12h" 12, "always" 1 (every time), "0" off
+	a, skipped := read(map[string]string{"/etc/apt/apt.conf.d/20x": "APT::Periodic::Unattended-Upgrade \"always\";\nAPT::Periodic::Update-Package-Lists \"12h\";\nAPT::Periodic::Enable \"0\";\nAPT::Periodic::Download-Upgradeable-Packages \"1\";\n"})
+	if a.Settings["unattended_upgrade"].Value != "1" || a.Settings["update_package_lists"].Value != "12" || a.Settings["enable"].Value != "0" || len(skipped) != 0 {
+		t.Errorf("intervals: %+v %v", a, skipped)
 	}
-	// the block form is not read, and says so: a check cannot decide on a value that may be old
-	_, skipped := read(map[string]string{"/etc/apt/apt.conf.d/20blk": "APT::Periodic {\n  Unattended-Upgrade \"1\";\n};\n"})
-	if len(skipped) != 1 || !strings.Contains(skipped[0], "block form") {
-		t.Errorf("block form: %v", skipped)
+	// what is not an interval ("true", a negative number) is kept as 0 and says so: apt reads 0, the author may have meant more
+	_, skipped = read(map[string]string{"/etc/apt/apt.conf.d/20y": "APT::Periodic::Unattended-Upgrade \"true\";\n"})
+	if len(skipped) != 1 || !strings.Contains(skipped[0], "not an interval") {
+		t.Errorf("a value that is not an interval: %v", skipped)
+	}
+	// every other way to write Periodic is not read, and says so: a check cannot decide on a value that may be old or wrong
+	for name, body := range map[string]string{
+		"block form":            "APT::Periodic {\n  Unattended-Upgrade \"1\";\n};\n",
+		"nested on a line":      "APT { Periodic { Unattended-Upgrade \"1\"; }; };\n",
+		"two statements":        "APT::Periodic::Enable \"0\"; APT::Periodic::Unattended-Upgrade \"1\";\n",
+		"a block comment":       "/* APT::Periodic::Unattended-Upgrade \"0\";\n*/\nAPT::Periodic::Unattended-Upgrade \"1\";\n",
+		"a #clear":              "#clear APT::Periodic;\nAPT::Periodic::Unattended-Upgrade \"1\";\n",
+		"a statement continued": "APT::Periodic::Unattended-Upgrade\n  \"1\";\n",
+	} {
+		_, skipped := read(map[string]string{"/etc/apt/apt.conf.d/20z": body})
+		if len(skipped) == 0 {
+			t.Errorf("%s: read as if it were plain", name)
+		}
+	}
+	// a file with nothing about Periodic is nothing to be unsure about, whatever else it has
+	_, skipped = read(map[string]string{"/etc/apt/apt.conf.d/50u": "Unattended-Upgrade::Allowed-Origins {\n  \"${distro_id}:${distro_codename}-security\";\n};\n/* a comment */\n"})
+	if len(skipped) != 0 {
+		t.Errorf("a file that does not mention Periodic: %v", skipped)
 	}
 }
 
 func TestParseAutomatic(t *testing.T) {
 	a := Automatic{Settings: map[string]facts.Setting{}}
-	parseAutomatic("/etc/dnf/automatic.conf", []byte("[base]\napply_updates = yes\n[commands]\nupgrade_type = security\napply_updates = True # all of them\n[email]\napply_updates = no\n"), [2]string{"apply_updates", "upgrade_type"}, &a)
+	parseAutomatic("/etc/dnf/automatic.conf", []byte("[base]\napply_updates = yes\n[commands]\nupgrade_type = security\t; only these\napply_updates = True # all of them\n[email]\napply_updates = no\n"), [2]string{"apply_updates", "upgrade_type"}, &a)
 	if a.Settings["apply_updates"].Value != "yes" || a.Settings["upgrade_type"].Value != "security" || a.Settings["apply_updates"].Source != "/etc/dnf/automatic.conf:5" {
 		t.Errorf("sections and spellings: %+v", a)
 	}
@@ -124,8 +143,22 @@ func TestParseAutomatic(t *testing.T) {
 	}
 }
 
+// The file of a real CentOS 7 with yum-cron: it only downloads, and applies nothing, unless configured.
+func TestCentosYumCron(t *testing.T) {
+	u, complete, skipped := updatesOf(t, fixtureFS(t, "updates/centos-7"))
+	if !complete {
+		t.Fatalf("incomplete: %v", skipped)
+	}
+	y := u.Yum
+	if !y.Present || y.Settings["apply_updates"].Value != "no" || y.Settings["upgrade_type"].Value != "default" || y.Settings["apply_updates"].Source != "/etc/yum/yum-cron.conf:20" {
+		t.Errorf("yum-cron: %+v", y)
+	}
+}
+
 func TestUfwEnabled(t *testing.T) {
 	for in, want := range map[string]string{
+		"ENABLED=yes # on\n":          "yes", // sourced by a shell: the comment is not part of the value
+		"ENABLED=yes\t# on\n":         "yes",
 		"ENABLED=yes\n":               "yes",
 		"ENABLED=\"YES\"\n":           "yes",
 		"# ENABLED=yes\nENABLED=no\n": "no",

@@ -20,8 +20,8 @@ applies: >-
 expect: >-
   (packages.manager == "dpkg" &&
     "unattended-upgrades" in packages.installed &&
-    updates.apt.settings["unattended_upgrade"].value.matches("^[1-9][0-9]*$") &&
-    updates.apt.settings["update_package_lists"].value.matches("^[1-9][0-9]*$") &&
+    ("unattended_upgrade" in updates.apt.settings && updates.apt.settings["unattended_upgrade"].value.matches("^[1-9][0-9]*$")) &&
+    ("update_package_lists" in updates.apt.settings && updates.apt.settings["update_package_lists"].value.matches("^[1-9][0-9]*$")) &&
     (!("enable" in updates.apt.settings) || updates.apt.settings["enable"].value != "0") &&
     ("apt-daily.timer" in services.units && services.units["apt-daily.timer"].enabled && !services.units["apt-daily.timer"].masked) &&
     ("apt-daily-upgrade.timer" in services.units && services.units["apt-daily-upgrade.timer"].enabled && !services.units["apt-daily-upgrade.timer"].masked)) ||
@@ -60,6 +60,15 @@ tests:
       packages: {manager: dpkg, installed: {}}
       updates:
         apt: {present: true, settings: {update_package_lists: {value: "1", explicit: true}, unattended_upgrade: {value: "1", explicit: true}}}
+        dnf_automatic: {present: false, settings: {}}
+        yum_cron: {present: false, settings: {}}
+      services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}
+    want: FAIL
+  - name: installed and nothing sets Periodic at all (0 for apt)
+    facts:
+      packages: {manager: dpkg, installed: {unattended-upgrades: [{version: "2.9.1", arch: all, state: installed}]}}
+      updates:
+        apt: {present: true, settings: {}}
         dnf_automatic: {present: false, settings: {}}
         yum_cron: {present: false, settings: {}}
       services: {systemd: true, units: {"apt-daily.timer": {enabled: true, masked: false, file: x}, "apt-daily-upgrade.timer": {enabled: true, masked: false, file: x}}}

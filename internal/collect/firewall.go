@@ -66,7 +66,7 @@ func ufwEnabled(data []byte) (facts.Setting, bool) {
 		if !ok || strings.TrimSpace(key) != "ENABLED" {
 			continue
 		}
-		value = strings.ToLower(strings.Trim(strings.TrimSpace(value), `"'`))
+		value = strings.ToLower(strings.Trim(strings.TrimSpace(stripInlineComment(value)), `"'`))
 		out = facts.Setting{Value: value, Explicit: true, Source: fmt.Sprintf("%s:%d", ufwConf, i+1)}
 		found = true
 	}
