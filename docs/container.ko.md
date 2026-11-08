@@ -1,4 +1,4 @@
-<!-- translated from docs/container.md @ 92af6e2 -->
+<!-- translated from docs/container.md @ 27844bc -->
 # hostlint를 컨테이너로 실행하기
 
 릴리스마다 이미지 `ghcr.io/with-developer/hostlint`(linux/amd64, linux/arm64)도 게시됩니다. 정적 바이너리를 최소한의
@@ -6,11 +6,11 @@
 루트를 읽기 전용으로 마운트하고, `--root`가 마운트된 파일시스템을 점검하는 방식으로 점검합니다.
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root /host
-docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root /host --fail-on high --format json > web-01.json
+docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host --fail-on high --format json > web-01.json
 ```
 
-보관하는 곳에서는 버전 태그(`:0.21.0`)를 쓰세요. `:latest`는 가장 새 릴리스를 따라가며 프리릴리스는 따르지 않습니다.
+보관하는 곳에서는 버전 태그(`:0.26.0`)를 쓰세요. `:latest`는 가장 새 릴리스를 따라가며 프리릴리스는 따르지 않습니다.
 
 ## 무엇을 점검하나
 
@@ -22,7 +22,7 @@ docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root
 이미지는 CI, 마운트한 디스크나 스냅샷 점검, 플릿 서버로 결과 보내기에 알맞습니다.
 
 ```sh
-docker run --rm -v /:/host:ro -v /etc/hostlint:/etc/hostlint:ro ghcr.io/with-developer/hostlint:0.21.0 \
+docker run --rm -v /:/host:ro -v /etc/hostlint:/etc/hostlint:ro ghcr.io/with-developer/hostlint:0.26.0 \
   scan --root /host --fail-on none --push https://hostlint.example.org:8443 --token-file /etc/hostlint/token
 ```
 
@@ -33,10 +33,10 @@ docker run --rm -v /:/host:ro -v /etc/hostlint:/etc/hostlint:ro ghcr.io/with-dev
 이미지는 릴리스 파이프라인이 서명하고(Sigstore 키리스) 빌드 출처와 SBOM을 함께 담습니다.
 
 ```sh
-cosign verify ghcr.io/with-developer/hostlint:0.21.0 \
+cosign verify ghcr.io/with-developer/hostlint:0.26.0 \
   --certificate-identity-regexp '^https://github\.com/with-developer/hostlint/\.github/workflows/container\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/with-developer/hostlint:0.21.0 --repo with-developer/hostlint
+gh attestation verify oci://ghcr.io/with-developer/hostlint:0.26.0 --repo with-developer/hostlint
 ```
 
 안의 바이너리는 릴리스 아카이브의 것입니다(`checksums.txt`를 검증하고 각 파일을 확인한 뒤 이미지를 만듭니다). 이름

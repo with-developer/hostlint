@@ -100,7 +100,7 @@ sudo hostlint scan
 Or run the image (the host's root mounted read-only; [docs/container.md](docs/container.md)):
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.21.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host
 ```
 
 Each [release](https://github.com/with-developer/hostlint/releases) also has `.deb` and `.rpm`

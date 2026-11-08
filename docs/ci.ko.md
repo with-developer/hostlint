@@ -1,4 +1,4 @@
-<!-- translated from docs/ci.md @ 8f8f335 -->
+<!-- translated from docs/ci.md @ 27844bc -->
 # CI에서 hostlint 쓰기
 
 hostlint는 파이프라인에 맞춰 만들었습니다. 점검은 데몬도 네트워크 접근도 없는 명령 하나이고, 종료 코드는 고른
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t app:ci .
-      - uses: with-developer/hostlint@v0.16.0
+      - uses: with-developer/hostlint@v0.26.0
         with:
           image: app:ci
           fail-on: high
@@ -53,7 +53,7 @@ jobs:
 | `config` | [`hostlint.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일이 있는 면제 |
 | `summary` | `true`(기본값): 점검이 단계를 실패시켜도 발견 사항의 Markdown 보고서를 실행의 작업 요약에 씁니다 |
 | `sarif-file` | 점검이 단계를 실패시켜도 SARIF를 여기에도 씁니다 |
-| `version` | 설치할 릴리스. 기본값은 액션이 고정된 릴리스(`@v0.16.0`) |
+| `version` | 설치할 릴리스. 기본값은 액션이 고정된 릴리스(`@v0.26.0`) |
 
 `image`, `image-tar`, `root` 중 정확히 하나를 지정하세요. 액션은 릴리스 태그에 고정하세요. 그 태그의
 hostlint 릴리스를 설치합니다. 커밋에 고정하면 `version`을 지정하세요(없으면 액션이 거부합니다). Linux 러너만 지원합니다. 입력은 스크립트의 일부가 아니라 변수로 셸에 전달됩니다.
@@ -70,7 +70,7 @@ hostlint:
     - apk add --no-cache curl
     - docker build -t app:ci .
     - docker save app:ci -o app.tar
-    - curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.16.0 -b /usr/local/bin
+    - curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.26.0 -b /usr/local/bin
     - hostlint scan --image-tar app.tar --fail-on high --format junit --output hostlint.xml
   artifacts:
     when: always
@@ -81,7 +81,7 @@ hostlint:
 ## 그 밖의 CI
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.16.0
+curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh -s -- -v v0.26.0
 docker save app:ci -o app.tar
 hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
 ```
