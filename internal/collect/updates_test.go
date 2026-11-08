@@ -2,9 +2,11 @@ package collect
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/with-developer/hostlint/internal/engine"
 	"github.com/with-developer/hostlint/internal/facts"
 	"github.com/with-developer/hostlint/internal/hostfs"
 )
@@ -191,4 +193,35 @@ func FuzzUpdates(f *testing.F) {
 			t.Fatal(err)
 		}
 	})
+}
+
+// The facts hold the settings a check reads and the place they were read at, nothing else of the files: a password or a proxy
+// with credentials in the same files (an e-mail section, an apt proxy) is never in them (invariant 3).
+func TestNoSecretReachesTheFacts(t *testing.T) {
+	m := hostfs.NewMemFS().
+		AddFile("/etc/apt/apt.conf.d/20auto-upgrades", "Acquire::http::Proxy \"http://alice:hunter2@proxy.example:3128\";\nAPT::Periodic::Unattended-Upgrade \"1\";\nUnattended-Upgrade::Mail \"root\"; // token=hunter2\n", 0o644, 0, 0).
+		AddFile("/etc/dnf/automatic.conf", "[email]\nemail_host = smtp.example\nemail_password = hunter2\n[commands]\napply_updates = yes\n[command_email]\nemail_to = hunter2@example\n", 0o644, 0, 0).
+		AddFile("/etc/yum/yum-cron.conf", "[commands]\napply_updates = yes # password hunter2\n[email]\nsmtp_password = hunter2\n", 0o644, 0, 0).
+		AddFile("/etc/ufw/ufw.conf", "# the password is hunter2\nENABLED=yes\nLOGLEVEL=low\n", 0o644, 0, 0)
+	h := hostfs.NewTestHost(m, nil, false)
+	for _, c := range []interface {
+		Collect(context.Context, *hostfs.Host) (engine.Facts, error)
+	}{updatesCollector{}, firewallCollector{}} {
+		got, err := c.Collect(context.Background(), h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := json.Marshal(got)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "hunter2") {
+			t.Errorf("a secret reached the facts: %s", b)
+		}
+	}
+	// and what was meant to be read still is
+	u, _, _ := updatesOf(t, m)
+	if u.Apt.Settings["unattended_upgrade"].Value != "1" || u.Dnf.Settings["apply_updates"].Value != "yes" || u.Yum.Settings["apply_updates"].Value != "yes" {
+		t.Errorf("settings: %+v", u)
+	}
 }
