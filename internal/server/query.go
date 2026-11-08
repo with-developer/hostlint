@@ -203,14 +203,17 @@ func (s *Store) addTrends(ctx context.Context, page []HostSummary, profile strin
 		byHost[page[i].ID] = &page[i]
 	}
 	ids = append(ids, profile, profile)
-	rs, err := s.db.QueryContext(ctx, `
+	// The IN list is only "?" marks and the limit is a constant: nothing a request says is in the text of the query.
+	//nolint:gosec // only "?" marks and a constant are joined in
+	query := `
 		WITH ranked AS (
 		  SELECT id, host_row, ROW_NUMBER() OVER (PARTITION BY host_row ORDER BY received_at DESC, id DESC) AS rn
-		  FROM scans WHERE host_row IN (`+strings.Join(marks, ",")+`)
+		  FROM scans WHERE host_row IN (` + strings.Join(marks, ",") + `)
 		)
 		SELECT r.host_row, r.rn, c.status, COUNT(*) FROM ranked r JOIN scan_controls c ON c.scan_row = r.id
-		WHERE r.rn <= `+strconv.Itoa(trendScans)+` AND (? = '' OR c.profile = ?)
-		GROUP BY r.host_row, r.rn, c.status`, ids...)
+		WHERE r.rn <= ` + strconv.Itoa(trendScans) + ` AND (? = '' OR c.profile = ?)
+		GROUP BY r.host_row, r.rn, c.status`
+	rs, err := s.db.QueryContext(ctx, query, ids...)
 	if err != nil {
 		return err
 	}
