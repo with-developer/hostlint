@@ -49,7 +49,7 @@ What is needed is a decision about identity and display, not a new transport.
   approval is needed before documenting a secret-bearing step as the default, so it stays opt-in).
 - The audit chain and signatures are unchanged; an image result is signed like any other when the token is bound to
   a key.
-- Schema: `scan.target.image` is optional and additive (version stays 1). Migration 0007 adds `hosts.kind` with a
+- Schema: `scan.target.image` is optional and additive (version stays 1). Migration 0008 adds `hosts.kind` with a
   default, so existing data is untouched and the change can be reverted by ignoring the column.
 - Not decided here: image scans on a schedule by the server (the server never scans: ADR 0001), registry scanning,
   deleting old tags (the existing prune keeps the latest scan of every asset).
