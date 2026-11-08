@@ -289,6 +289,7 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   table.hosts td { display: block; padding: 0; border: 0; min-width: 0; width: auto; }
   table.hosts td:first-child, table.hosts td:last-child { grid-column: 1 / -1; }
   table.hosts td:last-child { color: var(--muted); font-size: .84rem; }
+  table.hosts td.stale { color: var(--manual); }
   table.hosts td.bar-cell { min-width: 0; width: auto; }
   table.hosts tr.clickable:hover td { background: none; }
   .control-row .sev { display: none; }

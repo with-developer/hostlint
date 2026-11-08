@@ -275,12 +275,13 @@ func TestHostsByLabel(t *testing.T) {
 		"label=role%3Ddb":          "lab-c",
 		"label=env%3D":             "", // an empty value is a value: no host has env set to nothing
 		"label=role%3Dweb&q=lab-b": "lab-b",
+		"label=a%3Db%3Dv":          "", // a key has no "="
 	} {
 		if got := strings.Join(names(query), " "); got != want {
 			t.Errorf("%s: %q, want %q", query, got, want)
 		}
 	}
-	for _, bad := range []string{"label=nokeyvalue", "label=%3Dvalue", "label=" + strings.Repeat("k", 33) + "%3Dv", "label=k%3D" + strings.Repeat("v", 65)} {
+	for _, bad := range []string{"label=nokeyvalue", "label=%3Dvalue", "label=" + strings.Repeat("k", 33) + "%3Dv", "label=k%3D" + strings.Repeat("v", 65), "label=" + strings.Repeat("é", 17) + "%3Dv"} {
 		if code, _ := f.get(t, f.api, "/api/v1/hosts?"+bad); code != http.StatusBadRequest {
 			t.Errorf("%s: %d, want 400", bad, code)
 		}

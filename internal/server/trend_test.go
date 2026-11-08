@@ -123,7 +123,7 @@ func TestHostInfoIsBounded(t *testing.T) {
 		t.Errorf("format characters: %q %s", osName, labels)
 	}
 	res.Host.OS.Name = "Ubuntu 24.04\x1b[2J"
-	res.Host.Labels = map[string]string{"env": "prod", "bad\nkey": "x", "ok": "fine", "long": strings.Repeat("v", maxLabelValue+1), "": "empty key"}
+	res.Host.Labels = map[string]string{"env": "prod", "bad\nkey": "x", "ok": "fine", "long": strings.Repeat("v", maxLabelValue+1), "": "empty key", "a=b": "no filter could split it"}
 	_, labels = hostInfo(res)
 	if labels != `{"env":"prod","ok":"fine"}` {
 		t.Errorf("labels = %s", labels)

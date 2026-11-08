@@ -55,9 +55,9 @@ export function HostsPage() {
           <input type="search" placeholder={t("hosts.search")} aria-label={t("hosts.search")} value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="segmented" role="group">
-          {filters.map(([value, label]) => (
+          {filters.map(([value, text]) => (
             <button key={value} className={filter === value ? "on" : ""} aria-pressed={filter === value} onClick={() => setFilter(value)}>
-              {label}
+              {text}
             </button>
           ))}
         </div>
@@ -67,9 +67,9 @@ export function HostsPage() {
           </button>
         )}
         <div className="segmented" role="group" aria-label={t("hosts.sortBy")}>
-          {sorts.map(([value, label]) => (
+          {sorts.map(([value, text]) => (
             <button key={value} className={sort === value ? "on" : ""} aria-pressed={sort === value} onClick={() => setSort(value)}>
-              {label}
+              {text}
             </button>
           ))}
         </div>

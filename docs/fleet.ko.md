@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 8f8f335 -->
+<!-- translated from docs/fleet.md @ dbcc727 -->
 # 플릿 서버 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고

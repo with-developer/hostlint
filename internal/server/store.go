@@ -520,7 +520,7 @@ func hostInfo(res *engine.Result) (osName, labels string) {
 		if len(kept) == maxLabels {
 			break
 		}
-		if k == "" || len(k) > maxLabelKey || len(v) > maxLabelValue || !plainText(k) || !plainText(v) {
+		if k == "" || strings.Contains(k, "=") || len(k) > maxLabelKey || len(v) > maxLabelValue || !plainText(k) || !plainText(v) {
 			continue
 		}
 		kept[k] = v
