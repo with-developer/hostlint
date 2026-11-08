@@ -62,9 +62,9 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
 
 kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
 <h2>플릿 전체를 위한 대시보드</h2>
-<p>호스트가 스스로 스캔하고 결과를 <code>hostlint server</code>로 보내면, 서버가 이력을 보관하고 플릿을 보여 줍니다. 통과율, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스, 각 결과의 근거를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 요청 시 스캔은 호스트의 <code>hostlint agent</code>가 바깥으로 연결해 두고 대시보드의 “지금 스캔”을 기다리는 방식이며, 호스트가 허용한 프로파일만 요청할 수 있습니다. 호스트 없이도 <code>hostlint server demo</code>로 써 볼 수 있습니다.</p>
-<img class="shot" src="../img/dashboard-overview.png" alt="hostlint 대시보드 개요: 통과율, 상태 분포, 호스트, 가장 많이 실패하는 컨트롤, 최근 악화" width="1360" height="900" loading="lazy">
-<img class="shot" src="../img/dashboard-matrix.png" alt="모든 호스트의 모든 컨트롤 매트릭스(다크 테마)" width="1360" height="900" loading="lazy">
+<p>호스트가 스스로 스캔하고 결과를 <code>hostlint server</code>로 보내면, 서버가 이력을 보관하고 플릿을 보여 줍니다. 통과율과 시간에 따른 변화, 가장 많이 실패하는 컨트롤, 직전 스캔 이후의 악화, 모든 호스트의 모든 컨트롤 매트릭스, 조치 방법이 있는 각 결과의 근거, CI가 점검한 컨테이너 이미지(이미지마다 이력 하나)를 볼 수 있습니다. 서버는 호스트에 접속하지 않습니다. 요청 시 스캔은 호스트의 <code>hostlint agent</code>가 바깥으로 연결해 두고 대시보드의 “지금 스캔”을 기다리는 방식이며, 호스트가 허용한 프로파일만 요청할 수 있습니다. 호스트 없이도 <code>hostlint server demo</code>로 써 볼 수 있습니다.</p>
+<img class="shot" src="../img/dashboard-tour.gif" alt="hostlint 대시보드 투어: 시간에 따른 통과율이 있는 개요, 호스트, 근거와 조치 방법이 있는 호스트, 이미지, 컨트롤, 매트릭스, 한국어" width="960" height="600" loading="lazy">
+<img class="shot" src="../img/dashboard-matrix.png" alt="모든 호스트의 모든 컨트롤 매트릭스(다크 테마)" width="1280" height="800" loading="lazy">
 <h2>CI의 컨테이너 이미지</h2>
 <p>배포하기 전의 이미지에 같은 점검을 돌립니다. <code>hostlint scan --image-tar</code>는 데몬도 레지스트리도 없이 <code>docker save</code>나 OCI 아카이브를 읽고, 지원하는 모든 배포판에서 그 이미지로 만든 컨테이너 안의 점검과 같은 결과를 냅니다. 저장소는 GitHub Action이기도 해서, 검증된 릴리스를 설치하고 SARIF를 코드 스캐닝에 올리며 고른 심각도에서 빌드를 실패시킵니다.</p>
 <pre>docker save app:1.4 -o app.tar
