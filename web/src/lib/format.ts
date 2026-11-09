@@ -44,6 +44,7 @@ export function ctitle(c: { title: string; titleKo?: string }, lang: string): st
 export function parseRoute(hash: string): string[] {
   return hash
     .replace(/^#\/?/, "")
+    .split("?")[0]
     .split("/")
     .filter(Boolean)
     .map((part) => {
@@ -53,6 +54,12 @@ export function parseRoute(hash: string): string[] {
         return part; // a garbled escape in a link is a path that matches nothing, not a crash
       }
     });
+}
+
+/** The query of a route: "#/hosts?status=failing" → status=failing. Filters live in the address, so a link or the back button keeps them. */
+export function hashParams(hash: string): URLSearchParams {
+  const i = hash.indexOf("?");
+  return new URLSearchParams(i < 0 ? "" : hash.slice(i + 1));
 }
 
 /** A stable hue (0-359) for a name, for the avatars. */

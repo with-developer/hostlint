@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, compareControls, ctitle, hue, parseRoute, percent, score, total } from "./format";
+import { ago, compareControls, ctitle, hashParams, hue, parseRoute, percent, score, total } from "./format";
 
 const t = (key: string, n?: number) => `${key}:${n ?? ""}`;
 
@@ -49,6 +49,7 @@ describe("ctitle", () => {
 describe("parseRoute and total", () => {
   it("splits and decodes", () => {
     expect(parseRoute("#/hosts/3")).toEqual(["hosts", "3"]);
+    expect(parseRoute("#/hosts?status=failing&q=a/b")).toEqual(["hosts"]);
     expect(parseRoute("#/")).toEqual([]);
     expect(parseRoute("")).toEqual([]);
     expect(parseRoute("#/a%20b")).toEqual(["a b"]);
@@ -57,6 +58,14 @@ describe("parseRoute and total", () => {
   it("does not throw on a garbled escape", () => {
     expect(parseRoute("#/hosts/%E0%A4%A")).toEqual(["hosts", "%E0%A4%A"]);
     expect(parseRoute("#/%")).toEqual(["%"]);
+  });
+  it("reads the query of a route", () => {
+    const p = hashParams("#/hosts?status=failing&label=env%3Dprod&q=web%2001");
+    expect(p.get("status")).toBe("failing");
+    expect(p.get("label")).toBe("env=prod");
+    expect(p.get("q")).toBe("web 01");
+    expect(hashParams("#/hosts").get("status")).toBeNull();
+    expect(hashParams("").toString()).toBe("");
   });
   it("gives a name a stable hue", () => {
     expect(hue("web-01")).toBe(hue("web-01"));
