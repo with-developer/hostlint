@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago, hostsAddress, isHostsList, parseHostsView } from "../lib/format";
+import { ago, hostsAddress, isList, parseHostsView } from "../lib/format";
 import type { HostFilter, HostSort } from "../lib/format";
-import { rememberHostsAddress } from "../lib/hostsAddress";
+import { rememberListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, SignedBadge, StatusBar } from "../components/ui";
 import { MiniSpark } from "../components/charts";
 import { IconDownload, IconSearch } from "../components/icons";
@@ -28,13 +28,13 @@ export function HostsPage() {
   // same list, and a link shares it. Typing replaces the entry rather than adding one.
   useEffect(() => {
     const next = hostsAddress({ q, filter, sort, label });
-    rememberHostsAddress(next);
-    if (isHostsList(location.hash) && location.hash !== next) history.replaceState(null, "", next);
+    rememberListAddress("hosts", next);
+    if (isList(location.hash, "hosts") && location.hash !== next) history.replaceState(null, "", next);
   }, [q, filter, sort, label]);
   // Following a link to the list (the menu's Hosts, a pasted address) sets the filters from the address.
   useEffect(() => {
     const on = () => {
-      if (!isHostsList(location.hash)) return;
+      if (!isList(location.hash, "hosts")) return;
       const a = parseHostsView(location.hash);
       setQ(a.q);
       setFilter(a.filter);

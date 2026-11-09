@@ -97,10 +97,30 @@ export function hostsAddress(v: HostsView): string {
   return "#/hosts" + (qs ? "?" + qs : "");
 }
 
-/** The list itself ("#/hosts", with or without a query), not a host page that shows the same component for a bad id. */
-export function isHostsList(hash: string): boolean {
+/** The list itself ("#/hosts", with or without a query), not a detail page that shows the same component for a bad id. */
+export function isList(hash: string, list: "hosts" | "controls"): boolean {
   const r = parseRoute(hash);
-  return r.length === 1 && r[0] === "hosts";
+  return r.length === 1 && r[0] === list;
+}
+
+export interface ControlsView {
+  q: string;
+  failing: boolean;
+}
+
+/** The control list's filters as an address says them. */
+export function parseControlsView(hash: string): ControlsView {
+  const p = hashParams(hash);
+  return { q: p.get("q") ?? "", failing: p.get("status") === "failing" };
+}
+
+/** The address of the control list with these filters; the defaults are left out. */
+export function controlsAddress(v: ControlsView): string {
+  const p = new URLSearchParams();
+  if (v.q) p.set("q", v.q);
+  if (v.failing) p.set("status", "failing");
+  const qs = p.toString();
+  return "#/controls" + (qs ? "?" + qs : "");
 }
 
 /** A stable hue (0-359) for a name, for the avatars. */

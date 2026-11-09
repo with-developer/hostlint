@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, compareControls, ctitle, hashParams, hostsAddress, hue, isHostsList, parseHostsView, parseRoute, percent, score, total } from "./format";
+import { ago, compareControls, ctitle, hashParams, controlsAddress, hostsAddress, hue, isList, parseControlsView, parseHostsView, parseRoute, percent, score, total } from "./format";
 
 const t = (key: string, n?: number) => `${key}:${n ?? ""}`;
 
@@ -87,10 +87,23 @@ describe("the address of the host list", () => {
     expect(parseHostsView("#/hosts")).toEqual({ q: "", filter: "", sort: "name", label: "" });
   });
   it("tells the list from a host page", () => {
-    expect(isHostsList("#/hosts")).toBe(true);
-    expect(isHostsList("#/hosts?status=stale")).toBe(true);
-    expect(isHostsList("#/hosts/3")).toBe(false);
-    expect(isHostsList("#/hosts/abc")).toBe(false);
-    expect(isHostsList("#/images")).toBe(false);
+    expect(isList("#/hosts", "hosts")).toBe(true);
+    expect(isList("#/hosts?status=stale", "hosts")).toBe(true);
+    expect(isList("#/hosts/3", "hosts")).toBe(false);
+    expect(isList("#/hosts/abc", "hosts")).toBe(false);
+    expect(isList("#/images", "hosts")).toBe(false);
+  });
+});
+
+describe("the address of the control list", () => {
+  it("leaves the defaults out and round-trips the filters", () => {
+    expect(controlsAddress({ q: "", failing: false })).toBe("#/controls");
+    expect(controlsAddress({ q: "ssh 22", failing: true })).toBe("#/controls?q=ssh+22&status=failing");
+    expect(parseControlsView("#/controls?q=ssh+22&status=failing")).toEqual({ q: "ssh 22", failing: true });
+    expect(parseControlsView("#/controls?status=bogus")).toEqual({ q: "", failing: false });
+  });
+  it("tells the list from a control page", () => {
+    expect(isList("#/controls?q=a", "controls")).toBe(true);
+    expect(isList("#/controls/kisa-2026/U-01", "controls")).toBe(false);
   });
 });

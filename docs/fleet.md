@@ -16,8 +16,9 @@ stopped reporting, the controls that fail most, recent regressions), the host li
 sorting, CSV export, and for each host its operating system, labels, a trend line of its latest scans and whether
 its agent is connected), a list of controls (and for each one what it checks, why it matters, how to fix it and the hosts that fail it), a matrix of every control on every host, and for each host its controls with the evidence of every check, its history and a
 comparison of any scan with the one before. It is available in English and Korean and follows the
-system's light or dark theme. Everything a host sent is shown as text. The filters of the host list are in the
-address: a link shares a filtered list, and both the browser's back button and the back link of a host page return to it.
+system's light or dark theme. Everything a host sent is shown as text. The filters of the host list and of the
+control list are in the address: a link shares a filtered list, and both the browser's back button and the back link of a
+detail page return to it.
 
 ## Try it without any host
 
