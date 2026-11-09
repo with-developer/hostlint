@@ -137,7 +137,6 @@ function Controls({ controls, scanId }: { controls: ControlRow[]; scanId: number
                   role="button"
                   tabIndex={0}
                   aria-expanded={expanded}
-                  aria-label={t("host.toggle")}
                   onClick={() => toggleOpen(key)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {

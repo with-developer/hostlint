@@ -69,7 +69,9 @@ function Heatmap({ matrix }: { matrix: Matrix }) {
         <table className="matrix" onMouseOver={over} onMouseLeave={() => setTip(null)} onClick={click}>
           <thead>
             <tr>
-              <th className="corner" />
+              <th className="corner">
+                <span className="sr-only">{t("matrix.title")}</span>
+              </th>
               {matrix.controls.map((c) => (
                 <th key={`${c.profile}/${c.id}`} className="col">
                   <a href={`#/controls/${c.profile}/${c.id}`} title={ctitle(c, lang)}>
