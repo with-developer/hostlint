@@ -1,97 +1,243 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="nojs">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hostlint — eslint for Linux servers</title>
-<meta name="description" content="One Go binary that checks a host's security configuration against hardening baselines. KISA CII Unix first.">
-<style>
-:root{--bg:#fff;--fg:#1b1f24;--mut:#57606a;--line:#d8dee4;--acc:#0b5fff;--code:#0d1117;--codefg:#e6edf3}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#9aa4af;--line:#30363d;--acc:#6ea8ff;--code:#010409;--codefg:#e6edf3}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
-main{max-width:880px;margin:0 auto;padding:0 16px 64px}
-header{padding:56px 0 24px}
-h1{font-size:2.4rem;line-height:1.2;margin:0 0 8px}
-h2{margin:48px 0 12px;font-size:1.4rem}
-h3{margin:0 0 4px;font-size:1.05rem}
-.tag{font-size:1.25rem;color:var(--mut);margin:0 0 16px}
-.btns a{display:inline-block;margin:8px 8px 0 0;padding:8px 16px;border:1px solid var(--line);border-radius:6px;color:var(--fg);text-decoration:none}
-.btns a.p{background:var(--acc);border-color:var(--acc);color:#fff}
-a{color:var(--acc)}
-ul.f{list-style:none;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-ul.f li{border:1px solid var(--line);border-radius:8px;padding:12px 16px}
-ul.f p{margin:0;color:var(--mut)}
-pre{background:var(--code);color:var(--codefg);padding:16px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-footer{margin-top:48px;color:var(--mut);font-size:.9rem;border-top:1px solid var(--line);padding-top:16px}
-nav{text-align:right;padding-top:16px;font-size:.9rem}
-img.shot{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;margin:12px 0}
-</style>
+<meta name="description" content="Check a Linux server's security configuration against hardening baselines such as KISA 2026, with the evidence behind every verdict. One static binary, a dashboard for the whole fleet.">
+<meta property="og:title" content="hostlint — eslint for Linux servers">
+<meta property="og:description" content="Security configuration checks with the evidence behind every verdict. One static binary; a dashboard for the whole fleet.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.className = "js";</script>
 </head>
 <body>
-<main>
-<nav><a href="ko/" hreflang="ko">한국어</a></nav>
-<header>
-<h1>hostlint</h1>
-<p class="tag">A Linux host's security configuration, checked like code.</p>
-<p>One static binary. Run it as root; get one result per control, with the value, the file and the line behind every verdict. It only reads: it never changes the host.</p>
-<p class="btns"><a class="p" href="#start">Get started</a><a href="https://github.com/with-developer/hostlint">GitHub</a><a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">Rule reference</a></p>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+      hostlint
+    </a>
+    <nav>
+      <a class="opt" href="#dashboard">Dashboard</a>
+      <a class="opt" href="#ci">CI</a>
+      <a class="opt" href="#start">Install</a>
+      <a class="opt" href="https://github.com/with-developer/hostlint/blob/main/README.md">Docs</a>
+      <a href="https://github.com/with-developer/hostlint">GitHub</a>
+      <a class="lang" href="ko/" hreflang="ko">한국어</a>
+    </nav>
+  </div>
 </header>
-<h2>Why hostlint</h2>
-<ul class="f"><li><h3>Evidence for every verdict</h3><p>The value, the file and line, explicit or default. No "FAIL" without a reason.</p></li><li><h3>No false PASS</h3><p>When a control cannot be decided (an unreadable file, a cut-off scan) the result is ERROR or MANUAL, never a guessed PASS. Configuration is read the way the program reads it: PAM like libpam, login.defs like shadow-utils, shell files like bash.</p></li><li><h3>Observation only</h3><p>Rules are data, not scripts: they cannot run commands. Password hashes, keys and tokens never appear in a result.</p></li><li><h3>Hosts and images</h3><p>Scan a running system, a filesystem mounted elsewhere, or a container image straight from the archive <code>docker save</code> wrote: nothing is mounted, run or written.</p></li><li><h3>Built for pipelines</h3><p>Table, JSON (with a schema), SARIF and JUnit; one self-contained HTML report for many hosts; waivers with a reason and an expiry in hostlint.yaml.</p></li><li><h3>Signed releases</h3><p>Archives, .deb and .rpm packages, SBOMs and checksums, signed with Sigstore and carrying build provenance.</p></li></ul>
-<h2>What it looks like</h2>
-<pre>$ sudo hostlint scan
-hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.5 LTS)
 
-✗ FAIL   U-02   Password policy [high]
-    ✗ accounts.password-min-length — Passwords have a minimum length
-        pam.password_quality.module = ""
-        pam.password_quality.settings.minlen.value: not set
-✗ FAIL   U-12   Session timeout [low]
-    ✗ accounts.session-timeout-set — Idle shells time out
-        not set; expected a value matching [1-9][0-9]*
-✗ FAIL   U-18   Ownership and permissions of /etc/shadow [high]
-    ✗ files.shadow-perms — /etc/shadow is owned by root and readable by root only
-        /etc/shadow: root:shadow 0640 — mode 0640 exceeds 0400
-? MANUAL U-23   Set-ID programs are reviewed [high]
-    ? files.review-setid — Review the set-ID programs
+<main>
+<div class="hero">
+  <div class="wrap">
+    <span class="eyebrow">KISA 2026 · Ubuntu · Debian · Rocky · Alma · Amazon Linux</span>
+    <h1>Check your Linux servers like you lint your code</h1>
+    <p class="lead">One static binary reads a host's security configuration and gives one result per control, with the value, the file and the line behind every verdict. It only reads: it never changes the host.</p>
+    <div class="cta">
+      <a class="btn p" href="#start">Get started</a>
+      <a class="btn" href="https://github.com/with-developer/hostlint">View on GitHub</a>
+    </div>
+
+    <div class="try">
+      <small>Try it right now: scan this machine's root, read-only, without installing anything</small>
+      <div class="cmd">
+        <pre><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host</pre>
+        <button class="copy" type="button" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host">Copy</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="frame">
+        <div class="bar"><i></i><i></i><i></i><span>hostlint server · Overview</span></div>
+        <img src="img/dashboard-overview.png" width="1280" height="800" alt="The dashboard's overview: a pass rate of 54 percent, results by status, the pass rate over 30 days, and counts of hosts">
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="why">
+  <div class="wrap">
+    <div class="center">
+      <h2>You can trust a result you can check</h2>
+      <p class="sub">Most scanners give a verdict and leave you to find out why. hostlint is built the other way round.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <h3>Evidence for every verdict</h3>
+        <p>The value, the file and the line it came from, and whether it was set explicitly or is a default. There is no FAIL without a reason.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></div>
+        <h3>No guessed PASS</h3>
+        <p>When a control cannot be decided (an unreadable file, a cut-off scan) the result is ERROR or MANUAL. Configuration is read the way the program reads it: PAM like libpam, login.defs like shadow-utils, shell files like bash.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
+        <h3>Observation only</h3>
+        <p>Rules are data, not scripts, so they cannot run commands. Password hashes, keys and tokens never appear in a result.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="scan">
+  <div class="wrap two">
+    <div>
+      <h2>Run it on a host, get a clear list</h2>
+      <p class="sub" style="margin-bottom:0">Run it as root. The first profile is the KISA technical vulnerability assessment guide for critical infrastructure (Unix, U-01 to U-67, 2026 edition); other baselines are added as profiles over the same checks.</p>
+      <ul class="checks">
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Hosts and images.</b> A running system, a filesystem mounted elsewhere, or a container image straight from a <code>docker save</code> archive.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Many outputs.</b> Table, JSON (with a schema), SARIF, JUnit, and one self-contained HTML report for many hosts.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Waivers with a reason.</b> Accept a finding in <code>hostlint.yaml</code> with an expiry date, and the result keeps its evidence.</span></li>
+      </ul>
+    </div>
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="d">$ sudo hostlint scan</span>
+hostlint v0.26.0 · kisa-2026 · web-01 (Ubuntu 24.04)
+
+<span class="f">✗ FAIL</span>   U-02   Password policy [high]
+    <span class="f">✗</span> accounts.password-min-length
+        pam.password_quality.settings.minlen: <span class="d">not set</span>
+<span class="f">✗ FAIL</span>   U-12   Session timeout [low]
+    <span class="f">✗</span> accounts.session-timeout-set
+        <span class="d">not set; expected a value matching [1-9][0-9]*</span>
+<span class="f">✗ FAIL</span>   U-18   Ownership and permissions of /etc/shadow [high]
+    <span class="f">✗</span> files.shadow-perms
+        /etc/shadow: root:shadow 0640 <span class="d">— mode 0640 exceeds 0400</span>
+<span class="m">? MANUAL</span> U-23   Set-ID programs are reviewed [high]
+    <span class="m">?</span> files.review-setid
         /usr/bin/chage 2755 root
-        /usr/bin/chsh 4755 root
-        … and 10 more
+        <span class="d">… and 10 more</span>
 
-kisa-2026: 67 controls — 7 FAIL, 10 MANUAL, 29 PASS, 21 NOT_APPLICABLE</pre>
-<h2>A dashboard for the whole fleet</h2>
-<p>Hosts scan themselves and push the result to <code>hostlint server</code>, which keeps the history and shows the fleet: the pass rate and how it moved over time, the controls that fail most, regressions since the last scan, a matrix of every control on every host, the evidence behind each result with how to fix it, and the container images your CI scans, one history for each. The server never connects to a host; to scan one on demand, its <code>hostlint agent</code> dials out and waits for a “scan now” from the dashboard, and can only be asked for a profile the host allows. Try it with no host at all: <code>hostlint server demo</code>.</p>
-<img class="shot" src="img/dashboard-tour.gif" alt="A tour of the hostlint dashboard: overview with the pass rate over time, hosts, a host with evidence and how to fix it, images, a control, the matrix, and Korean" width="960" height="600" loading="lazy">
-<img class="shot" src="img/dashboard-matrix.png" alt="The matrix of every control on every host, in the dark theme" width="1280" height="800" loading="lazy">
-<h2>Container images in CI</h2>
-<p>The same checks run on an image before it is deployed. <code>hostlint scan --image-tar</code> reads a <code>docker save</code> or OCI archive with no daemon and no registry, and for every supported distribution it gives the same result as a scan inside a container made from the image. The repository is also a GitHub Action that installs a verified release, uploads SARIF to code scanning and fails the build at the severity you choose.</p>
-<pre>docker save app:1.4 -o app.tar
+kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MANUAL</span>, <span class="o">29 PASS</span>, <span class="d">21 N/A</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="dashboard">
+  <div class="wrap">
+    <div class="center">
+      <h2>One dashboard for every server</h2>
+      <p class="sub">Hosts scan themselves and push the result to <code>hostlint server</code>. It keeps the history and shows the pass rate over time, what failed most, what got worse since the last scan, and the evidence behind each result with how to fix it.</p>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Dashboard screens">
+      <button role="tab" id="t2" aria-controls="p2" aria-selected="true" type="button">Hosts</button>
+      <button role="tab" id="t3" aria-controls="p3" aria-selected="false" type="button">A host</button>
+      <button role="tab" id="t4" aria-controls="p4" aria-selected="false" type="button">Matrix</button>
+      <button role="tab" id="t5" aria-controls="p5" aria-selected="false" type="button">Images</button>
+    </div>
+    <div class="stage" style="margin-top:0">
+      <figure class="panel" id="p2" role="tabpanel" aria-labelledby="t2">
+        <div class="frame"><img src="img/dashboard-hosts.png" width="1280" height="800" alt="The host list with search, filters, labels and a trend line for each host"></div>
+        <figcaption>Search, filter by label, sort. Each host shows its latest result and a trend line.</figcaption>
+      </figure>
+      <figure class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+        <div class="frame"><img src="img/dashboard-host.png" width="1280" height="800" alt="One host with its controls, the evidence of each check and how to fix a failure" loading="lazy"></div>
+        <figcaption>The evidence behind every check, how to fix a failure, the scan history and a comparison with the scan before.</figcaption>
+      </figure>
+      <figure class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+        <div class="frame"><img src="img/dashboard-matrix.png" width="1280" height="800" alt="A matrix of every control on every host" loading="lazy"></div>
+        <figcaption>Every control on every host in one table. The hosts that fail most come first.</figcaption>
+      </figure>
+      <figure class="panel" id="p5" role="tabpanel" aria-labelledby="t5" hidden>
+        <div class="frame"><img src="img/dashboard-images.png" width="1280" height="800" alt="Container images scanned in CI, one history for each" loading="lazy"></div>
+        <figcaption>Container images your CI scans, with one history for each image.</figcaption>
+      </figure>
+    </div>
+
+    <div class="cards" style="margin-top:32px">
+      <div class="card"><h3>The server never connects to a host</h3><p>Hosts push their results. To scan one on demand, its <code>hostlint agent</code> dials out and waits for a “Scan now” from the dashboard, and it can only be asked for a profile the host allows.</p></div>
+      <div class="card"><h3>Signed results</h3><p>A host can sign what it sends, so a result stays evidence of what that host said even if the server is compromised later. The server keeps a hash-chained audit log.</p></div>
+      <div class="card"><h3>Try it with no host</h3><p><code>hostlint server demo</code> starts a server with a made-up fleet of twelve hosts and prints a token to sign in with. Korean and English, light and dark.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="ci">
+  <div class="wrap two">
+    <div>
+      <h2>Gate the image before it ships</h2>
+      <p class="sub" style="margin-bottom:0"><code>hostlint scan --image-tar</code> reads a <code>docker save</code> or OCI archive with no daemon and no registry, and gives the same result as a scan inside a container made from that image. The repository is also a GitHub Action: it installs a verified release, uploads SARIF to code scanning and fails the build at the severity you choose.</p>
+      <p style="margin-top:20px"><a href="https://github.com/with-developer/hostlint/blob/main/docs/images.md">Scanning images</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/ci.md">Using hostlint in CI</a></p>
+    </div>
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="d"># any CI</span>
+docker save app:1.4 -o app.tar
 hostlint scan --image-tar app.tar --fail-on high
 
-# GitHub Actions
+<span class="d"># GitHub Actions</span>
 - uses: with-developer/hostlint@v0.26.0
-  with: {image: "app:ci", fail-on: high, sarif-file: hostlint.sarif}</pre>
-<p><a href="https://github.com/with-developer/hostlint/blob/main/docs/images.md">Scanning images</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/ci.md">Using hostlint in CI</a></p>
-<h2>Supported targets</h2>
-<p>Ubuntu 22.04, 24.04, 26.04 · Debian 12, 13 · Rocky Linux and AlmaLinux 9, 10 · Amazon Linux 2023 · CentOS/RHEL 7 (best effort). The first profile is the KISA CII technical vulnerability assessment guide, 2026 edition (Unix, U-01–U-67); other baselines are added as profiles over the same checks.</p>
-<h2 id="start">Quick start</h2>
-<p>Install the latest release (v0.26.0), or build from source:</p>
-<pre>go install github.com/with-developer/hostlint/cmd/hostlint@v0.26.0
-sudo "$(go env GOPATH)/bin/hostlint" scan
+  with:
+    image: app:ci
+    fail-on: high
+    sarif-file: hostlint.sarif</pre>
+    </div>
+  </div>
+</section>
 
-# or the container image (the host's root mounted read-only)
-docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host
+<section id="targets">
+  <div class="wrap">
+    <h2>Supported systems</h2>
+    <p class="sub">Every distribution below is scanned in Docker, stock and hardened, in the project's own tests.</p>
+    <div class="pills">
+      <span class="pill">Ubuntu 22.04 · 24.04 · 26.04</span>
+      <span class="pill">Debian 12 · 13</span>
+      <span class="pill">Rocky Linux · AlmaLinux 9 · 10</span>
+      <span class="pill">Amazon Linux 2023</span>
+      <span class="pill dim">CentOS / RHEL 7 (best effort)</span>
+    </div>
+  </div>
+</section>
 
-# many hosts, one report
+<section id="start">
+  <div class="wrap">
+    <h2>Get started in three steps</h2>
+    <p class="sub">Releases are signed with Sigstore and carry build provenance and an SBOM.</p>
+    <div class="steps">
+      <div class="step">
+        <h3>Install</h3>
+        <p>Download the installer, read it, then run it. It verifies the archive's SHA-256 (and the signature, when <code>cosign</code> is installed).</p>
+        <div class="cmd"><pre>curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh
+sudo sh install.sh -v v0.26.0</pre><button class="copy" type="button" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh&#10;sudo sh install.sh -v v0.26.0">Copy</button></div>
+        <p style="margin-top:10px">Or use a <code>.deb</code> or <code>.rpm</code> from the <a href="https://github.com/with-developer/hostlint/releases">releases</a>, the container image, or <code>go install github.com/with-developer/hostlint/cmd/hostlint@v0.26.0</code>.</p>
+      </div>
+      <div class="step">
+        <h3>Scan</h3>
+        <p>One host, one report. For many hosts, save the JSON and build a single HTML report.</p>
+        <div class="cmd"><pre>sudo hostlint scan
 sudo hostlint scan --format json --output web-01.json
-hostlint report *.json --output report.html
-
-# or a server with a dashboard (try it: hostlint server demo)
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443</pre>
-<p>Docs: <a href="https://github.com/with-developer/hostlint/blob/main/README.md">README</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.md">hostlint.yaml</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/RELEASING.md">Releasing</a> · <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">Security</a></p>
-<footer>Apache-2.0 licensed. <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></footer>
+hostlint report *.json --output report.html</pre><button class="copy" type="button" data-copy="sudo hostlint scan&#10;sudo hostlint scan --format json --output web-01.json&#10;hostlint report *.json --output report.html">Copy</button></div>
+      </div>
+      <div class="step">
+        <h3>See the whole fleet</h3>
+        <p>Start with the demo. Then run your own server and push results from each host.</p>
+        <div class="cmd"><pre>hostlint server demo
+<span class="p"># later: </span>sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443</pre><button class="copy" type="button" data-copy="hostlint server demo">Copy</button></div>
+      </div>
+    </div>
+  </div>
+</section>
 </main>
+
+<footer>
+  <div class="wrap">
+    <span>Apache-2.0 licensed · <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></span>
+    <span>
+      <a href="https://github.com/with-developer/hostlint/blob/main/README.md">README</a> ·
+      <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.md">hostlint.yaml</a> ·
+      <a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">Rule reference</a> ·
+      <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">Security</a>
+    </span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
 </body>
 </html>
