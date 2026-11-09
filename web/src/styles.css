@@ -19,7 +19,7 @@
   /* Text on a status colour, and status colours as text: each pair keeps at least 4.5:1 (WCAG AA). */
   --on-badge: #ffffff;
   --b-fail: #c7292f; --b-error: #7d3fb5; --b-waived: #3558cf; --b-pass: #217a52; --b-na: #5f687b;
-  --fail-text: #b72329; --manual-text: #7a5200; --pass-text: #217a52;
+  --fail-text: #b72329; --manual-text: #7a5200; --pass-text: #217a52; --error-text: #7d3fb5;
   --radius: 14px;
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgb(21 26 43 / 5%), 0 6px 18px rgb(21 26 43 / 4%);
@@ -27,9 +27,9 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { color-scheme: dark; --bg: #0c0e16; --surface: #131722; --surface-2: #1a1f2d; --surface-3: #232938; --border: #252b3b; --text: #e9ebf3; --muted: #8e97ab; --accent: #8b8cff; --accent-soft: #232650; --accent-text: #0c0e16; --fail: #ff6369; --error: #b58cf0; --manual: #f2b633; --waived: #6f8cff; --pass: #45c58a; --na: #5f687b; --shadow: none; --on-badge: #0c0e16; --b-fail: #ff6369; --b-error: #b58cf0; --b-waived: #6f8cff; --b-pass: #45c58a; --b-na: #8e97ab; --fail-text: #ff6369; --manual-text: #f2b633; --pass-text: #45c58a; }
+  :root:not([data-theme="light"]) { color-scheme: dark; --bg: #0c0e16; --surface: #131722; --surface-2: #1a1f2d; --surface-3: #232938; --border: #252b3b; --text: #e9ebf3; --muted: #8e97ab; --accent: #8b8cff; --accent-soft: #232650; --accent-text: #0c0e16; --fail: #ff6369; --error: #b58cf0; --manual: #f2b633; --waived: #6f8cff; --pass: #45c58a; --na: #5f687b; --shadow: none; --on-badge: #0c0e16; --b-fail: #ff6369; --b-error: #b58cf0; --b-waived: #6f8cff; --b-pass: #45c58a; --b-na: #8e97ab; --fail-text: #ff6369; --manual-text: #f2b633; --pass-text: #45c58a; --error-text: #b58cf0; }
 }
-:root[data-theme="dark"] { color-scheme: dark; --bg: #0c0e16; --surface: #131722; --surface-2: #1a1f2d; --surface-3: #232938; --border: #252b3b; --text: #e9ebf3; --muted: #8e97ab; --accent: #8b8cff; --accent-soft: #232650; --accent-text: #0c0e16; --fail: #ff6369; --error: #b58cf0; --manual: #f2b633; --waived: #6f8cff; --pass: #45c58a; --na: #5f687b; --shadow: none; --on-badge: #0c0e16; --b-fail: #ff6369; --b-error: #b58cf0; --b-waived: #6f8cff; --b-pass: #45c58a; --b-na: #8e97ab; --fail-text: #ff6369; --manual-text: #f2b633; --pass-text: #45c58a; }
+:root[data-theme="dark"] { color-scheme: dark; --bg: #0c0e16; --surface: #131722; --surface-2: #1a1f2d; --surface-3: #232938; --border: #252b3b; --text: #e9ebf3; --muted: #8e97ab; --accent: #8b8cff; --accent-soft: #232650; --accent-text: #0c0e16; --fail: #ff6369; --error: #b58cf0; --manual: #f2b633; --waived: #6f8cff; --pass: #45c58a; --na: #5f687b; --shadow: none; --on-badge: #0c0e16; --b-fail: #ff6369; --b-error: #b58cf0; --b-waived: #6f8cff; --b-pass: #45c58a; --b-na: #8e97ab; --fail-text: #ff6369; --manual-text: #f2b633; --pass-text: #45c58a; --error-text: #b58cf0; }
 
 * { box-sizing: border-box; }
 html { font-size: 15px; -webkit-text-size-adjust: 100%; }
@@ -173,7 +173,7 @@ table.matrix .col a { color: inherit; }
 .badge.s-FAIL { background: var(--b-fail); } .badge.s-ERROR { background: var(--b-error); } .badge.s-MANUAL { background: var(--manual); color: #2a1d00; }
 .badge.s-WAIVED { background: var(--b-waived); } .badge.s-PASS { background: var(--b-pass); }
 .pill { display: inline-block; min-width: 3.4rem; text-align: center; padding: .12rem .55rem; border-radius: 999px; font-weight: 650; font-size: .85rem; font-variant-numeric: tabular-nums; background: var(--surface-2); color: var(--muted); }
-.pill-good { background: color-mix(in srgb, var(--pass) 16%, transparent); color: var(--pass); }
+.pill-good { background: color-mix(in srgb, var(--pass) 16%, transparent); color: var(--pass-text); }
 .pill-warn { background: color-mix(in srgb, var(--manual) 18%, transparent); color: var(--manual-text); }
 .pill-bad { background: color-mix(in srgb, var(--fail) 16%, transparent); color: var(--fail-text); }
 .sev { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--muted); white-space: nowrap; }
@@ -202,7 +202,7 @@ tr.clickable:hover td { background: var(--surface-2); }
 .avatar { display: inline-grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 700; flex: none; }
 td.bar-cell { min-width: 220px; width: 42%; }
 .counts { display: flex; gap: .7rem; margin-top: .25rem; }
-.c-FAIL { color: var(--fail-text); } .c-ERROR { color: var(--error); }
+.c-FAIL { color: var(--fail-text); } .c-ERROR { color: var(--error-text); }
 td.stale { color: var(--manual-text); }
 .tablefoot { display: flex; align-items: center; justify-content: space-between; padding: .75rem 1.1rem; border-top: 1px solid var(--border); }
 
@@ -293,7 +293,7 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   table.hosts td { display: block; padding: 0; border: 0; min-width: 0; width: auto; }
   table.hosts td:first-child, table.hosts td:last-child { grid-column: 1 / -1; }
   table.hosts td:last-child { color: var(--muted); font-size: .84rem; }
-  table.hosts td.stale { color: var(--manual); }
+  table.hosts td.stale { color: var(--manual-text); }
   table.hosts td.bar-cell { min-width: 0; width: auto; }
   table.hosts tr.clickable:hover td { background: none; }
   .control-row .sev { display: none; }
@@ -325,7 +325,7 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
 /* A host in the list: where it runs, its labels, its agent, its trend */
 .hostmeta { display: flex; flex-wrap: wrap; gap: .3rem .5rem; margin-top: .15rem; padding-left: 2.1rem; }
 .chip-label { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 0 .5rem; font-size: .76rem; }
-.agent-badge { display: inline-flex; align-items: center; gap: .3rem; margin-left: .4rem; font-size: .76rem; color: var(--pass); }
+.agent-badge { display: inline-flex; align-items: center; gap: .3rem; margin-left: .4rem; font-size: .76rem; color: var(--pass-text); }
 .agent-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--pass); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pass) 22%, transparent); }
 .scorecell { white-space: nowrap; }
 .scorecell .mini { margin-right: .6rem; vertical-align: middle; }

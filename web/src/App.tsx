@@ -157,15 +157,15 @@ function Shell({ hash, dark, toggleTheme, logout }: { hash: string; dark: boolea
           </div>
         )}
         <div className="sidebar-foot">
-          <button className="ghost" onClick={toggleTheme}>
+          <button className="ghost" onClick={toggleTheme} aria-label={dark ? t("theme.light") : t("theme.dark")} title={dark ? t("theme.light") : t("theme.dark")}>
             {dark ? <IconSun /> : <IconMoon />}
             <span>{dark ? t("theme.light") : t("theme.dark")}</span>
           </button>
-          <button className="ghost" onClick={toggle}>
+          <button className="ghost" onClick={toggle} aria-label={t("lang.switch")} title={t("lang.switch")}>
             <IconGlobe />
             <span>{t("lang.switch")}</span>
           </button>
-          <button className="ghost" onClick={logout}>
+          <button className="ghost" onClick={logout} aria-label={t("nav.logout")} title={t("nav.logout")}>
             <IconLogout />
             <span>{t("nav.logout")}</span>
           </button>
