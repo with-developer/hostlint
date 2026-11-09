@@ -44,7 +44,7 @@
     <div class="try">
       <small>Try it right now: scan this machine's root, read-only, without installing anything</small>
       <div class="cmd">
-        <pre><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.28.0 scan --root /host</pre>
+        <pre tabindex="0"><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.28.0 scan --root /host</pre>
         <button class="copy" type="button" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.28.0 scan --root /host">Copy</button>
       </div>
     </div>
@@ -97,7 +97,7 @@
     </div>
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="d">$ sudo vmsctl scan</span>
+<pre tabindex="0"><span class="d">$ sudo vmsctl scan</span>
 vmsctl v0.28.0 · kisa-2026 · web-01 (Ubuntu 24.04)
 
 <span class="f">✗ FAIL</span>   U-02   Password policy [high]
@@ -133,22 +133,22 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
       <button role="tab" id="t5" aria-controls="p5" aria-selected="false" type="button">Images</button>
     </div>
     <div class="stage" style="margin-top:0">
-      <figure class="panel" id="p2" role="tabpanel" aria-labelledby="t2">
+      <div class="panel" id="p2" role="tabpanel" aria-labelledby="t2">
         <div class="frame"><img src="img/dashboard-hosts.png" width="1280" height="800" alt="The host list with search, filters, labels and a trend line for each host"></div>
-        <figcaption>Search, filter by label, sort. Each host shows its latest result and a trend line.</figcaption>
-      </figure>
-      <figure class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+        <p class="cap">Search, filter by label, sort. Each host shows its latest result and a trend line.</p>
+      </div>
+      <div class="panel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
         <div class="frame"><img src="img/dashboard-host.png" width="1280" height="800" alt="One host with its controls, the evidence of each check and how to fix a failure" loading="lazy"></div>
-        <figcaption>The evidence behind every check, how to fix a failure, the scan history and a comparison with the scan before.</figcaption>
-      </figure>
-      <figure class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+        <p class="cap">The evidence behind every check, how to fix a failure, the scan history and a comparison with the scan before.</p>
+      </div>
+      <div class="panel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
         <div class="frame"><img src="img/dashboard-matrix.png" width="1280" height="800" alt="A matrix of every control on every host" loading="lazy"></div>
-        <figcaption>Every control on every host in one table. The hosts that fail most come first.</figcaption>
-      </figure>
-      <figure class="panel" id="p5" role="tabpanel" aria-labelledby="t5" hidden>
+        <p class="cap">Every control on every host in one table. The hosts that fail most come first.</p>
+      </div>
+      <div class="panel" id="p5" role="tabpanel" aria-labelledby="t5" hidden>
         <div class="frame"><img src="img/dashboard-images.png" width="1280" height="800" alt="Container images scanned in CI, one history for each" loading="lazy"></div>
-        <figcaption>Container images your CI scans, with one history for each image.</figcaption>
-      </figure>
+        <p class="cap">Container images your CI scans, with one history for each image.</p>
+      </div>
     </div>
 
     <div class="cards" style="margin-top:32px">
@@ -168,7 +168,7 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
     </div>
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="d"># any CI</span>
+<pre tabindex="0"><span class="d"># any CI</span>
 docker save app:1.4 -o app.tar
 vmsctl scan --image-tar app.tar --fail-on high
 
@@ -204,21 +204,21 @@ vmsctl scan --image-tar app.tar --fail-on high
       <div class="step">
         <h3>Install</h3>
         <p>Download the installer, read it, then run it. It verifies the archive's SHA-256 (and the signature, when <code>cosign</code> is installed).</p>
-        <div class="cmd"><pre>curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.28.0/install.sh
+        <div class="cmd"><pre tabindex="0">curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.28.0/install.sh
 sudo sh install.sh -v v0.28.0</pre><button class="copy" type="button" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.28.0/install.sh&#10;sudo sh install.sh -v v0.28.0">Copy</button></div>
         <p style="margin-top:10px">Or use a <code>.deb</code> or <code>.rpm</code> from the <a href="https://github.com/with-developer/vmsctl/releases">releases</a>, the container image, or <code>go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.28.0</code>.</p>
       </div>
       <div class="step">
         <h3>Scan</h3>
         <p>One host, one report. For many hosts, save the JSON and build a single HTML report.</p>
-        <div class="cmd"><pre>sudo vmsctl scan
+        <div class="cmd"><pre tabindex="0">sudo vmsctl scan
 sudo vmsctl scan --format json --output web-01.json
 vmsctl report *.json --output report.html</pre><button class="copy" type="button" data-copy="sudo vmsctl scan&#10;sudo vmsctl scan --format json --output web-01.json&#10;vmsctl report *.json --output report.html">Copy</button></div>
       </div>
       <div class="step">
         <h3>See the whole fleet</h3>
         <p>Start with the demo. Then run your own server and push results from each host.</p>
-        <div class="cmd"><pre>vmsctl server demo
+        <div class="cmd"><pre tabindex="0">vmsctl server demo
 <span class="p"># later: </span>sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443</pre><button class="copy" type="button" data-copy="vmsctl server demo">Copy</button></div>
       </div>
     </div>
