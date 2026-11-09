@@ -15,7 +15,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
@@ -31,7 +31,7 @@ func sampleResult() *engine.Result {
 		SchemaVersion: 1,
 		Scan: engine.ScanInfo{
 			ID: "019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10", StartedAt: "2026-11-02T12:00:00Z", FinishedAt: "2026-11-02T12:00:01Z",
-			Tool: engine.ToolInfo{Name: "hostlint", Version: "v0.1.0"}, Target: engine.TargetInfo{Kind: "host", Root: "/"},
+			Tool: engine.ToolInfo{Name: "vmsctl", Version: "v0.1.0"}, Target: engine.TargetInfo{Kind: "host", Root: "/"},
 			Privileges: engine.Privileges{EUID: 0},
 		},
 		Host:     engine.HostInfo{Hostname: "web-01", OS: engine.OSInfo{ID: "ubuntu", VersionID: "24.04", Family: "debian", Name: "Ubuntu 24.04.1 LTS", Supported: true}},
@@ -42,7 +42,7 @@ func sampleResult() *engine.Result {
 		Controls: []engine.ControlResult{
 			{Profile: "kisa-2026", ID: "U-01", Title: "Restrict direct remote root login", Severity: engine.SeverityHigh, Status: engine.StatusFail, Checks: []string{"ssh.permit-root-login"}},
 			{Profile: "kisa-2026", ID: "U-02", Title: "Password policy", Severity: engine.SeverityHigh, Status: engine.StatusPass, Checks: []string{"accounts.password-max-age#3f9a1c2e"}},
-			{Profile: "kisa-2026", ID: "U-04", Title: "Protect password hashes", Severity: engine.SeverityHigh, Status: engine.StatusError, Reason: "accounts.shadow-file: shadow: permission denied (run hostlint as root)", Checks: []string{"accounts.shadow-file"}},
+			{Profile: "kisa-2026", ID: "U-04", Title: "Protect password hashes", Severity: engine.SeverityHigh, Status: engine.StatusError, Reason: "accounts.shadow-file: shadow: permission denied (run vmsctl as root)", Checks: []string{"accounts.shadow-file"}},
 			{Profile: "kisa-2026", ID: "U-06", Title: "Restrict su to a group", Severity: engine.SeverityHigh, Status: engine.StatusNotApplicable, Reason: "accounts.su-wheel-only: applies is false", Checks: []string{"accounts.su-wheel-only"}},
 			{Profile: "kisa-2026", ID: "U-07", Title: "Remove unneeded accounts", Severity: engine.SeverityLow, Status: engine.StatusManual, Reason: "Review the listed accounts.", Checks: []string{"accounts.review-login-accounts"}},
 		},
@@ -54,7 +54,7 @@ func sampleResult() *engine.Result {
 				Status: engine.StatusManual, StatusSource: "observed", Reason: "Review the listed accounts.",
 				Evidence: []engine.Evidence{ev("show[0]", "root (uid 0, /bin/bash)", ""), ev("show[1]", "alice (uid 1000, /bin/bash)", "")}},
 			{Ref: "accounts.shadow-file", ID: "accounts.shadow-file", Version: 1, Digest: digest, Title: "Password hashes are kept in /etc/shadow", Severity: engine.SeverityHigh,
-				Status: engine.StatusError, StatusSource: "observed", Reason: "shadow: permission denied (run hostlint as root)", Evidence: []engine.Evidence{}},
+				Status: engine.StatusError, StatusSource: "observed", Reason: "shadow: permission denied (run vmsctl as root)", Evidence: []engine.Evidence{}},
 			{Ref: "accounts.su-wheel-only", ID: "accounts.su-wheel-only", Version: 1, Digest: digest, Title: "Only members of the wheel group can use su", Severity: engine.SeverityHigh,
 				Status: engine.StatusNotApplicable, StatusSource: "observed", Reason: "applies is false", Evidence: []engine.Evidence{}},
 			{Ref: "ssh.permit-root-login", ID: "ssh.permit-root-login", Version: 1, Digest: digest, Title: "SSH does not allow direct root login", Severity: engine.SeverityHigh,

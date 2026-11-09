@@ -1,4 +1,4 @@
-// Package version reports build information for the hostlint binary.
+// Package version reports build information for the vmsctl binary.
 package version
 
 import (
@@ -8,7 +8,7 @@ import (
 )
 
 // Set at link time, e.g.
-// -ldflags "-X github.com/with-developer/hostlint/internal/version.version=v0.1.0".
+// -ldflags "-X github.com/with-developer/vmsctl/internal/version.version=v0.1.0".
 // Never modified at run time.
 var (
 	version string
@@ -16,7 +16,7 @@ var (
 	date    string
 )
 
-// Info describes a hostlint build.
+// Info describes a vmsctl build.
 type Info struct {
 	Version   string `json:"version"`
 	Commit    string `json:"commit,omitempty"`
@@ -66,7 +66,7 @@ func withBuildInfo(info Info, bi *debug.BuildInfo) Info {
 
 // String formats the info on one line.
 func (i Info) String() string {
-	s := "hostlint " + i.Version
+	s := "vmsctl " + i.Version
 	if i.Commit != "" {
 		s += " (commit " + shortCommit(i.Commit)
 		if i.Date != "" {

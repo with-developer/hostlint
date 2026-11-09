@@ -1,6 +1,6 @@
-# hostlint
+# vmsctl
 
-[![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
+[![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **eslint for Linux servers.** One static Go binary that checks a host's security configuration
@@ -9,11 +9,11 @@ it — and a dashboard that shows the whole fleet.
 
 [한국어](README.ko.md)
 
-![Animated terminal: hostlint scan lists failed controls with the evidence behind each](docs/demo/scan.gif)
+![Animated terminal: vmsctl scan lists failed controls with the evidence behind each](docs/demo/scan.gif)
 
 ```text
-$ sudo hostlint scan
-hostlint v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+$ sudo vmsctl scan
+vmsctl v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
@@ -41,13 +41,13 @@ telnet service added (the host name is shortened).
 
 ## A dashboard for the whole fleet
 
-Hosts scan themselves and push the result to `hostlint server`, which keeps the history and shows the
+Hosts scan themselves and push the result to `vmsctl server`, which keeps the history and shows the
 fleet in a web dashboard (English and Korean, light and dark, fits a phone):
 
-![A tour of the hostlint dashboard: overview, hosts, a host with evidence and how to fix it, a control, the matrix, Korean](docs/demo/dashboard-tour.gif)
+![A tour of the vmsctl dashboard: overview, hosts, a host with evidence and how to fix it, a control, the matrix, Korean](docs/demo/dashboard-tour.gif)
 
 ```sh
-hostlint server demo      # a made-up fleet of twelve hosts, nothing scanned, nothing written: open the address it prints
+vmsctl server demo      # a made-up fleet of twelve hosts, nothing scanned, nothing written: open the address it prints
 ```
 
 - **Pass rate over time** for the whole fleet (7, 30 or 90 days), and a trend line on every host.
@@ -65,7 +65,7 @@ Try it in ten seconds with the demo above, or send real results: [docs/fleet.md]
 > 🚧 **Early release.** Expect rough edges in the less common setups, and report them. See the
 > [roadmap](docs/ROADMAP.md) and the [release history](docs/RELEASING.md).
 
-## Why hostlint
+## Why vmsctl
 
 - **Every verdict shows its evidence** — the value, the file and line it came from, and whether it
   is set explicitly or a built-in default. No more "FAIL" without knowing why.
@@ -92,57 +92,59 @@ Install a release (Linux, amd64 or arm64). `install.sh` verifies the SHA-256 of 
 when `cosign` is installed, the Sigstore signature of the checksums:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh
-sudo sh install.sh -v v0.26.0     # read it first; without root, add -b DIR to choose where it goes
-sudo hostlint scan
+curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.27.0/install.sh
+sudo sh install.sh -v v0.27.0     # read it first; without root, add -b DIR to choose where it goes
+sudo vmsctl scan
 ```
 
 Or run the image (the host's root mounted read-only; [docs/container.md](docs/container.md)):
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.27.0 scan --root /host
 ```
 
-Each [release](https://github.com/with-developer/hostlint/releases) also has `.deb` and `.rpm`
-packages, SBOMs and build provenance (`gh attestation verify FILE -R with-developer/hostlint`).
+Each [release](https://github.com/with-developer/vmsctl/releases) also has `.deb` and `.rpm`
+packages, SBOMs and build provenance (`gh attestation verify FILE -R with-developer/vmsctl`; releases up to v0.26.0
+were published as hostlint, so use `-R with-developer/hostlint` for those). Coming from hostlint? See
+[docs/migrating-from-hostlint.md](docs/migrating-from-hostlint.md).
 To build instead (Go 1.26 or later; the binary itself has no dependencies):
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.26.0
-sudo "$(go env GOPATH)/bin/hostlint" scan
+go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.27.0
+sudo "$(go env GOPATH)/bin/vmsctl" scan
 ```
 
 Without root, checks that need protected files (such as `/etc/shadow`) report `ERROR`.
 
 ```sh
 # Machine-readable results
-sudo hostlint scan --format json --output web-01.json
+sudo vmsctl scan --format json --output web-01.json
 
 # A mounted root filesystem (an image, a VM disk); live-only checks report ERROR or NOT_APPLICABLE
-sudo hostlint scan --root /mnt/image
+sudo vmsctl scan --root /mnt/image
 
 # A container image, from the archive docker save wrote: nothing is mounted, run or written
-docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
+docker save app:1.4 -o app.tar && vmsctl scan --image-tar app.tar --fail-on high
 
 # CI: fail only on high-severity controls (GitHub Action, GitLab and others: docs/ci.md)
-sudo hostlint scan --fail-on high --format junit --output hostlint.xml
+sudo vmsctl scan --fail-on high --format junit --output vmsctl.xml
 
 # One HTML report for many hosts: a single file that makes no network requests
-hostlint report results/*.json --output report.html
+vmsctl report results/*.json --output report.html
 
 # What a failed control means and how to fix it
-hostlint explain U-02 ssh.permit-root-login
+vmsctl explain U-02 ssh.permit-root-login
 
 # What changed since the last scan: new failures, fixes, and the checks behind them
-hostlint diff before.json after.json
-hostlint diff baseline.json current.json --fail-on-regression   # exit 1 when a control got worse
+vmsctl diff before.json after.json
+vmsctl diff baseline.json current.json --fail-on-regression   # exit 1 when a control got worse
 
 # A fleet server that collects results from many hosts (early; see docs/fleet.md)
-hostlint server run --db server.db --listen :8443
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443
+vmsctl server run --db server.db --listen :8443
+sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443
 
 # Pick the profile, tighten thresholds and accept findings you decided to live with
-sudo hostlint scan --config hostlint.yaml
+sudo vmsctl scan --config vmsctl.yaml
 ```
 
 The checks that decide each result are listed in the output; `--config` and the file format are
@@ -157,7 +159,7 @@ described in [docs/configuration.md](docs/configuration.md).
 | `--pack DIR` | Load a policy pack: your own checks and profiles ([docs/packs.md](docs/packs.md)); select its profile with `-p` |
 | `--root` | Scan a filesystem mounted at this directory (it must hold an operating system) |
 | `--image-tar` | Scan the filesystem of a container image from this archive ([docs/images.md](docs/images.md)); with `--push` the image is an asset of its own on the fleet server, `--name` gives it a name |
-| `--config` | Configuration file (default: `./hostlint.yaml`, then `/etc/hostlint/hostlint.yaml`, if present) |
+| `--config` | Configuration file (default: `./vmsctl.yaml`, then `/etc/vmsctl/vmsctl.yaml`, if present) |
 | `--label key=value` | Add a label to the host in the report |
 | `--color` | `auto` (default), `always` or `never` |
 | `-v, --verbose` | Also list passing and not-applicable controls |
@@ -211,11 +213,11 @@ IDs (`ES-01`–`ES-24`), mostly over the checks of the other profile plus eight 
 the firewall and the updates; those do not apply to a container image, which has no kernel, firewall or updates of its own.
 
 Your own standard goes into a [policy pack](docs/packs.md): a directory of checks and profiles in the same
-YAML format, tested with `hostlint pack test`, reviewed with `hostlint pack show`, used with `hostlint scan
+YAML format, tested with `vmsctl pack test`, reviewed with `vmsctl pack show`, used with `vmsctl scan
 --pack`. A pack adds no capability (it cannot run anything or read anything a built-in check cannot), and its
 results name the pack and its digest.
 
-Titles and descriptions are hostlint's own; profiles reference control IDs only.
+Titles and descriptions are vmsctl's own; profiles reference control IDs only.
 
 ## The dashboard in pictures
 
@@ -235,7 +237,7 @@ How it works, the API, signing, notifications and the agent: [docs/fleet.md](doc
 
 ## Principles
 
-hostlint is built around a few rules that are not negotiable — see the [vision](docs/VISION.md)
+vmsctl is built around a few rules that are not negotiable — see the [vision](docs/VISION.md)
 and the [architecture decisions](docs/adr/):
 
 1. Observation only — no code path changes the scanned host ([ADR 0004](docs/adr/0004-observation-only.md)).
@@ -246,12 +248,12 @@ and the [architecture decisions](docs/adr/):
 
 ## Status
 
-hostlint is under active development. The KISA 2026 profile (U-01–U-67), the
+vmsctl is under active development. The KISA 2026 profile (U-01–U-67), the
 collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the configuration file
 with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`), a
 container test matrix over every supported distribution, scanning container images
 ([docs/images.md](docs/images.md)), a GitHub Action ([docs/ci.md](docs/ci.md)) and the fleet server with its
-dashboard, signed results and webhook ([docs/fleet.md](docs/fleet.md)) are in place, and v0.26.0 is the
+dashboard, signed results and webhook ([docs/fleet.md](docs/fleet.md)) are in place, and v0.27.0 is the
 latest release. The outbound agent for on-demand scans ([docs/fleet.md](docs/fleet.md)) and a container image
 ([docs/container.md](docs/container.md)) are in place too. See the [roadmap](docs/ROADMAP.md).
 

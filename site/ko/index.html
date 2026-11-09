@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>hostlint — 리눅스 서버를 위한 eslint</title>
+<title>vmsctl — 리눅스 서버를 위한 eslint</title>
 <meta name="description" content="리눅스 서버의 보안 설정을 KISA 2026 같은 기준에 맞춰 점검하고, 모든 판정에 근거를 붙입니다. 바이너리 하나로 시작해 서버 전체를 대시보드로 봅니다.">
-<meta property="og:title" content="hostlint — 리눅스 서버를 위한 eslint">
+<meta property="og:title" content="vmsctl — 리눅스 서버를 위한 eslint">
 <meta property="og:description" content="서버 취약점 점검을 코드 린트처럼. 모든 판정에 근거가 붙고, 바이너리 하나로 시작합니다.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="../style.css">
@@ -17,14 +17,14 @@
   <div class="wrap">
     <a class="brand" href="#">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
-      hostlint
+      vmsctl
     </a>
     <nav>
       <a class="opt" href="#dashboard">대시보드</a>
       <a class="opt" href="#ci">CI</a>
       <a class="opt" href="#start">설치</a>
-      <a class="opt" href="https://github.com/with-developer/hostlint/blob/main/README.ko.md">문서</a>
-      <a href="https://github.com/with-developer/hostlint">GitHub</a>
+      <a class="opt" href="https://github.com/with-developer/vmsctl/blob/main/README.ko.md">문서</a>
+      <a href="https://github.com/with-developer/vmsctl">GitHub</a>
       <a class="lang" href="../" hreflang="en">English</a>
     </nav>
   </div>
@@ -38,20 +38,20 @@
     <p class="lead">바이너리 하나가 서버의 보안 설정을 읽고 항목마다 결과를 냅니다. 모든 판정에는 근거로 값과 파일, 줄 번호가 붙습니다. 읽기만 하므로 서버는 전혀 바뀌지 않습니다.</p>
     <div class="cta">
       <a class="btn p" href="#start">시작하기</a>
-      <a class="btn" href="https://github.com/with-developer/hostlint">GitHub에서 보기</a>
+      <a class="btn" href="https://github.com/with-developer/vmsctl">GitHub에서 보기</a>
     </div>
 
     <div class="try">
       <small>설치 없이 지금 바로: 이 머신의 루트를 읽기 전용으로 점검합니다</small>
       <div class="cmd">
-        <pre><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host</pre>
-        <button class="copy" type="button" data-done="복사됨" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host">복사</button>
+        <pre><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.27.0 scan --root /host</pre>
+        <button class="copy" type="button" data-done="복사됨" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.27.0 scan --root /host">복사</button>
       </div>
     </div>
 
     <div class="stage">
       <div class="frame">
-        <div class="bar"><i></i><i></i><i></i><span>hostlint server · 개요</span></div>
+        <div class="bar"><i></i><i></i><i></i><span>vmsctl server · 개요</span></div>
         <img src="../img/ko/dashboard-overview.png" width="1280" height="800" alt="대시보드의 개요 화면: 통과율 54%, 상태별 결과, 30일간의 통과율 추이, 호스트 수">
       </div>
     </div>
@@ -62,7 +62,7 @@
   <div class="wrap">
     <div class="center">
       <h2>확인할 수 있는 결과만 믿을 수 있습니다</h2>
-      <p class="sub">대부분의 점검 도구는 판정만 알려 주고 이유는 직접 찾게 합니다. hostlint는 반대로 만들었습니다.</p>
+      <p class="sub">대부분의 점검 도구는 판정만 알려 주고 이유는 직접 찾게 합니다. vmsctl은 반대로 만들었습니다.</p>
     </div>
     <div class="cards">
       <div class="card">
@@ -92,13 +92,13 @@
       <ul class="checks">
         <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>서버도, 이미지도.</b> 실행 중인 시스템, 다른 곳에 마운트한 파일시스템, <code>docker save</code>로 만든 컨테이너 이미지 아카이브를 점검합니다.</span></li>
         <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>출력 형식이 다양합니다.</b> 표, JSON(스키마 제공), SARIF, JUnit, 여러 서버를 한 파일로 묶는 HTML 보고서.</span></li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>사유를 남기는 예외.</b> 안고 가기로 한 항목은 <code>hostlint.yaml</code>에 만료일과 함께 적어 두고, 결과에는 근거가 그대로 남습니다.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>사유를 남기는 예외.</b> 안고 가기로 한 항목은 <code>vmsctl.yaml</code>에 만료일과 함께 적어 두고, 결과에는 근거가 그대로 남습니다.</span></li>
       </ul>
     </div>
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="d">$ sudo hostlint scan</span>
-hostlint v0.26.0 · kisa-2026 · web-01 (Ubuntu 24.04)
+<pre><span class="d">$ sudo vmsctl scan</span>
+vmsctl v0.27.0 · kisa-2026 · web-01 (Ubuntu 24.04)
 
 <span class="f">✗ FAIL</span>   U-02   Password policy [high]
     <span class="f">✗</span> accounts.password-min-length
@@ -123,7 +123,7 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
   <div class="wrap">
     <div class="center">
       <h2>모든 서버를 한 화면에서</h2>
-      <p class="sub">각 서버가 스스로 점검해 결과를 <code>hostlint server</code>로 보냅니다. 서버는 이력을 쌓아 두고, 통과율의 변화, 가장 많이 실패하는 항목, 직전 점검보다 나빠진 항목, 그리고 결과마다 근거와 조치 방법을 보여 줍니다.</p>
+      <p class="sub">각 서버가 스스로 점검해 결과를 <code>vmsctl server</code>로 보냅니다. 서버는 이력을 쌓아 두고, 통과율의 변화, 가장 많이 실패하는 항목, 직전 점검보다 나빠진 항목, 그리고 결과마다 근거와 조치 방법을 보여 줍니다.</p>
     </div>
 
     <div class="tabs" role="tablist" aria-label="대시보드 화면">
@@ -152,9 +152,9 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
     </div>
 
     <div class="cards" style="margin-top:32px">
-      <div class="card"><h3>서버가 호스트에 접속하지 않습니다</h3><p>결과는 호스트가 보냅니다. 대시보드에서 지금 바로 점검하고 싶은 서버는 <code>hostlint agent</code>가 바깥으로 연결해 두고 “지금 스캔” 요청을 기다립니다. 요청할 수 있는 것은 그 호스트가 허용한 프로파일뿐입니다.</p></div>
+      <div class="card"><h3>서버가 호스트에 접속하지 않습니다</h3><p>결과는 호스트가 보냅니다. 대시보드에서 지금 바로 점검하고 싶은 서버는 <code>vmsctl agent</code>가 바깥으로 연결해 두고 “지금 스캔” 요청을 기다립니다. 요청할 수 있는 것은 그 호스트가 허용한 프로파일뿐입니다.</p></div>
       <div class="card"><h3>서명된 결과</h3><p>호스트가 결과에 서명하면, 나중에 서버가 침해당해도 그 호스트가 무엇을 보고했는지 증거로 남습니다. 서버는 해시로 이어진 감사 기록도 보관합니다.</p></div>
-      <div class="card"><h3>호스트 없이 먼저 써 보기</h3><p><code>hostlint server demo</code>를 실행하면 가상의 서버 12대가 담긴 서버가 뜨고, 로그인에 쓸 토큰을 알려 줍니다. 한국어와 영어, 라이트와 다크를 지원합니다.</p></div>
+      <div class="card"><h3>호스트 없이 먼저 써 보기</h3><p><code>vmsctl server demo</code>를 실행하면 가상의 서버 12대가 담긴 서버가 뜨고, 로그인에 쓸 토큰을 알려 줍니다. 한국어와 영어, 라이트와 다크를 지원합니다.</p></div>
     </div>
   </div>
 </section>
@@ -163,21 +163,21 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
   <div class="wrap two">
     <div>
       <h2>배포하기 전에 이미지를 점검하세요</h2>
-      <p class="sub" style="margin-bottom:0"><code>hostlint scan --image-tar</code>는 데몬도 레지스트리도 없이 <code>docker save</code>나 OCI 아카이브를 읽고, 그 이미지로 띄운 컨테이너 안에서 점검한 것과 같은 결과를 냅니다. 이 저장소는 GitHub Action이기도 해서, 검증된 릴리스를 설치하고 SARIF를 코드 스캐닝에 올리며 정해 둔 심각도 이상이면 빌드를 실패시킵니다.</p>
-      <p style="margin-top:20px"><a href="https://github.com/with-developer/hostlint/blob/main/docs/images.ko.md">컨테이너 이미지 점검</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/ci.ko.md">CI에서 hostlint 쓰기</a></p>
+      <p class="sub" style="margin-bottom:0"><code>vmsctl scan --image-tar</code>는 데몬도 레지스트리도 없이 <code>docker save</code>나 OCI 아카이브를 읽고, 그 이미지로 띄운 컨테이너 안에서 점검한 것과 같은 결과를 냅니다. 이 저장소는 GitHub Action이기도 해서, 검증된 릴리스를 설치하고 SARIF를 코드 스캐닝에 올리며 정해 둔 심각도 이상이면 빌드를 실패시킵니다.</p>
+      <p style="margin-top:20px"><a href="https://github.com/with-developer/vmsctl/blob/main/docs/images.ko.md">컨테이너 이미지 점검</a> · <a href="https://github.com/with-developer/vmsctl/blob/main/docs/ci.ko.md">CI에서 vmsctl 쓰기</a></p>
     </div>
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
 <pre><span class="d"># 어느 CI에서든</span>
 docker save app:1.4 -o app.tar
-hostlint scan --image-tar app.tar --fail-on high
+vmsctl scan --image-tar app.tar --fail-on high
 
 <span class="d"># GitHub Actions</span>
-- uses: with-developer/hostlint@v0.26.0
+- uses: with-developer/vmsctl@v0.27.0
   with:
     image: app:ci
     fail-on: high
-    sarif-file: hostlint.sarif</pre>
+    sarif-file: vmsctl.sarif</pre>
     </div>
   </div>
 </section>
@@ -204,22 +204,22 @@ hostlint scan --image-tar app.tar --fail-on high
       <div class="step">
         <h3>설치</h3>
         <p>설치 스크립트를 내려받아 내용을 읽어 본 뒤 실행하세요. 아카이브의 SHA-256을 확인하고, <code>cosign</code>이 설치되어 있으면 서명도 확인합니다.</p>
-        <div class="cmd"><pre>curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh
-sudo sh install.sh -v v0.26.0</pre><button class="copy" type="button" data-done="복사됨" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh&#10;sudo sh install.sh -v v0.26.0">복사</button></div>
-        <p style="margin-top:10px"><a href="https://github.com/with-developer/hostlint/releases">릴리스</a>의 <code>.deb</code>·<code>.rpm</code> 패키지, 컨테이너 이미지, <code>go install github.com/with-developer/hostlint/cmd/hostlint@v0.26.0</code>로도 설치할 수 있습니다.</p>
+        <div class="cmd"><pre>curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.27.0/install.sh
+sudo sh install.sh -v v0.27.0</pre><button class="copy" type="button" data-done="복사됨" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.27.0/install.sh&#10;sudo sh install.sh -v v0.27.0">복사</button></div>
+        <p style="margin-top:10px"><a href="https://github.com/with-developer/vmsctl/releases">릴리스</a>의 <code>.deb</code>·<code>.rpm</code> 패키지, 컨테이너 이미지, <code>go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.27.0</code>로도 설치할 수 있습니다.</p>
       </div>
       <div class="step">
         <h3>점검</h3>
         <p>서버 한 대는 보고서 하나로 끝납니다. 여러 대는 JSON으로 저장해 두었다가 HTML 보고서 하나로 묶으세요.</p>
-        <div class="cmd"><pre>sudo hostlint scan
-sudo hostlint scan --format json --output web-01.json
-hostlint report *.json --output report.html</pre><button class="copy" type="button" data-done="복사됨" data-copy="sudo hostlint scan&#10;sudo hostlint scan --format json --output web-01.json&#10;hostlint report *.json --output report.html">복사</button></div>
+        <div class="cmd"><pre>sudo vmsctl scan
+sudo vmsctl scan --format json --output web-01.json
+vmsctl report *.json --output report.html</pre><button class="copy" type="button" data-done="복사됨" data-copy="sudo vmsctl scan&#10;sudo vmsctl scan --format json --output web-01.json&#10;vmsctl report *.json --output report.html">복사</button></div>
       </div>
       <div class="step">
         <h3>서버 전체 보기</h3>
         <p>먼저 데모로 둘러보고, 마음에 들면 직접 서버를 띄워 각 호스트에서 결과를 보내세요.</p>
-        <div class="cmd"><pre>hostlint server demo
-<span class="p"># 이어서: </span>sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443</pre><button class="copy" type="button" data-done="복사됨" data-copy="hostlint server demo">복사</button></div>
+        <div class="cmd"><pre>vmsctl server demo
+<span class="p"># 이어서: </span>sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443</pre><button class="copy" type="button" data-done="복사됨" data-copy="vmsctl server demo">복사</button></div>
       </div>
     </div>
   </div>
@@ -228,12 +228,12 @@ hostlint report *.json --output report.html</pre><button class="copy" type="butt
 
 <footer>
   <div class="wrap">
-    <span>Apache-2.0 라이선스 · <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></span>
+    <span>Apache-2.0 라이선스 · <a href="https://github.com/with-developer/vmsctl">github.com/with-developer/vmsctl</a></span>
     <span>
-      <a href="https://github.com/with-developer/hostlint/blob/main/README.ko.md">README</a> ·
-      <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.ko.md">hostlint.yaml</a> ·
-      <a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">규칙 참조</a> ·
-      <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">보안</a>
+      <a href="https://github.com/with-developer/vmsctl/blob/main/README.ko.md">README</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/docs/configuration.ko.md">vmsctl.yaml</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/docs/rules.md">규칙 참조</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/SECURITY.md">보안</a>
     </span>
   </div>
 </footer>

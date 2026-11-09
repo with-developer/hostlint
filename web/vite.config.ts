@@ -13,8 +13,8 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: false,
   },
   server: {
-    // `npm run dev` talks to a hostlint server on this address.
-    proxy: { "/api": { target: loadEnv(mode, ".", "").HOSTLINT_SERVER || "http://127.0.0.1:8443", changeOrigin: false } },
+    // `npm run dev` talks to a vmsctl server on this address.
+    proxy: { "/api": { target: loadEnv(mode, ".", "").VMSCTL_SERVER || "http://127.0.0.1:8443", changeOrigin: false } },
   },
   test: { environment: "node" },
 }));

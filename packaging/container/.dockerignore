@@ -1,4 +1,4 @@
 # the build context of the container image is ctx/ (the workflow fills it)
 *
 !linux-*/
-!linux-*/hostlint
+!linux-*/vmsctl

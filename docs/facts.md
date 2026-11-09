@@ -7,7 +7,7 @@ list (`sshd.match[].criteria`, written with `over:` and an element variable in a
 value under any key of a map (`sshd.config{}.value`, written `sshd.config.permitrootlogin.value` or
 `sshd.config["permitrootlogin"].value` in a rule). A `setting` is a configuration value with `value`, `explicit`
 and `source`; one that is not set and has no known default is absent from its map, so a rule that reads it
-fails with `ERROR` instead of guessing. `hostlint pack facts` prints the same names.
+fails with `ERROR` instead of guessing. `vmsctl pack facts` prints the same names.
 
 The fact types are the contract of rule authors, but before v1.0 they can change in a minor release.
 
@@ -243,7 +243,7 @@ Packages are the `packages` facts: what the package manager has installed.
 
 ## `pam`
 
-PAM are the `pam` facts: the PAM stacks of the services hostlint checks and
+PAM are the `pam` facts: the PAM stacks of the services vmsctl checks and
 the policies they enforce. Policies are decided here by evaluating each
 stack the way libpam does (controls, jumps, substacks) for the situation
 that matters, with each module's version-specific configuration, so rules

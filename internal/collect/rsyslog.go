@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Rsyslog is the `rsyslog` facts: the logging rules of /etc/rsyslog.conf and
@@ -64,7 +64,7 @@ func (rsyslogCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts
 			return engine.Facts{Value: r, Complete: true}, nil
 		}
 		if errors.Is(err, fs.ErrPermission) {
-			return engine.Facts{}, errors.New("rsyslog.conf cannot be read (run hostlint as root)")
+			return engine.Facts{}, errors.New("rsyslog.conf cannot be read (run vmsctl as root)")
 		}
 		return engine.Facts{}, err
 	}

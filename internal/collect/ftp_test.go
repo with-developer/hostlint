@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func collectFTP(t *testing.T, m *hostfs.MemFS) (*FTP, bool) {
@@ -154,7 +154,7 @@ func TestFTPBooleansAndAbsence(t *testing.T) {
 		t.Errorf("%+v complete %v", f, complete)
 	}
 	m := vsftpd("x=y\n", nil).SetError("/etc/vsftpd.conf", fsErrPermission)
-	if _, err := (ftpCollector{}).Collect(context.Background(), hostfs.NewTestHost(m, nil, false)); err == nil || !strings.Contains(err.Error(), "run hostlint as root") {
+	if _, err := (ftpCollector{}).Collect(context.Background(), hostfs.NewTestHost(m, nil, false)); err == nil || !strings.Contains(err.Error(), "run vmsctl as root") {
 		t.Errorf("err = %v", err)
 	}
 }

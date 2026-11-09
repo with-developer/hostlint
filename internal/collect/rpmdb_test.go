@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // rpmFixture is an rpm SQLite database built on Rocky Linux 9 with the

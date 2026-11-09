@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func packagesFacts(t *testing.T, h *hostfs.Host) (*Packages, error) {
@@ -110,7 +110,7 @@ func TestPackagesDpkgJournal(t *testing.T) {
 	}
 }
 
-// Without a database hostlint reads there are no package facts, rather than
+// Without a database vmsctl reads there are no package facts, rather than
 // an empty list that would make every package look absent.
 func TestPackagesUnavailable(t *testing.T) {
 	tests := []struct {

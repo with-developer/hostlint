@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 func TestScanRejectsBadFlags(t *testing.T) {

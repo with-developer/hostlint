@@ -59,7 +59,7 @@ func (s *Server) webHandler() http.Handler {
 		if s.cfg.Web == nil {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			w.WriteHeader(http.StatusNotFound)
-			_, _ = io.WriteString(w, "hostlint server: this build has no dashboard; the API is at /api/v1 (see docs/fleet.md)\n")
+			_, _ = io.WriteString(w, "vmsctl server: this build has no dashboard; the API is at /api/v1 (see docs/fleet.md)\n")
 			return
 		}
 		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")

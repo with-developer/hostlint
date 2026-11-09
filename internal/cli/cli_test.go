@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/version"
+	"github.com/with-developer/vmsctl/internal/version"
 )
 
 func run(ctx context.Context, t *testing.T, args ...string) (code int, stdout, stderr string) {
@@ -29,12 +29,12 @@ func TestExecute(t *testing.T) {
 		wantStderr string // substring; "" means stderr must be empty
 	}{
 		{name: "no args prints help", args: nil, wantCode: ExitOK, wantStdout: "Usage:"},
-		{name: "version", args: []string{"version"}, wantCode: ExitOK, wantStdout: "hostlint "},
-		{name: "--version flag", args: []string{"--version"}, wantCode: ExitOK, wantStdout: "hostlint "},
+		{name: "version", args: []string{"version"}, wantCode: ExitOK, wantStdout: "vmsctl "},
+		{name: "--version flag", args: []string{"--version"}, wantCode: ExitOK, wantStdout: "vmsctl "},
 		{name: "help topic", args: []string{"help", "version"}, wantCode: ExitOK, wantStdout: "Print version information"},
 		{name: "unknown help topic", args: []string{"help", "nope"}, wantCode: ExitError, wantStderr: `unknown help topic "nope"`},
 		{name: "help topic with extra args", args: []string{"help", "version", "x"}, wantCode: ExitError, wantStderr: "unknown help topic"},
-		{name: "version rejects args", args: []string{"version", "extra"}, wantCode: ExitError, wantStderr: "hostlint: "},
+		{name: "version rejects args", args: []string{"version", "extra"}, wantCode: ExitError, wantStderr: "vmsctl: "},
 		{name: "unknown command", args: []string{"nope"}, wantCode: ExitError, wantStderr: `unknown command "nope"`},
 		{name: "unknown flag", args: []string{"--nope"}, wantCode: ExitError, wantStderr: "unknown flag"},
 	}
@@ -87,7 +87,7 @@ func TestExecuteLateSignalKeepsFinishedResult(t *testing.T) {
 	}
 }
 
-// Cobra's completion error path appends to $BASH_COMP_DEBUG_FILE; hostlint
+// Cobra's completion error path appends to $BASH_COMP_DEBUG_FILE; vmsctl
 // must never create files on the host (ADR 0004).
 func TestCompletionDoesNotWriteDebugFile(t *testing.T) {
 	debugFile := filepath.Join(t.TempDir(), "comp-debug.log")

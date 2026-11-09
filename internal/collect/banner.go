@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Banner is the `banner` facts: the texts shown before and after a login.

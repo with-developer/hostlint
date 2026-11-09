@@ -13,8 +13,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // NFS is the `nfs` facts: /etc/exports and /etc/exports.d/*.exports. They
@@ -79,7 +79,7 @@ func (nfsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 			continue
 		case err != nil:
 			if errors.Is(err, fs.ErrPermission) {
-				return engine.Facts{}, fmt.Errorf("%s cannot be read (run hostlint as root)", name)
+				return engine.Facts{}, fmt.Errorf("%s cannot be read (run vmsctl as root)", name)
 			}
 			return engine.Facts{}, err
 		}

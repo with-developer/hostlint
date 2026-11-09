@@ -293,7 +293,7 @@ func (s *Server) handleAgentPoll(w http.ResponseWriter, r *http.Request) {
 	}
 	cred, err := s.cfg.Store.Authenticate(ctx, bearer(r), ScopeIngest)
 	if errors.Is(err, ErrUnauthorized) {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="vmsctl"`)
 		writeError(w, http.StatusUnauthorized, "a valid ingest token is required")
 		return
 	}
@@ -458,7 +458,7 @@ func (s *Server) handleScanRequest(w http.ResponseWriter, r *http.Request) {
 	cred, err := s.writeCredential(r)
 	switch {
 	case errors.Is(err, ErrUnauthorized):
-		w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="vmsctl"`)
 		writeError(w, http.StatusUnauthorized, "an operator token or the session of one is required")
 		return
 	case errors.Is(err, ErrForbidden):

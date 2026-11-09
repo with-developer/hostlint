@@ -16,7 +16,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // Formats lists the supported output formats.
@@ -99,7 +99,7 @@ func writeFile(path string, write func(io.Writer) error) error {
 	if _, err := rand.Read(suffix[:]); err != nil {
 		return err
 	}
-	tmpPath := filepath.Join(filepath.Dir(path), ".hostlint-report-"+hex.EncodeToString(suffix[:]))
+	tmpPath := filepath.Join(filepath.Dir(path), ".vmsctl-report-"+hex.EncodeToString(suffix[:]))
 	tmp, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode) //nolint:gosec // G302/G304: beside the output path the user gave
 	if err != nil {
 		return err

@@ -5,7 +5,7 @@ title_ko: 방화벽 규칙 검토
 severity: medium
 description: >-
   Asks for the rules to be read when the only firewall found is an nftables, netfilter-persistent or iptables service: a service that starts at boot
-  says nothing about what its rules allow, and hostlint does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a
+  says nothing about what its rules allow, and vmsctl does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a
   person set with their commands, nor when no such service is enabled (the check before it fails then).
 rationale: >-
   A firewall whose rules accept everything protects nothing, and a default of "accept" is what a fresh nftables or iptables setup has.

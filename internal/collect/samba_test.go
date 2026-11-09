@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func collectSamba(t *testing.T, m *hostfs.MemFS) (*Samba, bool) {
@@ -145,7 +145,7 @@ func TestSambaIncompleteAndAbsent(t *testing.T) {
 		t.Errorf("%+v complete %v", s, complete)
 	}
 	bad := smbConf("[a]\n").SetError(sambaConfig, fsErrPermission)
-	if _, err := (sambaCollector{}).Collect(context.Background(), hostfs.NewTestHost(bad, nil, false)); err == nil || !strings.Contains(err.Error(), "run hostlint as root") {
+	if _, err := (sambaCollector{}).Collect(context.Background(), hostfs.NewTestHost(bad, nil, false)); err == nil || !strings.Contains(err.Error(), "run vmsctl as root") {
 		t.Errorf("err = %v", err)
 	}
 }

@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
-// SARIF 2.1.0 (OASIS), the subset hostlint emits: one rule per check, one
+// SARIF 2.1.0 (OASIS), the subset vmsctl emits: one rule per check, one
 // result per failing or erroring check, located at the files its evidence
 // cites.
 type sarifLog struct {
@@ -87,8 +87,8 @@ type sarifRegion struct {
 func writeSARIF(w io.Writer, res *engine.Result) error {
 	run := sarifRun{
 		Tool: sarifTool{Driver: sarifDriver{
-			Name: "hostlint", Version: res.Scan.Tool.Version,
-			InformationURI: "https://github.com/with-developer/hostlint",
+			Name: "vmsctl", Version: res.Scan.Tool.Version,
+			InformationURI: "https://github.com/with-developer/vmsctl",
 			Rules:          []sarifRule{},
 		}},
 		Results: []sarifResult{},

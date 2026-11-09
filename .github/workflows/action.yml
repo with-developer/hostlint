@@ -25,10 +25,10 @@ jobs:
         with:
           image: debian:12
           fail-on: none
-          sarif-file: hostlint.sarif
+          sarif-file: vmsctl.sarif
           version: v0.12.0
       - name: The SARIF file is there and is JSON
-        run: python3 -c 'import json; r = json.load(open("hostlint.sarif")); assert r["runs"][0]["results"], "no results"'
+        run: python3 -c 'import json; r = json.load(open("vmsctl.sarif")); assert r["runs"][0]["results"], "no results"'
       - name: A gate that fails fails the step
         id: gate
         continue-on-error: true
@@ -60,10 +60,10 @@ jobs:
           pack: examples/policy-pack
           profile: kisa-2026 x-acme-baseline
           fail-on: none
-          sarif-file: hostlint.sarif
+          sarif-file: vmsctl.sarif
           version: v0.15.0
       - name: The SARIF file is there
-        run: python3 -c 'import json; r = json.load(open("hostlint.sarif")); assert r["runs"][0]["results"], "no results"'
+        run: python3 -c 'import json; r = json.load(open("vmsctl.sarif")); assert r["runs"][0]["results"], "no results"'
       - name: A pack without its profile is refused
         id: noprofile
         continue-on-error: true

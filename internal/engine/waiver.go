@@ -22,7 +22,7 @@ type Waiver struct {
 	Revision int
 	// Digest is the digest of the profile a waiver of a control of a pack's profile was written for: a
 	// pack author can change a mapping without changing the revision, so the waiver is bound to the
-	// content (Content.ProfileDigest, shown by `hostlint pack show`).
+	// content (Content.ProfileDigest, shown by `vmsctl pack show`).
 	Digest string
 	Reason string
 	// Expires is the last day the waiver applies (a date, UTC).

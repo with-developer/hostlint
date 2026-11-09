@@ -1,6 +1,6 @@
 # Configuration
 
-hostlint runs without configuration. A `hostlint.yaml` lets you pick the profile, make checks
+vmsctl runs without configuration. A `vmsctl.yaml` lets you pick the profile, make checks
 stricter, accept findings you have decided to live with (waivers), and record a human verdict for
 checks only a person can judge (attestations).
 
@@ -40,19 +40,19 @@ attestations:
     reason: Reviewed the login accounts with the team
 ```
 
-## Where hostlint looks
+## Where vmsctl looks
 
 1. the file given with `--config` (it must exist);
-2. `hostlint.yaml` in the working directory;
-3. `/etc/hostlint/hostlint.yaml`.
+2. `vmsctl.yaml` in the working directory;
+3. `/etc/vmsctl/vmsctl.yaml`.
 
-The first one found is used; none is fine. The file belongs to the machine running hostlint: with
+The first one found is used; none is fine. The file belongs to the machine running vmsctl: with
 `--root`, it is not read from the mounted filesystem.
 
-Waivers can hide findings, so hostlint refuses a file that someone else could have planted or
-changed: it must be a regular file owned by root or by the user running hostlint, and not
-writable by group or others. Running `sudo hostlint scan` in a directory with a `hostlint.yaml`
-that you own fails for this reason; make root its owner (`sudo chown root: hostlint.yaml`).
+Waivers can hide findings, so vmsctl refuses a file that someone else could have planted or
+changed: it must be a regular file owned by root or by the user running vmsctl, and not
+writable by group or others. Running `sudo vmsctl scan` in a directory with a `vmsctl.yaml`
+that you own fails for this reason; make root its owner (`sudo chown root: vmsctl.yaml`).
 
 The file is read strictly. Unknown keys, checks, controls and parameters are errors, so a typo
 never drops a waiver silently. `--profile` on the command line wins over `profile:`.
@@ -61,7 +61,7 @@ never drops a waiver silently. `--profile` on the command line wins over `profil
 
 Some checks have thresholds, declared under `params` in the check's file in [rules/](../rules/)
 (for example `max_days` in `rules/accounts/password-max-age.yaml`). The profile sets the
-values it requires; `params:` in `hostlint.yaml` can override integer parameters, but only in
+values it requires; `params:` in `vmsctl.yaml` can override integer parameters, but only in
 the stricter direction (`stricter: lower` or `higher` in the check). A weaker value is an error
 that points you to waivers, so a `PASS` always means at least the profile's thresholds.
 
@@ -101,11 +101,11 @@ servers in use). They are `MANUAL`. After you have looked, an attestation record
 
 An attestation is not a blanket exception. It is bound to what you looked at:
 
-- `digest` is the digest of the check's logic. It changes when a hostlint release changes the check.
+- `digest` is the digest of the check's logic. It changes when a vmsctl release changes the check.
 - `evidence_digest` is the digest of the full value the check shows (not the truncated evidence in
   the report). It changes when the accounts, servers or files it lists change.
 
-Read both from a scan's JSON result (`hostlint scan --format json`): `checks[].digest` and
+Read both from a scan's JSON result (`vmsctl scan --format json`): `checks[].digest` and
 `checks[].evidenceDigest` of the check. A check that shows nothing has no `evidenceDigest`; leave
 `evidence_digest` out, and the attestation applies until it expires.
 

@@ -98,7 +98,7 @@ func TestOSFSDeniesHardLinkToShadow(t *testing.T) {
 }
 
 // With fs.protected_hardlinks off, a user can hard-link a file they cannot
-// read into their own directory; hostlint refuses such links.
+// read into their own directory; vmsctl refuses such links.
 func TestOSFSDeniesForeignHardLink(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("needs root to create files owned by another user")

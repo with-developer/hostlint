@@ -12,14 +12,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/collect"
-	"github.com/with-developer/hostlint/internal/config"
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/collect"
+	"github.com/with-developer/vmsctl/internal/config"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
-// packTestError means `hostlint pack test` found a problem with a pack that loads: a failing test, or a
+// packTestError means `vmsctl pack test` found a problem with a pack that loads: a failing test, or a
 // pack nothing can select.
 type packTestError struct{ problems int }
 
@@ -32,9 +32,9 @@ func newPackCommand() *cobra.Command {
 		Use:   "pack",
 		Short: "Test and inspect a policy pack: your own checks and profiles (docs/packs.md)",
 		Long: `A policy pack is a directory with pack.yaml, rules/<area>/<name>.yaml (checks) and
-profiles/<id>.yaml (profiles), in the format of hostlint's own content. The area of every check and the
+profiles/<id>.yaml (profiles), in the format of vmsctl's own content. The area of every check and the
 ID of every profile start with "x-". A pack can only use what the compiled-in collectors observe: it
-adds no collector, command or function. It is trusted like hostlint.yaml, so read it with "pack show"
+adds no collector, command or function. It is trusted like vmsctl.yaml, so read it with "pack show"
 before you use it.`,
 	}
 	cmd.AddCommand(newPackTestCommand(), newPackShowCommand(), newPackFactsCommand())
@@ -79,7 +79,7 @@ func newPackTestCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:     "test DIR",
 		Short:   "Load a pack and run the tests of its checks",
-		Example: "  hostlint pack test ./acme-pack",
+		Example: "  vmsctl pack test ./acme-pack",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lp, err := openPack(args[0])
@@ -136,7 +136,7 @@ func newPackShowCommand() *cobra.Command {
 		Long: `Show prints what a reviewer needs before a pack is used: its name, version and digest, for every check
 the collectors it reads, the file paths it lists, the expressions that decide what is shown as evidence, and
 for every profile the controls with their severity and the checks they map. Nothing is scanned.`,
-		Example: "  hostlint pack show ./acme-pack",
+		Example: "  vmsctl pack show ./acme-pack",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lp, err := openPack(args[0])
@@ -157,8 +157,8 @@ func showPack(w io.Writer, lp *loadedPack) {
 		fmt.Fprintf(w, " — %s", t(p.Description))
 	}
 	fmt.Fprintf(w, "\ndigest %s (%d files)\n", p.Digest, len(p.Files))
-	if p.RequiresHostlint != "" {
-		fmt.Fprintf(w, "requires hostlint %s or later\n", t(p.RequiresHostlint))
+	if req := p.Requires(); req != "" {
+		fmt.Fprintf(w, "requires vmsctl %s or later\n", t(req))
 	}
 	fmt.Fprintf(w, "\nchecks (%d):\n", len(lp.added.Checks))
 	for _, id := range lp.added.Checks {
@@ -265,12 +265,13 @@ func oneLineText(s string) string {
 	return printable(strings.Join(strings.Fields(s), " "))
 }
 
-// packDirsFrom lists the pack directories of a command: those of its --pack flags, then HOSTLINT_PACK, each once.
+// packDirsFrom lists the pack directories of a command: those of its --pack flags, then VMSCTL_PACK and the old HOSTLINT_PACK, each once.
 func packDirsFrom(flagDirs []string) []string {
-	return uniqueDirs(append(slices.Clone(flagDirs), splitPackEnv(os.Getenv("HOSTLINT_PACK"))...))
+	dirs := append(slices.Clone(flagDirs), splitPackEnv(os.Getenv("VMSCTL_PACK"))...)
+	return uniqueDirs(append(dirs, splitPackEnv(os.Getenv("HOSTLINT_PACK"))...)) // the old name of the variable (ADR 0017)
 }
 
-// splitPackEnv reads HOSTLINT_PACK: a list of directories separated like PATH.
+// splitPackEnv reads VMSCTL_PACK: a list of directories separated like PATH.
 func splitPackEnv(v string) []string {
 	var out []string
 	for _, d := range filepath.SplitList(v) {
@@ -304,9 +305,9 @@ func addPacks(cmd *cobra.Command, content *engine.Content, dirs []string) (*load
 		lp.added = append(lp.added, added)
 		for _, n := range added.Notes {
 			lp.notes = append(lp.notes, p.Name+": "+n)
-			fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: pack %s: note: %s\n", oneLineText(p.Name), oneLineText(n))
+			fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: pack %s: note: %s\n", oneLineText(p.Name), oneLineText(n))
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: using pack %s %s (%s)\n", oneLineText(p.Name), oneLineText(p.Version), p.Digest)
+		fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: using pack %s %s (%s)\n", oneLineText(p.Name), oneLineText(p.Version), p.Digest)
 	}
 	return lp, nil
 }
@@ -335,7 +336,7 @@ func (lp *loadedPacks) check(cmd *cobra.Command, e *engine.Engine, selected []st
 	return nil
 }
 
-// uniqueDirs drops a directory named twice (by --pack and HOSTLINT_PACK, say), as the same path.
+// uniqueDirs drops a directory named twice (by --pack and VMSCTL_PACK, say), as the same path.
 func uniqueDirs(dirs []string) []string {
 	var out, seen []string
 	for _, d := range dirs {
@@ -357,8 +358,8 @@ func newPackFactsCommand() *cobra.Command {
 		Short: "List the facts a check or a pack can read (the fact reference has their descriptions)",
 		Long: `Facts lists every fact path the compiled-in collectors produce, with its type: the names a check
 writes in its expressions. Give a collector (sshd, login_defs, ...) to see only its facts. The fact reference
-with descriptions is https://github.com/with-developer/hostlint/blob/main/docs/facts.md.`,
-		Example: "  hostlint pack facts sshd",
+with descriptions is https://github.com/with-developer/vmsctl/blob/main/docs/facts.md.`,
+		Example: "  vmsctl pack facts sshd",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := engine.Load(rules.FS, profiles.FS)

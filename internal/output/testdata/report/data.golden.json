@@ -1,5 +1,5 @@
 {
-  "title": "hostlint report",
+  "title": "vmsctl report",
   "tool": "v0.1.0",
   "generated": "2026-11-03T09:00:00Z",
   "files": 3,
@@ -355,7 +355,7 @@
     "/etc/passwd:1",
     "x\u003c/script\u003e\u003cscript\u003ealert(1)\u003c/script\u003e\u003c!-- \u0026 \"quoted\" \u2028",
     "/etc/passwd:9",
-    "shadow: permission denied (run hostlint as root)",
+    "shadow: permission denied (run vmsctl as root)",
     "applies is false",
     "\"yes\" (explicit); expected one of [no]",
     "/etc/ssh/sshd_config:32",
@@ -364,6 +364,6 @@
     "waived: accepted until the database moves (SEC-7)",
     "accounts.su-wheel-only: applies is false",
     "alice (uid 1000, /bin/bash)",
-    "accounts.shadow-file: shadow: permission denied (run hostlint as root)"
+    "accounts.shadow-file: shadow: permission denied (run vmsctl as root)"
   ]
 }

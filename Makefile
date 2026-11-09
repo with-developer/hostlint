@@ -1,6 +1,6 @@
-# Development tasks for hostlint. Run `make help` to list them.
+# Development tasks for vmsctl. Run `make help` to list them.
 
-BINARY := hostlint
+BINARY := vmsctl
 MODULE := $(shell go list -m)
 
 # Version stamp. Release builds get it from the tag; anything else is a dev build.
@@ -31,14 +31,14 @@ SNAPSHOT_SKIP ?= sign
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build: ## Build ./hostlint (static on Linux; cross-compile with GOOS=linux GOARCH=arm64)
-	CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/hostlint
+build: ## Build ./vmsctl (static on Linux; cross-compile with GOOS=linux GOARCH=arm64)
+	CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/vmsctl
 
 web: ## Build the dashboard into internal/server/webdist (needs Node 22)
 	cd web && npm ci --ignore-scripts && npm run build
 
-build-web: web ## Build ./hostlint with the dashboard embedded in `hostlint server`
-	CGO_ENABLED=0 go build -trimpath -buildvcs=false -tags web -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/hostlint
+build-web: web ## Build ./vmsctl with the dashboard embedded in `vmsctl server`
+	CGO_ENABLED=0 go build -trimpath -buildvcs=false -tags web -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/vmsctl
 
 test: ## Run unit tests with the race detector
 	go test -race ./...

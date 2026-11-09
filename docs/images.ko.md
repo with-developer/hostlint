@@ -1,13 +1,13 @@
-<!-- translated from docs/images.md @ 470f203 -->
+<!-- translated from docs/images.md @ 2ca0d64 -->
 # 컨테이너 이미지 점검
 
-`hostlint scan --image-tar FILE`은 `docker save`(또는 `skopeo copy ... oci-archive:FILE`)로 만든 아카이브에서
+`vmsctl scan --image-tar FILE`은 `docker save`(또는 `skopeo copy ... oci-archive:FILE`)로 만든 아카이브에서
 컨테이너 이미지의 파일시스템을 점검합니다. 점검 항목과 결과 문서는 호스트나 마운트한 루트(`--root`)를 점검할 때와
 같습니다. 아무것도 마운트하거나 실행하거나 쓰지 않으며, 컨테이너 엔진도 데몬도 레지스트리도 필요 없습니다.
 
 ```sh
 docker save app:1.4 -o app.tar
-hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
+vmsctl scan --image-tar app.tar --fail-on high --format sarif --output vmsctl.sarif
 ```
 
 보고서에는 이미지가 이렇게 표시됩니다. `host.hostname`은 이미지 참조(아카이브의 첫 태그, 태그가 없으면 파일 이름)이고,
@@ -80,7 +80,7 @@ hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlin
 
 ```sh
 docker save ghcr.io/acme/app:1.4 -o app.tar
-HOSTLINT_TOKEN=hlt_ing_... hostlint scan --image-tar app.tar --push https://hostlint.example.org:8443 --fail-on high
+VMSCTL_TOKEN=hlt_ing_... vmsctl scan --image-tar app.tar --push https://vmsctl.example.org:8443 --fail-on high
 ```
 
 이미지는 저장소 이름(`ghcr.io/acme/app`, 아카이브의 참조에서 태그를 뺀 것)으로 구분하므로, 같은 이미지의 여러
@@ -89,7 +89,7 @@ HOSTLINT_TOKEN=hlt_ing_... hostlint scan --image-tar app.tar --push https://host
 CI의 토큰은 접두어에 묶어 두면 토큰 하나가 조직 하나만 다룰 수 있습니다.
 
 ```sh
-hostlint server token create --name ci --host 'ghcr.io/acme/*'
+vmsctl server token create --name ci --host 'ghcr.io/acme/*'
 ```
 
 같은 이름이 호스트이면서 이미지일 수는 없고, 이미지에는 호스트 ID가 없습니다. 결과에는 다른 결과처럼 서명할 수

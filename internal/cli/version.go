@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/version"
+	"github.com/with-developer/vmsctl/internal/version"
 )
 
 func newVersionCommand() *cobra.Command {

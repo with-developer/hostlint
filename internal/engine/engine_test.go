@@ -15,8 +15,8 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/with-developer/hostlint/internal/facts"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/facts"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // svcFacts are the facts of the fake "svc" collector used by the demo rules.
@@ -116,7 +116,7 @@ func scanDemo(t *testing.T, svc *fakeCollector, live bool) *Result {
 	h := hostfs.NewTestHost(demoHost(), nil, live)
 	fixed := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
 	res, err := e.Scan(context.Background(), h, Options{
-		Profile: "demo-1", Tool: ToolInfo{Name: "hostlint", Version: "v0.0.0-test"},
+		Profile: "demo-1", Tool: ToolInfo{Name: "vmsctl", Version: "v0.0.0-test"},
 		Now: func() time.Time { return fixed }, CollectorTimeout: 200 * time.Millisecond,
 	})
 	if err != nil {

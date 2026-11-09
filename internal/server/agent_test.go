@@ -330,7 +330,7 @@ func TestScanRequestBySession(t *testing.T) {
 	}
 	ask := func(c *http.Cookie, origin, ct string) int {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/hosts/"+itoa(f.host)+"/scan", strings.NewReader(`{"profile":"kisa-2026"}`))
-		req.Host = "hostlint.example.org"
+		req.Host = "vmsctl.example.org"
 		req.Header.Set("Content-Type", ct)
 		if origin != "" {
 			req.Header.Set("Origin", origin)
@@ -341,14 +341,14 @@ func TestScanRequestBySession(t *testing.T) {
 		return rec.Code
 	}
 	viewer, op := login(f.api), login(f.operator)
-	site := "https://hostlint.example.org"
+	site := "https://vmsctl.example.org"
 	if code := ask(op, "", "application/json"); code != http.StatusUnauthorized {
 		t.Errorf("no Origin: %d", code)
 	}
 	if code := ask(op, "https://evil.example", "application/json"); code != http.StatusUnauthorized {
 		t.Errorf("another site's Origin: %d", code)
 	}
-	if code := ask(op, "https://hostlint.example.org.evil.example", "application/json"); code != http.StatusUnauthorized {
+	if code := ask(op, "https://vmsctl.example.org.evil.example", "application/json"); code != http.StatusUnauthorized {
 		t.Errorf("a look-alike Origin: %d", code)
 	}
 	if code := ask(op, site, "text/plain"); code != http.StatusUnauthorized {

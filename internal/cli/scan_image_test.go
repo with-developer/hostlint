@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // imageArchive writes a docker save archive of one layer with the given files.
@@ -110,7 +110,7 @@ func TestScanImageErrorsDoNotCarryControlCharacters(t *testing.T) {
 func TestScanMarkdown(t *testing.T) {
 	p := imageArchive(t, "app:1", map[string]string{"etc/os-release": "ID=debian\nVERSION_ID=\"12\"\nNAME=\"Debian GNU/Linux\"\n"})
 	code, stdout, stderr := run(context.Background(), t, "scan", "--image-tar", p, "--format", "markdown", "--fail-on", "none")
-	if code != ExitOK || !strings.HasPrefix(stdout, "## hostlint: app&#58;1") || !strings.Contains(stdout, "| Profile | Controls |") {
+	if code != ExitOK || !strings.HasPrefix(stdout, "## vmsctl: app&#58;1") || !strings.Contains(stdout, "| Profile | Controls |") {
 		t.Fatalf("exit %d\n%s\n%s", code, stdout, stderr)
 	}
 }

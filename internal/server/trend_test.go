@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 func TestTrendOfTheFleet(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/push"
+	"github.com/with-developer/vmsctl/internal/push"
 )
 
 // fakeAgent drives the loop with no network and no clock: polls are scripted, and the loop ends when they are used up.
@@ -123,7 +123,7 @@ func TestAgentBacksOffAndRecovers(t *testing.T) {
 }
 
 func TestAgentFlags(t *testing.T) {
-	t.Setenv("HOSTLINT_TOKEN", "hlt_ing_x")
+	t.Setenv("VMSCTL_TOKEN", "hlt_ing_x")
 	for _, tc := range []struct {
 		args []string
 		want string
@@ -138,7 +138,7 @@ func TestAgentFlags(t *testing.T) {
 			t.Errorf("%v: exit %d, %q (want %q)", tc.args, code, stderr, tc.want)
 		}
 	}
-	t.Setenv("HOSTLINT_TOKEN", "")
+	t.Setenv("VMSCTL_TOKEN", "")
 	if code, _, stderr := run(context.Background(), t, "agent", "--server", "https://x.example", "--allow-profile", "kisa-2026"); code != ExitError || !strings.Contains(stderr, "no token") {
 		t.Errorf("no token: exit %d, %q", code, stderr)
 	}

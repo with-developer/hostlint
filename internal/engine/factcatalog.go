@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/facts"
+	"github.com/with-developer/vmsctl/internal/facts"
 )
 
 // FactField is one name a rule can read: a path through the facts of a collector.

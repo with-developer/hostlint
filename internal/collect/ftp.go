@@ -12,9 +12,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/facts"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/facts"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // FTP is the `ftp` facts: how vsftpd is configured. Other FTP servers are not
@@ -88,7 +88,7 @@ func (ftpCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, er
 			skipped = append(skipped, fmt.Sprintf("both %s and %s exist; the first is read", conf, c))
 		case errors.Is(err, fs.ErrNotExist):
 		case errors.Is(err, fs.ErrPermission):
-			return engine.Facts{}, errors.New("vsftpd.conf cannot be read (run hostlint as root)")
+			return engine.Facts{}, errors.New("vsftpd.conf cannot be read (run vmsctl as root)")
 		default:
 			return engine.Facts{}, err
 		}

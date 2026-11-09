@@ -1,4 +1,4 @@
-# Contributing to hostlint
+# Contributing to vmsctl
 
 Thanks for helping. This page explains how the project is put together and what a change needs
 before it is merged. Design decisions live in [docs/adr](docs/adr/); please read the
@@ -19,11 +19,11 @@ before it is merged. Design decisions live in [docs/adr](docs/adr/); please read
 ## Getting started
 
 ```sh
-git clone https://github.com/with-developer/hostlint
-cd hostlint
+git clone https://github.com/with-developer/vmsctl
+cd vmsctl
 make test   # unit tests with the race detector
 make lint   # golangci-lint, the ADR 0004 lint guards and go.mod tidiness
-make build  # ./hostlint
+make build  # ./vmsctl
 ```
 
 Linux-only code (`*_linux.go`) is tested in CI, or locally in Docker:
@@ -41,8 +41,8 @@ docker run --rm -v "$PWD":/src:ro -w /src -e GOCACHE=/tmp/gc golang:1.27 go test
    kinds: `setting`, `file`, `violations`, `expect` (a CEL expression) or `manual`.
 3. A **profile** (`profiles/<id>.yaml`) maps a standard's controls to checks.
 
-Checks and profiles of your own do not need a change to hostlint: put them in a
-[policy pack](docs/packs.md) (`hostlint pack test` runs their tests). Built-in checks are the ones that
+Checks and profiles of your own do not need a change to vmsctl: put them in a
+[policy pack](docs/packs.md) (`vmsctl pack test` runs their tests). Built-in checks are the ones that
 belong to everyone; a pack's checks have an area that starts with `x-`.
 
 ### Writing a check
@@ -125,5 +125,5 @@ types, so a misspelled field is an error.
 
 ## Reporting bugs and security issues
 
-Open an issue with the distribution, the hostlint version and, if you can, the facts or files
+Open an issue with the distribution, the vmsctl version and, if you can, the facts or files
 involved. For anything that could be a vulnerability, follow [SECURITY.md](SECURITY.md) instead.

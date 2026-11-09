@@ -1,17 +1,17 @@
 # Policy packs: your own checks and profiles
 
-A policy pack is a directory with your own checks and profiles, in the format of hostlint's built-in
+A policy pack is a directory with your own checks and profiles, in the format of vmsctl's built-in
 content. It lets a team check its own standard (an internal baseline, a customer's requirements, one more
-thing to look at in `/etc`) without forking hostlint. [ADR 0012](adr/0012-policy-packs.md) has the decisions
+thing to look at in `/etc`) without forking vmsctl. [ADR 0012](adr/0012-policy-packs.md) has the decisions
 behind it.
 
 [한국어](packs.ko.md)
 
 ```sh
-hostlint pack test ./acme-pack                 # load it, run the tests of its checks
-hostlint pack show ./acme-pack                 # what it does, for the person who reviews it
-hostlint scan --pack ./acme-pack -p x-acme-baseline
-hostlint scan --pack ./acme-pack -p kisa-2026 -p x-acme-baseline   # both, in one scan
+vmsctl pack test ./acme-pack                 # load it, run the tests of its checks
+vmsctl pack show ./acme-pack                 # what it does, for the person who reviews it
+vmsctl scan --pack ./acme-pack -p x-acme-baseline
+vmsctl scan --pack ./acme-pack -p kisa-2026 -p x-acme-baseline   # both, in one scan
 ```
 
 ## What a pack can and cannot do
@@ -21,12 +21,12 @@ as the built-in ones, evaluated against the facts the compiled-in collectors pro
 collector, a fact, a command or a function, so it cannot run anything, and it cannot read the contents of
 anything a built-in check cannot read: the sensitive-path denylist applies to it unchanged.
 
-It is **trusted like `hostlint.yaml`, not sandboxed against a hostile author**. A pack chooses what is shown
+It is **trusted like `vmsctl.yaml`, not sandboxed against a hostile author**. A pack chooses what is shown
 as evidence (the names, owners and modes a file check lists, and any fact its expressions render), which
 collectors run, and, through its profile, which checks count and at which severity. So read it with
-`hostlint pack show` before you use a pack you did not write, and use packs of people you trust.
+`vmsctl pack show` before you use a pack you did not write, and use packs of people you trust.
 
-hostlint holds a pack to more than the built-in content, so that it cannot make a result look better than
+vmsctl holds a pack to more than the built-in content, so that it cannot make a result look better than
 it is:
 
 - the area of every check starts with `x-` (`x-acme.motd-owned-by-root`) and the ID of every profile starts
@@ -39,7 +39,7 @@ it is:
   the control (the scan says so);
 - a file check lists at most 10 paths, with at most 2 wildcard elements each, none under `/proc`, `/sys` or `/dev`;
 - the `remediation` of a check has no control characters, only line breaks and tabs: that of a failed check is shown in the JSON result, as SARIF help, in the HTML
-  report and in the dashboard, as well as by `hostlint explain`, so it is text and nothing else;
+  report and in the dashboard, as well as by `vmsctl explain`, so it is text and nothing else;
 - every check needs a PASS test, a FAIL test and a test where its input is absent, unavailable or incomplete,
   as the built-in checks do (ADR 0006).
 
@@ -59,12 +59,12 @@ format: 1                  # the version of the pack format
 name: acme                 # kebab case; results name the pack by it
 version: 1.2.0             # letters, digits and . _ + -
 description: Acme's baseline            # optional
-requires_hostlint: v0.15.0              # optional: the oldest release the pack works with
+requires_vmsctl: v0.27.0                # optional: the oldest release the pack works with
 ```
 
 Checks and profiles are written as described in [CONTRIBUTING](../CONTRIBUTING.md#how-a-check-is-built)
 and in the [rule reference](rules.md); [`examples/policy-pack`](../examples/policy-pack) is a small working
-pack. `hostlint pack facts` lists the facts a check can read, and the [fact reference](facts.md) describes them. A profile can map built-in checks and your own:
+pack. `vmsctl pack facts` lists the facts a check can read, and the [fact reference](facts.md) describes them. A profile can map built-in checks and your own:
 
 ```yaml
 id: x-acme-baseline
@@ -91,23 +91,23 @@ Bump `revision` when you change a profile.
 
 ## Using a pack
 
-`hostlint scan --pack DIR` (repeatable; also `HOSTLINT_PACK`, a list of directories separated like `PATH`)
+`vmsctl scan --pack DIR` (repeatable; also `VMSCTL_PACK`, a list of directories separated like `PATH`)
 loads the pack next to the built-in content; `--profile` selects a profile of the pack, and can be repeated to
 scan several profiles at once (the checks they share are evaluated once). A pack that is loaded and none of
 whose profiles is selected is an error, not a scan that quietly ignores it. The pack is read from the machine
-that runs hostlint, never through `--root` or `--image-tar`, and never found by itself in the current directory.
+that runs vmsctl, never through `--root` or `--image-tar`, and never found by itself in the current directory.
 
 The result says which pack it came from: `scan.packs` has its name, version and digest (the SHA-256 over the
-sorted paths and contents of the files that were read). `hostlint diff` and `hostlint report` warn when two
+sorted paths and contents of the files that were read). `vmsctl diff` and `vmsctl report` warn when two
 results used different packs, or the same profile revision with another content.
-`hostlint.yaml` can refer to a pack's checks and controls (parameters, waivers). A waiver of a control of a
+`vmsctl.yaml` can refer to a pack's checks and controls (parameters, waivers). A waiver of a control of a
 pack's profile names the digest of the profile (`digest:`, shown in the error that asks for it, in the result
 and by `pack show`). The digest covers what the control maps and what the pack's own checks that it maps do, because a pack
 author can change either without changing the revision.
 
 `--verify-pack` runs the tests of the pack's checks before the scan and refuses to scan with a pack that
 fails them. Tests catch mistakes, not malice (the author writes the logic and the tests), and they cost time
-on every host, so they belong to the pack's own CI: run `hostlint pack test` there.
+on every host, so they belong to the pack's own CI: run `vmsctl pack test` there.
 
 `--push` works with a pack: the result names the pack (name, version and digest) and the fleet server keeps it as it keeps
 any result (docs/fleet.md). The pack's profile is one the dashboard can choose, and the host's page names the pack. The
@@ -121,11 +121,13 @@ carefully: through a root that cannot be left (no symbolic link is followed), ev
 or by you and not writable by group or others (`chmod -R go-w`), nothing but `pack.yaml`, `rules/<area>/<name>.yaml`
 and `profiles/<id>.yaml` (any other file is an error, not something that is skipped), at most 4 MiB, 256 KiB per
 file, 300 checks, 50 profiles and 200 entries per directory. Each file is opened once, and what is hashed
-is what is parsed. Running `sudo hostlint scan --pack ./pack` over files of another user, a container as root over a
+is what is parsed. Running `sudo vmsctl scan --pack ./pack` over files of another user, a container as root over a
 CI workspace of another user, and a Kubernetes ConfigMap (a farm of links) are refused for that reason: copy the pack
 to a place you own.
 
 ## The format is not frozen
 
 Before v1.0 the format of checks and the facts they read can change in a minor release; the release notes
-say when a pack has to change. `requires_hostlint` keeps a pack from running on a hostlint that is too old.
+say when a pack has to change. `requires_vmsctl` keeps a pack from running on a release that is too old. Before v0.27.0
+the key was `requires_hostlint`, and a release older than v0.27.0 reads only that one: keep it in a pack that has to run
+on both, and use the new key once every host runs v0.27.0 or later (naming both is an error).

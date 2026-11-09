@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/output"
-	"github.com/with-developer/hostlint/internal/version"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/output"
+	"github.com/with-developer/vmsctl/internal/version"
 )
 
 func newReportCommand() *cobra.Command {
@@ -19,15 +19,15 @@ func newReportCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "report FILE...",
 		Short: "Merge JSON results from many hosts into one HTML report",
-		Long: `Report merges result documents written by "hostlint scan --format json"
+		Long: `Report merges result documents written by "vmsctl scan --format json"
 into one self-contained HTML file. The file makes no network requests and needs
 no server, so it can be mailed to an auditor or archived.
 
 When a host was scanned more than once, the report shows the newest result and
 says which ones it left out. Results with an unknown schema version, or that are
 not well formed, are rejected.`,
-		Example: `  hostlint report results/*.json --output report.html
-  hostlint report --title "Q4 audit" web-*.json db-*.json -o q4.html`,
+		Example: `  vmsctl report results/*.json --output report.html
+  vmsctl report --title "Q4 audit" web-*.json db-*.json -o q4.html`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runReport(cmd, args, out, title)
@@ -35,7 +35,7 @@ not well formed, are rejected.`,
 	}
 	fl := cmd.Flags()
 	fl.StringVarP(&out, "output", "o", "", "write the report to this file (default: standard output, if it is not a terminal)")
-	fl.StringVar(&title, "title", "", `title of the report (default "hostlint report")`)
+	fl.StringVar(&title, "title", "", `title of the report (default "vmsctl report")`)
 	return cmd
 }
 
@@ -87,7 +87,7 @@ func displayName(name string, all []string) string {
 	return filepath.Base(name)
 }
 
-// readResultFile reads a result document the user named. It is hostlint's
+// readResultFile reads a result document the user named. It is vmsctl's
 // own output, read on the machine making the report, not a file of a
 // scanned host.
 func readResultFile(name string) (*engine.Result, error) {

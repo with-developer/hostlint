@@ -4,12 +4,12 @@
 Every control of a profile and the checks that decide it. A control passes only when every
 check applicable to it passes; checks that cannot decide report `MANUAL` or `ERROR`, never
 `PASS` (see [ADR 0006](adr/0006-rule-format-evaluation-results.md)). Control IDs come from the
-standard; titles and descriptions are hostlint's own. Parameters can be made stricter in
-[hostlint.yaml](configuration.md).
+standard; titles and descriptions are vmsctl's own. Parameters can be made stricter in
+[vmsctl.yaml](configuration.md).
 
 ## essentials (revision 3)
 
-hostlint essentials — a short hardening baseline for Linux servers
+vmsctl essentials — a short hardening baseline for Linux servers
 
 | Control | Severity | Title | Checks |
 |---|---|---|---|
@@ -400,7 +400,7 @@ Looks for a host firewall that starts at boot: ufw with ENABLED=yes in /etc/ufw/
 
 Review the rules of the firewall (방화벽 규칙 검토) — severity medium, a review (`MANUAL`).
 
-Asks for the rules to be read when the only firewall found is an nftables, netfilter-persistent or iptables service: a service that starts at boot says nothing about what its rules allow, and hostlint does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a person set with their commands, nor when no such service is enabled (the check before it fails then).
+Asks for the rules to be read when the only firewall found is an nftables, netfilter-persistent or iptables service: a service that starts at boot says nothing about what its rules allow, and vmsctl does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a person set with their commands, nor when no such service is enabled (the check before it fails then).
 
 **Why.** A firewall whose rules accept everything protects nothing, and a default of "accept" is what a fresh nftables or iptables setup has.
 

@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Samba is the `samba` facts: /etc/samba/smb.conf.
@@ -50,7 +50,7 @@ func (sambaCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, 
 	case errors.Is(err, fs.ErrNotExist):
 		return engine.Facts{Value: s, Complete: true}, nil
 	case errors.Is(err, fs.ErrPermission):
-		return engine.Facts{}, errors.New("smb.conf cannot be read (run hostlint as root)")
+		return engine.Facts{}, errors.New("smb.conf cannot be read (run vmsctl as root)")
 	case err != nil:
 		return engine.Facts{}, err
 	}

@@ -1,8 +1,8 @@
-# Release build for hostlint; see docs/RELEASING.md. `make snapshot` builds
+# Release build for vmsctl; see docs/RELEASING.md. `make snapshot` builds
 # the same artifacts locally without publishing, and CI does so on every PR.
 version: 2
 
-project_name: hostlint
+project_name: vmsctl
 
 git:
   # A release and its release candidate may share a commit (v0.1.0 and
@@ -17,9 +17,9 @@ before:
     - sh -c 'cd web && npm ci --ignore-scripts && npm run build'
 
 builds:
-  - id: hostlint
-    main: ./cmd/hostlint
-    binary: hostlint
+  - id: vmsctl
+    main: ./cmd/vmsctl
+    binary: vmsctl
     env:
       - CGO_ENABLED=0 # static binaries
     goos: [linux]
@@ -30,13 +30,13 @@ builds:
       - -tags=web
     ldflags:
       - -s -w
-      - -X github.com/with-developer/hostlint/internal/version.version=v{{ .Version }}
-      - -X github.com/with-developer/hostlint/internal/version.commit={{ .FullCommit }}
-      - -X github.com/with-developer/hostlint/internal/version.date={{ .CommitDate }}
+      - -X github.com/with-developer/vmsctl/internal/version.version=v{{ .Version }}
+      - -X github.com/with-developer/vmsctl/internal/version.commit={{ .FullCommit }}
+      - -X github.com/with-developer/vmsctl/internal/version.date={{ .CommitDate }}
     mod_timestamp: "{{ .CommitTimestamp }}" # reproducible
 
 archives:
-  - id: hostlint
+  - id: vmsctl
     formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
@@ -44,12 +44,12 @@ archives:
       - README.md
 
 nfpms:
-  - id: hostlint
-    package_name: hostlint
+  - id: vmsctl
+    package_name: vmsctl
     file_name_template: "{{ .ConventionalFileName }}"
-    vendor: hostlint
-    homepage: https://github.com/with-developer/hostlint
-    maintainer: hostlint project <https://github.com/with-developer/hostlint/issues>
+    vendor: vmsctl
+    homepage: https://github.com/with-developer/vmsctl
+    maintainer: vmsctl project <https://github.com/with-developer/vmsctl/issues>
     description: |-
       Checks a Linux host's security configuration against hardening baselines
       and reports a result per control, with the evidence behind it. It only
@@ -58,13 +58,21 @@ nfpms:
     section: admin
     formats: [deb, rpm]
     bindir: /usr/bin
+    # The package replaces the one of the old name, and keeps a link under it for a while (ADR 0017): units, cron
+    # entries and CI that still say hostlint go on working, and the program says it is deprecated.
+    replaces: [hostlint]
+    provides: [hostlint]
+    conflicts: [hostlint]
     contents:
+      - src: vmsctl
+        dst: /usr/bin/hostlint
+        type: symlink
       - src: LICENSE
-        dst: /usr/share/doc/hostlint/LICENSE
+        dst: /usr/share/doc/vmsctl/LICENSE
         file_info:
           mode: 0644
       - src: README.md
-        dst: /usr/share/doc/hostlint/README.md
+        dst: /usr/share/doc/vmsctl/README.md
         file_info:
           mode: 0644
 
@@ -126,9 +134,9 @@ release:
 
     ```sh
     cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
-      --certificate-identity "https://github.com/with-developer/hostlint/.github/workflows/release.yml@refs/tags/{{ .Tag }}" \
+      --certificate-identity "https://github.com/with-developer/vmsctl/.github/workflows/release.yml@refs/tags/{{ .Tag }}" \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com
     sha256sum --ignore-missing -c checksums.txt
     ```
 
-    Build provenance: `gh attestation verify <file> --repo with-developer/hostlint`.
+    Build provenance: `gh attestation verify <file> --repo with-developer/vmsctl`.

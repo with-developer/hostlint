@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func collectSNMP(t *testing.T, m *hostfs.MemFS) (*SNMP, bool) {
@@ -69,7 +69,7 @@ func TestSNMPNoAgentConfiguration(t *testing.T) {
 func TestSNMPUnreadableFile(t *testing.T) {
 	m := snmpConf("rocommunity x\n").SetError("/etc/snmp/snmpd.conf", fsErrPermission)
 	_, err := snmpCollector{}.Collect(context.Background(), hostfs.NewTestHost(m, nil, false))
-	if err == nil || !strings.Contains(err.Error(), "run hostlint as root") {
+	if err == nil || !strings.Contains(err.Error(), "run vmsctl as root") {
 		t.Errorf("err = %v, want one telling to run as root", err)
 	}
 }

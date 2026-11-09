@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // DiffSide names one of the two results a diff compares.
@@ -84,7 +84,7 @@ func DiffResults(oldName string, older *engine.Result, newName string, newer *en
 		d.Notes = append(d.Notes, "the scans have different targets (a running host and a mounted root, or two roots)")
 	}
 	if older.Scan.Tool.Version != newer.Scan.Tool.Version {
-		d.Notes = append(d.Notes, fmt.Sprintf("hostlint versions differ (%s and %s): new or changed checks can move results", oneLine(older.Scan.Tool.Version), oneLine(newer.Scan.Tool.Version)))
+		d.Notes = append(d.Notes, fmt.Sprintf("vmsctl versions differ (%s and %s): new or changed checks can move results", oneLine(older.Scan.Tool.Version), oneLine(newer.Scan.Tool.Version)))
 	}
 	if scanTime(newer).Before(scanTime(older)) {
 		d.Notes = append(d.Notes, "the first file is newer than the second: the changes read backwards")
@@ -224,7 +224,7 @@ func writeDiffTable(w io.Writer, d *Diff, opts Options) error {
 	if host == "" {
 		host = "(no host name)"
 	}
-	fmt.Fprintf(&b, "%s %s\n", p.paint(bold, "hostlint diff"), host)
+	fmt.Fprintf(&b, "%s %s\n", p.paint(bold, "vmsctl diff"), host)
 	fmt.Fprintf(&b, "%s\n", p.paint(dim, fmt.Sprintf("%s (%s, %s)", oneLine(d.Old.File), oneLine(d.Old.Scanned), oneLine(d.Old.Profiles))))
 	fmt.Fprintf(&b, "%s\n", p.paint(dim, fmt.Sprintf("→ %s (%s, %s)", oneLine(d.New.File), oneLine(d.New.Scanned), oneLine(d.New.Profiles))))
 	for _, n := range d.Notes {

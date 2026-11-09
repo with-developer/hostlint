@@ -120,7 +120,7 @@ func Load(path string) (ed25519.PrivateKey, error) {
 	}
 	block, _ := pem.Decode(data)
 	if block == nil || block.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("%s is not a hostlint signing key (made with: hostlint key generate)", path)
+		return nil, fmt.Errorf("%s is not a vmsctl signing key (made with: vmsctl key generate)", path)
 	}
 	k, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {

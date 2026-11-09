@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/output"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/output"
 )
 
 // apiHandler is a read handler that runs for a request with a valid read token.
@@ -33,7 +33,7 @@ func (s *Server) readAPI(next apiHandler) http.HandlerFunc {
 		cred, err := s.readCredential(r)
 		if errors.Is(err, ErrUnauthorized) {
 			s.cfg.Logger.Info("request refused", "reason", "no valid read credential", "remote", remote)
-			w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="vmsctl"`)
 			writeError(w, http.StatusUnauthorized, "a valid read token or session is required")
 			return
 		}
@@ -241,7 +241,7 @@ func writeHostsCSV(w http.ResponseWriter, hosts []HostSummary) {
 	}
 	cw.Flush()
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="hostlint-hosts.csv"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="vmsctl-hosts.csv"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(b.Bytes())
 }
@@ -304,7 +304,7 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleDiff compares two stored scans with the code of `hostlint diff`.
+// handleDiff compares two stored scans with the code of `vmsctl diff`.
 func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
 	ids := [2]int64{}
 	for i, name := range []string{"old", "new"} {

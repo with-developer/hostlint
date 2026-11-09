@@ -1,6 +1,6 @@
 //go:build e2e
 
-// Package e2e runs hostlint in containers of every supported distribution,
+// Package e2e runs vmsctl in containers of every supported distribution,
 // as shipped (stock) and after harden.sh (hardened), and compares each result
 // with a golden summary in testdata/. It needs Docker, and network access to
 // pull the images and to install the hardening packages.
@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
@@ -45,7 +45,7 @@ var distros = []struct{ name, image string }{
 }
 
 func TestE2E(t *testing.T) {
-	bin := buildHostlint(t)
+	bin := buildVmsctl(t)
 	for _, d := range distros {
 		for _, variant := range []string{"stock", "hardened"} {
 			name := d.name + "-" + variant
@@ -80,12 +80,12 @@ func TestE2E(t *testing.T) {
 	}
 }
 
-// buildHostlint builds hostlint for the Docker server's architecture.
-func buildHostlint(t *testing.T) string {
+// buildVmsctl builds vmsctl for the Docker server's architecture.
+func buildVmsctl(t *testing.T) string {
 	t.Helper()
 	arch := strings.TrimSpace(run(t, "docker", "version", "--format", "{{.Server.Arch}}"))
 	dir := t.TempDir()
-	cmd := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(dir, "hostlint"), "../cmd/hostlint")
+	cmd := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(dir, "vmsctl"), "../cmd/vmsctl")
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+arch)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("go build: %v\n%s", err, out)
@@ -95,29 +95,29 @@ func buildHostlint(t *testing.T) string {
 
 func buildHardened(t *testing.T, name, base string) string {
 	t.Helper()
-	tag := "hostlint-e2e/" + name + ":hardened"
+	tag := "vmsctl-e2e/" + name + ":hardened"
 	run(t, "docker", "build", "--quiet", "--build-arg", "BASE="+base, "--tag", tag, "--file", "hardened.Dockerfile", ".")
 	return tag
 }
 
-// installed returns image with hostlint installed as a real host has it:
-// /usr/local/bin/hostlint, owned by root. A bind mount would show the
+// installed returns image with vmsctl installed as a real host has it:
+// /usr/local/bin/vmsctl, owned by root. A bind mount would show the
 // builder's uid (1001 on CI runners), which the image does not know, as an
 // unowned file.
 func installed(t *testing.T, bin, image, name string) string {
 	t.Helper()
-	tag := "hostlint-e2e/" + name + ":scan"
-	dockerfile := "FROM " + image + "\nCOPY --chown=0:0 hostlint /usr/local/bin/hostlint\n"
+	tag := "vmsctl-e2e/" + name + ":scan"
+	dockerfile := "FROM " + image + "\nCOPY --chown=0:0 vmsctl /usr/local/bin/vmsctl\n"
 	runInput(t, dockerfile, "docker", "build", "--quiet", "--tag", tag, "--file", "-", bin)
 	return tag
 }
 
-// scan runs hostlint in a container without network access and returns
+// scan runs vmsctl in a container without network access and returns
 // its result.
 func scan(t *testing.T, image, profile string) *engine.Result {
 	t.Helper()
 	out := run(t, "docker", "run", "--rm", "--network", "none", "--hostname", "e2e-host",
-		image, "/usr/local/bin/hostlint", "scan", "--profile", profile, "--format", "json", "--fail-on", "none")
+		image, "/usr/local/bin/vmsctl", "scan", "--profile", profile, "--format", "json", "--fail-on", "none")
 	var res engine.Result
 	if err := json.Unmarshal([]byte(out), &res); err != nil {
 		t.Fatalf("result: %v\n%.500s", err, out)
@@ -302,11 +302,11 @@ func diff(want, got string) string {
 }
 
 // TestE2EImage scans the stock image of every distribution from its `docker save` archive
-// (hostlint scan --image-tar, ADR 0011) and compares the control and check statuses with those of the
+// (vmsctl scan --image-tar, ADR 0011) and compares the control and check statuses with those of the
 // scan inside a running container: an image and the container made from it must agree.
 func TestE2EImage(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "hostlint")
-	cmd := exec.Command("go", "build", "-trimpath", "-o", bin, "../cmd/hostlint")
+	bin := filepath.Join(t.TempDir(), "vmsctl")
+	cmd := exec.Command("go", "build", "-trimpath", "-o", bin, "../cmd/vmsctl")
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("go build: %v\n%s", err, out)

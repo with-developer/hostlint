@@ -1,4 +1,4 @@
-module github.com/with-developer/hostlint
+module github.com/with-developer/vmsctl
 
 go 1.26.0
 

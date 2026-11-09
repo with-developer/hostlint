@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // Limits of the Markdown report: it is for a page a person reads (a job summary, a pull request comment),
@@ -103,12 +103,12 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 	if host == "" {
 		host = "(no host name)"
 	}
-	fmt.Fprintf(&b, "## hostlint: %s\n\n", mdText(host))
+	fmt.Fprintf(&b, "## vmsctl: %s\n\n", mdText(host))
 	var profiles []string
 	for _, pr := range res.Profiles {
 		profiles = append(profiles, mdText(pr.ID))
 	}
-	line := fmt.Sprintf("hostlint %s &middot; %s", mdText(res.Scan.Tool.Version), strings.Join(profiles, ", "))
+	line := fmt.Sprintf("vmsctl %s &middot; %s", mdText(res.Scan.Tool.Version), strings.Join(profiles, ", "))
 	if name := oneLine(res.Host.OS.Name); name != "" {
 		line += " &middot; " + mdText(name)
 	}

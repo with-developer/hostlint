@@ -1,4 +1,4 @@
-// Package hostfs is hostlint's only access to the host it scans (ADR 0004).
+// Package hostfs is vmsctl's only access to the host it scans (ADR 0004).
 //
 // It provides a read-only filesystem rooted at "/" (the running system) or at
 // a mounted root (--root), a sensitive-path denylist enforced on content reads,
@@ -48,7 +48,7 @@ const MaxReadSize = 16 << 20
 
 var (
 	// ErrDenied is returned when reading a file on the sensitive-path denylist.
-	ErrDenied = errors.New("sensitive file: hostlint does not read its contents")
+	ErrDenied = errors.New("sensitive file: vmsctl does not read its contents")
 	// ErrNotRegular is returned when reading something that is not a regular file.
 	ErrNotRegular = errors.New("not a regular file")
 	// ErrTooLarge is returned when a file is larger than MaxReadSize.

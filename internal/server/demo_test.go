@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/server"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/server"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 func seeded(t *testing.T) (*server.Server, string) {

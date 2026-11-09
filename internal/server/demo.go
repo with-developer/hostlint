@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/output"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/output"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 // demoHost is a made-up host and how its configuration behaves over the two weeks of demo data.
@@ -155,7 +155,7 @@ func demoResult(content *engine.Content, profile *engine.Profile, h demoHost, da
 		Scan: engine.ScanInfo{
 			ID:        fmt.Sprintf("demo-%s-%d", h.name, daysAgo),
 			StartedAt: at.UTC().Format(time.RFC3339), FinishedAt: at.Add(4 * time.Second).UTC().Format(time.RFC3339),
-			Tool:       engine.ToolInfo{Name: "hostlint", Version: "demo"},
+			Tool:       engine.ToolInfo{Name: "vmsctl", Version: "demo"},
 			Target:     engine.TargetInfo{Kind: "host", Root: "/"},
 			Privileges: engine.Privileges{EUID: map[bool]int64{true: 1000, false: 0}[h.noRoot]},
 		},
@@ -219,7 +219,7 @@ func demoResult(content *engine.Content, profile *engine.Profile, h demoHost, da
 
 // demoSeed is a fixed 32-byte seed for a demo host's key, so the demo is the same every time.
 func demoSeed(name string) []byte {
-	sum := sha256.Sum256([]byte("hostlint demo key " + name))
+	sum := sha256.Sum256([]byte("vmsctl demo key " + name))
 	return sum[:]
 }
 

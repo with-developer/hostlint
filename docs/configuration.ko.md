@@ -1,7 +1,7 @@
-<!-- translated from docs/configuration.md @ a074d72 -->
+<!-- translated from docs/configuration.md @ 2ca0d64 -->
 # 설정
 
-hostlint는 설정 없이도 동작합니다. `hostlint.yaml`을 두면 프로파일을 고르고, 점검 기준을 더 엄격하게 만들고,
+vmsctl은 설정 없이도 동작합니다. `vmsctl.yaml`을 두면 프로파일을 고르고, 점검 기준을 더 엄격하게 만들고,
 안고 가기로 한 결과를 예외(waiver)로 처리하고, 사람만 판단할 수 있는 점검에는 사람의 판정을 증명(attestation)으로
 남길 수 있습니다.
 
@@ -44,16 +44,16 @@ attestations:
 ## 설정 파일을 찾는 순서
 
 1. `--config`로 지정한 파일(파일이 반드시 있어야 합니다)
-2. 현재 작업 디렉터리의 `hostlint.yaml`
-3. `/etc/hostlint/hostlint.yaml`
+2. 현재 작업 디렉터리의 `vmsctl.yaml`
+3. `/etc/vmsctl/vmsctl.yaml`
 
-처음 찾은 파일을 쓰고, 하나도 없어도 괜찮습니다. 이 파일은 hostlint를 실행하는 머신의 것입니다. `--root`로
+처음 찾은 파일을 쓰고, 하나도 없어도 괜찮습니다. 이 파일은 vmsctl을 실행하는 머신의 것입니다. `--root`로
 마운트한 파일시스템 안에서 읽지 않습니다.
 
 예외는 결과를 가릴 수 있으므로, 다른 사람이 몰래 넣었거나 바꿨을 수 있는 파일은 거부합니다. 일반 파일이어야 하고,
-소유자가 root이거나 hostlint를 실행한 사용자여야 하며, 그룹이나 다른 사용자가 쓸 수 없어야 합니다. 그래서 내가
-소유한 `hostlint.yaml`이 있는 디렉터리에서 `sudo hostlint scan`을 실행하면 실패합니다. 이럴 때는 소유자를 root로
-바꾸세요(`sudo chown root: hostlint.yaml`).
+소유자가 root이거나 vmsctl을 실행한 사용자여야 하며, 그룹이나 다른 사용자가 쓸 수 없어야 합니다. 그래서 내가
+소유한 `vmsctl.yaml`이 있는 디렉터리에서 `sudo vmsctl scan`을 실행하면 실패합니다. 이럴 때는 소유자를 root로
+바꾸세요(`sudo chown root: vmsctl.yaml`).
 
 파일은 엄격하게 읽습니다. 모르는 키, 점검, 컨트롤, 매개변수가 있으면 오류를 내므로 오타 때문에 예외가 조용히
 빠지는 일은 없습니다. 명령줄의 `--profile`은 `profile:`보다 우선합니다.
@@ -61,7 +61,7 @@ attestations:
 ## 매개변수
 
 일부 점검에는 기준값이 있습니다. 기준값은 [rules/](../rules/)의 점검 파일에서 `params` 아래에 선언합니다(예:
-`rules/accounts/password-max-age.yaml`의 `max_days`). 프로파일이 요구하는 값을 정하고, `hostlint.yaml`의
+`rules/accounts/password-max-age.yaml`의 `max_days`). 프로파일이 요구하는 값을 정하고, `vmsctl.yaml`의
 `params:`로 정수 매개변수를 바꿀 수 있습니다. 단, 더 엄격한 쪽으로만 바꿀 수 있습니다(점검에 `stricter: lower`
 또는 `higher`로 적혀 있습니다). 더 느슨한 값은 예외를 쓰라는 안내와 함께 오류가 되므로, `PASS`는 언제나 최소한
 프로파일의 기준을 만족했다는 뜻입니다.
@@ -101,11 +101,11 @@ attestations:
 
 증명은 무조건 통하는 예외가 아니라, 확인한 대상에 묶여 있습니다.
 
-- `digest`는 점검 로직의 다이제스트입니다. hostlint 릴리스에서 점검이 바뀌면 값이 달라집니다.
+- `digest`는 점검 로직의 다이제스트입니다. vmsctl 릴리스에서 점검이 바뀌면 값이 달라집니다.
 - `evidence_digest`는 점검이 보여 주는 값 전체의 다이제스트입니다(보고서에 잘려 나오는 근거가 아닙니다). 나열된
   계정, 서버, 파일이 바뀌면 값이 달라집니다.
 
-두 값은 스캔의 JSON 결과(`hostlint scan --format json`)에서 해당 점검의 `checks[].digest`와
+두 값은 스캔의 JSON 결과(`vmsctl scan --format json`)에서 해당 점검의 `checks[].digest`와
 `checks[].evidenceDigest`를 읽어 옵니다. 보여 줄 값이 없는 점검에는 `evidenceDigest`가 없습니다. 이때는
 `evidence_digest`를 생략하며, 증명은 만료일까지 적용됩니다.
 

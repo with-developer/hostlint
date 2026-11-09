@@ -5,7 +5,7 @@ body:
   - type: textarea
     id: what
     attributes:
-      label: What should hostlint do
+      label: What should vmsctl do
       description: For a check, name the setting or file and the value that should pass. Reference a control ID, but do not paste text from CIS or KISA documents.
     validations:
       required: true

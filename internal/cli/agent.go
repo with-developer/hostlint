@@ -13,11 +13,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/push"
-	"github.com/with-developer/hostlint/internal/server"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/push"
+	"github.com/with-developer/vmsctl/internal/server"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 	agentBackoffCap   = 5 * time.Minute
 )
 
-// agent is the loop of "hostlint agent" with the parts that touch the network or the host passed in, so a test can
+// agent is the loop of "vmsctl agent" with the parts that touch the network or the host passed in, so a test can
 // drive it.
 type agent struct {
 	allow []string
@@ -45,26 +45,26 @@ func newAgentCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agent",
 		Short: "Scan this host when the fleet server asks (docs/fleet.md)",
-		Long: `Agent keeps a connection open to a hostlint server, outbound only, and scans this host when someone
+		Long: `Agent keeps a connection open to a vmsctl server, outbound only, and scans this host when someone
 asks for it on the dashboard ("scan now"). The only thing the server can ask for is a scan with one of the profiles
 you allow here with --allow-profile, at most once a minute: it cannot send waivers, parameters or commands, and
-the result goes back through the same token, pin and signature as "hostlint scan --push".
+the result goes back through the same token, pin and signature as "vmsctl scan --push".
 
-The token is the host's ingest token (HOSTLINT_TOKEN or --token-file); the host has to have sent a result once.
+The token is the host's ingest token (VMSCTL_TOKEN or --token-file); the host has to have sent a result once.
 Run it as root, as a service: scheduled scans (a systemd timer) keep working next to it.`,
-		Example: `  sudo hostlint agent --server https://hostlint.example.org:8443 --pin sha256/... \
-      --token-file /etc/hostlint/token --sign-key /etc/hostlint/sign.key --allow-profile kisa-2026`,
+		Example: `  sudo vmsctl agent --server https://vmsctl.example.org:8443 --pin sha256/... \
+      --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/sign.key --allow-profile kisa-2026`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runAgent(cmd, f, allow)
 		},
 	}
 	fl := cmd.Flags()
-	fl.StringVar(&f.pushURL, "server", "", "the server's URL, such as https://hostlint.example.org:8443 (required)")
+	fl.StringVar(&f.pushURL, "server", "", "the server's URL, such as https://vmsctl.example.org:8443 (required)")
 	fl.StringVar(&f.pin, "pin", "", `trust the server's public key ("sha256/<base64>") instead of the system roots`)
-	fl.StringVar(&f.tokenFile, "token-file", "", "read the ingest token from this file (default: the HOSTLINT_TOKEN environment variable)")
-	fl.StringVar(&f.signKey, "sign-key", "", "sign results with this key (made with: hostlint key generate)")
-	fl.StringVar(&f.config, "config", "", "configuration file (default: ./hostlint.yaml, then /etc/hostlint/hostlint.yaml, if present)")
+	fl.StringVar(&f.tokenFile, "token-file", "", "read the ingest token from this file (default: the VMSCTL_TOKEN environment variable)")
+	fl.StringVar(&f.signKey, "sign-key", "", "sign results with this key (made with: vmsctl key generate)")
+	fl.StringVar(&f.config, "config", "", "configuration file (default: ./vmsctl.yaml, then /etc/vmsctl/vmsctl.yaml, if present)")
 	fl.StringVar(&f.root, "root", "/", "scan a filesystem mounted at this directory instead of the running system (for tests)")
 	_ = fl.MarkHidden("root")
 	fl.StringArrayVar(&allow, "allow-profile", nil, "a profile the server may ask this agent to scan with (required; repeatable)")
@@ -96,7 +96,7 @@ func runAgent(cmd *cobra.Command, f scanFlags, allow []string) error {
 		return push.Options{URL: f.pushURL, Token: token, Pin: f.pin}, err
 	}
 	logf := func(format string, args ...any) {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s hostlint agent: %s\n", time.Now().UTC().Format(time.RFC3339), fmt.Sprintf(format, args...))
+		fmt.Fprintf(cmd.ErrOrStderr(), "%s vmsctl agent: %s\n", time.Now().UTC().Format(time.RFC3339), fmt.Sprintf(format, args...))
 	}
 	a := &agent{
 		allow: slices.Clone(allow),
@@ -115,7 +115,7 @@ func runAgent(cmd *cobra.Command, f scanFlags, allow []string) error {
 			return push.FailJob(ctx, opts, id, reason)
 		},
 		scan: func(ctx context.Context, job *push.Job) error {
-			// The scan is the one of "hostlint scan --push": same flags, the profile of the job, no output.
+			// The scan is the one of "vmsctl scan --push": same flags, the profile of the job, no output.
 			sc := f
 			sc.profiles, sc.format, sc.failOn, sc.color, sc.jobID = []string{job.Profile}, "json", "none", "never", job.ID
 			c := &cobra.Command{}

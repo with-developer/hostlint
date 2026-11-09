@@ -19,9 +19,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/output"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/output"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 // Limits on what a host may send (ADR 0010). A full scan of a stock host is about 125 KiB.
@@ -168,7 +168,7 @@ func (s *Server) handleIngest(w http.ResponseWriter, r *http.Request) {
 	cred, err := s.cfg.Store.Authenticate(ctx, bearer(r), ScopeIngest)
 	if errors.Is(err, ErrUnauthorized) {
 		s.cfg.Logger.Warn("request refused", "reason", "bad token", "remote", remote)
-		w.Header().Set("WWW-Authenticate", `Bearer realm="hostlint"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="vmsctl"`)
 		writeError(w, http.StatusUnauthorized, "a valid ingest token is required")
 		return
 	}

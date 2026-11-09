@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func collectNFS(t *testing.T, m *hostfs.MemFS) (*NFS, bool) {
@@ -89,7 +89,7 @@ func TestNFSExportsDirectoryAndProblems(t *testing.T) {
 		t.Errorf("%+v complete %v", n, complete)
 	}
 	bad := exportsConf("/a h(ro)\n").SetError(nfsExports, fsErrPermission)
-	if _, err := (nfsCollector{}).Collect(context.Background(), hostfs.NewTestHost(bad, nil, false)); err == nil || !strings.Contains(err.Error(), "run hostlint as root") {
+	if _, err := (nfsCollector{}).Collect(context.Background(), hostfs.NewTestHost(bad, nil, false)); err == nil || !strings.Contains(err.Error(), "run vmsctl as root") {
 		t.Errorf("err = %v", err)
 	}
 }

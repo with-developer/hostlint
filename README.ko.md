@@ -1,7 +1,7 @@
-<!-- translated from README.md @ 05dbcbb -->
-# hostlint
+<!-- translated from README.md @ 2ca0d64 -->
+# vmsctl
 
-[![CI](https://github.com/with-developer/hostlint/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/hostlint/actions/workflows/ci.yml)
+[![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **리눅스 서버를 위한 eslint.** 실행 파일 하나로 서버의 보안 설정을 보안 강화 기준과 비교하고,
@@ -9,11 +9,11 @@
 
 [English](README.md)
 
-![터미널 애니메이션: hostlint scan이 실패한 컨트롤과 그 근거를 보여 줍니다](docs/demo/scan.gif)
+![터미널 애니메이션: vmsctl scan이 실패한 컨트롤과 그 근거를 보여 줍니다](docs/demo/scan.gif)
 
 ```text
-$ sudo hostlint scan
-hostlint v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+$ sudo vmsctl scan
+vmsctl v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
@@ -41,13 +41,13 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 
 ## 여러 서버를 한눈에 보는 대시보드
 
-서버들이 스스로 점검하고 결과를 `hostlint server`로 보내면, 서버가 이력을 쌓아 두고 웹 대시보드로
+서버들이 스스로 점검하고 결과를 `vmsctl server`로 보내면, 서버가 이력을 쌓아 두고 웹 대시보드로
 보여 줍니다. 영어와 한국어, 라이트·다크 테마, 휴대폰 화면을 지원합니다.
 
-![hostlint 대시보드 투어: 개요, 호스트, 근거와 조치 방법이 있는 호스트, 컨트롤, 매트릭스, 한국어](docs/demo/dashboard-tour.gif)
+![vmsctl 대시보드 투어: 개요, 호스트, 근거와 조치 방법이 있는 호스트, 컨트롤, 매트릭스, 한국어](docs/demo/dashboard-tour.gif)
 
 ```sh
-hostlint server demo      # 가상의 호스트 12대로 둘러보기. 실제로 점검하거나 저장하지 않습니다. 출력된 주소를 여세요
+vmsctl server demo      # 가상의 호스트 12대로 둘러보기. 실제로 점검하거나 저장하지 않습니다. 출력된 주소를 여세요
 ```
 
 - **통과율이 시간에 따라 어떻게 달라졌는지** 7일·30일·90일 차트로 보고, 호스트마다 최근 추이도 봅니다.
@@ -65,7 +65,7 @@ hostlint server demo      # 가상의 호스트 12대로 둘러보기. 실제로
 > 🚧 **아직 초기 단계입니다.** 흔치 않은 환경에서는 어색한 부분이 있을 수 있으니 알려 주세요.
 > [로드맵](docs/ROADMAP.md)과 [릴리스 이력](docs/RELEASING.md)을 참고하세요.
 
-## 왜 hostlint인가
+## 왜 vmsctl인가
 
 - **판정마다 근거가 붙습니다.** 값, 그 값이 나온 파일과 줄, 직접 설정한 값인지 기본값인지를 보여 줍니다.
   이유를 알 수 없는 FAIL은 없습니다.
@@ -90,57 +90,59 @@ hostlint server demo      # 가상의 호스트 12대로 둘러보기. 실제로
 `cosign`이 설치되어 있으면 체크섬의 Sigstore 서명까지 확인합니다.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh
-sudo sh install.sh -v v0.26.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
-sudo hostlint scan
+curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.27.0/install.sh
+sudo sh install.sh -v v0.27.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
+sudo vmsctl scan
 ```
 
 컨테이너 이미지로 실행할 수도 있습니다. 호스트의 루트를 읽기 전용으로 마운트합니다([docs/container.ko.md](docs/container.ko.md)).
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.27.0 scan --root /host
 ```
 
-[릴리스](https://github.com/with-developer/hostlint/releases)에는 `.deb`·`.rpm` 패키지, SBOM, 빌드 출처 증명도
-함께 올라갑니다(`gh attestation verify 파일 -R with-developer/hostlint`). 직접 빌드하려면 Go 1.26 이상이 필요하고,
+[릴리스](https://github.com/with-developer/vmsctl/releases)에는 `.deb`·`.rpm` 패키지, SBOM, 빌드 출처 증명도
+함께 올라갑니다(`gh attestation verify 파일 -R with-developer/vmsctl`). v0.26.0까지는 hostlint라는 이름으로 나왔으므로
+그 버전은 `-R with-developer/hostlint`로 검증하세요. hostlint를 쓰고 계셨다면
+[docs/migrating-from-hostlint.ko.md](docs/migrating-from-hostlint.ko.md)를 보세요. 직접 빌드하려면 Go 1.26 이상이 필요하고,
 바이너리 자체에는 외부 의존성이 없습니다:
 
 ```sh
-go install github.com/with-developer/hostlint/cmd/hostlint@v0.26.0
-sudo "$(go env GOPATH)/bin/hostlint" scan
+go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.27.0
+sudo "$(go env GOPATH)/bin/vmsctl" scan
 ```
 
 root가 아니면 `/etc/shadow`처럼 보호된 파일이 필요한 점검은 `ERROR`가 됩니다.
 
 ```sh
 # 프로그램이 읽을 수 있는 결과(JSON)
-sudo hostlint scan --format json --output web-01.json
+sudo vmsctl scan --format json --output web-01.json
 
 # 마운트한 루트 파일시스템(이미지, VM 디스크). 실행 중이어야 알 수 있는 점검은 ERROR나 NOT_APPLICABLE
-sudo hostlint scan --root /mnt/image
+sudo vmsctl scan --root /mnt/image
 
 # 컨테이너 이미지: docker save로 만든 아카이브를 그대로 점검합니다. 마운트도, 실행도, 쓰기도 하지 않습니다
-docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
+docker save app:1.4 -o app.tar && vmsctl scan --image-tar app.tar --fail-on high
 
 # CI: 심각도 high 이상 컨트롤이 실패할 때만 빌드를 실패시킵니다(GitHub Action, GitLab 등: docs/ci.ko.md)
-sudo hostlint scan --fail-on high --format junit --output hostlint.xml
+sudo vmsctl scan --fail-on high --format junit --output vmsctl.xml
 
 # 여러 호스트의 결과를 HTML 보고서 하나로: 네트워크 요청을 하지 않는 단일 파일
-hostlint report results/*.json --output report.html
+vmsctl report results/*.json --output report.html
 
 # 실패한 컨트롤이 무슨 뜻이고 어떻게 고치는지
-hostlint explain U-02 ssh.permit-root-login
+vmsctl explain U-02 ssh.permit-root-login
 
 # 지난 점검 이후 무엇이 바뀌었는지: 새로 실패한 것, 해결된 것, 그 원인이 된 점검
-hostlint diff before.json after.json
-hostlint diff baseline.json current.json --fail-on-regression   # 컨트롤이 나빠졌으면 종료 코드 1
+vmsctl diff before.json after.json
+vmsctl diff baseline.json current.json --fail-on-regression   # 컨트롤이 나빠졌으면 종료 코드 1
 
 # 여러 호스트의 결과를 모으는 서버(초기 단계, docs/fleet.ko.md 참고)
-hostlint server run --db server.db --listen :8443
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443
+vmsctl server run --db server.db --listen :8443
+sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443
 
 # 프로파일을 고르고, 기준을 더 엄격하게 바꾸고, 안고 가기로 한 발견은 예외로 처리
-sudo hostlint scan --config hostlint.yaml
+sudo vmsctl scan --config vmsctl.yaml
 ```
 
 각 결과를 결정한 점검은 출력에 나열됩니다. `--config`와 파일 형식은
@@ -155,7 +157,7 @@ sudo hostlint scan --config hostlint.yaml
 | `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옵니다([docs/packs.ko.md](docs/packs.ko.md)). 팩의 프로파일은 `-p`로 고릅니다 |
 | `--root` | 이 디렉터리에 마운트된 파일시스템을 점검합니다(운영체제가 들어 있어야 합니다) |
 | `--image-tar` | 이 아카이브에 든 컨테이너 이미지의 파일시스템을 점검합니다([docs/images.ko.md](docs/images.ko.md)). `--push`와 함께 쓰면 이미지가 서버에서 독립된 항목이 되고, `--name`으로 이름을 정합니다 |
-| `--config` | 설정 파일 (기본값: `./hostlint.yaml`, 없으면 `/etc/hostlint/hostlint.yaml`) |
+| `--config` | 설정 파일 (기본값: `./vmsctl.yaml`, 없으면 `/etc/vmsctl/vmsctl.yaml`) |
 | `--label key=value` | 결과의 호스트 정보에 라벨을 붙입니다 |
 | `--color` | `auto`(기본값), `always`, `never` |
 | `-v, --verbose` | 통과·해당 없음 컨트롤도 표에 보여 줍니다 |
@@ -208,11 +210,11 @@ ICMP 리다이렉트, 역방향 경로 필터링, SYN 쿠키 등), 호스트 방
 적용되지 않습니다.
 
 우리 조직만의 기준은 [정책 팩](docs/packs.ko.md)으로 만드세요. 같은 YAML 형식의 점검과 프로파일을 디렉터리에 담은 것이며,
-`hostlint pack test`로 테스트하고 `hostlint pack show`로 내용을 검토한 뒤 `hostlint scan --pack`으로 씁니다. 팩은 새로운
+`vmsctl pack test`로 테스트하고 `vmsctl pack show`로 내용을 검토한 뒤 `vmsctl scan --pack`으로 씁니다. 팩은 새로운
 권한을 더하지 않습니다(아무것도 실행할 수 없고, 내장 점검이 읽지 못하는 파일은 팩도 읽지 못합니다). 결과에는 팩의 이름과
 다이제스트가 남습니다.
 
-점검 제목과 설명은 hostlint가 직접 썼고, 프로파일은 기준 문서의 컨트롤 번호만 참조합니다.
+점검 제목과 설명은 vmsctl이 직접 썼고, 프로파일은 기준 문서의 컨트롤 번호만 참조합니다.
 
 ## 대시보드 화면
 
@@ -232,7 +234,7 @@ ICMP 리다이렉트, 역방향 경로 필터링, SYN 쿠키 등), 호스트 방
 
 ## 원칙
 
-hostlint는 타협하지 않는 몇 가지 원칙 위에 만들어졌습니다. 자세한 내용은 [비전](docs/VISION.md)과
+vmsctl은 타협하지 않는 몇 가지 원칙 위에 만들어졌습니다. 자세한 내용은 [비전](docs/VISION.md)과
 [설계 결정 기록](docs/adr/)을 참고하세요.
 
 1. **보기만 합니다.** 점검 대상 서버를 바꾸는 코드 경로는 어디에도 없습니다([ADR 0004](docs/adr/0004-observation-only.md)).
@@ -243,12 +245,12 @@ hostlint는 타협하지 않는 몇 가지 원칙 위에 만들어졌습니다. 
 
 ## 상태
 
-hostlint는 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·SARIF·JUnit·여러 호스트용 HTML 출력,
+vmsctl은 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), 수집기, 터미널·JSON·SARIF·JUnit·여러 호스트용 HTML 출력,
 예외(waiver)를 담는 설정 파일, 릴리스 파이프라인(서명된 아카이브, 패키지, SBOM, `install.sh`), 지원하는 모든 배포판에
 대한 컨테이너 테스트, 컨테이너 이미지 점검([docs/images.ko.md](docs/images.ko.md)), GitHub Action
 ([docs/ci.ko.md](docs/ci.ko.md)), 대시보드가 있는 서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md)),
 요청이 오면 점검하는 에이전트, 컨테이너 이미지 배포([docs/container.ko.md](docs/container.ko.md))까지 갖췄고, 최신
-릴리스는 v0.26.0입니다. 앞으로의 계획은 [로드맵](docs/ROADMAP.md)을 참고하세요.
+릴리스는 v0.27.0입니다. 앞으로의 계획은 [로드맵](docs/ROADMAP.md)을 참고하세요.
 
 ## 라이선스
 

@@ -14,8 +14,8 @@ import (
 	"cel.dev/cel-go/common/types/ref"
 	"cel.dev/cel-go/common/types/traits"
 
-	"github.com/with-developer/hostlint/internal/facts"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/facts"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Evidence and reason bounds (ADR 0006 §8).

@@ -18,9 +18,9 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
-	"github.com/with-developer/hostlint/internal/version"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/version"
 )
 
 // Limits on a policy pack (ADR 0012): it is read from a directory anyone with the right to write there
@@ -50,8 +50,19 @@ type PackManifest struct {
 	Name        string `yaml:"name"`
 	Version     string `yaml:"version"`
 	Description string `yaml:"description"`
-	// RequiresHostlint is the oldest hostlint release the pack works with, such as v0.15.0.
+	// RequiresVmsctl is the oldest vmsctl release the pack works with, such as v0.27.0.
+	RequiresVmsctl string `yaml:"requires_vmsctl"`
+	// RequiresHostlint is the same, under the key the manifest had before the rename (ADR 0017). A release
+	// before v0.27.0 reads only this key, so a pack for a mixed fleet keeps it.
 	RequiresHostlint string `yaml:"requires_hostlint"`
+}
+
+// Requires is the oldest release the pack works with, from whichever of the two keys the manifest uses.
+func (m *PackManifest) Requires() string {
+	if m.RequiresVmsctl != "" {
+		return m.RequiresVmsctl
+	}
+	return m.RequiresHostlint
 }
 
 // Pack is a policy pack read from a directory (ADR 0012).
@@ -147,7 +158,7 @@ func LoadPack(dir string) (*Pack, error) {
 	}, nil
 }
 
-// checkManifest validates pack.yaml; current is the version of this hostlint, which a development build
+// checkManifest validates pack.yaml; current is the version of this vmsctl, which a development build
 // (not a release number) does not hold the pack to.
 func checkManifest(m *PackManifest, current string) error {
 	switch {
@@ -160,13 +171,20 @@ func checkManifest(m *PackManifest, current string) error {
 	case len(m.Description) > 300:
 		return errors.New("description is at most 300 characters")
 	}
-	if m.RequiresHostlint != "" {
-		need := packSemverR.FindStringSubmatch(m.RequiresHostlint)
+	if m.RequiresVmsctl != "" && m.RequiresHostlint != "" {
+		return errors.New("name the release once: requires_vmsctl, or the old requires_hostlint (not both)")
+	}
+	if req := m.Requires(); req != "" {
+		key := "requires_vmsctl"
+		if m.RequiresVmsctl == "" {
+			key = "requires_hostlint"
+		}
+		need := packSemverR.FindStringSubmatch(req)
 		if need == nil {
-			return fmt.Errorf("requires_hostlint %q is not a release such as v0.15.0", m.RequiresHostlint)
+			return fmt.Errorf("%s %q is not a release such as v0.15.0", key, req)
 		}
 		if cur := packSemverR.FindStringSubmatch(current); cur != nil && semverLess(cur, need) {
-			return fmt.Errorf("the pack needs hostlint %s or later; this is %s", m.RequiresHostlint, current)
+			return fmt.Errorf("the pack needs vmsctl %s or later; this is %s", req, current)
 		}
 	}
 	return nil
@@ -198,10 +216,10 @@ func (l *packLoader) fail(p, format string, args ...any) error {
 // trust checks what a file or directory of the pack would have to be for the pack to be trusted.
 func (l *packLoader) trust(p string, fi fs.FileInfo) error {
 	if fi.Mode().Perm()&0o022 != 0 {
-		return l.fail(p, "writable by group or others (mode %04o); hostlint does not trust a pack anyone else could change (chmod go-w)", fi.Mode().Perm())
+		return l.fail(p, "writable by group or others (mode %04o); vmsctl does not trust a pack anyone else could change (chmod go-w)", fi.Mode().Perm())
 	}
 	if uid, ok := hostfs.Owner(fi); ok && uid != 0 && int64(uid) != int64(os.Getuid()) {
-		return l.fail(p, "owned by uid %d, neither root nor you; hostlint does not trust it (chown it, or copy the pack)", uid)
+		return l.fail(p, "owned by uid %d, neither root nor you; vmsctl does not trust it (chown it, or copy the pack)", uid)
 	}
 	return nil
 }

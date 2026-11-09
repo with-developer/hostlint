@@ -1,13 +1,13 @@
 # Scanning container images
 
-`hostlint scan --image-tar FILE` checks the filesystem of a container image from the archive that
+`vmsctl scan --image-tar FILE` checks the filesystem of a container image from the archive that
 `docker save` (or `skopeo copy ... oci-archive:FILE`) wrote, with the same checks and the same result
 document as a scan of a host or of a mounted root (`--root`). Nothing is mounted, run or written, and no
 container engine, daemon or registry is involved:
 
 ```sh
 docker save app:1.4 -o app.tar
-hostlint scan --image-tar app.tar --fail-on high --format sarif --output hostlint.sarif
+vmsctl scan --image-tar app.tar --fail-on high --format sarif --output vmsctl.sarif
 ```
 
 The report names the image: `host.hostname` is its reference (the first tag of the archive, else the file
@@ -76,7 +76,7 @@ image is never "stale" (nothing reports for it on a schedule) and not one of the
 
 ```sh
 docker save ghcr.io/acme/app:1.4 -o app.tar
-HOSTLINT_TOKEN=hlt_ing_... hostlint scan --image-tar app.tar --push https://hostlint.example.org:8443 --fail-on high
+VMSCTL_TOKEN=hlt_ing_... vmsctl scan --image-tar app.tar --push https://vmsctl.example.org:8443 --fail-on high
 ```
 
 The image goes by its repository (`ghcr.io/acme/app`: the reference of the archive without its tag), so the tags of one
@@ -85,7 +85,7 @@ no image (saved without a tag) needs `--name ghcr.io/acme/app`, and `--name` ove
 of CI is bound to a prefix, so one token serves an organization and no further:
 
 ```sh
-hostlint server token create --name ci --host 'ghcr.io/acme/*'
+vmsctl server token create --name ci --host 'ghcr.io/acme/*'
 ```
 
 A name is a host or an image, never both, and an image has no host ID. Results can be signed like any other (`--sign-key`).

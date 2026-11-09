@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/signing"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/signing"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 // apiFixture is a server with three scans received an hour apart: web-01 twice (U-01 got worse

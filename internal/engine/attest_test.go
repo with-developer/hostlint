@@ -9,7 +9,7 @@ import (
 	"cel.dev/cel-go/common/types"
 	"cel.dev/cel-go/common/types/ref"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // attestScan scans demoHost (hostname web-01) on 2026-11-03 with MANUAL checks

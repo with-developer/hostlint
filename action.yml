@@ -1,4 +1,4 @@
-name: hostlint
+name: vmsctl
 description: Check a container image, an image archive or a mounted root filesystem against a hardening profile (KISA 2026 by default), and gate the build on what it finds.
 author: with-developer
 branding:
@@ -31,7 +31,7 @@ inputs:
     required: false
     default: high
   config:
-    description: A hostlint.yaml (profile choice, stricter parameters, waivers with a reason and an expiry).
+    description: A vmsctl.yaml (profile choice, stricter parameters, waivers with a reason and an expiry).
     required: false
     default: ""
   summary:
@@ -43,14 +43,14 @@ inputs:
     required: false
     default: ""
   version:
-    description: The hostlint release to install, such as v0.12.0. By default the release the action itself is pinned to (uses ...@v0.13.0); a commit pin needs this input. The archive is checked against the signed checksums of the release.
+    description: The vmsctl release to install, such as v0.12.0. By default the release the action itself is pinned to (uses ...@v0.13.0); a commit pin needs this input. The archive is checked against the signed checksums of the release.
     required: false
     default: ""
 
 runs:
   using: composite
   steps:
-    - name: Install hostlint
+    - name: Install vmsctl
       shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
@@ -59,7 +59,7 @@ runs:
       run: |
         set -euo pipefail
         if [ "$RUNNER_OS" != Linux ]; then
-          echo "::error::hostlint runs on Linux runners, not $RUNNER_OS"
+          echo "::error::vmsctl runs on Linux runners, not $RUNNER_OS"
           exit 2
         fi
         version="$INPUT_VERSION"
@@ -67,17 +67,19 @@ runs:
           if [[ "$ACTION_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             version="$ACTION_REF"
           elif [[ "$ACTION_REF" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::the action is pinned to a commit: set the version input to the hostlint release to install (a commit says nothing about which one)"
+            echo "::error::the action is pinned to a commit: set the version input to the vmsctl release to install (a commit says nothing about which one)"
             exit 2
           elif [ -n "$ACTION_REF" ]; then
-            echo "::warning::the action is pinned to $ACTION_REF, which is not a release tag: installing the latest hostlint release. Pin the action to a release tag, or set the version input."
+            echo "::warning::the action is pinned to $ACTION_REF, which is not a release tag: installing the latest vmsctl release. Pin the action to a release tag, or set the version input."
           fi
         fi
-        bin="$RUNNER_TEMP/hostlint-bin"
+        bin="$RUNNER_TEMP/vmsctl-bin"
         mkdir -p "$bin"
         args=(-b "$bin")
         if [ -n "$version" ]; then args+=(-v "$version"); fi
         sh "$ACTION_PATH/install.sh" "${args[@]}"
+        # A release before v0.27.0 is installed under its old name, hostlint (ADR 0017): the steps below say vmsctl.
+        if [ ! -e "$bin/vmsctl" ] && [ -e "$bin/hostlint" ]; then ln -s hostlint "$bin/vmsctl"; fi
         echo "$bin" >> "$GITHUB_PATH"
 
     - name: Scan
@@ -117,7 +119,7 @@ runs:
         fi
         target=()
         if [ -n "$INPUT_IMAGE" ]; then
-          archive="$RUNNER_TEMP/hostlint-image.tar"
+          archive="$RUNNER_TEMP/vmsctl-image.tar"
           docker save --output "$archive" "$INPUT_IMAGE"
           target=(--image-tar "$archive")
         elif [ -n "$INPUT_IMAGE_TAR" ]; then
@@ -139,15 +141,15 @@ runs:
         if [ -n "$INPUT_CONFIG" ]; then common+=(--config "$INPUT_CONFIG"); fi
         # The SARIF file first, with nothing that fails: the report is wanted when the gate fails, too.
         if [ -n "$INPUT_SARIF_FILE" ]; then
-          hostlint scan "${target[@]}" "${common[@]}" --format sarif --output "$INPUT_SARIF_FILE" --fail-on none
+          vmsctl scan "${target[@]}" "${common[@]}" --format sarif --output "$INPUT_SARIF_FILE" --fail-on none
         fi
         # The job summary, also written before the gate. What it shows is escaped, since it comes from the scanned image.
         if [ "$INPUT_SUMMARY" = true ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-          # Best effort: a hostlint release from before the markdown format (version: ...) has no summary to give.
-          if hostlint scan "${target[@]}" "${common[@]}" --format markdown --output "$RUNNER_TEMP/hostlint-summary.md" --fail-on none; then
-            cat "$RUNNER_TEMP/hostlint-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          # Best effort: a vmsctl release from before the markdown format (version: ...) has no summary to give.
+          if vmsctl scan "${target[@]}" "${common[@]}" --format markdown --output "$RUNNER_TEMP/vmsctl-summary.md" --fail-on none; then
+            cat "$RUNNER_TEMP/vmsctl-summary.md" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "::warning::no job summary: this hostlint release cannot write one (it needs v0.16.0 or later); set summary: false to silence this"
+            echo "::warning::no job summary: this vmsctl release cannot write one (it needs v0.16.0 or later); set summary: false to silence this"
           fi
         fi
-        hostlint scan "${target[@]}" "${common[@]}" --fail-on "$INPUT_FAIL_ON" --color always
+        vmsctl scan "${target[@]}" "${common[@]}" --fail-on "$INPUT_FAIL_ON" --color always

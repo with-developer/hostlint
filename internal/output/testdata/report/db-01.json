@@ -5,7 +5,7 @@
     "startedAt": "2026-11-02T12:05:00Z",
     "finishedAt": "2026-11-02T12:05:02Z",
     "tool": {
-      "name": "hostlint",
+      "name": "vmsctl",
       "version": "v0.1.0"
     },
     "target": {
@@ -178,7 +178,7 @@
       "severity": "high",
       "status": "ERROR",
       "statusSource": "observed",
-      "reason": "shadow: permission denied (run hostlint as root)",
+      "reason": "shadow: permission denied (run vmsctl as root)",
       "evidence": [],
       "durationMs": 0
     },

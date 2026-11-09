@@ -87,7 +87,7 @@ func (w *Webhook) Send(ctx context.Context, ev Event) error {
 		return errors.New("the webhook request could not be made") // not the error: it names the URL, which can be a secret
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "hostlint-server")
+	req.Header.Set("User-Agent", "vmsctl-server")
 	req.Header.Set("X-Hostlint-Delivery", ev.ID)
 	if len(w.Secret) > 0 {
 		mac := hmac.New(sha256.New, w.Secret)
@@ -270,7 +270,7 @@ func (n *Notifier) scanPass(ctx context.Context, cur string) (bool, error) {
 				if len(reg) > maxRegressedInEvent {
 					ev.More, ev.Regressed = len(reg)-maxRegressedInEvent, reg[:maxRegressedInEvent]
 				}
-				ev.Text = fmt.Sprintf("hostlint: %s got worse: %d control(s) now fail (%s)", x.name, len(reg), joinIDs(reg))
+				ev.Text = fmt.Sprintf("vmsctl: %s got worse: %d control(s) now fail (%s)", x.name, len(reg), joinIDs(reg))
 				if err := n.Hook.Send(ctx, ev); err != nil {
 					if !errors.Is(err, ErrRejected) {
 						if serr := save(); serr != nil {
@@ -379,7 +379,7 @@ func (n *Notifier) tickStale(ctx context.Context) error {
 			continue
 		}
 		ev := Event{ID: "stale-" + q.stateName() + "-" + q.stateValue(), Event: "stale", At: st.stamp(), Host: q.name, HostID: q.hostID, LastScan: q.received,
-			Text: fmt.Sprintf("hostlint: %s has not reported since %s", q.name, q.received)}
+			Text: fmt.Sprintf("vmsctl: %s has not reported since %s", q.name, q.received)}
 		if err := n.Hook.Send(ctx, ev); err != nil && !errors.Is(err, ErrRejected) {
 			return err
 		} else if err != nil && n.Logger != nil {

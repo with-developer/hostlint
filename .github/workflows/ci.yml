@@ -78,10 +78,10 @@ jobs:
           GOOS: linux
           GOARCH: ${{ matrix.goarch }}
       - name: Check the binary is static
-        run: file hostlint | tee /dev/stderr | grep -q 'statically linked'
+        run: file vmsctl | tee /dev/stderr | grep -q 'statically linked'
       - name: Smoke test
         if: matrix.goarch == 'amd64'
-        run: ./hostlint version
+        run: ./vmsctl version
 
   vuln:
     runs-on: ubuntu-latest
@@ -119,8 +119,8 @@ jobs:
         run: go test -tags web ./internal/server/
       - name: The built dashboard is in the binary
         run: |
-          go build -tags web -o hostlint-web ./cmd/hostlint
-          ./hostlint-web version
+          go build -tags web -o vmsctl-web ./cmd/vmsctl
+          ./vmsctl-web version
 
   # Builds every release artifact as a snapshot (unsigned, unpublished), so the
   # release pipeline is tested before a tag needs it (docs/RELEASING.md).

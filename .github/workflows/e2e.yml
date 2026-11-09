@@ -1,6 +1,6 @@
 name: e2e
 
-# hostlint in containers of every supported distribution, stock and hardened,
+# vmsctl in containers of every supported distribution, stock and hardened,
 # compared with e2e/testdata. Runs when what decides a result changes.
 on:
   pull_request:

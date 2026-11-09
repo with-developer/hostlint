@@ -14,7 +14,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // The fixtures: web-01, an older scan of web-01 that the report leaves out,
@@ -188,7 +188,7 @@ func TestReadResultRejects(t *testing.T) {
 	}
 	first := func(doc map[string]any, key string) map[string]any { return doc[key].([]any)[0].(map[string]any) }
 	tests := []struct{ name, doc, want string }{
-		{"not JSON", "<html>", "not a hostlint result"},
+		{"not JSON", "<html>", "not a vmsctl result"},
 		{"no version", `{"scan": {}}`, "no schemaVersion"},
 		{"newer version", `{"schemaVersion": 2}`, "schema version 2 is not supported"},
 		{"no host name", edit(func(d map[string]any) { d["host"].(map[string]any)["hostname"] = "" }), "no host name"},
@@ -207,7 +207,7 @@ func TestReadResultRejects(t *testing.T) {
 		{"profile twice", edit(func(d map[string]any) {
 			d["profiles"] = append(d["profiles"].([]any), first(d, "profiles"))
 		}), `profile "kisa-2026" listed twice`},
-		{"wrong type", edit(func(d map[string]any) { d["checks"] = "all good" }), "not a valid hostlint result"},
+		{"wrong type", edit(func(d map[string]any) { d["checks"] = "all good" }), "not a valid vmsctl result"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

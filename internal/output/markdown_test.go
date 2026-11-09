@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 func TestMarkdownReport(t *testing.T) {
@@ -16,7 +16,7 @@ func TestMarkdownReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{"## hostlint: web-01", "| Profile | Controls |", "### Controls that need attention", "<details>", "</details>", "```"} {
+	for _, want := range []string{"## vmsctl: web-01", "| Profile | Controls |", "### Controls that need attention", "<details>", "</details>", "```"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the report lacks %q:\n%s", want, out)
 		}
@@ -105,7 +105,7 @@ func checkInert(t *testing.T, payload, out string) {
 	for _, l := range prose {
 		trimmed := strings.TrimSpace(l)
 		// No line the payload wrote starts a list, a heading, a quote or an ordered list.
-		if strings.HasPrefix(l, "## hostlint: ") || strings.HasPrefix(l, "### ") {
+		if strings.HasPrefix(l, "## vmsctl: ") || strings.HasPrefix(l, "### ") {
 			continue // the report's own headings
 		}
 		if strings.Contains(l, "evil") || strings.Contains(l, "item") || strings.Contains(l, "list") || strings.Contains(l, "heading") || strings.Contains(l, "quote") || strings.Contains(l, "underline") {

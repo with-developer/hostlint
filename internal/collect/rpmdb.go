@@ -9,7 +9,7 @@ import (
 )
 
 // The rpm database of EL9 and later (rpm 4.16+) is SQLite: a table Packages
-// (hnum INTEGER PRIMARY KEY, blob BLOB) whose blobs are rpm headers. hostlint
+// (hnum INTEGER PRIMARY KEY, blob BLOB) whose blobs are rpm headers. vmsctl
 // reads the file directly: running rpm, or a SQLite library in read-write
 // mode, would write to the host (ADR 0008). The file comes from the scanned
 // host, so every offset is checked; a malformed file is an error, never a
@@ -17,7 +17,7 @@ import (
 
 var errMalformedDB = errors.New("malformed rpm database")
 
-// rpmPackage is what hostlint keeps of an rpm header.
+// rpmPackage is what vmsctl keeps of an rpm header.
 type rpmPackage struct {
 	name, version, release, arch string
 	epoch                        int64

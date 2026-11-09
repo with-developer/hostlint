@@ -1,4 +1,4 @@
-hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.1 LTS)
+vmsctl v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.1 LTS)
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
@@ -7,7 +7,7 @@ hostlint v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.1 LTS)
     ✓ accounts.password-max-age — Passwords expire
 ! ERROR  U-04   Protect password hashes [high]
     ! accounts.shadow-file — Password hashes are kept in /etc/shadow
-        shadow: permission denied (run hostlint as root)
+        shadow: permission denied (run vmsctl as root)
 - NOT_APPLICABLE U-06   Restrict su to a group [high]
     - accounts.su-wheel-only — Only members of the wheel group can use su
         applies is false

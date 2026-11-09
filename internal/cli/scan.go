@@ -12,16 +12,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/collect"
-	"github.com/with-developer/hostlint/internal/config"
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
-	"github.com/with-developer/hostlint/internal/image"
-	"github.com/with-developer/hostlint/internal/output"
-	"github.com/with-developer/hostlint/internal/signing"
-	"github.com/with-developer/hostlint/internal/version"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/collect"
+	"github.com/with-developer/vmsctl/internal/config"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/image"
+	"github.com/with-developer/vmsctl/internal/output"
+	"github.com/with-developer/vmsctl/internal/signing"
+	"github.com/with-developer/vmsctl/internal/version"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 // failOnLevels are the accepted --fail-on values, lowest first.
@@ -34,7 +34,7 @@ type findingsError struct {
 	threshold string
 }
 
-// regressionError means `hostlint diff --fail-on-regression` found controls that got worse.
+// regressionError means `vmsctl diff --fail-on-regression` found controls that got worse.
 type regressionError struct{ controls int }
 
 func (e *regressionError) Error() string {
@@ -45,7 +45,7 @@ func (e *findingsError) Error() string {
 	return fmt.Sprintf("%d control(s) failed or could not be checked at severity %s or above", e.controls, e.threshold)
 }
 
-// defaultProfile is scanned when neither --profile nor hostlint.yaml names one.
+// defaultProfile is scanned when neither --profile nor vmsctl.yaml names one.
 const defaultProfile = "kisa-2026"
 
 type scanFlags struct {
@@ -56,7 +56,7 @@ type scanFlags struct {
 	profiles, packs                             []string
 	verifyPack                                  bool
 	verbose                                     bool
-	jobID                                       int64 // the agent's job this scan answers (hostlint agent)
+	jobID                                       int64 // the agent's job this scan answers (vmsctl agent)
 }
 
 func newScanCommand() *cobra.Command {
@@ -67,25 +67,25 @@ func newScanCommand() *cobra.Command {
 		Long: `Scan checks the host it runs on (or, with --root, a filesystem mounted
 elsewhere) against a profile and reports a result per control.
 
-hostlint only reads: it never changes the host. Run it as root, or checks that
+vmsctl only reads: it never changes the host. Run it as root, or checks that
 need protected files (such as /etc/shadow) report ERROR.`,
-		Example: `  sudo hostlint scan
-  sudo hostlint scan --format json --output web-01.json
-  sudo hostlint scan --root /mnt/image --fail-on high
+		Example: `  sudo vmsctl scan
+  sudo vmsctl scan --format json --output web-01.json
+  sudo vmsctl scan --root /mnt/image --fail-on high
 
   # scan a container image from the archive docker save wrote (nothing is mounted or run)
-  docker save app:1.4 -o app.tar && hostlint scan --image-tar app.tar --fail-on high
+  docker save app:1.4 -o app.tar && vmsctl scan --image-tar app.tar --fail-on high
 
-  # scan and send the result to a hostlint server (the token is in HOSTLINT_TOKEN)
-  sudo hostlint scan --push https://hostlint.example.org:8443 --pin sha256/...`,
+  # scan and send the result to a vmsctl server (the token is in VMSCTL_TOKEN)
+  sudo vmsctl scan --push https://vmsctl.example.org:8443 --pin sha256/...`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runScan(cmd, f)
 		},
 	}
 	fl := cmd.Flags()
-	fl.StringArrayVarP(&f.profiles, "profile", "p", nil, "profile to check against; repeat it to check several (default: kisa-2026, or the one in hostlint.yaml)")
-	fl.StringArrayVar(&f.packs, "pack", nil, "load a policy pack, a directory of your own checks and profiles (docs/packs.md); repeatable, also HOSTLINT_PACK (a list of directories); select its profile with --profile")
+	fl.StringArrayVarP(&f.profiles, "profile", "p", nil, "profile to check against; repeat it to check several (default: kisa-2026, or the one in vmsctl.yaml)")
+	fl.StringArrayVar(&f.packs, "pack", nil, "load a policy pack, a directory of your own checks and profiles (docs/packs.md); repeatable, also VMSCTL_PACK (a list of directories); select its profile with --profile")
 	fl.BoolVar(&f.verifyPack, "verify-pack", false, "with --pack: run the tests of the pack's checks before the scan, and refuse to scan when one fails")
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: "+strings.Join(output.Formats, ", "))
 	fl.StringVarP(&f.output, "output", "o", "", "write the report to this file instead of stdout")
@@ -96,11 +96,11 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringArrayVar(&f.labels, "label", nil, "add a key=value label to the host in the report (repeatable)")
 	fl.BoolVarP(&f.verbose, "verbose", "v", false, "also list passing and not-applicable controls in the table")
 	fl.StringVar(&f.color, "color", "auto", "color the table: auto, always or never")
-	fl.StringVar(&f.pushURL, "push", "", "after the scan, send the result to this hostlint server (docs/fleet.md)")
+	fl.StringVar(&f.pushURL, "push", "", "after the scan, send the result to this vmsctl server (docs/fleet.md)")
 	fl.StringVar(&f.pin, "pin", "", `with --push: trust the server's public key ("sha256/<base64>") instead of the system roots`)
-	fl.StringVar(&f.tokenFile, "token-file", "", "with --push: read the ingest token from this file (default: the HOSTLINT_TOKEN environment variable)")
-	fl.StringVar(&f.signKey, "sign-key", "", "with --push: sign the result with this key (made with: hostlint key generate)")
-	fl.StringVar(&f.config, "config", "", "configuration file (default: ./hostlint.yaml, then /etc/hostlint/hostlint.yaml, if present)")
+	fl.StringVar(&f.tokenFile, "token-file", "", "with --push: read the ingest token from this file (default: the VMSCTL_TOKEN environment variable)")
+	fl.StringVar(&f.signKey, "sign-key", "", "with --push: sign the result with this key (made with: vmsctl key generate)")
+	fl.StringVar(&f.config, "config", "", "configuration file (default: ./vmsctl.yaml, then /etc/vmsctl/vmsctl.yaml, if present)")
 	return cmd
 }
 
@@ -161,11 +161,14 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	}
 	var cfg *config.File
 	if cfgPath != "" {
+		if config.LegacyName(cfgPath) {
+			fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: %s has the old name of the file: rename it to vmsctl.yaml\n", cfgPath)
+		}
 		if cfg, err = config.Load(cfgPath); err != nil {
 			return err
 		}
 	}
-	// The profiles to scan with: --profile, else the one of hostlint.yaml, else the default.
+	// The profiles to scan with: --profile, else the one of vmsctl.yaml, else the default.
 	if len(opts.Profiles) == 0 {
 		switch {
 		case cfg != nil && cfg.Profile != "":
@@ -216,7 +219,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	defer h.Close()
 
 	info := version.Get()
-	opts.Tool = engine.ToolInfo{Name: "hostlint", Version: info.Version, Commit: info.Commit}
+	opts.Tool = engine.ToolInfo{Name: "vmsctl", Version: info.Version, Commit: info.Commit}
 	res, err := e.Scan(cmd.Context(), h, opts)
 	if err != nil {
 		return err

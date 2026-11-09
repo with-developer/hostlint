@@ -5,9 +5,9 @@
     {
       "tool": {
         "driver": {
-          "name": "hostlint",
+          "name": "vmsctl",
           "version": "v0.1.0",
-          "informationUri": "https://github.com/with-developer/hostlint",
+          "informationUri": "https://github.com/with-developer/vmsctl",
           "rules": [
             {
               "id": "accounts.password-max-age#3f9a1c2e",
@@ -83,7 +83,7 @@
           "ruleIndex": 2,
           "level": "warning",
           "message": {
-            "text": "Could not check: shadow: permission denied (run hostlint as root)"
+            "text": "Could not check: shadow: permission denied (run vmsctl as root)"
           }
         },
         {

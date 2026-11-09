@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Command is one of the fixed commands hostlint may run (ADR 0004). Its
+// Command is one of the fixed commands vmsctl may run (ADR 0004). Its
 // program and arguments are defined in this package and cannot be changed by
 // callers, so rules and collectors can only choose which command to run.
 type Command struct {
@@ -22,7 +22,7 @@ type Command struct {
 // String returns the command's identifier.
 func (c Command) String() string { return c.name }
 
-// registry holds every command hostlint may run. It is filled once, by the
+// registry holds every command vmsctl may run. It is filled once, by the
 // package-level newCommand calls, and only read afterwards.
 var registry = map[string]Command{}
 
@@ -66,7 +66,7 @@ var (
 	// ErrNotInstalled is returned when none of a command's programs exists.
 	ErrNotInstalled = errors.New("program not installed")
 	// ErrUntrusted is returned when the program could be replaced by an
-	// unprivileged user, so hostlint refuses to run it.
+	// unprivileged user, so vmsctl refuses to run it.
 	ErrUntrusted = errors.New("program is not safe to run")
 	// ErrUnregistered is returned for a command that was not defined in this
 	// package.

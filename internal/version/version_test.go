@@ -53,12 +53,12 @@ func TestInfoString(t *testing.T) {
 		{
 			name: "full",
 			in:   Info{Version: "v0.1.0", Commit: "0123456789abcdef", Date: "2026-11-02T10:00:00Z", GoVersion: "go1.26.0", Platform: "linux/amd64"},
-			want: "hostlint v0.1.0 (commit 0123456789ab, 2026-11-02T10:00:00Z) go1.26.0 linux/amd64",
+			want: "vmsctl v0.1.0 (commit 0123456789ab, 2026-11-02T10:00:00Z) go1.26.0 linux/amd64",
 		},
 		{
 			name: "no vcs info",
 			in:   Info{Version: "dev", GoVersion: "go1.26.0", Platform: "linux/arm64"},
-			want: "hostlint dev go1.26.0 linux/arm64",
+			want: "vmsctl dev go1.26.0 linux/arm64",
 		},
 	}
 	for _, tt := range tests {

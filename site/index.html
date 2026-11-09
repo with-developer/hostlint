@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>hostlint — eslint for Linux servers</title>
+<title>vmsctl — eslint for Linux servers</title>
 <meta name="description" content="Check a Linux server's security configuration against hardening baselines such as KISA 2026, with the evidence behind every verdict. One static binary, a dashboard for the whole fleet.">
-<meta property="og:title" content="hostlint — eslint for Linux servers">
+<meta property="og:title" content="vmsctl — eslint for Linux servers">
 <meta property="og:description" content="Security configuration checks with the evidence behind every verdict. One static binary; a dashboard for the whole fleet.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
@@ -17,14 +17,14 @@
   <div class="wrap">
     <a class="brand" href="#">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
-      hostlint
+      vmsctl
     </a>
     <nav>
       <a class="opt" href="#dashboard">Dashboard</a>
       <a class="opt" href="#ci">CI</a>
       <a class="opt" href="#start">Install</a>
-      <a class="opt" href="https://github.com/with-developer/hostlint/blob/main/README.md">Docs</a>
-      <a href="https://github.com/with-developer/hostlint">GitHub</a>
+      <a class="opt" href="https://github.com/with-developer/vmsctl/blob/main/README.md">Docs</a>
+      <a href="https://github.com/with-developer/vmsctl">GitHub</a>
       <a class="lang" href="ko/" hreflang="ko">한국어</a>
     </nav>
   </div>
@@ -38,20 +38,20 @@
     <p class="lead">One static binary reads a host's security configuration and gives one result per control, with the value, the file and the line behind every verdict. It only reads: it never changes the host.</p>
     <div class="cta">
       <a class="btn p" href="#start">Get started</a>
-      <a class="btn" href="https://github.com/with-developer/hostlint">View on GitHub</a>
+      <a class="btn" href="https://github.com/with-developer/vmsctl">View on GitHub</a>
     </div>
 
     <div class="try">
       <small>Try it right now: scan this machine's root, read-only, without installing anything</small>
       <div class="cmd">
-        <pre><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host</pre>
-        <button class="copy" type="button" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint:0.26.0 scan --root /host">Copy</button>
+        <pre><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.27.0 scan --root /host</pre>
+        <button class="copy" type="button" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.27.0 scan --root /host">Copy</button>
       </div>
     </div>
 
     <div class="stage">
       <div class="frame">
-        <div class="bar"><i></i><i></i><i></i><span>hostlint server · Overview</span></div>
+        <div class="bar"><i></i><i></i><i></i><span>vmsctl server · Overview</span></div>
         <img src="img/dashboard-overview.png" width="1280" height="800" alt="The dashboard's overview: a pass rate of 54 percent, results by status, the pass rate over 30 days, and counts of hosts">
       </div>
     </div>
@@ -62,7 +62,7 @@
   <div class="wrap">
     <div class="center">
       <h2>You can trust a result you can check</h2>
-      <p class="sub">Most scanners give a verdict and leave you to find out why. hostlint is built the other way round.</p>
+      <p class="sub">Most scanners give a verdict and leave you to find out why. vmsctl is built the other way round.</p>
     </div>
     <div class="cards">
       <div class="card">
@@ -92,13 +92,13 @@
       <ul class="checks">
         <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Hosts and images.</b> A running system, a filesystem mounted elsewhere, or a container image straight from a <code>docker save</code> archive.</span></li>
         <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Many outputs.</b> Table, JSON (with a schema), SARIF, JUnit, and one self-contained HTML report for many hosts.</span></li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Waivers with a reason.</b> Accept a finding in <code>hostlint.yaml</code> with an expiry date, and the result keeps its evidence.</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Waivers with a reason.</b> Accept a finding in <code>vmsctl.yaml</code> with an expiry date, and the result keeps its evidence.</span></li>
       </ul>
     </div>
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="d">$ sudo hostlint scan</span>
-hostlint v0.26.0 · kisa-2026 · web-01 (Ubuntu 24.04)
+<pre><span class="d">$ sudo vmsctl scan</span>
+vmsctl v0.27.0 · kisa-2026 · web-01 (Ubuntu 24.04)
 
 <span class="f">✗ FAIL</span>   U-02   Password policy [high]
     <span class="f">✗</span> accounts.password-min-length
@@ -123,7 +123,7 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
   <div class="wrap">
     <div class="center">
       <h2>One dashboard for every server</h2>
-      <p class="sub">Hosts scan themselves and push the result to <code>hostlint server</code>. It keeps the history and shows the pass rate over time, what failed most, what got worse since the last scan, and the evidence behind each result with how to fix it.</p>
+      <p class="sub">Hosts scan themselves and push the result to <code>vmsctl server</code>. It keeps the history and shows the pass rate over time, what failed most, what got worse since the last scan, and the evidence behind each result with how to fix it.</p>
     </div>
 
     <div class="tabs" role="tablist" aria-label="Dashboard screens">
@@ -152,9 +152,9 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
     </div>
 
     <div class="cards" style="margin-top:32px">
-      <div class="card"><h3>The server never connects to a host</h3><p>Hosts push their results. To scan one on demand, its <code>hostlint agent</code> dials out and waits for a “Scan now” from the dashboard, and it can only be asked for a profile the host allows.</p></div>
+      <div class="card"><h3>The server never connects to a host</h3><p>Hosts push their results. To scan one on demand, its <code>vmsctl agent</code> dials out and waits for a “Scan now” from the dashboard, and it can only be asked for a profile the host allows.</p></div>
       <div class="card"><h3>Signed results</h3><p>A host can sign what it sends, so a result stays evidence of what that host said even if the server is compromised later. The server keeps a hash-chained audit log.</p></div>
-      <div class="card"><h3>Try it with no host</h3><p><code>hostlint server demo</code> starts a server with a made-up fleet of twelve hosts and prints a token to sign in with. Korean and English, light and dark.</p></div>
+      <div class="card"><h3>Try it with no host</h3><p><code>vmsctl server demo</code> starts a server with a made-up fleet of twelve hosts and prints a token to sign in with. Korean and English, light and dark.</p></div>
     </div>
   </div>
 </section>
@@ -163,21 +163,21 @@ kisa-2026: 67 controls — <span class="f">7 FAIL</span>, <span class="m">10 MAN
   <div class="wrap two">
     <div>
       <h2>Gate the image before it ships</h2>
-      <p class="sub" style="margin-bottom:0"><code>hostlint scan --image-tar</code> reads a <code>docker save</code> or OCI archive with no daemon and no registry, and gives the same result as a scan inside a container made from that image. The repository is also a GitHub Action: it installs a verified release, uploads SARIF to code scanning and fails the build at the severity you choose.</p>
-      <p style="margin-top:20px"><a href="https://github.com/with-developer/hostlint/blob/main/docs/images.md">Scanning images</a> · <a href="https://github.com/with-developer/hostlint/blob/main/docs/ci.md">Using hostlint in CI</a></p>
+      <p class="sub" style="margin-bottom:0"><code>vmsctl scan --image-tar</code> reads a <code>docker save</code> or OCI archive with no daemon and no registry, and gives the same result as a scan inside a container made from that image. The repository is also a GitHub Action: it installs a verified release, uploads SARIF to code scanning and fails the build at the severity you choose.</p>
+      <p style="margin-top:20px"><a href="https://github.com/with-developer/vmsctl/blob/main/docs/images.md">Scanning images</a> · <a href="https://github.com/with-developer/vmsctl/blob/main/docs/ci.md">Using vmsctl in CI</a></p>
     </div>
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
 <pre><span class="d"># any CI</span>
 docker save app:1.4 -o app.tar
-hostlint scan --image-tar app.tar --fail-on high
+vmsctl scan --image-tar app.tar --fail-on high
 
 <span class="d"># GitHub Actions</span>
-- uses: with-developer/hostlint@v0.26.0
+- uses: with-developer/vmsctl@v0.27.0
   with:
     image: app:ci
     fail-on: high
-    sarif-file: hostlint.sarif</pre>
+    sarif-file: vmsctl.sarif</pre>
     </div>
   </div>
 </section>
@@ -204,22 +204,22 @@ hostlint scan --image-tar app.tar --fail-on high
       <div class="step">
         <h3>Install</h3>
         <p>Download the installer, read it, then run it. It verifies the archive's SHA-256 (and the signature, when <code>cosign</code> is installed).</p>
-        <div class="cmd"><pre>curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh
-sudo sh install.sh -v v0.26.0</pre><button class="copy" type="button" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/hostlint/v0.26.0/install.sh&#10;sudo sh install.sh -v v0.26.0">Copy</button></div>
-        <p style="margin-top:10px">Or use a <code>.deb</code> or <code>.rpm</code> from the <a href="https://github.com/with-developer/hostlint/releases">releases</a>, the container image, or <code>go install github.com/with-developer/hostlint/cmd/hostlint@v0.26.0</code>.</p>
+        <div class="cmd"><pre>curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.27.0/install.sh
+sudo sh install.sh -v v0.27.0</pre><button class="copy" type="button" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.27.0/install.sh&#10;sudo sh install.sh -v v0.27.0">Copy</button></div>
+        <p style="margin-top:10px">Or use a <code>.deb</code> or <code>.rpm</code> from the <a href="https://github.com/with-developer/vmsctl/releases">releases</a>, the container image, or <code>go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.27.0</code>.</p>
       </div>
       <div class="step">
         <h3>Scan</h3>
         <p>One host, one report. For many hosts, save the JSON and build a single HTML report.</p>
-        <div class="cmd"><pre>sudo hostlint scan
-sudo hostlint scan --format json --output web-01.json
-hostlint report *.json --output report.html</pre><button class="copy" type="button" data-copy="sudo hostlint scan&#10;sudo hostlint scan --format json --output web-01.json&#10;hostlint report *.json --output report.html">Copy</button></div>
+        <div class="cmd"><pre>sudo vmsctl scan
+sudo vmsctl scan --format json --output web-01.json
+vmsctl report *.json --output report.html</pre><button class="copy" type="button" data-copy="sudo vmsctl scan&#10;sudo vmsctl scan --format json --output web-01.json&#10;vmsctl report *.json --output report.html">Copy</button></div>
       </div>
       <div class="step">
         <h3>See the whole fleet</h3>
         <p>Start with the demo. Then run your own server and push results from each host.</p>
-        <div class="cmd"><pre>hostlint server demo
-<span class="p"># later: </span>sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443</pre><button class="copy" type="button" data-copy="hostlint server demo">Copy</button></div>
+        <div class="cmd"><pre>vmsctl server demo
+<span class="p"># later: </span>sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443</pre><button class="copy" type="button" data-copy="vmsctl server demo">Copy</button></div>
       </div>
     </div>
   </div>
@@ -228,12 +228,12 @@ hostlint report *.json --output report.html</pre><button class="copy" type="butt
 
 <footer>
   <div class="wrap">
-    <span>Apache-2.0 licensed · <a href="https://github.com/with-developer/hostlint">github.com/with-developer/hostlint</a></span>
+    <span>Apache-2.0 licensed · <a href="https://github.com/with-developer/vmsctl">github.com/with-developer/vmsctl</a></span>
     <span>
-      <a href="https://github.com/with-developer/hostlint/blob/main/README.md">README</a> ·
-      <a href="https://github.com/with-developer/hostlint/blob/main/docs/configuration.md">hostlint.yaml</a> ·
-      <a href="https://github.com/with-developer/hostlint/blob/main/docs/rules.md">Rule reference</a> ·
-      <a href="https://github.com/with-developer/hostlint/blob/main/SECURITY.md">Security</a>
+      <a href="https://github.com/with-developer/vmsctl/blob/main/README.md">README</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/docs/configuration.md">vmsctl.yaml</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/docs/rules.md">Rule reference</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/SECURITY.md">Security</a>
     </span>
   </div>
 </footer>

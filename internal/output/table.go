@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // ANSI styles for the table.
@@ -62,7 +62,7 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 	for _, pr := range res.Profiles {
 		profiles = append(profiles, pr.ID)
 	}
-	fmt.Fprintf(&b, "%s %s · %s · %s\n", p.paint(bold, "hostlint"), res.Scan.Tool.Version, strings.Join(profiles, ", "), host)
+	fmt.Fprintf(&b, "%s %s · %s · %s\n", p.paint(bold, "vmsctl"), res.Scan.Tool.Version, strings.Join(profiles, ", "), host)
 	if res.Scan.Target.Kind == "root" {
 		fmt.Fprintf(&b, "%s\n", p.paint(dim, "mounted root "+res.Scan.Target.Root+": live checks are not available"))
 	}

@@ -46,7 +46,7 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 	}
 }
 
-// A signature is for hostlint results: the same bytes signed for another purpose do not verify.
+// A signature is for vmsctl results: the same bytes signed for another purpose do not verify.
 func TestSignaturesAreDomainSeparated(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "k")
 	pub, _ := Generate(path)

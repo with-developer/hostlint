@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Render docs/demo/scan.txt (a captured `hostlint scan`) as an animated GIF.
+"""Render docs/demo/scan.txt (a captured `vmsctl scan`) as an animated GIF.
 
     python3 scripts/demo/render.py docs/demo/scan.txt docs/demo/scan.gif [--font PATH]
 
-docs/demo/scan.txt is the real output of `hostlint scan` (abridged, host name
+docs/demo/scan.txt is the real output of `vmsctl scan` (abridged, host name
 shortened) on a Debian 12 container with PermitRootLogin yes, an inetd telnet
 service, /etc/shadow at 0640 and a stock /etc/inetd.conf; update it when the
 output format or the wording of these checks changes.
@@ -27,7 +27,7 @@ FONTS = [
 ]
 BG, FG, DIM = (30, 30, 36), (220, 220, 226), (140, 140, 150)
 RED, GREEN, YELLOW, BOLD = (255, 105, 97), (120, 220, 130), (240, 200, 90), (255, 255, 255)
-PROMPT = "$ sudo hostlint scan"
+PROMPT = "$ sudo vmsctl scan"
 
 
 def color(line):
@@ -38,7 +38,7 @@ def color(line):
         return GREEN
     if s.startswith("?"):
         return YELLOW
-    if line.startswith("hostlint ") or line.startswith("kisa-2026"):
+    if line.startswith("vmsctl ") or line.startswith("kisa-2026"):
         return BOLD
     return DIM if line.startswith("        ") else FG
 

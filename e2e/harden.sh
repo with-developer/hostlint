@@ -1,6 +1,6 @@
 #!/bin/sh
 # Hardens a container image for the e2e "hardened" variant: the KISA Unix
-# controls that hostlint decides automatically, configured the way an
+# controls that vmsctl decides automatically, configured the way an
 # administrator would on each distribution. It shows that the checks can
 # pass on real configuration; it is not a hardening guide for real hosts.
 set -eu

@@ -1,6 +1,6 @@
-// Package push sends a scan result to a hostlint server (ADR 0010). It is the only
-// part of hostlint that makes a network connection, and only when the user runs
-// `hostlint push`: scanning never does.
+// Package push sends a scan result to a vmsctl server (ADR 0010). It is the only
+// part of vmsctl that makes a network connection, and only when the user runs
+// `vmsctl push`: scanning never does.
 package push
 
 import (
@@ -21,12 +21,12 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 // Options say where to send a result and how to trust the server.
 type Options struct {
-	// URL is the server's base URL, such as https://hostlint.example.org:8443.
+	// URL is the server's base URL, such as https://vmsctl.example.org:8443.
 	URL string
 	// Token is the ingest token.
 	Token string
@@ -100,7 +100,7 @@ func connect(opts Options, defaultTimeout time.Duration) (string, *http.Client, 
 		return "", nil, errors.New("a token is only sent over https (plain http only to a loopback address)")
 	}
 	if opts.Token == "" {
-		return "", nil, errors.New("no token: set HOSTLINT_TOKEN or use --token-file")
+		return "", nil, errors.New("no token: set VMSCTL_TOKEN or use --token-file")
 	}
 	timeout := opts.Timeout
 	if timeout == 0 {

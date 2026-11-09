@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Limits on what an archive may do. A hostile archive is bounded by these, whatever it claims.

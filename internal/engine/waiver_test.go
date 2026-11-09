@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // waiverScan scans demoHost (hostname web-01) with checks that FAIL

@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 // ErrNotFound means there is no such host or scan.

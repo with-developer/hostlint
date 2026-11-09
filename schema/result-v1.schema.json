@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/with-developer/hostlint/blob/main/schema/result-v1.schema.json",
-  "title": "hostlint scan result, schema version 1",
-  "description": "The result of one hostlint scan of one host. Defined by docs/adr/0006-rule-format-evaluation-results.md. Version 1 only grows by new optional fields; this file is updated when that happens, so validate a document against the schema from the hostlint version that produced it, and ignore fields you do not know.",
+  "$id": "https://github.com/with-developer/vmsctl/blob/main/schema/result-v1.schema.json",
+  "title": "vmsctl scan result, schema version 1",
+  "description": "The result of one vmsctl scan of one host. Defined by docs/adr/0006-rule-format-evaluation-results.md. Version 1 only grows by new optional fields; this file is updated when that happens, so validate a document against the schema from the vmsctl version that produced it, and ignore fields you do not know.",
   "type": "object",
   "required": ["schemaVersion", "scan", "host", "profiles", "summary", "controls", "checks", "collectors"],
   "additionalProperties": false,
@@ -92,7 +92,7 @@
           "required": ["name", "version"],
           "additionalProperties": false,
           "properties": {
-            "name": {"const": "hostlint"},
+            "name": {"enum": ["vmsctl", "hostlint"]},
             "version": {"type": "string", "minLength": 1},
             "commit": {"type": "string"}
           }
@@ -155,7 +155,7 @@
       "properties": {
         "hostname": {"type": "string"},
         "hostId": {
-          "description": "HMAC-SHA256 of /etc/machine-id under a fixed hostlint key (hex). Absent when there is no machine ID. Cloned machines may share it.",
+          "description": "HMAC-SHA256 of /etc/machine-id under a fixed vmsctl key (hex). Absent when there is no machine ID. Cloned machines may share it.",
           "type": "string",
           "pattern": "^[0-9a-f]{32,64}$"
         },

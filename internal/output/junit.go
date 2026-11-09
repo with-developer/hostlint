@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // JUnit XML: one test suite per profile, one test case per control.
@@ -42,7 +42,7 @@ func writeJUnit(w io.Writer, res *engine.Result) error {
 	for _, c := range res.Checks {
 		checks[c.Ref] = c
 	}
-	suites := junitSuites{Name: "hostlint " + res.Host.Hostname}
+	suites := junitSuites{Name: "vmsctl " + res.Host.Hostname}
 	for _, pr := range res.Profiles {
 		suite := junitSuite{Name: pr.ID}
 		for _, ctl := range res.Controls {

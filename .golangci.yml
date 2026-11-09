@@ -34,7 +34,7 @@ linters:
           files:
             - "$all"
             - "!**/internal/hostfs/**"
-            - "!**/cmd/hostlint/main.go" # signal numbers only; calls are banned below
+            - "!**/cmd/vmsctl/main.go" # signal numbers only; calls are banned below
           deny:
             - pkg: syscall
               desc: raw system calls belong in internal/hostfs (ADR 0004)
@@ -59,9 +59,9 @@ linters:
             - "**/internal/facts/**"
             - "**/internal/config/**"
           deny:
-            - pkg: github.com/with-developer/hostlint/internal/server
+            - pkg: github.com/with-developer/vmsctl/internal/server
               desc: the scanning packages cannot depend on the fleet server (ADR 0004, ADR 0010)
-            - pkg: github.com/with-developer/hostlint/internal/push
+            - pkg: github.com/with-developer/vmsctl/internal/push
               desc: the scanning packages cannot depend on the push client (ADR 0004, ADR 0010)
             - pkg: net/http
               desc: scanning makes no network connections (ADR 0004)
@@ -71,14 +71,14 @@ linters:
         # Never modify the host. Writing the report the user asked for is the
         # only exception (internal/output, see exclusions).
         - pattern: ^os\.(Create|CreateTemp|WriteFile|OpenFile|Mkdir|MkdirAll|MkdirTemp|Remove|RemoveAll|Rename|Chmod|Chown|Lchown|Chtimes|Symlink|Link|Truncate|CopyFS|StartProcess)$
-          msg: hostlint must not modify the host (ADR 0004)
+          msg: vmsctl must not modify the host (ADR 0004)
         - pattern: ^os\.Root\.(Create|OpenFile|WriteFile|Mkdir|MkdirAll|Remove|RemoveAll|Rename|Chmod|Chown|Lchown|Chtimes|Symlink|Link)$
-          msg: hostlint must not modify the host (ADR 0004)
+          msg: vmsctl must not modify the host (ADR 0004)
         - pattern: ^os\.(File\.(Chmod|Chown)|Process\.(Kill|Signal))$
-          msg: hostlint must not modify the host (ADR 0004)
+          msg: vmsctl must not modify the host (ADR 0004)
         # Applies inside internal/hostfs too, which may otherwise use raw syscalls.
         - pattern: ^(syscall|unix)\.(Unlink|Unlinkat|Rmdir|Rename|Renameat|Renameat2|Chmod|Fchmod|Fchmodat|Chown|Fchown|Fchownat|Lchown|Truncate|Ftruncate|Mkdir|Mkdirat|Mknod|Mknodat|Symlink|Symlinkat|Link|Linkat|Write|Pwrite|Writev|Pwritev|Utimes|UtimesNano|UtimesNanoAt|Futimes|Setxattr|Lsetxattr|Fsetxattr|Removexattr|Lremovexattr|Fremovexattr|Mount|Unmount|Kill|Tgkill|Exec|ForkExec)$
-          msg: hostlint must not modify the host (ADR 0004)
+          msg: vmsctl must not modify the host (ADR 0004)
         # Read the host only through internal/hostfs (denylist, --root).
         - pattern: ^os\.(Open|ReadFile|ReadDir|Stat|Lstat|Readlink|DirFS|OpenRoot|OpenInRoot|Hostname)$
           msg: read the host through internal/hostfs (ADR 0004)
@@ -112,7 +112,7 @@ linters:
           - forbidigo
         text: (read the host through internal/hostfs|raw system calls belong)
       # The end-to-end tests drive Docker on the developer's machine or CI; they
-      # are not part of hostlint.
+      # are not part of vmsctl.
       - path: e2e/
         linters:
           - depguard
@@ -121,7 +121,7 @@ linters:
         linters:
           - forbidigo
         text: use of `os\.(Create|OpenFile|WriteFile|Remove|Rename)` forbidden
-      # hostlint's own configuration file, on the machine running hostlint.
+      # vmsctl's own configuration file, on the machine running vmsctl.
       - path: internal/config/
         linters:
           - forbidigo
@@ -134,4 +134,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/with-developer/hostlint
+        - github.com/with-developer/vmsctl

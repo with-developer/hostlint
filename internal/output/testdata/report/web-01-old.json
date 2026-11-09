@@ -5,7 +5,7 @@
     "startedAt": "2026-10-01T09:00:00Z",
     "finishedAt": "2026-10-01T09:00:01Z",
     "tool": {
-      "name": "hostlint",
+      "name": "vmsctl",
       "version": "v0.1.0"
     },
     "target": {
@@ -72,7 +72,7 @@
       "title": "Protect password hashes",
       "severity": "high",
       "status": "ERROR",
-      "reason": "accounts.shadow-file: shadow: permission denied (run hostlint as root)",
+      "reason": "accounts.shadow-file: shadow: permission denied (run vmsctl as root)",
       "checks": [
         "accounts.shadow-file"
       ]
@@ -153,7 +153,7 @@
       "severity": "high",
       "status": "ERROR",
       "statusSource": "observed",
-      "reason": "shadow: permission denied (run hostlint as root)",
+      "reason": "shadow: permission denied (run vmsctl as root)",
       "evidence": [],
       "durationMs": 0
     },

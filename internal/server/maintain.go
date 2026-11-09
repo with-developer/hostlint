@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/output"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/output"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 // pruneBatch is how many scans one delete removes, so the single writer is never held for long.
@@ -91,7 +91,7 @@ func (s *Store) Backup(ctx context.Context, path string) error {
 	return nil
 }
 
-// Stats counts what the database holds, for `hostlint server stats`.
+// Stats counts what the database holds, for `vmsctl server stats`.
 type Stats struct {
 	Hosts, Scans, Credentials int
 	Oldest, Newest            string
@@ -138,7 +138,7 @@ func (s *Store) DeleteHost(ctx context.Context, id int64) (bool, error) {
 	return true, tx.Commit()
 }
 
-// Hosts of the database as `hostlint server host list` shows them.
+// Hosts of the database as `vmsctl server host list` shows them.
 func (s *Store) HostList(ctx context.Context) ([]HostSummary, error) {
 	return s.allHosts(ctx, "", 0, kindAny, 0, "")
 }
@@ -165,7 +165,7 @@ func (r SignatureReport) OK() bool {
 // ingest (the digest of the document and the key it was signed with), against its signature, and
 // against the rows derived from it. Whoever changes a stored document, strips or replaces its signature,
 // moves a scan to another host or edits what the dashboard shows has to rewrite the audit chain too,
-// which the hash kept elsewhere ("hostlint server verify" prints it) exposes. A database error is an
+// which the hash kept elsewhere ("vmsctl server verify" prints it) exposes. A database error is an
 // error, not a finding; a document that cannot be read back (corrupt) is a mismatch.
 func (s *Store) VerifySignatures(ctx context.Context) (SignatureReport, error) {
 	var rep SignatureReport

@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/facts"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/facts"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // TestFailure is one rule test case whose result differs from its want.

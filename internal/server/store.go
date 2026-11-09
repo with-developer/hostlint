@@ -1,4 +1,4 @@
-// Package server is hostlint's fleet server: it receives scan results that hosts
+// Package server is vmsctl's fleet server: it receives scan results that hosts
 // push, keeps them in SQLite and (in later changes) serves them to a dashboard.
 // See docs/adr/0010-fleet-server-and-dashboard.md.
 //
@@ -28,8 +28,8 @@ import (
 
 	_ "modernc.org/sqlite" // the pure-Go SQLite driver: the binary stays static
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 //go:embed migrations/*.sql
@@ -250,7 +250,7 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	}
 	switch {
 	case other > 0 && hostID != "":
-		return nil, fmt.Errorf("%w: the name %q is known with another host ID (if the machine was re-installed, remove the old host: hostlint server host delete)", ErrIdentity, name)
+		return nil, fmt.Errorf("%w: the name %q is known with another host ID (if the machine was re-installed, remove the old host: vmsctl server host delete)", ErrIdentity, name)
 	case other > 0:
 		return nil, fmt.Errorf("%w: the name %q is known with a host ID and this result has none", ErrIdentity, name)
 	}
@@ -291,7 +291,7 @@ func (s *Store) IngestScan(ctx context.Context, cred *Credential, res *engine.Re
 	case hostKey != "" && in.key == "":
 		return nil, fmt.Errorf("%w: this host sends signed results, and this one is not signed", ErrIdentity)
 	case hostKey != "" && in.key != hostKey:
-		return nil, fmt.Errorf("%w: signed with another key than the one registered for this host (reset it with: hostlint server host reset-key)", ErrIdentity)
+		return nil, fmt.Errorf("%w: signed with another key than the one registered for this host (reset it with: vmsctl server host reset-key)", ErrIdentity)
 	case hostKey == "" && in.key != "":
 		if _, err := tx.ExecContext(ctx, `UPDATE hosts SET pubkey = ? WHERE id = ?`, in.key, hostRow); err != nil {
 			return nil, err

@@ -13,7 +13,7 @@ import (
 	"cel.dev/cel-go/common/types"
 	"cel.dev/cel-go/ext"
 
-	"github.com/with-developer/hostlint/internal/facts"
+	"github.com/with-developer/vmsctl/internal/facts"
 )
 
 // Evaluation limits for every CEL program (ADR 0006 §3). A violations check

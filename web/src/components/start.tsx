@@ -32,9 +32,9 @@ export function GettingStarted() {
       <h2>{t("start.title")}</h2>
       <p className="muted">{t("start.lead")}</p>
       <h3>{t("start.step1")}</h3>
-      <Command text="hostlint server token create --name web-01 --host web-01" />
+      <Command text="vmsctl server token create --name web-01 --host web-01" />
       <h3>{t("start.step2")}</h3>
-      <Command text={`sudo HOSTLINT_TOKEN=hlt_ing_… hostlint scan --push ${server}`} />
+      <Command text={`sudo VMSCTL_TOKEN=hlt_ing_… vmsctl scan --push ${server}`} />
       <h3>{t("start.step3")}</h3>
       <p className="muted small">{t("start.note")}</p>
     </section>

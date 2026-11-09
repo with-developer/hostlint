@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 func packImage(t *testing.T, motdMode int64) string {
@@ -62,7 +62,7 @@ func TestScanWithAPack(t *testing.T) {
 		t.Errorf("stderr = %q", stderr)
 	}
 	// The same through the environment, and the pack's compliant file passes.
-	t.Setenv("HOSTLINT_PACK", pack)
+	t.Setenv("VMSCTL_PACK", pack)
 	res, _ = scanJSON(t, "--image-tar", packImage(t, 0o644), "-p", "x-acme-baseline")
 	for _, c := range res.Controls {
 		if c.ID == "ACME-03" && c.Status != engine.StatusPass {
@@ -136,7 +136,7 @@ func TestPackControlWaiversNameTheDigest(t *testing.T) {
 	img := packImage(t, 0o666) // ACME-03 fails
 	dir := t.TempDir()
 	cfg := func(extra string) string {
-		p := filepath.Join(dir, "hostlint.yaml")
+		p := filepath.Join(dir, "vmsctl.yaml")
 		body := "waivers:\n  - control: ACME-03\n    revision: 1\n    reason: the banner is managed elsewhere\n    expires: 2099-01-01\n" + extra
 		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
@@ -187,7 +187,7 @@ func scanWithConfig(t *testing.T, args []string) *engine.Result {
 
 func TestSamePackTwiceIsOnePack(t *testing.T) {
 	pack := copyExamplePack(t)
-	t.Setenv("HOSTLINT_PACK", pack)
+	t.Setenv("VMSCTL_PACK", pack)
 	res, _ := scanJSON(t, "--image-tar", packImage(t, 0o644), "--pack", pack, "-p", "x-acme-baseline")
 	if len(res.Scan.Packs) != 1 {
 		t.Errorf("packs = %+v", res.Scan.Packs)
@@ -196,7 +196,7 @@ func TestSamePackTwiceIsOnePack(t *testing.T) {
 
 func TestProfileOfAConfigFile(t *testing.T) {
 	dir := t.TempDir()
-	cfg := filepath.Join(dir, "hostlint.yaml")
+	cfg := filepath.Join(dir, "vmsctl.yaml")
 	if err := os.WriteFile(cfg, []byte("profile: essentials\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

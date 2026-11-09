@@ -31,7 +31,7 @@ type ListenConfig struct {
 	PlainHTTP, BehindProxy bool
 }
 
-// SPKIPin is the pin of a certificate's public key, as `hostlint push --pin` takes it.
+// SPKIPin is the pin of a certificate's public key, as `vmsctl push --pin` takes it.
 func SPKIPin(cert *x509.Certificate) string {
 	sum := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
 	return "sha256/" + base64.StdEncoding.EncodeToString(sum[:])
@@ -130,7 +130,7 @@ func generateCertificate(addr, crtPath, keyPath string) (tls.Certificate, error)
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber:          serial,
-		Subject:               pkix.Name{CommonName: "hostlint server"},
+		Subject:               pkix.Name{CommonName: "vmsctl server"},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature,

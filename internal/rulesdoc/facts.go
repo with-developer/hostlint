@@ -8,7 +8,7 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // RenderFacts writes the reference of the facts a check can read: every path of every collector, with its
@@ -27,7 +27,7 @@ func RenderFacts(e *engine.Engine, src fs.FS, srcDirs ...string) (string, error)
 	b.WriteString("value under any key of a map (`sshd.config{}.value`, written `sshd.config.permitrootlogin.value` or\n")
 	b.WriteString("`sshd.config[\"permitrootlogin\"].value` in a rule). A `setting` is a configuration value with `value`, `explicit`\n")
 	b.WriteString("and `source`; one that is not set and has no known default is absent from its map, so a rule that reads it\n")
-	b.WriteString("fails with `ERROR` instead of guessing. `hostlint pack facts` prints the same names.\n\n")
+	b.WriteString("fails with `ERROR` instead of guessing. `vmsctl pack facts` prints the same names.\n\n")
 	b.WriteString("The fact types are the contract of rule authors, but before v1.0 they can change in a minor release.\n")
 	for _, f := range e.FactCatalog() {
 		root, _, nested := strings.Cut(f.Path, ".")

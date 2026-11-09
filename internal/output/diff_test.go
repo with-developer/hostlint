@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 func readFixture(t *testing.T, name string) *engine.Result {
@@ -106,7 +106,7 @@ func TestWriteDiff(t *testing.T) {
 	if err := WriteDiff(&table, d, "table", Options{}); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"hostlint diff web-01", "Regressed (1)", "U-01", "PASS → FAIL", "1 regressed, 0 fixed"} {
+	for _, want := range []string{"vmsctl diff web-01", "Regressed (1)", "U-01", "PASS → FAIL", "1 regressed, 0 fixed"} {
 		if !strings.Contains(table.String(), want) {
 			t.Errorf("table lacks %q:\n%s", want, table.String())
 		}

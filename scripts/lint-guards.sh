@@ -23,4 +23,13 @@ if [[ "$want" != "$got" ]]; then
   diff <(echo "$want") <(echo "$got") >&2 || true
   exit 1
 fi
+# The depguard entries that keep the scanning packages away from the server and the push client name import paths. A
+# path that stopped matching (a renamed module, a moved package) would deny nothing and still pass, so check that
+# each one is the module's own path of a package that exists.
+mod=$(go list -m)
+for pkg in internal/server internal/push; do
+  grep -qE "^[[:space:]]+- pkg: ${mod//./\\.}/$pkg\$" .golangci.yml || { echo "lint guards: .golangci.yml has no depguard entry for $mod/$pkg" >&2; exit 1; }
+  [[ -d $pkg ]] || { echo "lint guards: $pkg does not exist" >&2; exit 1; }
+done
+
 echo "lint guards: $(echo "$want" | wc -l | tr -d ' ') violations reported as expected"

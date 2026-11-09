@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // maxResultSize bounds one result document read by ReadResult.
@@ -58,14 +58,14 @@ type ReportInput struct {
 
 // ReportOptions control WriteReport.
 type ReportOptions struct {
-	Title string    // the report's title; "hostlint report" when empty
-	Tool  string    // the hostlint version writing the report
+	Title string    // the report's title; "vmsctl report" when empty
+	Tool  string    // the vmsctl version writing the report
 	Now   time.Time // when the report is written
 }
 
 // ReadResult decodes one result document. Result documents come from the
 // hosts that were scanned, so they are untrusted input: the size is bounded,
-// the schema version must be one this hostlint reads, every status must be
+// the schema version must be one this vmsctl reads, every status must be
 // known and every reference must resolve.
 func ReadResult(r io.Reader) (*engine.Result, error) {
 	data, err := io.ReadAll(io.LimitReader(r, maxResultSize+1))
@@ -73,7 +73,7 @@ func ReadResult(r io.Reader) (*engine.Result, error) {
 		return nil, err
 	}
 	if len(data) > maxResultSize {
-		return nil, fmt.Errorf("larger than %d MiB, not a hostlint result", maxResultSize>>20)
+		return nil, fmt.Errorf("larger than %d MiB, not a vmsctl result", maxResultSize>>20)
 	}
 	var head struct {
 		SchemaVersion *int `json:"schemaVersion"`
@@ -84,23 +84,23 @@ func ReadResult(r io.Reader) (*engine.Result, error) {
 		} `json:"scan"`
 	}
 	if err := json.Unmarshal(data, &head); err != nil {
-		return nil, fmt.Errorf("not a hostlint result: %w", err)
+		return nil, fmt.Errorf("not a vmsctl result: %w", err)
 	}
 	switch {
 	case head.SchemaVersion == nil:
-		return nil, errors.New("not a hostlint result: no schemaVersion")
+		return nil, errors.New("not a vmsctl result: no schemaVersion")
 	case *head.SchemaVersion != engine.SchemaVersion:
-		return nil, fmt.Errorf("result schema version %d is not supported; this hostlint reads version %d", *head.SchemaVersion, engine.SchemaVersion)
+		return nil, fmt.Errorf("result schema version %d is not supported; this vmsctl reads version %d", *head.SchemaVersion, engine.SchemaVersion)
 	case head.Scan.Privileges == nil || head.Scan.Privileges.EUID == nil:
 		// Without it a missing value would read as root.
-		return nil, errors.New("not a hostlint result: no scan.privileges.euid")
+		return nil, errors.New("not a vmsctl result: no scan.privileges.euid")
 	}
 	var res engine.Result
 	if err := json.Unmarshal(data, &res); err != nil {
-		return nil, fmt.Errorf("not a valid hostlint result: %w", err)
+		return nil, fmt.Errorf("not a valid vmsctl result: %w", err)
 	}
 	if err := checkResult(&res); err != nil {
-		return nil, fmt.Errorf("not a valid hostlint result: %w", err)
+		return nil, fmt.Errorf("not a valid vmsctl result: %w", err)
 	}
 	return &res, nil
 }
@@ -332,7 +332,7 @@ func buildReport(inputs []ReportInput, opts ReportOptions) (*reportData, error) 
 	}
 	title := opts.Title
 	if title == "" {
-		title = "hostlint report"
+		title = "vmsctl report"
 	}
 	b := &reportBuilder{
 		data: reportData{

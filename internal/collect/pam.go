@@ -15,12 +15,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/facts"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/facts"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
-// PAM are the `pam` facts: the PAM stacks of the services hostlint checks and
+// PAM are the `pam` facts: the PAM stacks of the services vmsctl checks and
 // the policies they enforce. Policies are decided here by evaluating each
 // stack the way libpam does (controls, jumps, substacks) for the situation
 // that matters, with each module's version-specific configuration, so rules

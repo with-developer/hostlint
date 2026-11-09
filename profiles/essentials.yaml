@@ -1,9 +1,9 @@
-# hostlint essentials: a short baseline of the settings most Linux server hardening guides agree
-# on, over the same checks as the other profiles. The control IDs and titles are hostlint's own.
+# vmsctl essentials: a short baseline of the settings most Linux server hardening guides agree
+# on, over the same checks as the other profiles. The control IDs and titles are vmsctl's own.
 id: essentials
 revision: 3
-title: hostlint essentials — a short hardening baseline for Linux servers
-title_ko: hostlint 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
+title: vmsctl essentials — a short hardening baseline for Linux servers
+title_ko: vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 controls:
   - id: ES-01
     title: SSH does not allow root to log in

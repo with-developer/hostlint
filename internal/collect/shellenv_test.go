@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func shellEnv(t *testing.T, m *hostfs.MemFS) *ShellEnv {
@@ -352,7 +352,7 @@ func TestShellEnvRunPartsEmptyRegex(t *testing.T) {
 	}
 }
 
-// A directory with more files than hostlint reads is reported once, quickly.
+// A directory with more files than vmsctl reads is reported once, quickly.
 func TestShellEnvRunPartsManyFiles(t *testing.T) {
 	m := hostfs.NewMemFS().AddFile("/etc/profile", "for i in $(run-parts --list /etc/profile.d); do . $i; done\n", 0o644, 0, 0)
 	for i := range 3 * maxShellFiles {

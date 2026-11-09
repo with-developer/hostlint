@@ -16,11 +16,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/server"
-	"github.com/with-developer/hostlint/internal/signing"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/server"
+	"github.com/with-developer/vmsctl/internal/signing"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 func newServerCommand() *cobra.Command {
@@ -28,15 +28,30 @@ func newServerCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
 		Short: "Run the fleet server that collects scan results (early; see docs/adr/0010)",
-		Long: `The server receives the scan results that hosts push with "hostlint push",
+		Long: `The server receives the scan results that hosts push with "vmsctl push",
 keeps them in a SQLite database and checks every request: a valid token, a bounded and
 well-formed result, a host identity that fits the token. It has no connection to the hosts:
 they send, it never asks.
 
-The database is one file (--db). Tokens are made with "hostlint server token create" and
+The database is one file (--db). Tokens are made with "vmsctl server token create" and
 shown once; only their hash is stored.`,
+		// Without --db the default file is used; a database that has the old default name is kept (ADR 0017).
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if cmd.Flags().Changed("db") {
+				return nil
+			}
+			picked, note, err := pickDefaultDB(dbPath, legacyDBPath)
+			if err != nil {
+				return err
+			}
+			if note != "" {
+				fmt.Fprintln(cmd.ErrOrStderr(), note)
+			}
+			dbPath = picked
+			return nil
+		},
 	}
-	cmd.PersistentFlags().StringVar(&dbPath, "db", "hostlint-server.db", "the server's SQLite database")
+	cmd.PersistentFlags().StringVar(&dbPath, "db", defaultDBPath, "the server's SQLite database")
 	cmd.AddCommand(newServerRunCommand(&dbPath), newServerTokenCommand(&dbPath), newServerVerifyCommand(&dbPath), newServerDemoCommand(), newServerPruneCommand(&dbPath), newServerBackupCommand(&dbPath), newServerStatsCommand(&dbPath), newServerHostCommand(&dbPath))
 	return cmd
 }
@@ -51,13 +66,13 @@ func newServerRunCommand(dbPath *string) *cobra.Command {
 		Use:   "run",
 		Short: "Listen for results",
 		Long: `Run listens over TLS. Without --tls-cert and --tls-key it makes a self-signed certificate next to
-the database (tls.crt, tls.key) and prints its pin: give that to "hostlint push --pin". Plain
+the database (tls.crt, tls.key) and prints its pin: give that to "vmsctl push --pin". Plain
 HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-proxy.`,
-		Example: `  hostlint server token create --name web-01 --host web-01
-  hostlint server run --listen :8443`,
+		Example: `  vmsctl server token create --name web-01 --host web-01
+  vmsctl server run --listen :8443`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			webhookURL = strings.TrimSpace(firstNonEmpty(webhookURL, os.Getenv("HOSTLINT_WEBHOOK_URL")))
+			webhookURL = strings.TrimSpace(firstNonEmpty(webhookURL, env("WEBHOOK_URL")))
 			var hook *server.Webhook
 			if webhookURL != "" {
 				if err := server.ValidateWebhookURL(webhookURL); err != nil {
@@ -111,7 +126,7 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 	fl.BoolVar(&lc.BehindProxy, "behind-proxy", false, "allow --plain-http on a non-loopback address: a TLS proxy is in front")
 	fl.Int64Var(&maxBody, "max-result-bytes", server.DefaultMaxBody, "the largest result accepted")
 	fl.IntVar(&rate, "rate", 60, "results per minute one token may send")
-	fl.StringVar(&webhookURL, "webhook-url", "", "post an event here when a host gets worse or stops reporting (https; or set HOSTLINT_WEBHOOK_URL: the URL can be a secret)")
+	fl.StringVar(&webhookURL, "webhook-url", "", "post an event here when a host gets worse or stops reporting (https; or set VMSCTL_WEBHOOK_URL: the URL can be a secret)")
 	fl.StringVar(&webhookSecretFile, "webhook-secret-file", "", "a file with the secret the webhook body is signed with (HMAC-SHA256 in "+server.HeaderWebhookSignature+")")
 	fl.DurationVar(&staleAfter, "stale-after", 7*24*time.Hour, "report a host that has not reported for this long (with --webhook-url)")
 	fl.DurationVar(&retention, "retention", 400*24*time.Hour, "delete scans older than this once a day, except the latest scan of each host (0 keeps everything)")
@@ -146,7 +161,7 @@ host by --host: it can only send results of that host, and its host ID is pinned
 			var opts []server.CredentialOption
 			if key != "" {
 				if scope != server.ScopeIngest || signing.Fingerprint(key) == "" {
-					return errors.New("--key is the public key (base64) of an ingest token's host, as \"hostlint key generate\" prints it")
+					return errors.New("--key is the public key (base64) of an ingest token's host, as \"vmsctl key generate\" prints it")
 				}
 				opts = append(opts, server.WithKey(key))
 			}
@@ -310,8 +325,8 @@ func newServerDemoCommand() *cobra.Command {
 		Long: `Demo starts a server on a loopback address with generated results: twelve invented hosts with
 two weeks of scans each, built from the real controls of the profile, so the dashboard has something
 to show. The data lives in memory and is gone when the command ends. It prints a read token to sign in with.`,
-		Example: `  hostlint server demo
-  hostlint server demo --listen 127.0.0.1:9000`,
+		Example: `  vmsctl server demo
+  vmsctl server demo --listen 127.0.0.1:9000`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			content, err := engine.Load(rules.FS, profiles.FS)
@@ -456,14 +471,14 @@ func newServerHostCommand(dbPath *string) *cobra.Command {
 		Use:   "reset-key ID",
 		Short: "Replace the signing key registered for a host",
 		Long: `A host that signs its results keeps signing with the same key. If its key was replaced on purpose
-(a re-installed machine), give the new public key with --key (the one "hostlint key generate" printed):
+(a re-installed machine), give the new public key with --key (the one "vmsctl key generate" printed):
 it replaces the registered one at once. Without --key the registered key is forgotten and the next signed
 result registers a key, which leaves a window in which unsigned results are accepted.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil || id < 1 {
-				return fmt.Errorf("%q is not a host ID (see: hostlint server host list)", args[0])
+				return fmt.Errorf("%q is not a host ID (see: vmsctl server host list)", args[0])
 			}
 			store, err := server.OpenStore(*dbPath)
 			if err != nil {
@@ -496,7 +511,7 @@ be undone: make a backup first, and pass --yes to confirm.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil || id < 1 {
-				return fmt.Errorf("%q is not a host ID (see: hostlint server host list)", args[0])
+				return fmt.Errorf("%q is not a host ID (see: vmsctl server host list)", args[0])
 			}
 			if !yes {
 				return errors.New("this deletes the host and all its results for good: add --yes to confirm")

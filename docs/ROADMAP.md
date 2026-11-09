@@ -5,7 +5,7 @@ only when direction changes (record why in an ADR).
 
 ## v0.1 — Standalone CLI
 
-**Goal:** download one binary, run `hostlint scan`, get a trustworthy per-control report.
+**Goal:** download one binary, run `vmsctl scan`, get a trustworthy per-control report.
 **Scope:** Ubuntu 22.04/24.04/26.04, Debian 12/13, RHEL-compatible 9/10 (Rocky Linux,
 AlmaLinux), Amazon Linux 2023, and CentOS/RHEL 7 (best-effort: past end-of-life, but still common among Korean
 compliance targets); KISA CII Unix profile, 2026 edition (U-01–U-67, see ADR 0007). Other
@@ -14,7 +14,7 @@ out of reach — Go binaries need Linux 3.2 or later.
 
 Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 
-1. **Scaffold & CI** — Go module, CLI skeleton (`hostlint version`), Makefile, golangci-lint,
+1. **Scaffold & CI** — Go module, CLI skeleton (`vmsctl version`), Makefile, golangci-lint,
    GitHub Actions (test, lint, build, govulncheck), branch protection on `main`.
 2. **Design: rule format, evaluation and result schema** (ADR) — rule YAML, expression language,
    collector interface, statuses (`PASS` `FAIL` `MANUAL` `NOT_APPLICABLE` `ERROR` `WAIVED`),
@@ -33,11 +33,11 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 8. **KISA profile: files and directories** — U-14–U-33.
 9. **KISA profile: services, patching, logging** — U-34–U-67. Controls that cannot be automated
    are `MANUAL` with guidance.
-10. **`hostlint scan` output** — terminal table, JSON, SARIF, JUnit; `--profile`, `--format`,
+10. **`vmsctl scan` output** — terminal table, JSON, SARIF, JUnit; `--profile`, `--format`,
     `--output`, `--fail-on`, exit codes; golden-file tests.
-11. **`hostlint report`** — merge many hosts' JSON into one self-contained HTML report
+11. **`vmsctl report`** — merge many hosts' JSON into one self-contained HTML report
     (hosts × controls matrix, drill-down, works offline).
-12. **Config file** — `hostlint.yaml`: profile selection, stricter parameters, waivers with reason
+12. **Config file** — `vmsctl.yaml`: profile selection, stricter parameters, waivers with reason
     and expiry, and attestations.
 13. **Container e2e matrix** — Docker-based end-to-end tests per supported distro (including
     `centos:7`) with hardened and default fixtures and golden results, in CI.
@@ -51,20 +51,20 @@ Work breakdown — each item becomes an issue in milestone `v0.1.0`:
 
 ## Fleet mode
 
-**Phase 1 shipped ([ADR 0010](adr/0010-fleet-server-and-dashboard.md)):** `hostlint server` (SQLite, tokens, a
-hash-chained audit table, sessions) with an embedded web dashboard, `hostlint push` and `hostlint scan --push` (hosts
-send results; the server has no channel to them), `hostlint diff`, retention, backup, host administration,
-`hostlint server demo`, signed results (v0.10: a per-host Ed25519 key, so the stored records are evidence even
+**Phase 1 shipped ([ADR 0010](adr/0010-fleet-server-and-dashboard.md)):** `vmsctl server` (SQLite, tokens, a
+hash-chained audit table, sessions) with an embedded web dashboard, `vmsctl push` and `vmsctl scan --push` (hosts
+send results; the server has no channel to them), `vmsctl diff`, retention, backup, host administration,
+`vmsctl server demo`, signed results (v0.10: a per-host Ed25519 key, so the stored records are evidence even
 against a compromised server) and a webhook for regressions and silent hosts (v0.11).
 
 **Also shipped:** scanning container images from a `docker save` or OCI archive (v0.12), a GitHub Action (v0.13),
 the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy packs, your own checks and profiles
-(v0.15), a Markdown output and a job summary in the Action (v0.16), `hostlint explain` and `hostlint pack facts` (v0.18),
+(v0.15), a Markdown output and a job summary in the Action (v0.16), `vmsctl explain` and `vmsctl pack facts` (v0.18),
 fix hints in the results (v0.21), a firewall and automatic updates in `essentials` (revision 3), policy-pack and image results in the fleet server (ADR 0016), a container image of every release (ghcr.io, [docs/container.md](container.md)), a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
 (v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)).
 
 **Next:**
-- Roles beyond viewer and operator, and OIDC inside hostlint: not now ([ADR 0015](adr/0015-dashboard-sign-in.md); an
+- Roles beyond viewer and operator, and OIDC inside vmsctl: not now ([ADR 0015](adr/0015-dashboard-sign-in.md); an
   authenticating proxy works today).
 - PostgreSQL as an option; waivers managed in the UI.
 

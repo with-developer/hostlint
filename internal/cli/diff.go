@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/output"
+	"github.com/with-developer/vmsctl/internal/output"
 )
 
 type diffFlags struct {
@@ -18,7 +18,7 @@ func newDiffCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "diff OLD.json NEW.json",
 		Short: "Show what changed between two scans of a host",
-		Long: `Diff compares two result documents written by "hostlint scan --format json" and
+		Long: `Diff compares two result documents written by "vmsctl scan --format json" and
 lists the controls whose status changed: regressed (FAIL or ERROR now, and not before, or
 a check of the control went wrong), fixed, changed in another way (a waiver added or removed
 is a change, not a fix), and controls found in only one of the results. For every
@@ -26,12 +26,12 @@ control it also lists the checks that changed.
 
 The first file is the older scan. Results of different hosts or of different profile
 revisions are compared too, with a note.`,
-		Example: `  hostlint scan -f json -o before.json
-  hostlint scan -f json -o after.json
-  hostlint diff before.json after.json
+		Example: `  vmsctl scan -f json -o before.json
+  vmsctl scan -f json -o after.json
+  vmsctl diff before.json after.json
 
   # CI: fail when a control got worse
-  hostlint diff baseline.json current.json --fail-on-regression`,
+  vmsctl diff baseline.json current.json --fail-on-regression`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDiff(cmd, args, f)

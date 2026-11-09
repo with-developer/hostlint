@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func collectBind(t *testing.T, m *hostfs.MemFS) (*Bind, bool) {
@@ -53,7 +53,7 @@ func TestBindIncompleteAndAbsent(t *testing.T) {
 		t.Error("a missing include must make the facts incomplete")
 	}
 	m = hostfs.NewMemFS().AddFile("/etc/named.conf", "zone", 0o644, 0, 0).SetError("/etc/named.conf", fsErrPermission)
-	if _, err := (bindCollector{}).Collect(context.Background(), hostfs.NewTestHost(m, nil, false)); err == nil || !strings.Contains(err.Error(), "run hostlint as root") {
+	if _, err := (bindCollector{}).Collect(context.Background(), hostfs.NewTestHost(m, nil, false)); err == nil || !strings.Contains(err.Error(), "run vmsctl as root") {
 		t.Errorf("err = %v", err)
 	}
 }

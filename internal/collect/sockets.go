@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Sockets are the `sockets` facts: the TCP and UDP sockets of the running
@@ -58,16 +58,16 @@ func (socketsCollector) Type() reflect.Type    { return reflect.TypeFor[Sockets]
 
 func (socketsCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, error) {
 	f := engine.Facts{Complete: true}
-	// /proc/net shows the network namespace hostlint runs in. In another
+	// /proc/net shows the network namespace vmsctl runs in. In another
 	// one (a container, ip netns exec), the host's sockets are invisible.
 	self, err1 := h.FS.ReadLink("/proc/self/ns/net")
 	hostNS, err2 := h.FS.ReadLink("/proc/1/ns/net")
 	switch {
 	case err1 == nil && err2 == nil && self != hostNS:
-		return engine.Facts{}, fmt.Errorf("hostlint runs in network namespace %s, not the host's %s, so it cannot see the host's sockets", self, hostNS)
+		return engine.Facts{}, fmt.Errorf("vmsctl runs in network namespace %s, not the host's %s, so it cannot see the host's sockets", self, hostNS)
 	case err1 != nil || err2 != nil:
 		f.Complete = false
-		f.Skipped = append(f.Skipped, "cannot tell whether hostlint shares the network namespace of process 1 (run hostlint as root)")
+		f.Skipped = append(f.Skipped, "cannot tell whether vmsctl shares the network namespace of process 1 (run vmsctl as root)")
 	}
 	s := &Sockets{Listening: []Socket{}}
 	for _, t := range procNetTables {

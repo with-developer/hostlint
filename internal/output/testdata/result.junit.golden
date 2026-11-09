@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="hostlint web-01">
+<testsuites name="vmsctl web-01">
   <testsuite name="kisa-2026" tests="5" failures="1" errors="1" skipped="2">
     <testcase classname="kisa-2026.web-01" name="U-01 Restrict direct remote root login">
       <failure message="FAIL [high]">FAIL ssh.permit-root-login: SSH does not allow direct root login&#xA;  &#34;yes&#34; (explicit); expected one of [no] (/etc/ssh/sshd_config:32)&#xA;</failure>
     </testcase>
     <testcase classname="kisa-2026.web-01" name="U-02 Password policy"></testcase>
     <testcase classname="kisa-2026.web-01" name="U-04 Protect password hashes">
-      <error message="ERROR: could not check">accounts.shadow-file: shadow: permission denied (run hostlint as root)&#xA;ERROR accounts.shadow-file: Password hashes are kept in /etc/shadow&#xA;  shadow: permission denied (run hostlint as root)&#xA;</error>
+      <error message="ERROR: could not check">accounts.shadow-file: shadow: permission denied (run vmsctl as root)&#xA;ERROR accounts.shadow-file: Password hashes are kept in /etc/shadow&#xA;  shadow: permission denied (run vmsctl as root)&#xA;</error>
     </testcase>
     <testcase classname="kisa-2026.web-01" name="U-06 Restrict su to a group">
       <skipped message="NOT_APPLICABLE">accounts.su-wheel-only: applies is false&#xA;NOT_APPLICABLE accounts.su-wheel-only: Only members of the wheel group can use su&#xA;  applies is false&#xA;</skipped>

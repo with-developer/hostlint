@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 func newExplainCommand() *cobra.Command {
@@ -23,8 +23,8 @@ func newExplainCommand() *cobra.Command {
 		Long: `Explain prints what a control or a check is for: its severity, what it looks at, why it matters, and how
 to fix a failure. A scan lists what failed; this tells what to do about it. ID is a control of a profile
 (U-02, ES-07: every profile that has it is shown) or a check (ssh.permit-root-login).`,
-		Example: `  hostlint explain U-02
-  hostlint explain ssh.permit-root-login accounts.lockout-threshold`,
+		Example: `  vmsctl explain U-02
+  vmsctl explain ssh.permit-root-login accounts.lockout-threshold`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := engine.Load(rules.FS, profiles.FS)
@@ -45,7 +45,7 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 					found = explain(out, content, strings.ToUpper(id)) // control IDs are upper case: u-02
 				}
 				if !found {
-					fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: nothing is called %s: it is neither a check nor a control of a profile (profiles: %s)\n", oneLineText(id), strings.Join(sortedProfileIDs(content), ", "))
+					fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: nothing is called %s: it is neither a check nor a control of a profile (profiles: %s)\n", oneLineText(id), strings.Join(sortedProfileIDs(content), ", "))
 					missing++
 				}
 			}

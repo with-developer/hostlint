@@ -8,9 +8,9 @@ it cannot make one scan, run anything or read anything there.
 
 ## Dashboard
 
-`hostlint server run` serves a web dashboard at its address when the binary was built with it: the
+`vmsctl server run` serves a web dashboard at its address when the binary was built with it: the
 release binaries are, and a source build uses `make build-web` (Node 22). A binary from `go install`
-has the API only and says so at `/`. Sign in with a read token (`hostlint server token create --scope
+has the API only and says so at `/`. Sign in with a read token (`vmsctl server token create --scope
 api`): the dashboard shows the fleet overview (pass rate, the pass rate over time for 7, 30 or 90 days, hosts with a failing control, hosts that
 stopped reporting, the controls that fail most, recent regressions), the host list (search, filters,
 sorting, CSV export, and for each host its operating system, labels, a trend line of its latest scans and whether
@@ -21,7 +21,7 @@ system's light or dark theme. Everything a host sent is shown as text.
 ## Try it without any host
 
 ```sh
-hostlint server demo
+vmsctl server demo
 ```
 
 starts a server on `127.0.0.1:8443` with a made-up fleet (twelve hosts, two weeks of scans, built from
@@ -34,9 +34,9 @@ On the server machine:
 
 ```sh
 # One token per host. It is shown once; only its hash is kept.
-hostlint server token create --db /var/lib/hostlint/server.db --name web-01 --host web-01
+vmsctl server token create --db /var/lib/vmsctl/server.db --name web-01 --host web-01
 
-hostlint server run --db /var/lib/hostlint/server.db --listen :8443
+vmsctl server run --db /var/lib/vmsctl/server.db --listen :8443
 # listening on https://[::]:8443
 # certificate pin: sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```
@@ -48,8 +48,8 @@ with `--plain-http --behind-proxy` when a TLS proxy is in front.
 On each host, scan and send in one command:
 
 ```sh
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan \
-  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
+sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan \
+  --push https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```
 
 The scan runs first and its report is printed as usual (`--format`, `--output` and `--fail-on` work as
@@ -57,39 +57,39 @@ always); then the result is sent. A result that cannot be sent is an error (exit
 that is missing is found out before the scan starts. To send a result you saved earlier:
 
 ```sh
-HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
-  --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
+VMSCTL_TOKEN=hlt_ing_... vmsctl push result.json \
+  --server https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```
 
-The token comes from `HOSTLINT_TOKEN` or `--token-file`, never from the command line. With a
+The token comes from `VMSCTL_TOKEN` or `--token-file`, never from the command line. With a
 certificate from a public CA, leave `--pin` out. Run both steps from cron or a systemd timer.
 Sending a result the server already has is not an error.
 
 ## Scheduled scans
 
 The server never starts a scan; a host scans itself on a schedule and pushes the result. A systemd timer does it
-(`/etc/systemd/system/hostlint-scan.service` and `.timer`):
+(`/etc/systemd/system/vmsctl-scan.service` and `.timer`):
 
 ```ini
-# hostlint-scan.service
+# vmsctl-scan.service
 [Unit]
-Description=hostlint scan, sent to the fleet server
+Description=vmsctl scan, sent to the fleet server
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/hostlint scan --fail-on none --format json --output /dev/null \
-  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
-  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key
+ExecStart=/usr/local/bin/vmsctl scan --fail-on none --format json --output /dev/null \
+  --push https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/signing-key
 NoNewPrivileges=yes
 PrivateTmp=yes
 ```
 
 ```ini
-# hostlint-scan.timer
+# vmsctl-scan.timer
 [Unit]
-Description=Daily hostlint scan
+Description=Daily vmsctl scan
 
 [Timer]
 OnCalendar=daily
@@ -101,39 +101,39 @@ WantedBy=timers.target
 ```
 
 ```sh
-sudo install -m 600 /dev/null /etc/hostlint/token      # then put the token in it
-sudo hostlint key generate /etc/hostlint/signing-key   # prints the public key: bind the token to it with `server token create --key`
-sudo systemctl enable --now hostlint-scan.timer
+sudo install -m 600 /dev/null /etc/vmsctl/token      # then put the token in it
+sudo vmsctl key generate /etc/vmsctl/signing-key   # prints the public key: bind the token to it with `server token create --key`
+sudo systemctl enable --now vmsctl-scan.timer
 ```
 
 `RandomizedDelaySec` spreads a fleet over two hours (the server limits how fast one token may send), `Persistent`
 runs a scan that was missed while the host was off. `--fail-on none` keeps a failing control from marking the unit
 failed: a unit that fails means the scan or the sending did not work, and a failure state worth an alert.
-`journalctl -u hostlint-scan` has the output. With cron, the same command in `/etc/cron.d/hostlint` (`17 3 * * * root ...`).
+`journalctl -u vmsctl-scan` has the output. With cron, the same command in `/etc/cron.d/vmsctl` (`17 3 * * * root ...`).
 The server's `--stale-after` webhook tells you about a host that stopped reporting.
 
 ## On-demand scans: the agent
 
-A timer scans on a schedule. To scan a host *now* from the dashboard, run `hostlint agent` on it as a service. The
+A timer scans on a schedule. To scan a host *now* from the dashboard, run `vmsctl agent` on it as a service. The
 agent only dials out (the server still never connects to a host): it keeps one HTTPS request open, a long poll, and
 the server answers it when someone clicks **Scan now**.
 
 ```sh
-sudo hostlint server token create --name web-01 --host web-01 --key <public key>   # the host's ingest token, as for --push (--key: the public key `key generate` printed)
-sudo hostlint agent --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
-  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+sudo vmsctl server token create --name web-01 --host web-01 --key <public key>   # the host's ingest token, as for --push (--key: the public key `key generate` printed)
+sudo vmsctl agent --server https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/signing-key --allow-profile kisa-2026
 ```
 
 ```ini
-# /etc/systemd/system/hostlint-agent.service
+# /etc/systemd/system/vmsctl-agent.service
 [Unit]
-Description=hostlint agent (scan when the fleet server asks)
+Description=vmsctl agent (scan when the fleet server asks)
 Wants=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/hostlint agent --server https://hostlint.example.org:8443 --pin sha256/... \
-  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+ExecStart=/usr/local/bin/vmsctl agent --server https://vmsctl.example.org:8443 --pin sha256/... \
+  --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/signing-key --allow-profile kisa-2026
 Restart=always
 RestartSec=10
 NoNewPrivileges=yes
@@ -144,16 +144,16 @@ WantedBy=multi-user.target
 
 What the server can ask is one thing: a scan with a profile that **this host's own** `--allow-profile` list names
 (one to eight built-in profiles), and at most once a minute. It cannot send waivers, parameters, paths or commands:
-`hostlint.yaml` stays a file of the host, and the result goes back as `hostlint scan --push` sends it: the same
+`vmsctl.yaml` stays a file of the host, and the result goes back as `vmsctl scan --push` sends it: the same
 token, the same `--pin`, the same signature. An agent also refuses a request for a profile it does not allow, or one
 that comes less than 45 seconds after its last scan, and it tells the server why. A server that is compromised can make
 hosts scan more often, up to that limit; nothing else. The agent does not take `--pack`: a result of a policy pack is
 not accepted by the server yet.
 
-The host has to have sent a result once (`hostlint scan --push`), and its token has to be bound to it (`--host`): the
+The host has to have sent a result once (`vmsctl scan --push`), and its token has to be bound to it (`--host`): the
 agent is the host's token, not a new kind of identity. Scheduled scans keep working next to it.
 
-**Who may ask.** The button needs an **operator** token (`hostlint server token create --scope operator --any-host
+**Who may ask.** The button needs an **operator** token (`vmsctl server token create --scope operator --any-host
 --name ops`), or a dashboard session started with one: an operator reads like an `api` token and may also ask for
 scans. A session started with an `api` token sees the host's agent but gets no button. The request is a JSON `POST
 /api/v1/hosts/{id}/scan` with `{"profile": "kisa-2026"}`; from a browser session it is accepted only with an `Origin`
@@ -166,7 +166,7 @@ failed. A request nobody answers expires after ten minutes. `GET /api/v1/hosts/{
 
 ## Results of policy packs
 
-A scan made with a [policy pack](packs.md) is sent like any other (`hostlint scan --pack DIR -p x-acme-baseline --push ...`).
+A scan made with a [policy pack](packs.md) is sent like any other (`vmsctl scan --pack DIR -p x-acme-baseline --push ...`).
 The server keeps the result as it is; the pack's profile appears in the dashboard's profile selector, and the host's page
 names the pack (name, version, digest). The server does not read packs: a control's "what it checks" text is not there for
 a pack's controls. At most eight packs are named by a result, each with a name, a version and its sha256 digest, and a
@@ -176,7 +176,7 @@ document, not on the pages.
 
 ## Container images
 
-A scan of an image archive (`hostlint scan --image-tar app.tar --push ...`, [docs/images.md](images.md)) is stored as an
+A scan of an image archive (`vmsctl scan --image-tar app.tar --push ...`, [docs/images.md](images.md)) is stored as an
 **image**: an asset named by its repository, with no host ID, whose scans each record the tag and the image ID. The dashboard
 lists images apart from hosts (**Images**, once there is one), and the fleet's numbers (overview, trend, matrix, controls,
 stale and silent-host alerts) are those of the hosts. `GET /api/v1/hosts?kind=image` lists the images; every host entry has
@@ -189,23 +189,23 @@ host). Images are listed newest scan first (`?sort=recent`). A name is a host or
 
 The dashboard signs a person in with a read token. To let people in with the sign-in your company already has
 (Google, Entra ID, Okta, Keycloak: OIDC or SAML), put a reverse proxy that does the sign-in in front of the server
-and let it pass the request on with a read token of its own. hostlint has no sign-in code of its own for this, on
+and let it pass the request on with a read token of its own. vmsctl has no sign-in code of its own for this, on
 purpose: a sign-in is the most attacked part of a web application ([ADR 0015](adr/0015-dashboard-sign-in.md)).
 
 The server listens on a loopback address, behind the proxy:
 
 ```sh
-hostlint server run --db /var/lib/hostlint/server.db --listen 127.0.0.1:8443 --plain-http --behind-proxy
-hostlint server token create --db /var/lib/hostlint/server.db --scope api --name dashboard-proxy
+vmsctl server run --db /var/lib/vmsctl/server.db --listen 127.0.0.1:8443 --plain-http --behind-proxy
+vmsctl server token create --db /var/lib/vmsctl/server.db --scope api --name dashboard-proxy
 ```
 
-An outline for nginx with [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/) (`/etc/nginx/hostlint-token.conf`
+An outline for nginx with [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/) (`/etc/nginx/vmsctl-token.conf`
 holds `proxy_set_header Authorization "Bearer hlt_api_...";`, readable by root only and never shown to a browser):
 
 ```nginx
 server {
     listen 443 ssl;
-    server_name hostlint.example.org;
+    server_name vmsctl.example.org;
     # ssl_certificate ...
 
     # The hosts push with their own ingest tokens: no sign-in for this one path.
@@ -226,7 +226,7 @@ server {
     location / {
         auth_request /oauth2/auth;
         error_page 401 = /oauth2/sign_in;
-        include /etc/nginx/hostlint-token.conf;
+        include /etc/nginx/vmsctl-token.conf;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_pass http://127.0.0.1:8443;
     }
@@ -254,8 +254,8 @@ profile (and remembers it) when there is more than one.
 A read token (`--scope api`) lets a script or CI ask the server what it knows:
 
 ```sh
-hostlint server token create --db server.db --name ci --scope api
-curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.example.org:8443/api/v1/overview
+vmsctl server token create --db server.db --name ci --scope api
+curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://vmsctl.example.org:8443/api/v1/overview
 ```
 
 | Request | Answer |
@@ -268,7 +268,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/matrix` | The latest status of every control on every host, hosts that fail most first |
 | `GET /api/v1/hosts/ID` | One host: its latest controls and its history |
 | `GET /api/v1/scans/ID` | A stored result, exactly as received |
-| `GET /api/v1/diff?old=ID&new=ID` | What changed between two scans, as `hostlint diff` |
+| `GET /api/v1/diff?old=ID&new=ID` | What changed between two scans, as `vmsctl diff` |
 
 ### Dashboard sessions
 
@@ -287,18 +287,18 @@ not reported for `staleDays`.
 
 ## Running it
 
-A service with systemd (`/etc/systemd/system/hostlint-server.service`); the state directory is
+A service with systemd (`/etc/systemd/system/vmsctl-server.service`); the state directory is
 created and owned by a throw-away user:
 
 ```ini
 [Unit]
-Description=hostlint server
+Description=vmsctl server
 After=network-online.target
 
 [Service]
 DynamicUser=yes
-StateDirectory=hostlint
-ExecStart=/usr/local/bin/hostlint server run --db /var/lib/hostlint/server.db --listen :8443
+StateDirectory=vmsctl
+ExecStart=/usr/local/bin/vmsctl server run --db /var/lib/vmsctl/server.db --listen :8443
 Restart=on-failure
 NoNewPrivileges=yes
 ProtectSystem=strict
@@ -309,8 +309,8 @@ PrivateTmp=yes
 WantedBy=multi-user.target
 ```
 
-Create tokens with `sudo systemd-run --pipe --property=DynamicUser=yes --property=StateDirectory=hostlint
-hostlint server token create --db /var/lib/hostlint/server.db ...`, or run the command as root and
+Create tokens with `sudo systemd-run --pipe --property=DynamicUser=yes --property=StateDirectory=vmsctl
+vmsctl server token create --db /var/lib/vmsctl/server.db ...`, or run the command as root and
 `chown` the database afterwards: the server refuses a database that other users can read.
 
 In a container (a binary that includes the dashboard, an empty `scratch` image, a volume for the data
@@ -318,18 +318,18 @@ owned by uid 65532):
 
 ```dockerfile
 FROM scratch
-COPY hostlint /hostlint
+COPY vmsctl /vmsctl
 VOLUME /data
 EXPOSE 8443
 USER 65532:65532
-ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen", ":8443"]
+ENTRYPOINT ["/vmsctl", "server", "run", "--db", "/data/vmsctl.db", "--listen", ":8443"]
 ```
 
-**Backup and retention.** `hostlint server backup FILE` writes a consistent copy while the server runs
+**Backup and retention.** `vmsctl server backup FILE` writes a consistent copy while the server runs
 (the file must not exist and is readable by you only); to restore, stop the server and put the copy at
 `--db`. The server deletes scans older than `--retention` (400 days by default, `0` keeps everything)
-once a day, and always keeps the latest scan of every host; `hostlint server prune --older-than 9600h`
-does it once, and `hostlint server stats` shows what the database holds. Upgrading is replacing the
+once a day, and always keeps the latest scan of every host; `vmsctl server prune --older-than 9600h`
+does it once, and `vmsctl server stats` shows what the database holds. Upgrading is replacing the
 binary: the schema migrates when the server starts.
 
 ## What the server checks
@@ -337,12 +337,12 @@ binary: the schema migrates when the server starts.
 - A valid token. An ingest token is bound to one host name (`--host`); the host ID in its first
   result is pinned, and a later result with another one is refused. `--any-host` makes a token that
   may speak for every host: an explicit choice.
-- The result is well formed (the checks of `hostlint report`), at most 2 MiB (`--max-result-bytes`),
+- The result is well formed (the checks of `vmsctl report`), at most 2 MiB (`--max-result-bytes`),
   500 controls and 5000 checks, with printable identifiers and a start time close to the server's
   clock. A scan ID is stored once per host; a known host name never gets a second host ID.
 - Each token may send 60 results a minute (`--rate`); requests with a bad token are throttled by address.
 - Everything is recorded in an audit table whose rows chain a hash of the previous row.
-  `hostlint server verify` recomputes the chain and prints the last hash: keep it elsewhere to
+  `vmsctl server verify` recomputes the chain and prints the last hash: keep it elsewhere to
   notice later changes.
 
 ## Signed results
@@ -351,24 +351,24 @@ A host can sign what it sends, so that a result is evidence of what that host's 
 server that stores it is compromised later:
 
 ```sh
-sudo hostlint key generate /etc/hostlint/sign.key      # once per host; prints the fingerprint
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443 \
-  --sign-key /etc/hostlint/sign.key
+sudo vmsctl key generate /etc/vmsctl/sign.key      # once per host; prints the fingerprint
+sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443 \
+  --sign-key /etc/vmsctl/sign.key
 ```
 
 The server registers the key at the host's first signed result (trust on first use). To rule out that
 a stolen token registers someone else's key first, bind the token to the host's public key when you
-create it: `hostlint server token create --name web-01 --host web-01 --key <public key>`; it then
+create it: `vmsctl server token create --name web-01 --host web-01 --key <public key>`; it then
 accepts nothing but results signed with that key. From then on the server refuses that host's
 results that are unsigned or signed with another key (a stolen token alone is no longer enough),
-and the dashboard shows the host as signed with the key's fingerprint. `hostlint server verify` also
+and the dashboard shows the host as signed with the key's fingerprint. `vmsctl server verify` also
 checks every stored scan against what the hash-chained audit log recorded when it was received (the
 digest of the document and the key it was signed with) and against its signature, so a result changed in
 the database afterwards, a signature that was removed or replaced, controls shown by the dashboard that
 differ from the stored document, a scan moved to another host, and a scan with no ingest record are all
 found. A host that signs does not go back in time: a signed result that does not start after the host's
 latest scan is refused (a captured result cannot be replayed once the original was pruned), while a retry
-of a stored scan is still answered as before. A host whose clock ran ahead by a few minutes has to wait until real time catches up (the server accepts start times at most five minutes ahead), and a scan that was delayed behind a newer one is not accepted any more. If a key was replaced on purpose (a re-installed machine), `hostlint server host reset-key ID --key
+of a stored scan is still answered as before. A host whose clock ran ahead by a few minutes has to wait until real time catches up (the server accepts start times at most five minutes ahead), and a scan that was delayed behind a newer one is not accepted any more. If a key was replaced on purpose (a re-installed machine), `vmsctl server host reset-key ID --key
 <new public key>` replaces the registered one at once (without `--key` it is forgotten, and until the next
 signed result registers a key unsigned results are accepted). A token bound to the old key (`--key`) keeps asking for it: issue a new token for the host. The key file is refused if other users can read it.
 
@@ -376,7 +376,7 @@ signed result registers a key unsigned results are accepted). A token bound to t
 
 The server is a store, not an authority. Whoever controls its database can change what it shows, and
 can also replace both a stored result and its signature and key together: keep a copy of the key
-fingerprints (`hostlint server host list`) and of the audit hash (`hostlint server verify`) somewhere
+fingerprints (`vmsctl server host list`) and of the audit hash (`vmsctl server verify`) somewhere
 else to notice that. A stolen token can submit results for the host it is bound to unless that host
 signs; a host whose own key is stolen can sign anything.
 
@@ -386,8 +386,8 @@ The server can post an event to a webhook when a host gets worse or stops report
 
 ```sh
 echo -n "a long random secret" > webhook.secret && chmod 600 webhook.secret
-HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
-  hostlint server run --webhook-secret-file webhook.secret --stale-after 72h
+VMSCTL_WEBHOOK_URL=https://hooks.example.com/services/XXX \
+  vmsctl server run --webhook-secret-file webhook.secret --stale-after 72h
 ```
 
 - `regression`: a result in which a control is FAIL or ERROR that was not in the host's previous scan.
@@ -398,7 +398,7 @@ HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
 The body is JSON with a `text` line that Slack, Mattermost and Discord's Slack-compatible endpoint show as it
 is. It carries control IDs and statuses, never evidence. With `--webhook-secret-file` the body is signed:
 `X-Hostlint-Signature-256: sha256=<hex HMAC-SHA256 of the body>`. The URL must be https (http only to a
-loopback address); it is read from `--webhook-url` or `HOSTLINT_WEBHOOK_URL` (prefer the variable: a
+loopback address); it is read from `--webhook-url` or `VMSCTL_WEBHOOK_URL` (prefer the variable: a
 webhook URL is a secret, and it is never logged). Redirects are not followed.
 
 Delivery is at least once: an event is retried every 30 seconds until the webhook answers 2xx, and nothing
@@ -411,8 +411,8 @@ profile) is not reported as a regression.
 ## Hosts
 
 ```sh
-hostlint server host list   --db server.db
-hostlint server host delete --db server.db 4 --yes
+vmsctl server host list   --db server.db
+vmsctl server host delete --db server.db 4 --yes
 ```
 
 A known host name never gets a second host ID: a machine that was re-installed (its host ID changed) is
@@ -422,8 +422,8 @@ backup first) and the machine can start again under the same name. Deletions are
 ## Tokens
 
 ```sh
-hostlint server token list   --db server.db
-hostlint server token revoke --db server.db 3
-hostlint server token create --db server.db --name ci --any-host --expires-in 2160h
-hostlint server token create --db server.db --name ops --scope operator --any-host   # reads, and asks agents for scans
+vmsctl server token list   --db server.db
+vmsctl server token revoke --db server.db 3
+vmsctl server token create --db server.db --name ci --any-host --expires-in 2160h
+vmsctl server token create --db server.db --name ops --scope operator --any-host   # reads, and asks agents for scans
 ```

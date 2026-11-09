@@ -38,7 +38,7 @@ func TestExecRunner(t *testing.T) {
 		t.Errorf("false: exit %d, %v; want exit 1 and no error", out.ExitCode, err)
 	}
 
-	t.Setenv("HOSTLINT_TEST_SECRET", "leak")
+	t.Setenv("VMSCTL_TEST_SECRET", "leak")
 	out, err = r.Run(ctx, testEnv)
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestTrustedPath(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("the remaining cases need a root-owned directory outside /tmp")
 	}
-	base, err := os.MkdirTemp("/", "hostlint-trust-")
+	base, err := os.MkdirTemp("/", "vmsctl-trust-")
 	if err != nil {
 		t.Fatal(err)
 	}

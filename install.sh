@@ -1,7 +1,7 @@
 #!/bin/sh
-# Install hostlint from a GitHub release.
+# Install vmsctl from a GitHub release.
 #
-#   curl -fsSL https://raw.githubusercontent.com/with-developer/hostlint/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/main/install.sh | sh
 #   sh install.sh -v v0.1.0 -b "$HOME/.local/bin"
 #
 # The archive must match its SHA-256 in the release's checksums.txt. When
@@ -9,7 +9,7 @@
 # must have been signed by this repository's release workflow for that tag.
 set -eu
 
-repo=with-developer/hostlint
+repo=with-developer/vmsctl
 version=
 bindir=/usr/local/bin
 
@@ -18,7 +18,7 @@ usage() {
 Usage: install.sh [-v VERSION] [-b DIR]
 
   -v VERSION  release to install, such as v0.1.0 (default: the latest)
-  -b DIR      directory to install hostlint into (default: /usr/local/bin)
+  -b DIR      directory to install vmsctl into (default: /usr/local/bin)
 EOF
 }
 
@@ -43,11 +43,11 @@ while getopts v:b:h opt; do
 	esac
 done
 
-[ "$(uname -s)" = Linux ] || fail "hostlint runs on Linux, not $(uname -s)"
+[ "$(uname -s)" = Linux ] || fail "vmsctl runs on Linux, not $(uname -s)"
 case $(uname -m) in
 x86_64 | amd64) arch=amd64 ;;
 aarch64 | arm64) arch=arm64 ;;
-*) fail "no hostlint build for $(uname -m)" ;;
+*) fail "no vmsctl build for $(uname -m)" ;;
 esac
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
@@ -86,17 +86,30 @@ v[0-9]*.[0-9]*.[0-9]*)
 *) fail "not a release version: $version" ;;
 esac
 
-# HOSTLINT_DOWNLOAD_URL replaces the release URL; CI uses it to test this
+# Releases before v0.27.0 were published as hostlint (ADR 0017): their archive, binary and signing identity carry
+# that name, so an old version is installed under it, from the repository as it was then named (GitHub redirects).
+# With VMSCTL_DOWNLOAD_URL (a snapshot build that CI tests) the archive is named for the new project whatever its version.
+name=vmsctl
+rel=${version#v}
+major=${rel%%.*}
+rest=${rel#*.}
+minor=${rest%%.*}
+if [ -z "${VMSCTL_DOWNLOAD_URL:-}" ] && [ "$major" = 0 ] && [ "$minor" -lt 27 ] 2>/dev/null; then
+	name=hostlint
+	repo=with-developer/hostlint
+fi
+
+# VMSCTL_DOWNLOAD_URL replaces the release URL; CI uses it to test this
 # script against a snapshot build.
-base=${HOSTLINT_DOWNLOAD_URL:-https://github.com/$repo/releases/download/$version}
-[ -z "${HOSTLINT_DOWNLOAD_URL:-}" ] || say "warning: downloading from HOSTLINT_DOWNLOAD_URL, not from GitHub"
-archive="hostlint_${version#v}_linux_$arch.tar.gz"
+base=${VMSCTL_DOWNLOAD_URL:-https://github.com/$repo/releases/download/$version}
+[ -z "${VMSCTL_DOWNLOAD_URL:-}" ] || say "warning: downloading from VMSCTL_DOWNLOAD_URL, not from GitHub"
+archive="${name}_${version#v}_linux_$arch.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 130' INT TERM
 
-say "downloading hostlint $version for linux/$arch"
+say "downloading $name $version for linux/$arch"
 download "$base/$archive" "$tmp/$archive"
 download "$base/checksums.txt" "$tmp/checksums.txt"
 
@@ -118,14 +131,20 @@ want=$(awk -v f="$archive" '$2 == f { print $1 }' "$tmp/checksums.txt")
 [ -n "$want" ] || fail "checksums.txt has no entry for $archive"
 [ "$(sha256 "$tmp/$archive")" = "$want" ] || fail "$archive does not match its SHA-256 in checksums.txt; not installing"
 
-tar -xzf "$tmp/$archive" -C "$tmp" hostlint
+tar -xzf "$tmp/$archive" -C "$tmp" "$name"
 mkdir -p "$bindir" 2>/dev/null || true
 [ -w "$bindir" ] || fail "cannot write to $bindir; run as root, or choose a directory with -b"
-# Written beside the target and renamed over it: a running hostlint, a full
+# Written beside the target and renamed over it: a running vmsctl, a full
 # disk or an interrupted copy never leaves a truncated binary behind.
-new=$(mktemp "$bindir/.hostlint.XXXXXX") || fail "cannot write to $bindir"
+new=$(mktemp "$bindir/.$name.XXXXXX") || fail "cannot write to $bindir"
 trap 'rm -rf "$tmp" "$new"' EXIT
-{ cp "$tmp/hostlint" "$new" && chmod 0755 "$new" && mv -f "$new" "$bindir/hostlint"; } ||
+{ cp "$tmp/$name" "$new" && chmod 0755 "$new" && mv -f "$new" "$bindir/$name"; } ||
 	fail "could not install into $bindir"
-installed=$("$bindir/hostlint" version) || fail "the installed $bindir/hostlint does not run (a noexec mount, or a build for another system?)"
-say "installed $(printf '%s\n' "$installed" | head -n 1) to $bindir/hostlint"
+installed=$("$bindir/$name" version) || fail "the installed $bindir/$name does not run (a noexec mount, or a build for another system?)"
+say "installed $(printf '%s\n' "$installed" | head -n 1) to $bindir/$name"
+
+# An older install left a hostlint binary that would keep running the old release: point it at the new one, so
+# units, cron entries and CI that still say hostlint keep working for now (it says it is deprecated).
+if [ "$name" = vmsctl ] && { [ -e "$bindir/hostlint" ] || [ -L "$bindir/hostlint" ]; }; then
+	ln -sf vmsctl "$bindir/hostlint" && say "replaced the old $bindir/hostlint with a link to vmsctl: it will go away in a later release"
+fi

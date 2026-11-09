@@ -207,7 +207,7 @@ func (o *osFS) resolve(name string, follow bool) (r resolved, err error) {
 	return r, nil
 }
 
-// followable returns the target of the symlink fd if hostlint may follow it.
+// followable returns the target of the symlink fd if vmsctl may follow it.
 func (o *osFS) followable(fd int, st *unix.Stat_t, links *int) (string, error) {
 	if st.Uid != 0 && st.Uid != o.euid {
 		return "", fmt.Errorf("owned by uid %d: %w", st.Uid, ErrUnsafeSymlink)

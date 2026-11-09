@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/server"
+	"github.com/with-developer/vmsctl/internal/server"
 )
 
 // The agent polls a real server, and the scan that the dashboard asks for runs and comes back as the answer.
@@ -26,7 +26,7 @@ func TestAgentEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOSTLINT_TOKEN", ingest)
+	t.Setenv("VMSCTL_TOKEN", ingest)
 	root := fakeRoot(t)
 
 	// The host has sent a result once.

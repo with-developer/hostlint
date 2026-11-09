@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/server"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/server"
 )
 
 // fakeRoot builds a small mounted root: enough for every account check to
@@ -77,7 +77,7 @@ func TestScanMountedRoot(t *testing.T) {
 // follows.
 func TestScanWithConfig(t *testing.T) {
 	root := fakeRoot(t)
-	cfg := filepath.Join(t.TempDir(), "hostlint.yaml")
+	cfg := filepath.Join(t.TempDir(), "vmsctl.yaml")
 	text := "waivers:\n  - check: accounts.uid0-only-root\n    reason: toor is a break-glass account\n    expires: 2099-12-31\n" +
 		"  - check: accounts.password-max-age\n    reason: old\n    expires: 2020-01-01\n"
 	if err := os.WriteFile(cfg, []byte(text), 0o644); err != nil {
@@ -146,7 +146,7 @@ func TestScanManyAccounts(t *testing.T) {
 	}
 }
 
-// scan --push sends the result of the scan it just ran to a hostlint server.
+// scan --push sends the result of the scan it just ran to a vmsctl server.
 func TestScanPush(t *testing.T) {
 	store, err := server.OpenStore(":memory:")
 	if err != nil {
@@ -159,7 +159,7 @@ func TestScanPush(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOSTLINT_TOKEN", token)
+	t.Setenv("VMSCTL_TOKEN", token)
 	root := fakeRoot(t)
 
 	code, stdout, stderr := run(context.Background(), t, "scan", "--root", root, "--push", srv.URL)
@@ -173,13 +173,13 @@ func TestScanPush(t *testing.T) {
 		t.Errorf("stats %+v, %v", st, err)
 	}
 	// A server that refuses the token turns a good scan into an error (2), not a silent success.
-	t.Setenv("HOSTLINT_TOKEN", "hlt_ing_wrong")
+	t.Setenv("VMSCTL_TOKEN", "hlt_ing_wrong")
 	code, _, stderr = run(context.Background(), t, "scan", "--root", root, "--push", srv.URL, "--fail-on", "none")
 	if code != ExitError || !strings.Contains(stderr, "the result was not sent") {
 		t.Errorf("exit %d, stderr %q", code, stderr)
 	}
 	// Without a token the scan does not even start; the options of --push need --push.
-	t.Setenv("HOSTLINT_TOKEN", "")
+	t.Setenv("VMSCTL_TOKEN", "")
 	if code, _, stderr = run(context.Background(), t, "scan", "--root", root, "--push", srv.URL); code != ExitError || !strings.Contains(stderr, "no token") {
 		t.Errorf("without a token: exit %d, %q", code, stderr)
 	}
@@ -201,7 +201,7 @@ func TestScanPushSigned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOSTLINT_TOKEN", token)
+	t.Setenv("VMSCTL_TOKEN", token)
 	root := fakeRoot(t)
 	keyPath := filepath.Join(t.TempDir(), "sign.key")
 	if code, stdout, stderr := run(context.Background(), t, "key", "generate", keyPath); code != ExitOK || !strings.Contains(stdout, "fingerprint: SHA256:") {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 func content() *engine.Content {
@@ -52,7 +52,7 @@ waivers:
 `
 
 func TestLoadAndValidate(t *testing.T) {
-	p := write(t, t.TempDir(), "hostlint.yaml", valid, 0o644)
+	p := write(t, t.TempDir(), "vmsctl.yaml", valid, 0o644)
 	f, err := Load(p)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func attestation(extra string) string {
 }
 
 func TestAttestations(t *testing.T) {
-	p := write(t, t.TempDir(), "hostlint.yaml", attestation("    hosts: [\"web-*\"]\n"), 0o644)
+	p := write(t, t.TempDir(), "vmsctl.yaml", attestation("    hosts: [\"web-*\"]\n"), 0o644)
 	f, err := Load(p)
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestAttestationErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := write(t, t.TempDir(), "hostlint.yaml", tt.text, 0o644)
+			p := write(t, t.TempDir(), "vmsctl.yaml", tt.text, 0o644)
 			f, err := Load(p)
 			if err == nil {
 				err = f.Validate(content(), "kisa-2026")
@@ -116,7 +116,7 @@ func TestAttestationErrors(t *testing.T) {
 		})
 	}
 	// A check that shows nothing is attested without an evidence digest.
-	p := write(t, t.TempDir(), "hostlint.yaml", plain, 0o644)
+	p := write(t, t.TempDir(), "vmsctl.yaml", plain, 0o644)
 	f, err := Load(p)
 	if err == nil {
 		err = f.Validate(content(), "kisa-2026")
@@ -146,7 +146,7 @@ func TestValidateErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := write(t, t.TempDir(), "hostlint.yaml", tt.text, 0o644)
+			p := write(t, t.TempDir(), "vmsctl.yaml", tt.text, 0o644)
 			f, err := Load(p)
 			if err == nil {
 				err = f.Validate(content(), "kisa-2026")
@@ -190,7 +190,7 @@ func TestUntrustedFile(t *testing.T) {
 
 // A FIFO at the config path is refused instead of blocking until a writer opens it.
 func TestLoadRefusesFIFO(t *testing.T) {
-	fifo := filepath.Join(t.TempDir(), "hostlint.yaml")
+	fifo := filepath.Join(t.TempDir(), "vmsctl.yaml")
 	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
 		t.Skipf("no FIFOs here: %v", err)
 	}
@@ -209,8 +209,8 @@ func TestLoadRefusesFIFO(t *testing.T) {
 func TestFind(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	defer func(l []string) { Locations = l }(Locations)
-	Locations = []string{"hostlint.yaml", filepath.Join(dir, "etc.yaml")}
+	defer func(l [][]string) { Locations = l }(Locations)
+	Locations = [][]string{{"vmsctl.yaml", "hostlint.yaml"}, {filepath.Join(dir, "etc.yaml")}}
 	if p, err := Find(""); err != nil || p != "" {
 		t.Errorf("no file: %q, %v", p, err)
 	}
@@ -218,8 +218,8 @@ func TestFind(t *testing.T) {
 	if p, err := Find(""); err != nil || p != filepath.Join(dir, "etc.yaml") {
 		t.Errorf("second location: %q, %v", p, err)
 	}
-	write(t, dir, "hostlint.yaml", valid, 0o644)
-	if p, err := Find(""); err != nil || p != "hostlint.yaml" {
+	write(t, dir, "vmsctl.yaml", valid, 0o644)
+	if p, err := Find(""); err != nil || p != "vmsctl.yaml" {
 		t.Errorf("working directory first: %q, %v", p, err)
 	}
 	if _, err := Find(filepath.Join(dir, "missing.yaml")); err == nil {
@@ -227,10 +227,30 @@ func TestFind(t *testing.T) {
 	}
 }
 
+// The old name of the file is still found, and both names in one place are refused rather than guessed.
+func TestFindOldName(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	defer func(l [][]string) { Locations = l }(Locations)
+	Locations = [][]string{{"vmsctl.yaml", "hostlint.yaml"}, {filepath.Join(dir, "etc.yaml")}}
+	write(t, dir, "hostlint.yaml", valid, 0o644)
+	p, err := Find("")
+	if err != nil || p != "hostlint.yaml" || !LegacyName(p) {
+		t.Errorf("old name: %q, %v", p, err)
+	}
+	write(t, dir, "vmsctl.yaml", valid, 0o644)
+	if _, err := Find(""); err == nil || !strings.Contains(err.Error(), "both vmsctl.yaml and hostlint.yaml") {
+		t.Errorf("both names: %v", err)
+	}
+	if LegacyName("/etc/vmsctl/vmsctl.yaml") {
+		t.Error("the new name counts as the old one")
+	}
+}
+
 // A file over the size limit is refused, not cut off.
 func TestLoadTooLarge(t *testing.T) {
 	text := "# " + strings.Repeat("x", maxFile) + "\nprofile: kisa-2026\n"
-	if _, err := Load(write(t, t.TempDir(), "hostlint.yaml", text, 0o644)); err == nil || !strings.Contains(err.Error(), "larger than") {
+	if _, err := Load(write(t, t.TempDir(), "vmsctl.yaml", text, 0o644)); err == nil || !strings.Contains(err.Error(), "larger than") {
 		t.Errorf("err = %v", err)
 	}
 }
@@ -238,7 +258,7 @@ func TestLoadTooLarge(t *testing.T) {
 // The profile named in the file matters only when it is the one scanned:
 // --profile overrides it.
 func TestValidateProfileOverridden(t *testing.T) {
-	f, err := Load(write(t, t.TempDir(), "hostlint.yaml", "profile: kisa-2027\n", 0o644))
+	f, err := Load(write(t, t.TempDir(), "vmsctl.yaml", "profile: kisa-2027\n", 0o644))
 	if err != nil {
 		t.Fatal(err)
 	}

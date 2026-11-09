@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 853e9f4 -->
+<!-- translated from docs/fleet.md @ 2ca0d64 -->
 # 서버로 모아 보기 (초기)
 
 > [ADR 0010](adr/0010-fleet-server-and-dashboard.md)의 1단계입니다. 서버는 결과를 받아 저장하고 조회 요청에
@@ -9,9 +9,9 @@
 
 ## 대시보드
 
-대시보드를 넣어 빌드한 바이너리라면 `hostlint server run`이 듣는 주소에서 웹 대시보드가 열립니다. 릴리스
+대시보드를 넣어 빌드한 바이너리라면 `vmsctl server run`이 듣는 주소에서 웹 대시보드가 열립니다. 릴리스
 바이너리에는 대시보드가 들어 있고, 소스에서 빌드할 때는 `make build-web`(Node 22)을 씁니다. `go install`로
-설치한 바이너리에는 API만 있고, `/`에 접속하면 그렇게 안내합니다. 조회 토큰(`hostlint server token create
+설치한 바이너리에는 API만 있고, `/`에 접속하면 그렇게 안내합니다. 조회 토큰(`vmsctl server token create
 --scope api`)으로 로그인하면 다음을 볼 수 있습니다.
 
 - **전체 현황**: 통과율, 7·30·90일간의 통과율 추이, 실패한 컨트롤이 있는 호스트, 보고를 멈춘 호스트, 가장 많이
@@ -28,7 +28,7 @@
 ## 호스트 없이 둘러보기
 
 ```sh
-hostlint server demo
+vmsctl server demo
 ```
 
 이 명령은 `127.0.0.1:8443`에 가상의 서버 12대(2주치 스캔, 실제 컨트롤로 만든 결과)를 담은 서버를 띄우고, 로그인에
@@ -41,9 +41,9 @@ hostlint server demo
 
 ```sh
 # 호스트마다 토큰 하나. 한 번만 보여 주고 해시만 저장합니다.
-hostlint server token create --db /var/lib/hostlint/server.db --name web-01 --host web-01
+vmsctl server token create --db /var/lib/vmsctl/server.db --name web-01 --host web-01
 
-hostlint server run --db /var/lib/hostlint/server.db --listen :8443
+vmsctl server run --db /var/lib/vmsctl/server.db --listen :8443
 # listening on https://[::]:8443
 # certificate pin: sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```
@@ -55,8 +55,8 @@ hostlint server run --db /var/lib/hostlint/server.db --listen :8443
 각 호스트에서는 스캔과 전송을 한 번에 실행합니다.
 
 ```sh
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan \
-  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
+sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan \
+  --push https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```
 
 스캔이 먼저 돌고 평소처럼 보고서가 출력되며(`--format`, `--output`, `--fail-on`도 그대로 동작합니다), 그다음에
@@ -64,39 +64,39 @@ sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan \
 앞서 저장해 둔 결과를 보내려면 이렇게 합니다.
 
 ```sh
-HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json \
-  --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
+VMSCTL_TOKEN=hlt_ing_... vmsctl push result.json \
+  --server https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U=
 ```
 
-토큰은 `HOSTLINT_TOKEN`이나 `--token-file`로 넘기고, 명령줄에는 쓰지 않습니다. 공인 CA가 발급한 인증서를 쓴다면
+토큰은 `VMSCTL_TOKEN`이나 `--token-file`로 넘기고, 명령줄에는 쓰지 않습니다. 공인 CA가 발급한 인증서를 쓴다면
 `--pin`은 생략합니다. 이 두 단계를 cron이나 systemd 타이머로 주기적으로 실행하세요. 서버가 이미 가지고 있는
 결과를 다시 보내도 오류가 아닙니다.
 
 ## 예약 스캔
 
 서버가 스캔을 시작하는 일은 없습니다. 호스트가 일정에 따라 스스로 스캔하고 결과를 보냅니다. systemd 타이머로
-설정하려면 `/etc/systemd/system/hostlint-scan.service`와 `.timer`를 만듭니다.
+설정하려면 `/etc/systemd/system/vmsctl-scan.service`와 `.timer`를 만듭니다.
 
 ```ini
-# hostlint-scan.service
+# vmsctl-scan.service
 [Unit]
-Description=hostlint scan, sent to the fleet server
+Description=vmsctl scan, sent to the fleet server
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/hostlint scan --fail-on none --format json --output /dev/null \
-  --push https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
-  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key
+ExecStart=/usr/local/bin/vmsctl scan --fail-on none --format json --output /dev/null \
+  --push https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/signing-key
 NoNewPrivileges=yes
 PrivateTmp=yes
 ```
 
 ```ini
-# hostlint-scan.timer
+# vmsctl-scan.timer
 [Unit]
-Description=Daily hostlint scan
+Description=Daily vmsctl scan
 
 [Timer]
 OnCalendar=daily
@@ -108,40 +108,40 @@ WantedBy=timers.target
 ```
 
 ```sh
-sudo install -m 600 /dev/null /etc/hostlint/token      # 그런 다음 토큰을 넣습니다
-sudo hostlint key generate /etc/hostlint/signing-key   # 공개 키를 출력합니다. `server token create --key`로 토큰에 묶으세요
-sudo systemctl enable --now hostlint-scan.timer
+sudo install -m 600 /dev/null /etc/vmsctl/token      # 그런 다음 토큰을 넣습니다
+sudo vmsctl key generate /etc/vmsctl/signing-key   # 공개 키를 출력합니다. `server token create --key`로 토큰에 묶으세요
+sudo systemctl enable --now vmsctl-scan.timer
 ```
 
 `RandomizedDelaySec`는 여러 호스트의 실행 시각을 두 시간 안에 흩어 놓습니다(서버는 토큰 하나가 결과를 보내는
 속도를 제한합니다). `Persistent`는 호스트가 꺼져 있어서 놓친 스캔을 켜지는 대로 실행합니다. `--fail-on none`은
 실패한 컨트롤 때문에 유닛이 실패 상태로 표시되지 않게 합니다. 유닛이 실패했다면 스캔이나 전송 자체가 동작하지
-않았다는 뜻이므로 알림을 걸어 둘 만합니다. 출력은 `journalctl -u hostlint-scan`에서 볼 수 있습니다. cron을
-쓴다면 같은 명령을 `/etc/cron.d/hostlint`에 적으세요(`17 3 * * * root ...`). 서버의 `--stale-after` 웹훅을 켜면
+않았다는 뜻이므로 알림을 걸어 둘 만합니다. 출력은 `journalctl -u vmsctl-scan`에서 볼 수 있습니다. cron을
+쓴다면 같은 명령을 `/etc/cron.d/vmsctl`에 적으세요(`17 3 * * * root ...`). 서버의 `--stale-after` 웹훅을 켜면
 보고를 멈춘 호스트를 알려 줍니다.
 
 ## 대시보드에서 바로 스캔하기: 에이전트
 
-타이머는 정해진 시각에 스캔합니다. 대시보드에서 호스트를 *지금* 스캔하고 싶다면 그 호스트에서 `hostlint agent`를
+타이머는 정해진 시각에 스캔합니다. 대시보드에서 호스트를 *지금* 스캔하고 싶다면 그 호스트에서 `vmsctl agent`를
 서비스로 실행하세요. 에이전트는 바깥으로만 연결합니다(서버가 호스트에 접속하지는 않습니다). HTTPS 요청 하나를
 열어 둔 채(롱 폴링) 기다리다가, 누군가 **지금 스캔**을 누르면 서버가 그 요청에 답을 보냅니다.
 
 ```sh
-sudo hostlint server token create --name web-01 --host web-01 --key <공개키>   # --push와 같은, 호스트의 수집 토큰 (--key: `key generate`가 출력한 공개키)
-sudo hostlint agent --server https://hostlint.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
-  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+sudo vmsctl server token create --name web-01 --host web-01 --key <공개키>   # --push와 같은, 호스트의 수집 토큰 (--key: `key generate`가 출력한 공개키)
+sudo vmsctl agent --server https://vmsctl.example.org:8443 --pin sha256/JSofaoL4gyTKBhYAk1QjTRDCC93WqgtDa3AKhMzYk2U= \
+  --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/signing-key --allow-profile kisa-2026
 ```
 
 ```ini
-# /etc/systemd/system/hostlint-agent.service
+# /etc/systemd/system/vmsctl-agent.service
 [Unit]
-Description=hostlint agent (scan when the fleet server asks)
+Description=vmsctl agent (scan when the fleet server asks)
 Wants=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/hostlint agent --server https://hostlint.example.org:8443 --pin sha256/... \
-  --token-file /etc/hostlint/token --sign-key /etc/hostlint/signing-key --allow-profile kisa-2026
+ExecStart=/usr/local/bin/vmsctl agent --server https://vmsctl.example.org:8443 --pin sha256/... \
+  --token-file /etc/vmsctl/token --sign-key /etc/vmsctl/signing-key --allow-profile kisa-2026
 Restart=always
 RestartSec=10
 NoNewPrivileges=yes
@@ -152,17 +152,17 @@ WantedBy=multi-user.target
 
 서버가 에이전트에게 시킬 수 있는 일은 하나뿐입니다. **그 호스트 자신의** `--allow-profile` 목록에 적힌
 프로파일(내장 프로파일 1~8개)로 스캔하는 것이고, 그것도 1분에 한 번까지입니다. 예외 처리, 매개변수, 경로,
-명령은 보낼 수 없습니다. `hostlint.yaml`은 어디까지나 호스트에 있는 파일이고, 결과는 `hostlint scan --push`와
+명령은 보낼 수 없습니다. `vmsctl.yaml`은 어디까지나 호스트에 있는 파일이고, 결과는 `vmsctl scan --push`와
 같은 방식(같은 토큰, 같은 `--pin`, 같은 서명)으로 돌아갑니다. 에이전트는 허용하지 않은 프로파일의 요청이나
 마지막 스캔 후 45초 안에 온 요청을 거절하고, 거절한 이유를 서버에 알립니다. 서버가 침해당하더라도 호스트가 위
 한도 안에서 더 자주 스캔하게 만들 수 있을 뿐, 그 밖의 일은 할 수 없습니다. 에이전트는 `--pack`을 받지
 않습니다. 정책 팩으로 만든 결과는 서버가 아직 받지 않기 때문입니다.
 
-호스트가 결과를 한 번은 보낸 적이 있어야 하고(`hostlint scan --push`), 토큰은 그 호스트에 묶여 있어야 합니다
+호스트가 결과를 한 번은 보낸 적이 있어야 하고(`vmsctl scan --push`), 토큰은 그 호스트에 묶여 있어야 합니다
 (`--host`). 에이전트는 새로운 종류의 신원이 아니라 호스트의 토큰을 그대로 씁니다. 예약 스캔은 에이전트와 함께
 계속 동작합니다.
 
-**누가 요청할 수 있나요?** 버튼을 쓰려면 **operator** 토큰(`hostlint server token create --scope operator
+**누가 요청할 수 있나요?** 버튼을 쓰려면 **operator** 토큰(`vmsctl server token create --scope operator
 --any-host --name ops`)이나, 그 토큰으로 시작한 대시보드 세션이 필요합니다. operator는 `api` 토큰처럼 읽을 수
 있고, 스캔도 요청할 수 있습니다. `api` 토큰으로 시작한 세션에서는 호스트의 에이전트가 연결됐는지는 보이지만
 버튼은 나타나지 않습니다.
@@ -182,7 +182,7 @@ WantedBy=multi-user.target
 
 ## 정책 팩의 결과
 
-[정책 팩](packs.ko.md)으로 점검한 결과도 다른 결과와 똑같이 보냅니다(`hostlint scan --pack DIR -p x-acme-baseline
+[정책 팩](packs.ko.md)으로 점검한 결과도 다른 결과와 똑같이 보냅니다(`vmsctl scan --pack DIR -p x-acme-baseline
 --push ...`). 서버는 결과를 받은 그대로 보관합니다. 팩의 프로파일은 대시보드의 프로파일 선택기에 나타나고,
 호스트 페이지에는 팩의 이름·버전·다이제스트가 표시됩니다. 서버는 팩 자체를 읽지 않으므로 팩에 들어 있는
 컨트롤에는 "무엇을 점검하나" 설명이 나오지 않습니다.
@@ -194,7 +194,7 @@ WantedBy=multi-user.target
 
 ## 컨테이너 이미지
 
-이미지 아카이브를 점검해서(`hostlint scan --image-tar app.tar --push ...`, [docs/images.ko.md](images.ko.md))
+이미지 아카이브를 점검해서(`vmsctl scan --image-tar app.tar --push ...`, [docs/images.ko.md](images.ko.md))
 보내면 호스트가 아니라 **이미지**로 저장됩니다. 이미지는 저장소 이름으로 구분하는 자산이고 호스트 ID가 없으며,
 스캔마다 태그와 이미지 ID가 기록됩니다.
 
@@ -214,24 +214,24 @@ WantedBy=multi-user.target
 
 대시보드는 조회 토큰으로 로그인합니다. 회사에서 이미 쓰는 로그인(Google, Entra ID, Okta, Keycloak 등 OIDC나
 SAML)으로 사람들이 들어오게 하려면, 로그인을 처리하는 리버스 프록시를 서버 앞에 두고 프록시가 자신의 조회
-토큰을 붙여 요청을 넘기게 하세요. hostlint에는 이를 위한 로그인 코드를 일부러 넣지 않았습니다. 로그인은 웹
+토큰을 붙여 요청을 넘기게 하세요. vmsctl에는 이를 위한 로그인 코드를 일부러 넣지 않았습니다. 로그인은 웹
 애플리케이션에서 가장 많이 공격받는 부분이기 때문입니다([ADR 0015](adr/0015-dashboard-sign-in.md)).
 
 서버는 프록시 뒤의 루프백 주소에서 듣게 합니다.
 
 ```sh
-hostlint server run --db /var/lib/hostlint/server.db --listen 127.0.0.1:8443 --plain-http --behind-proxy
-hostlint server token create --db /var/lib/hostlint/server.db --scope api --name dashboard-proxy
+vmsctl server run --db /var/lib/vmsctl/server.db --listen 127.0.0.1:8443 --plain-http --behind-proxy
+vmsctl server token create --db /var/lib/vmsctl/server.db --scope api --name dashboard-proxy
 ```
 
 nginx와 [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/)를 쓰는 설정의 뼈대입니다.
-`/etc/nginx/hostlint-token.conf`에는 `proxy_set_header Authorization "Bearer hlt_api_...";`를 넣고, root만 읽을
+`/etc/nginx/vmsctl-token.conf`에는 `proxy_set_header Authorization "Bearer hlt_api_...";`를 넣고, root만 읽을
 수 있게 하세요. 이 값은 브라우저에 노출되지 않습니다.
 
 ```nginx
 server {
     listen 443 ssl;
-    server_name hostlint.example.org;
+    server_name vmsctl.example.org;
     # ssl_certificate ...
 
     # 호스트는 자신의 수집 토큰으로 결과를 보내므로, 이 경로 하나만 로그인 없이 통과시킵니다.
@@ -252,7 +252,7 @@ server {
     location / {
         auth_request /oauth2/auth;
         error_page 401 = /oauth2/sign_in;
-        include /etc/nginx/hostlint-token.conf;
+        include /etc/nginx/vmsctl-token.conf;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_pass http://127.0.0.1:8443;
     }
@@ -286,8 +286,8 @@ server {
 조회 토큰(`--scope api`)이 있으면 스크립트나 CI에서도 서버가 아는 것을 물어볼 수 있습니다.
 
 ```sh
-hostlint server token create --db server.db --name ci --scope api
-curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.example.org:8443/api/v1/overview
+vmsctl server token create --db server.db --name ci --scope api
+curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://vmsctl.example.org:8443/api/v1/overview
 ```
 
 | 요청 | 응답 |
@@ -300,7 +300,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://hostlint.ex
 | `GET /api/v1/matrix` | 모든 호스트의 모든 컨트롤의 최신 상태. 가장 많이 실패한 호스트가 먼저 나옵니다 |
 | `GET /api/v1/hosts/ID` | 호스트 하나의 최신 컨트롤과 이력 |
 | `GET /api/v1/scans/ID` | 저장된 결과를 받은 그대로 |
-| `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이에서 바뀐 것(`hostlint diff`와 같습니다) |
+| `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이에서 바뀐 것(`vmsctl diff`와 같습니다) |
 
 ### 대시보드 세션
 
@@ -319,18 +319,18 @@ NOT_APPLICABLE과 WAIVED는 비율 계산에서 빼고 옆에 따로 표시합�
 
 ## 서버 운영하기
 
-systemd 서비스로 실행하려면 `/etc/systemd/system/hostlint-server.service`를 만듭니다. 상태 디렉터리는 임시
+systemd 서비스로 실행하려면 `/etc/systemd/system/vmsctl-server.service`를 만듭니다. 상태 디렉터리는 임시
 사용자가 만들고 소유합니다.
 
 ```ini
 [Unit]
-Description=hostlint server
+Description=vmsctl server
 After=network-online.target
 
 [Service]
 DynamicUser=yes
-StateDirectory=hostlint
-ExecStart=/usr/local/bin/hostlint server run --db /var/lib/hostlint/server.db --listen :8443
+StateDirectory=vmsctl
+ExecStart=/usr/local/bin/vmsctl server run --db /var/lib/vmsctl/server.db --listen :8443
 Restart=on-failure
 NoNewPrivileges=yes
 ProtectSystem=strict
@@ -341,8 +341,8 @@ PrivateTmp=yes
 WantedBy=multi-user.target
 ```
 
-토큰은 `sudo systemd-run --pipe --property=DynamicUser=yes --property=StateDirectory=hostlint hostlint server
-token create --db /var/lib/hostlint/server.db ...`로 만들거나, 명령을 root로 실행한 뒤 데이터베이스를 `chown`하세요.
+토큰은 `sudo systemd-run --pipe --property=DynamicUser=yes --property=StateDirectory=vmsctl vmsctl server
+token create --db /var/lib/vmsctl/server.db ...`로 만들거나, 명령을 root로 실행한 뒤 데이터베이스를 `chown`하세요.
 서버는 다른 사용자가 읽을 수 있는 데이터베이스를 거부합니다.
 
 컨테이너로 실행하려면 대시보드가 들어 있는 바이너리, 빈 `scratch` 이미지, uid 65532가 소유한 데이터용 볼륨을
@@ -350,17 +350,17 @@ token create --db /var/lib/hostlint/server.db ...`로 만들거나, 명령을 ro
 
 ```dockerfile
 FROM scratch
-COPY hostlint /hostlint
+COPY vmsctl /vmsctl
 VOLUME /data
 EXPOSE 8443
 USER 65532:65532
-ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen", ":8443"]
+ENTRYPOINT ["/vmsctl", "server", "run", "--db", "/data/vmsctl.db", "--listen", ":8443"]
 ```
 
-**백업과 보존 기간.** `hostlint server backup FILE`은 서버가 실행 중이어도 일관된 사본을 만듭니다(파일이 이미
+**백업과 보존 기간.** `vmsctl server backup FILE`은 서버가 실행 중이어도 일관된 사본을 만듭니다(파일이 이미
 있으면 안 되고, 만든 사용자만 읽을 수 있습니다). 복원하려면 서버를 멈추고 사본을 `--db` 경로에 두세요. 서버는
 `--retention`(기본 400일, `0`이면 모두 보관)보다 오래된 스캔을 하루에 한 번 지우되, 호스트마다 최신 스캔은 항상
-남깁니다. `hostlint server prune --older-than 9600h`는 같은 정리를 한 번 실행하고, `hostlint server stats`는
+남깁니다. `vmsctl server prune --older-than 9600h`는 같은 정리를 한 번 실행하고, `vmsctl server stats`는
 데이터베이스에 든 내용을 보여 줍니다. 업그레이드는 바이너리를 바꾸는 것으로 끝납니다. 서버가 시작할 때 스키마를
 자동으로 올립니다.
 
@@ -369,11 +369,11 @@ ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen
 - 유효한 토큰인지. 수집 토큰은 호스트 이름 하나(`--host`)에 묶이고, 첫 결과에 담긴 호스트 ID가 고정되어 이후에
   다른 ID로 오는 결과는 거부합니다. `--any-host`는 모든 호스트를 대표할 수 있는 토큰을 만드는 옵션이며, 명시적으로
   선택해야 합니다.
-- 결과의 형식이 올바른지(`hostlint report`의 검사와 같습니다). 크기는 최대 2 MiB(`--max-result-bytes`), 컨트롤은
+- 결과의 형식이 올바른지(`vmsctl report`의 검사와 같습니다). 크기는 최대 2 MiB(`--max-result-bytes`), 컨트롤은
   500개, 점검은 5000개까지이며, 식별자는 출력 가능한 문자여야 하고 시작 시각은 서버의 시계와 가까워야 합니다.
   스캔 ID는 호스트당 한 번만 저장하고, 이미 아는 호스트 이름에 두 번째 호스트 ID를 주지 않습니다.
 - 토큰 하나는 분당 60개의 결과(`--rate`)까지 보낼 수 있고, 잘못된 토큰으로 오는 요청은 주소별로 속도를 제한합니다.
-- 모든 일을 감사 테이블에 기록하며, 각 행은 앞 행의 해시를 이어받습니다. `hostlint server verify`가 이 사슬을
+- 모든 일을 감사 테이블에 기록하며, 각 행은 앞 행의 해시를 이어받습니다. `vmsctl server verify`가 이 사슬을
   다시 계산해 마지막 해시를 출력합니다. 나중에 바뀐 것을 알아채도록 이 값을 다른 곳에 따로 적어 두세요.
 
 ## 서명된 결과
@@ -382,19 +382,19 @@ ENTRYPOINT ["/hostlint", "server", "run", "--db", "/data/hostlint.db", "--listen
 키가 무엇이라고 말했는지에 대한 증거로 쓸 수 있습니다.
 
 ```sh
-sudo hostlint key generate /etc/hostlint/sign.key      # 호스트마다 한 번. 지문을 출력합니다
-sudo HOSTLINT_TOKEN=hlt_ing_... hostlint scan --push https://hostlint.example.org:8443 \
-  --sign-key /etc/hostlint/sign.key
+sudo vmsctl key generate /etc/vmsctl/sign.key      # 호스트마다 한 번. 지문을 출력합니다
+sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443 \
+  --sign-key /etc/vmsctl/sign.key
 ```
 
 서버는 호스트가 처음 보낸 서명된 결과에서 키를 등록합니다(처음 본 키를 믿는 방식). 훔친 토큰으로 남이 먼저 자기
-키를 등록하는 일을 막으려면, 토큰을 만들 때 호스트의 공개 키에 묶으세요. `hostlint server token create --name
+키를 등록하는 일을 막으려면, 토큰을 만들 때 호스트의 공개 키에 묶으세요. `vmsctl server token create --name
 web-01 --host web-01 --key <공개키>`로 만들면 그 키로 서명한 결과만 받습니다.
 
 그 뒤로 서버는 그 호스트의 결과 중 서명이 없거나 다른 키로 서명된 것을 거부합니다(토큰만 훔쳐서는 더 이상
 충분하지 않습니다). 대시보드에는 그 호스트가 서명하며 키의 지문이 무엇인지 표시됩니다.
 
-`hostlint server verify`는 저장된 모든 스캔을 두 가지와 대조합니다. 하나는 결과를 받을 때 해시로 이어진 감사
+`vmsctl server verify`는 저장된 모든 스캔을 두 가지와 대조합니다. 하나는 결과를 받을 때 해시로 이어진 감사
 기록에 남긴 문서의 다이제스트와 서명에 쓴 키이고, 다른 하나는 서명 자체입니다. 그래서 다음과 같은 변조를 모두
 찾아냅니다.
 
@@ -409,7 +409,7 @@ web-01 --host web-01 --key <공개키>`로 만들면 그 키로 서명한 결과
 전처럼 정상 응답을 줍니다. 시계가 몇 분 빠르게 간 호스트는 실제 시간이 따라올 때까지 기다려야 합니다(서버는 최대
 5분 앞선 시작 시각까지 받습니다). 더 새로운 스캔 뒤로 밀린 스캔은 더 이상 받지 않습니다.
 
-기계를 다시 설치하는 등 키를 일부러 바꿨다면 `hostlint server host reset-key ID --key <새 공개키>`로 등록된 키를
+기계를 다시 설치하는 등 키를 일부러 바꿨다면 `vmsctl server host reset-key ID --key <새 공개키>`로 등록된 키를
 즉시 바꿉니다. `--key` 없이 실행하면 등록된 키를 잊고, 다음 서명된 결과가 키를 등록할 때까지는 서명 없는 결과도
 받습니다. 이전 키에 묶인 토큰(`--key`)은 계속 이전 키를 요구하므로 그 호스트의 토큰을 새로 발급하세요. 다른
 사용자가 읽을 수 있는 키 파일은 거부합니다.
@@ -417,8 +417,8 @@ web-01 --host web-01 --key <공개키>`로 만들면 그 키로 서명한 결과
 ## 지켜 주지 못하는 것
 
 서버는 저장소일 뿐 권위 있는 기관이 아닙니다. 데이터베이스를 장악한 사람은 보이는 내용을 바꿀 수 있고, 저장된
-결과와 서명과 키를 한꺼번에 바꿔치기할 수도 있습니다. 이를 알아채려면 키 지문(`hostlint server host list`)과
-감사 해시(`hostlint server verify`)의 사본을 다른 곳에 보관하세요. 토큰을 도난당하면 그 토큰이 묶인 호스트의
+결과와 서명과 키를 한꺼번에 바꿔치기할 수도 있습니다. 이를 알아채려면 키 지문(`vmsctl server host list`)과
+감사 해시(`vmsctl server verify`)의 사본을 다른 곳에 보관하세요. 토큰을 도난당하면 그 토큰이 묶인 호스트의
 결과를 위조해 보낼 수 있습니다(그 호스트가 서명하지 않는 경우). 호스트 자신의 키를 도난당했다면 그 호스트의
 이름으로 무엇이든 서명할 수 있습니다.
 
@@ -428,8 +428,8 @@ web-01 --host web-01 --key <공개키>`로 만들면 그 키로 서명한 결과
 
 ```sh
 echo -n "a long random secret" > webhook.secret && chmod 600 webhook.secret
-HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
-  hostlint server run --webhook-secret-file webhook.secret --stale-after 72h
+VMSCTL_WEBHOOK_URL=https://hooks.example.com/services/XXX \
+  vmsctl server run --webhook-secret-file webhook.secret --stale-after 72h
 ```
 
 - `regression`: 직전 스캔에는 없던 FAIL이나 ERROR 컨트롤이 생긴 결과입니다. 해당 컨트롤(프로파일, ID, 제목,
@@ -440,7 +440,7 @@ HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
 본문은 JSON이고 `text` 줄이 들어 있어서 Slack, Mattermost, Discord의 Slack 호환 엔드포인트에 그대로 표시됩니다.
 컨트롤 ID와 상태만 담고 근거는 절대 담지 않습니다. `--webhook-secret-file`을 주면 본문에 서명을 붙입니다.
 `X-Hostlint-Signature-256: sha256=<본문의 HMAC-SHA256 16진수>` 형식입니다. URL은 https여야 하고(루프백 주소로
-보낼 때만 http 허용), `--webhook-url`이나 `HOSTLINT_WEBHOOK_URL`로 줍니다. 웹훅 URL은 비밀이고 로그에도 남기지
+보낼 때만 http 허용), `--webhook-url`이나 `VMSCTL_WEBHOOK_URL`로 줍니다. 웹훅 URL은 비밀이고 로그에도 남기지
 않으므로 환경 변수를 권장합니다. 리다이렉트는 따라가지 않습니다.
 
 전달은 최소 한 번을 보장합니다. 웹훅이 2xx로 답할 때까지 30초마다 이벤트를 다시 보내고, 웹훅을 켜기 전에 있었던
@@ -452,8 +452,8 @@ HOSTLINT_WEBHOOK_URL=https://hooks.example.com/services/XXX \
 ## 호스트 관리
 
 ```sh
-hostlint server host list   --db server.db
-hostlint server host delete --db server.db 4 --yes
+vmsctl server host list   --db server.db
+vmsctl server host delete --db server.db 4 --yes
 ```
 
 이미 아는 호스트 이름에는 두 번째 호스트 ID를 주지 않습니다. 다시 설치해서 호스트 ID가 바뀐 머신은 거부되고,
@@ -463,8 +463,8 @@ hostlint server host delete --db server.db 4 --yes
 ## 토큰 관리
 
 ```sh
-hostlint server token list   --db server.db
-hostlint server token revoke --db server.db 3
-hostlint server token create --db server.db --name ci --any-host --expires-in 2160h
-hostlint server token create --db server.db --name ops --scope operator --any-host   # 조회도 하고, 에이전트에게 스캔도 요청합니다
+vmsctl server token list   --db server.db
+vmsctl server token revoke --db server.db 3
+vmsctl server token create --db server.db --name ci --any-host --expires-in 2160h
+vmsctl server token create --db server.db --name ops --scope operator --any-host   # 조회도 하고, 에이전트에게 스캔도 요청합니다
 ```

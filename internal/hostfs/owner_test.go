@@ -10,7 +10,7 @@ import (
 )
 
 func TestOwner(t *testing.T) {
-	name := filepath.Join(t.TempDir(), "hostlint.yaml")
+	name := filepath.Join(t.TempDir(), "vmsctl.yaml")
 	if err := os.WriteFile(name, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}

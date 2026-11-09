@@ -10,26 +10,26 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/output"
-	"github.com/with-developer/hostlint/internal/push"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/output"
+	"github.com/with-developer/vmsctl/internal/push"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 func newPushCommand() *cobra.Command {
 	var serverURL, pin, tokenFile, signKey string
 	cmd := &cobra.Command{
 		Use:   "push FILE...",
-		Short: "Send scan results to a hostlint server",
-		Long: `Push sends result documents written by "hostlint scan --format json" to a hostlint server.
-The token is read from the HOSTLINT_TOKEN environment variable or from --token-file, never from
+		Short: "Send scan results to a vmsctl server",
+		Long: `Push sends result documents written by "vmsctl scan --format json" to a vmsctl server.
+The token is read from the VMSCTL_TOKEN environment variable or from --token-file, never from
 the command line. The server is trusted by its certificate, or by its public key with --pin (the
-value "hostlint server run" prints for a self-signed certificate).
+value "vmsctl server run" prints for a self-signed certificate).
 
-A result is checked before it is sent, like "hostlint report" does, so a file that is not a
+A result is checked before it is sent, like "vmsctl report" does, so a file that is not a
 result is refused here.`,
-		Example: `  sudo hostlint scan -f json -o result.json
-  HOSTLINT_TOKEN=hlt_ing_... hostlint push result.json --server https://hostlint.example.org:8443`,
+		Example: `  sudo vmsctl scan -f json -o result.json
+  VMSCTL_TOKEN=hlt_ing_... vmsctl push result.json --server https://vmsctl.example.org:8443`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			token, err := readToken(tokenFile)
@@ -50,7 +50,7 @@ result is refused here.`,
 			for _, name := range args {
 				got, err := pushFile(cmd, name, serverURL, token, pin, signer)
 				if err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "hostlint: %s: %v\n", name, err)
+					fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: %s: %v\n", name, err)
 					failed = append(failed, name)
 					continue
 				}
@@ -67,10 +67,10 @@ result is refused here.`,
 		},
 	}
 	fl := cmd.Flags()
-	fl.StringVar(&serverURL, "server", "", "the server's URL, such as https://hostlint.example.org:8443")
+	fl.StringVar(&serverURL, "server", "", "the server's URL, such as https://vmsctl.example.org:8443")
 	fl.StringVar(&pin, "pin", "", `trust this public key ("sha256/<base64>") instead of the system roots`)
 	fl.StringVar(&tokenFile, "token-file", "", "read the token from this file")
-	fl.StringVar(&signKey, "sign-key", "", "sign the result with this key (made with: hostlint key generate)")
+	fl.StringVar(&signKey, "sign-key", "", "sign the result with this key (made with: vmsctl key generate)")
 	return cmd
 }
 
@@ -85,10 +85,10 @@ func pushFile(cmd *cobra.Command, name, serverURL, token, pin string, signer ed2
 	return push.Send(cmd.Context(), doc, push.Options{URL: serverURL, Token: token, Pin: pin, SignKey: signer})
 }
 
-// readToken is the ingest token: from the file the user named, else from HOSTLINT_TOKEN. It is
+// readToken is the ingest token: from the file the user named, else from VMSCTL_TOKEN. It is
 // never taken from the command line, where other users could see it.
 func readToken(tokenFile string) (string, error) {
-	token := os.Getenv("HOSTLINT_TOKEN")
+	token := env("TOKEN")
 	if tokenFile != "" {
 		data, err := os.ReadFile(tokenFile) //nolint:forbidigo,gosec // a file the user named, not the scanned host (G304)
 		if err != nil {
@@ -97,7 +97,7 @@ func readToken(tokenFile string) (string, error) {
 		token = strings.TrimSpace(string(data))
 	}
 	if token == "" {
-		return "", errors.New("no token: set HOSTLINT_TOKEN or use --token-file")
+		return "", errors.New("no token: set VMSCTL_TOKEN or use --token-file")
 	}
 	return token, nil
 }

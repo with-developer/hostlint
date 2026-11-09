@@ -1,5 +1,5 @@
 'use strict';
-// hostlint report: renders the JSON in #report-data. Everything from the
+// vmsctl report: renders the JSON in #report-data. Everything from the
 // results is untrusted text and only ever reaches the page as textContent or
 // attribute values set through the DOM; links are built from indexes.
 (() => {
@@ -225,7 +225,7 @@
       ['Kernel', h.kernel],
       ['Architecture', h.arch],
       ['Target', h.target],
-      ['Scanned', h.scanned + (h.tool ? ' with hostlint ' + h.tool : '')],
+      ['Scanned', h.scanned + (h.tool ? ' with vmsctl ' + h.tool : '')],
       ['Privileges', h.root ? 'root' : 'not root: checks that need protected files report ERROR'],
       ['Labels', Object.entries(h.labels || {}).map(([k, v]) => k + '=' + v).join(', ')],
       ['Result file', h.file],
@@ -365,8 +365,8 @@
   }
 
   document.getElementById('footer').replaceChildren(el('p', {class: 'muted small'},
-    'Generated ' + data.generated + (data.tool ? ' by hostlint ' + data.tool : '') + ' from ' + plural(data.files, 'result file') +
-    '. Each host\'s results are as of its scan time. hostlint only observes; it changed nothing on these hosts.'));
+    'Generated ' + data.generated + (data.tool ? ' by vmsctl ' + data.tool : '') + ' from ' + plural(data.files, 'result file') +
+    '. Each host\'s results are as of its scan time. vmsctl only observes; it changed nothing on these hosts.'));
   refreshToolbar();
   window.addEventListener('hashchange', () => {
     render();

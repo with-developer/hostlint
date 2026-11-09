@@ -1,12 +1,12 @@
-# The release image of hostlint: the static binary of a release on a minimal base (CA certificates for --push,
+# The release image of vmsctl: the static binary of a release on a minimal base (CA certificates for --push,
 # no shell, no package manager). The .github/workflows/container.yml workflow builds it from the verified
-# release archives; ctx/ holds linux-amd64/hostlint and linux-arm64/hostlint.
+# release archives; ctx/ holds linux-amd64/vmsctl and linux-arm64/vmsctl.
 #
-# Scan the host it runs on by mounting its root read-only (hostlint only reads):
-#   docker run --rm -v /:/host:ro ghcr.io/with-developer/hostlint scan --root /host
+# Scan the host it runs on by mounting its root read-only (vmsctl only reads):
+#   docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl scan --root /host
 FROM gcr.io/distroless/static-debian12@sha256:d75cdd72874d4790092fcb1b058493ecf6bb5bf2b2b897045b00ff01d91843f2
 ARG TARGETARCH
-COPY linux-${TARGETARCH}/hostlint /usr/local/bin/hostlint
+COPY linux-${TARGETARCH}/vmsctl /usr/local/bin/vmsctl
 USER 0:0
-ENTRYPOINT ["/usr/local/bin/hostlint"]
+ENTRYPOINT ["/usr/local/bin/vmsctl"]
 CMD ["--help"]

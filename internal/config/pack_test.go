@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/profiles"
-	"github.com/with-developer/hostlint/rules"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/profiles"
+	"github.com/with-developer/vmsctl/rules"
 )
 
 const testPackCheck = `id: x-acme.motd-present
@@ -138,25 +138,25 @@ func TestLoadPackRefuses(t *testing.T) {
 		files map[string]string
 		want  string
 	}{
-		"no manifest":            {with(nil, "pack.yaml"), "pack.yaml is missing"},
-		"a stray file":           {with(map[string]string{"README.md": "x"}), `"README.md" is not part of a pack`},
-		"a stray .yml":           {with(map[string]string{"rules/x-acme/other.yml": "x"}), "nothing else is allowed there"},
-		"a file in rules":        {with(map[string]string{"rules/stray.yaml": "x"}), "rules/<area>/<name>.yaml"},
-		"nested too deep":        {with(map[string]string{"rules/x-acme/sub/a.yaml": "x"}), "nothing else is allowed there"},
-		"a bad file name":        {with(map[string]string{"profiles/Bad_Name.yaml": "x"}), "profiles/<id>.yaml"},
-		"a profile directory":    {with(map[string]string{"profiles/sub/a.yaml": "x"}), "profiles/<id>.yaml"},
-		"an unknown field":       {with(map[string]string{"pack.yaml": "format: 1\nname: acme\nversion: 1\nextra: x\n"}), "field extra not found"},
-		"format 2":               {with(map[string]string{"pack.yaml": "format: 2\nname: acme\nversion: 1\n"}), "format must be 1"},
-		"a bad name":             {with(map[string]string{"pack.yaml": "format: 1\nname: Acme Inc\nversion: 1\n"}), "name must be lowercase kebab case"},
-		"no version":             {with(map[string]string{"pack.yaml": "format: 1\nname: acme\n"}), "version is required"},
-		"needs a newer hostlint": {with(map[string]string{"pack.yaml": "format: 1\nname: acme\nversion: 1\nrequires_hostlint: v99.0.0\n"}), "needs hostlint v99.0.0 or later"},
-		"a big file":             {with(map[string]string{"rules/x-acme/big.yaml": strings.Repeat("a", maxPackFile+1)}), "larger than 256 KiB"},
+		"no manifest":          {with(nil, "pack.yaml"), "pack.yaml is missing"},
+		"a stray file":         {with(map[string]string{"README.md": "x"}), `"README.md" is not part of a pack`},
+		"a stray .yml":         {with(map[string]string{"rules/x-acme/other.yml": "x"}), "nothing else is allowed there"},
+		"a file in rules":      {with(map[string]string{"rules/stray.yaml": "x"}), "rules/<area>/<name>.yaml"},
+		"nested too deep":      {with(map[string]string{"rules/x-acme/sub/a.yaml": "x"}), "nothing else is allowed there"},
+		"a bad file name":      {with(map[string]string{"profiles/Bad_Name.yaml": "x"}), "profiles/<id>.yaml"},
+		"a profile directory":  {with(map[string]string{"profiles/sub/a.yaml": "x"}), "profiles/<id>.yaml"},
+		"an unknown field":     {with(map[string]string{"pack.yaml": "format: 1\nname: acme\nversion: 1\nextra: x\n"}), "field extra not found"},
+		"format 2":             {with(map[string]string{"pack.yaml": "format: 2\nname: acme\nversion: 1\n"}), "format must be 1"},
+		"a bad name":           {with(map[string]string{"pack.yaml": "format: 1\nname: Acme Inc\nversion: 1\n"}), "name must be lowercase kebab case"},
+		"no version":           {with(map[string]string{"pack.yaml": "format: 1\nname: acme\n"}), "version is required"},
+		"needs a newer vmsctl": {with(map[string]string{"pack.yaml": "format: 1\nname: acme\nversion: 1\nrequires_hostlint: v99.0.0\n"}), "needs vmsctl v99.0.0 or later"},
+		"a big file":           {with(map[string]string{"rules/x-acme/big.yaml": strings.Repeat("a", maxPackFile+1)}), "larger than 256 KiB"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := writePack(t, tc.files)
-			// "needs a newer hostlint" only holds for release builds: a dev build skips the check.
+			// "needs a newer vmsctl" only holds for release builds: a dev build skips the check.
 			_, err := LoadPack(dir)
-			if name == "needs a newer hostlint" && err == nil {
+			if name == "needs a newer vmsctl" && err == nil {
 				t.Skip("a development build does not check requires_hostlint")
 			}
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -216,6 +216,25 @@ func TestLoadPackTooManyEntries(t *testing.T) {
 	dir := writePack(t, files)
 	if _, err := LoadPack(dir); err == nil {
 		t.Error("a directory with too many entries was read")
+	}
+}
+
+// The manifest may say requires_vmsctl or the old requires_hostlint, not both.
+func TestRequiresEitherKey(t *testing.T) {
+	for name, tc := range map[string]struct {
+		m  PackManifest
+		ok bool
+	}{
+		"new key":     {PackManifest{Format: 1, Name: "acme", Version: "1", RequiresVmsctl: "v0.15.0"}, true},
+		"old key":     {PackManifest{Format: 1, Name: "acme", Version: "1", RequiresHostlint: "v0.15.0"}, true},
+		"both keys":   {PackManifest{Format: 1, Name: "acme", Version: "1", RequiresVmsctl: "v0.15.0", RequiresHostlint: "v0.15.0"}, false},
+		"new too new": {PackManifest{Format: 1, Name: "acme", Version: "1", RequiresVmsctl: "v9.0.0"}, false},
+		"old too new": {PackManifest{Format: 1, Name: "acme", Version: "1", RequiresHostlint: "v9.0.0"}, false},
+		"neither":     {PackManifest{Format: 1, Name: "acme", Version: "1"}, true},
+	} {
+		if err := checkManifest(&tc.m, "v0.27.0"); (err == nil) != tc.ok {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/with-developer/hostlint/internal/engine"
+	"github.com/with-developer/vmsctl/internal/engine"
 )
 
 // Render returns the reference for every profile of content, in profile ID
@@ -19,8 +19,8 @@ func Render(content *engine.Content) string {
 	b.WriteString("Every control of a profile and the checks that decide it. A control passes only when every\n")
 	b.WriteString("check applicable to it passes; checks that cannot decide report `MANUAL` or `ERROR`, never\n")
 	b.WriteString("`PASS` (see [ADR 0006](adr/0006-rule-format-evaluation-results.md)). Control IDs come from the\n")
-	b.WriteString("standard; titles and descriptions are hostlint's own. Parameters can be made stricter in\n")
-	b.WriteString("[hostlint.yaml](configuration.md).\n")
+	b.WriteString("standard; titles and descriptions are vmsctl's own. Parameters can be made stricter in\n")
+	b.WriteString("[vmsctl.yaml](configuration.md).\n")
 
 	ids := make([]string, 0, len(content.Profiles))
 	for id := range content.Profiles {

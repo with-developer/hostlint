@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/push"
-	"github.com/with-developer/hostlint/internal/server"
-	"github.com/with-developer/hostlint/internal/signing"
+	"github.com/with-developer/vmsctl/internal/push"
+	"github.com/with-developer/vmsctl/internal/server"
+	"github.com/with-developer/vmsctl/internal/signing"
 )
 
 // The client sends a result to a real TLS server, trusting its public key by pin.

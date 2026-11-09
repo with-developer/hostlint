@@ -6,8 +6,8 @@ import (
 	"io/fs"
 	"reflect"
 
-	"github.com/with-developer/hostlint/internal/engine"
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Bind is the `bind` facts: who may transfer and update the zones BIND serves.
@@ -48,7 +48,7 @@ func (bindCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Facts, e
 	cfg, err := hostfs.ReadBindConfig(h.FS)
 	if err != nil {
 		if errors.Is(err, fs.ErrPermission) {
-			return engine.Facts{}, errors.New("BIND's configuration cannot be read (run hostlint as root)")
+			return engine.Facts{}, errors.New("BIND's configuration cannot be read (run vmsctl as root)")
 		}
 		return engine.Facts{}, err
 	}

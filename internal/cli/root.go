@@ -1,4 +1,4 @@
-// Package cli defines the hostlint command-line interface.
+// Package cli defines the vmsctl command-line interface.
 package cli
 
 import (
@@ -11,13 +11,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/with-developer/hostlint/internal/version"
+	"github.com/with-developer/vmsctl/internal/version"
 )
 
 // Process exit codes.
 const (
 	ExitOK          = 0   // success; nothing failed at or above the --fail-on threshold
-	ExitFail        = 1   // the scan found failures (used by `hostlint scan`)
+	ExitFail        = 1   // the scan found failures (used by `vmsctl scan`)
 	ExitError       = 2   // usage error, or the command could not run
 	ExitInterrupted = 130 // interrupted by SIGINT or SIGTERM
 )
@@ -26,7 +26,7 @@ const (
 // process exit code. The command is interrupted when ctx is canceled.
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	// Cobra's hidden __complete command appends debug output to the file named
-	// by this variable; hostlint never writes to the host it runs on (ADR 0004).
+	// by this variable; vmsctl never writes to the host it runs on (ADR 0004).
 	_ = os.Unsetenv("BASH_COMP_DEBUG_FILE")
 	if args == nil {
 		args = []string{} // cobra falls back to os.Args when given nil
@@ -44,24 +44,24 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case errors.As(err, &findings), errors.As(err, &regressed), errors.As(err, &packProblems):
 		// The scan finished and its result was written; a signal that came
 		// afterwards does not make it interrupted.
-		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "vmsctl: %v\n", err)
 		return ExitFail
 	case err == nil:
 		return ExitOK
 	case ctx.Err() != nil && errors.Is(err, ctx.Err()):
-		_, _ = fmt.Fprintln(stderr, "hostlint: interrupted")
+		_, _ = fmt.Fprintln(stderr, "vmsctl: interrupted")
 		return ExitInterrupted
 	default:
-		_, _ = fmt.Fprintf(stderr, "hostlint: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "vmsctl: %v\n", err)
 		return ExitError
 	}
 }
 
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "hostlint",
+		Use:   "vmsctl",
 		Short: "Check a Linux host's security configuration against hardening baselines",
-		Long: `hostlint checks a Linux host's security configuration against hardening
+		Long: `vmsctl checks a Linux host's security configuration against hardening
 baselines and reports a result per control. It only observes: it never
 changes the host it scans.`,
 		Version:       version.Get().String(),

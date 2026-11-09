@@ -1,5 +1,5 @@
 # KISA CII technical vulnerability assessment guide, 2026 edition: Unix servers
-# (ADR 0007). Control titles are hostlint's own short wording; only the control
+# (ADR 0007). Control titles are vmsctl's own short wording; only the control
 # IDs and importance levels come from the guide.
 id: kisa-2026
 revision: 15

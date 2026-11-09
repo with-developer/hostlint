@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
-	"github.com/with-developer/hostlint/internal/version"
+	"github.com/with-developer/vmsctl/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/version"
 )
 
 // Engine evaluates the checks of a Content with a set of collectors.
@@ -262,7 +262,7 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		res.Scan.Target.Kind = "root"
 	}
 	if res.Scan.Tool.Name == "" {
-		res.Scan.Tool.Name = "hostlint"
+		res.Scan.Tool.Name = "vmsctl"
 	}
 	if res.Scan.Tool.Version == "" {
 		info := version.Get()
@@ -384,7 +384,7 @@ func manualShow(c *Check) string {
 // titles), and, for the checks of a policy pack that it maps, their logic. A waiver of a control of a
 // pack's profile names it, so it stops applying when the pack author changes what a mapped check of the
 // pack does as well as when the mapping changes. The digest of a built-in profile is its mapping only: what
-// a built-in check does belongs to the hostlint release.
+// a built-in check does belongs to the vmsctl release.
 func (c *Content) ProfileDigest(p *Profile) string {
 	type ctl struct {
 		ID       string

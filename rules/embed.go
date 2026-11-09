@@ -1,4 +1,4 @@
-// Package rules embeds hostlint's built-in checks (ADR 0006): one YAML file
+// Package rules embeds vmsctl's built-in checks (ADR 0006): one YAML file
 // per check, rules/<area>/<name>.yaml.
 package rules
 

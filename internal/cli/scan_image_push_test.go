@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/server"
+	"github.com/with-developer/vmsctl/internal/server"
 )
 
 // An image scan is sent to a fleet server as an asset of its own (ADR 0016): named by its repository, with the tag and
@@ -25,7 +25,7 @@ func TestPushAnImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOSTLINT_TOKEN", tok)
+	t.Setenv("VMSCTL_TOKEN", tok)
 	files := map[string]string{"etc/os-release": "ID=debian\nVERSION_ID=\"12\"\n"}
 	for _, tag := range []string{"ghcr.io/acme/app:1.4", "ghcr.io/acme/app:1.5"} {
 		if tag == "ghcr.io/acme/app:1.5" {

@@ -1,6 +1,6 @@
 # Vision
 
-> **hostlint is eslint for Linux servers** — a single Go binary that checks a host's
+> **vmsctl is eslint for Linux servers** — a single Go binary that checks a host's
 > security configuration against hardening baselines, from one server to a fleet.
 
 ## Problem
@@ -13,9 +13,9 @@ Checking whether a Linux server is hardened is still done in one of two ways:
 - **Heavyweight compliance platforms.** Powerful, but they take days to deploy, and their
   rule formats are hard to read or contribute to.
 
-## What hostlint is
+## What vmsctl is
 
-- **One binary, zero setup.** Download, run `hostlint scan`, get an answer in seconds.
+- **One binary, zero setup.** Download, run `vmsctl scan`, get an answer in seconds.
 - **Rules as data.** Checks are declarative YAML that anyone can read, review and contribute.
 - **Standards as overlays.** The same checks map onto KISA, CIS (control IDs only) or your
   own policy. Results are reported per control, with the evidence behind each verdict.
@@ -52,7 +52,7 @@ These are non-negotiable. Changing one requires the owner's approval and an ADR.
 ## Non-goals
 
 - Package/CVE vulnerability scanning — use Trivy, Grype or Vuls.
-- Automatic remediation — hostlint may print fix hints; changing hosts is a job for
+- Automatic remediation — vmsctl may print fix hints; changing hosts is a job for
   configuration management tools.
 - Log analysis, SIEM, intrusion detection — use Wazuh or Falco.
 - Kubernetes cluster benchmarks — use kube-bench.
@@ -60,7 +60,7 @@ These are non-negotiable. Changing one requires the owner's approval and an ADR.
 
 ## Lineage
 
-hostlint is a ground-up rewrite of VMS (2023–2024), which ran server vulnerability checks from
+vmsctl is a ground-up rewrite of VMS (2023–2024), which ran server vulnerability checks from
 a central Flask/MongoDB server. It keeps the goal — see many servers' hardening status in one
 place — and changes the architecture: outbound mTLS agents instead of listening ones,
 declarative checks instead of per-distro shell scripts, structured results instead of parsed text.

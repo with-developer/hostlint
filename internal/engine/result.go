@@ -80,7 +80,7 @@ type PackInfo struct {
 	Digest  string `json:"digest"`
 }
 
-// ToolInfo identifies the hostlint build.
+// ToolInfo identifies the vmsctl build.
 type ToolInfo struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`

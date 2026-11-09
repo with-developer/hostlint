@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // scanOne scans fsys with a profile made of the single check c.

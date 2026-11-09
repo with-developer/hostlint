@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 func sysctlOf(t *testing.T, m *hostfs.MemFS, live bool) (*Sysctl, bool, []string) {

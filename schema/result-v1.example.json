@@ -4,7 +4,7 @@
     "id": "019a43c2-6f0e-7b51-9b5f-3c2e8d1a4f10",
     "startedAt": "2026-11-02T12:00:00Z",
     "finishedAt": "2026-11-02T12:00:09Z",
-    "tool": {"name": "hostlint", "version": "v0.1.0", "commit": "59aea7170c06cab65b282faf397eb492dd86d06d"},
+    "tool": {"name": "vmsctl", "version": "v0.1.0", "commit": "59aea7170c06cab65b282faf397eb492dd86d06d"},
     "target": {"kind": "host", "root": "/"},
     "privileges": {"euid": 0, "capabilities": ["CAP_DAC_OVERRIDE", "CAP_DAC_READ_SEARCH"]}
   },

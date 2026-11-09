@@ -1,4 +1,4 @@
-# Releasing hostlint
+# Releasing vmsctl
 
 A release is built, signed and published by [`release.yml`](../.github/workflows/release.yml)
 when a `v*` tag is pushed. Nothing is built or signed on a laptop. CI builds the same artifacts as
@@ -8,8 +8,8 @@ a snapshot on every pull request, so the pipeline is tested before a tag needs i
 
 | File | What it is |
 |---|---|
-| `hostlint_<version>_linux_{amd64,arm64}.tar.gz` | The static binary, `LICENSE` and `README.md` |
-| `hostlint_<version>_{amd64,arm64}.deb`, `hostlint-<version>-1.{x86_64,aarch64}.rpm` | Packages installing `/usr/bin/hostlint` |
+| `vmsctl_<version>_linux_{amd64,arm64}.tar.gz` | The static binary, `LICENSE` and `README.md` |
+| `vmsctl_<version>_{amd64,arm64}.deb`, `vmsctl-<version>-1.{x86_64,aarch64}.rpm` | Packages installing `/usr/bin/vmsctl` |
 | `<file>.sbom.json` | An SPDX SBOM for each archive and package (syft) |
 | `checksums.txt` | The SHA-256 of every file above |
 | `checksums.txt.sigstore.json` | Sigstore bundle for `checksums.txt`: keyless, signed by `release.yml` at the tag |
@@ -26,6 +26,16 @@ dashboard are those of `web/package-lock.json`; the SBOMs of the archives list t
 [`install.sh`](../install.sh) installs the archive for the machine's architecture. It refuses an
 archive whose SHA-256 does not match `checksums.txt`. When cosign is installed, it first verifies
 the signature of `checksums.txt` against the release workflow's identity for that tag.
+
+## The rename (v0.27.0)
+
+The project was called hostlint until v0.26.0 ([ADR 0017](adr/0017-rename-to-vmsctl.md)). v0.27.0 is the first
+release under the new name, and the signing identity is the repository's name, so **the GitHub repository has to be
+renamed before the tag is pushed**: a release signed under the old name would not verify under the new one.
+Releases up to v0.26.0 stay as they were: their archives are `hostlint_*`, and they verify against
+`with-developer/hostlint` (`cosign --certificate-identity` and `gh attestation verify -R`).
+[`install.sh`](../install.sh) knows both. The `.deb` and `.rpm` packages replace `hostlint` and keep a `hostlint`
+link to `vmsctl` for a while.
 
 ## Checklist
 
@@ -45,7 +55,7 @@ Tag and push. The tag must point at a commit on `main`:
 
 ```sh
 git fetch origin
-git tag -a v<version> -m "hostlint v<version>" <commit on main>
+git tag -a v<version> -m "vmsctl v<version>" <commit on main>
 git push origin v<version>
 ```
 
@@ -68,9 +78,9 @@ The workflow then:
 After it is published:
 
 - From a clean machine, install with `install.sh` (with cosign installed) on Ubuntu and on Rocky
-  Linux, and check `hostlint version`.
+  Linux, and check `vmsctl version`.
 - Verify the signature and provenance as the release notes show.
-- Check that `go install github.com/with-developer/hostlint/cmd/hostlint@<version>` works.
+- Check that `go install github.com/with-developer/vmsctl/cmd/vmsctl@<version>` works.
 - Announcements (Hacker News, Reddit, GeekNews, social media) need the owner's approval.
 
 ## When something goes wrong
@@ -86,7 +96,7 @@ After it is published:
 
 `.github/workflows/container.yml` runs after the Release workflow succeeded (and by hand: Actions, Container image,
 Run workflow, with the tag). It downloads the release archives, verifies `checksums.txt` with Sigstore and every
-file against it, builds `ghcr.io/with-developer/hostlint:<version>` (and `:latest` for a release that is not a
+file against it, builds `ghcr.io/with-developer/vmsctl:<version>` (and `:latest` for a release that is not a
 pre-release) for amd64 and arm64 from `packaging/container/Dockerfile`, signs the image with Sigstore, and stores
 its build provenance and SBOM. It is a separate workflow so that a failure there never holds back a release; rerun it
 for the tag. The package took the visibility of the repository (public) at its first publication; if it is ever private, change

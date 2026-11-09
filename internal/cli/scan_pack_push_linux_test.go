@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/with-developer/hostlint/internal/server"
+	"github.com/with-developer/vmsctl/internal/server"
 )
 
 // A scan with a policy pack is sent to the fleet server like any other (ADR 0016): the result is stored as it is, the pack's
@@ -33,7 +33,7 @@ func TestPushWithAPack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOSTLINT_TOKEN", ingest)
+	t.Setenv("VMSCTL_TOKEN", ingest)
 	root := fakeRoot(t)
 	pack := copyExamplePack(t)
 

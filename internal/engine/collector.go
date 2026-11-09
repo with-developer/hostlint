@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/with-developer/hostlint/internal/hostfs"
+	"github.com/with-developer/vmsctl/internal/hostfs"
 )
 
 // Access says what a collector observes (ADR 0006 §2).

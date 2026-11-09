@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Host is everything hostlint may use to observe one scan target.
+// Host is everything vmsctl may use to observe one scan target.
 type Host struct {
 	// FS reads the target's files.
 	FS FS
@@ -19,7 +19,7 @@ type Host struct {
 	// (/proc, sockets, commands) describes it.
 	Live bool
 	// Mounts are the filesystems mounted at or below the target's root, as
-	// seen by hostlint when the target was opened; nil when unknown.
+	// seen by vmsctl when the target was opened; nil when unknown.
 	Mounts []Mount
 	// Image is true when the target is the filesystem of a container image (ADR 0011): nothing is mounted
 	// in it and nothing of the scanner's system is in it, so the host-only exclusions do not apply.
