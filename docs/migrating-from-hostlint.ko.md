@@ -22,9 +22,11 @@ hostlint는 v0.27.0에서 vmsctl로 이름을 바꿨습니다([ADR 0017](adr/001
 | `pack.yaml`의 `requires_hostlint:` | `requires_vmsctl:` |
 | `hostlint-scan.service`, `hostlint-agent.service`, `hostlint-server.service` (문서의 유닛 이름) | `vmsctl-scan.service` 등. 유닛 이름은 직접 정하면 됩니다 |
 
-예전 환경 변수, 설정 파일 이름, 데이터베이스 파일 이름은 아직 동작합니다. 둘 다 있으면 새 이름이 우선합니다. 한곳에
-`vmsctl.yaml`과 `hostlint.yaml`이 함께 있거나 한 디렉터리에 데이터베이스 파일이 둘 다 있으면 어느 쪽인지 추측하지 않고
-오류를 내니, 예전 것을 지우거나 이름을 바꾸세요. 점검 중에 `hostlint.yaml`을 찾으면 표준 오류에 안내를 출력하고 계속 진행합니다.
+예전 환경 변수, 설정 파일 이름, 데이터베이스 파일 이름은 아직 동작합니다. 둘 다 있으면 새 이름이 우선합니다(`VMSCTL_PACK`은
+`HOSTLINT_PACK`에 더해지지 않고 대신합니다). 한곳에 `vmsctl.yaml`과 `hostlint.yaml`이 함께 있으면 `vmsctl.yaml`을 쓰므로,
+v0.26과 v0.27 호스트가 섞인 환경에서는 두 파일을 같이 두면 됩니다. 점검할 때 쓰지 않은 파일이 무엇인지 표준 오류로 알려
+줍니다. 한 디렉터리에 데이터베이스 파일이 둘 다 있으면 오류이니 하나를 지우거나 이름을 바꾸거나 `--db`를 주세요.
+`hostlint.yaml`만 있는 경우에도 표준 오류에 안내를 출력하고 계속 진행합니다.
 
 ## 그대로 두는 것
 
@@ -38,7 +40,10 @@ hostlint는 v0.27.0에서 vmsctl로 이름을 바꿨습니다([ADR 0017](adr/001
 - **결과와 SARIF.** `scan.tool.name`이 `vmsctl`입니다(스키마가 `hostlint`도 받으므로 예전 결과도 유효합니다). SARIF의 도구
   이름도 `vmsctl`이라서 코드 스캐닝은 새 도구로 취급합니다. 예전 hostlint 경고는 자동으로 닫히지 않고, 새 이름의 Action으로
   점검하면 경고가 새로 열립니다.
-- **웹훅.** 메시지 문구가 `hostlint:` 대신 `vmsctl:`로 시작합니다. JSON 필드, 이벤트 `id`, 서명 헤더는 같습니다.
+- **웹훅.** 메시지 문구가 `hostlint:` 대신 `vmsctl:`로 시작하고 user agent는 `vmsctl-server`입니다. 둘 중 하나로 거르던 수신 쪽은
+  고쳐야 합니다. JSON 필드, 이벤트 `id`, 서명 헤더는 같습니다.
+- **예전 릴리스를 고정한 경우.** `version: v0.26.0`인 Action과 `install.sh -v v0.26.0`은 예전 바이너리를 예전 이름으로 설치합니다
+  (Action은 `vmsctl`이 그것을 가리키게 링크를 만듭니다). 이 바이너리는 `hostlint.yaml`과 `HOSTLINT_*` 변수만 읽습니다.
 - **팩.** v0.26과 v0.27 바이너리에서 모두 돌아야 하는 팩은 `requires_hostlint:`를 그대로 두세요(v0.26은 새 키를 거부합니다).
   모든 호스트가 v0.27 이상이 되면 `requires_vmsctl:`을 쓰세요. `pack.yaml`을 고치면 팩의 다이제스트가 바뀝니다.
 - **릴리스 검증.** v0.26.0까지는 저장소의 예전 이름으로 서명했습니다.

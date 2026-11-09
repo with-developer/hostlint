@@ -41,29 +41,37 @@ a later search and replace of the old name cannot change them silently.
 Renamed although they look like identifiers, because nothing stored or matched depends on them: the TLS certificate
 name of a newly generated server certificate (clients pin the public key), the demo seed, the temporary file of a
 written report, the `Content-Disposition` file name of the CSV, `WWW-Authenticate realm`, the user agent of the
-server's webhook, the text of webhook messages (`vmsctl: web-01 got worse ...`) and the SARIF tool name.
+server's webhook, and the text of webhook messages (`vmsctl: web-01 got worse ...`; a receiver that filters on the
+old prefix has to change, which the migration guide says). The SARIF tool name changes too: GitHub code scanning keys
+its alerts by tool name, so alerts of the old name are not closed by a scan under the new one.
 
 **Names accepted both ways for the transition** (the new name wins when both are set; an empty variable counts as unset):
 
 - The environment variables `VMSCTL_TOKEN`, `VMSCTL_PACK`, `VMSCTL_WEBHOOK_URL` are read first; `HOSTLINT_TOKEN` and
   `HOSTLINT_WEBHOOK_URL` work as before. (The installer's `VMSCTL_DOWNLOAD_URL`, which only CI uses to test a snapshot
   build, has no old-name fallback.) `HOSTLINT_PACK` is
-  a list of directories like `VMSCTL_PACK`, and the two lists are joined (each directory once).
+  a list of directories like `VMSCTL_PACK`; when `VMSCTL_PACK` is set it wins and the old list is ignored, so a stale
+  old variable never loads a second pack.
 - The configuration file is looked up per place: `vmsctl.yaml` or `hostlint.yaml` in the working directory, then
-  `/etc/vmsctl/vmsctl.yaml` or `/etc/hostlint/hostlint.yaml`. A place that has both names is an error (waivers live
-  in these files, so which one counts is not a guess to make). Finding the old name prints a note on standard error.
+  `/etc/vmsctl/vmsctl.yaml` or `/etc/hostlint/hostlint.yaml`. A place that has both names uses the new one and says on
+  standard error that the old one is not used: a release before v0.27.0 reads only the old name, so a fleet that
+  mixes both keeps both files. Finding only the old name prints a note too.
   The trust rules (owner, no group or other write access) are the same for both names.
 - A policy pack may say `requires_vmsctl` or the old `requires_hostlint` (not both). A release before v0.27.0 reads
   only the old key, so a pack that must run on both keeps it.
 - The server's database default is `vmsctl-server.db`. Without `--db`, when only `hostlint-server.db` exists in the
-  working directory the server keeps using it and says so; when both exist it refuses and asks for `--db`.
+  working directory the server keeps using it and says so; when both exist it refuses and asks for `--db` (`server demo`
+  keeps its data in memory and is not affected).
 - The result document's `scan.tool.name` is `vmsctl`; the schema accepts `hostlint` too, so results written by older
   releases stay valid. Nothing in the code compares the name, so old and new agents and servers work together.
 - `install.sh` installs a release older than v0.27.0 under its old name (archive, binary and signing identity),
   and for a new one links an existing `hostlint` binary in the same directory to `vmsctl`.
 - The `.deb` and `.rpm` packages replace `hostlint` (`Replaces`, `Provides` and, for the `.deb`, `Conflicts`) and ship a
-  `/usr/bin/hostlint` link to `vmsctl`; running the program under the name `hostlint` says the name is deprecated.
-  The link goes away in a later release.
+  `/usr/bin/hostlint` link to `vmsctl` (all three declarations are in the `.rpm` too; installing over `hostlint` was
+  tested with dnf on Rocky 9 and dpkg on Ubuntu 24.04); running the program under the name `hostlint` in a terminal
+  says the name is deprecated (nothing is printed for cron and units, whose standard error may be mailed or read as
+  a failure). The link goes away in a later release. `install.sh` replaces an existing `hostlint` only when it is a
+  file that reports itself as hostlint.
 
 ## What cannot be undone
 

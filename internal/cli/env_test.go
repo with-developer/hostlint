@@ -26,13 +26,15 @@ func TestEnvFallsBackToTheOldName(t *testing.T) {
 	}
 }
 
-// The pack lists of both variables are joined, each directory once, the new variable first.
-func TestPackDirsFromBothVariables(t *testing.T) {
+// The pack list of VMSCTL_PACK wins over the old HOSTLINT_PACK: a stale old variable must not load a second pack.
+func TestPackDirsNewVariableWins(t *testing.T) {
 	a, b, c := t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv("HOSTLINT_PACK", c)
+	if got := packDirsFrom(nil); len(got) != 1 || got[0] != c {
+		t.Errorf("only the old variable: %v", got)
+	}
 	t.Setenv("VMSCTL_PACK", a+string(filepath.ListSeparator)+b)
-	t.Setenv("HOSTLINT_PACK", b+string(filepath.ListSeparator)+c)
-	got := packDirsFrom(nil)
-	if len(got) != 3 || got[0] != a || got[1] != b || got[2] != c {
-		t.Errorf("pack dirs = %v", got)
+	if got := packDirsFrom(nil); len(got) != 2 || got[0] != a || got[1] != b {
+		t.Errorf("both variables: %v", got)
 	}
 }

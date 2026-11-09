@@ -22,9 +22,10 @@ its results, tokens, signatures or the server's database changes. What you type 
 | `hostlint-scan.service`, `hostlint-agent.service`, `hostlint-server.service` (the unit names in the docs) | `vmsctl-scan.service` and so on; unit names are yours to choose |
 
 The old environment variables, configuration file names and database file name still work. The new name wins when
-both are set. A place that has both `vmsctl.yaml` and `hostlint.yaml`, or a directory that has both database
-files, is an error rather than a guess: remove or rename the old one. A scan that finds `hostlint.yaml` says so on
-standard error and goes on.
+both are set (`VMSCTL_PACK` replaces `HOSTLINT_PACK` rather than adding to it). A place that has both `vmsctl.yaml`
+and `hostlint.yaml` uses `vmsctl.yaml`, so a fleet that mixes v0.26 and v0.27 hosts can keep both files; the scan
+says on standard error which one it did not use. A directory that has both database files is an error: remove or rename
+one, or pass `--db`. A scan that finds only `hostlint.yaml` says so on standard error and goes on.
 
 ## What stays as it was
 
@@ -38,8 +39,11 @@ cookie. A v0.26 agent can push to a v0.27 server and the reverse; tokens and sig
 - **Results and SARIF.** `scan.tool.name` is `vmsctl` (the schema accepts `hostlint` too, so older results stay
   valid). The SARIF tool name is `vmsctl`, so code scanning treats it as a new tool: existing hostlint alerts are not
   closed by it, and a scan with the Action under the new name opens its own.
-- **Webhooks.** The text of the message starts with `vmsctl:` instead of `hostlint:`; the JSON fields, the event
-  `id` and the signature header are the same.
+- **Webhooks.** The text of the message starts with `vmsctl:` instead of `hostlint:`, and the user agent is
+  `vmsctl-server`; a receiver that filters on either has to change. The JSON fields, the event `id` and the signature
+  header are the same.
+- **Pinned old releases.** The Action with `version: v0.26.0` and `install.sh -v v0.26.0` install the old binary under its
+  old name (the Action links `vmsctl` to it): it reads only `hostlint.yaml` and the `HOSTLINT_*` variables.
 - **Packs.** A pack that has to run on both a v0.26 and a v0.27 binary keeps `requires_hostlint:` (v0.26 rejects the
   new key). Use `requires_vmsctl:` once every host runs v0.27 or later. Editing `pack.yaml` changes the pack's digest.
 - **Verifying a release.** Releases up to v0.26.0 are signed by the repository under its old name:

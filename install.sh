@@ -88,21 +88,23 @@ esac
 
 # Releases before v0.27.0 were published as hostlint (ADR 0017): their archive, binary and signing identity carry
 # that name, so an old version is installed under it, from the repository as it was then named (GitHub redirects).
-# With VMSCTL_DOWNLOAD_URL (a snapshot build that CI tests) the archive is named for the new project whatever its version.
+# With a download URL (VMSCTL_DOWNLOAD_URL, or the old HOSTLINT_DOWNLOAD_URL: a mirror, or the snapshot build that CI
+# tests) the archive is named for the new project whatever its version.
 name=vmsctl
 rel=${version#v}
 major=${rel%%.*}
 rest=${rel#*.}
 minor=${rest%%.*}
-if [ -z "${VMSCTL_DOWNLOAD_URL:-}" ] && [ "$major" = 0 ] && [ "$minor" -lt 27 ] 2>/dev/null; then
+download_url=${VMSCTL_DOWNLOAD_URL:-${HOSTLINT_DOWNLOAD_URL:-}}
+if [ -z "$download_url" ] && [ "$major" = 0 ] && [ "$minor" -lt 27 ] 2>/dev/null; then
 	name=hostlint
 	repo=with-developer/hostlint
 fi
 
 # VMSCTL_DOWNLOAD_URL replaces the release URL; CI uses it to test this
 # script against a snapshot build.
-base=${VMSCTL_DOWNLOAD_URL:-https://github.com/$repo/releases/download/$version}
-[ -z "${VMSCTL_DOWNLOAD_URL:-}" ] || say "warning: downloading from VMSCTL_DOWNLOAD_URL, not from GitHub"
+base=${download_url:-https://github.com/$repo/releases/download/$version}
+[ -z "$download_url" ] || say "warning: downloading from VMSCTL_DOWNLOAD_URL, not from GitHub"
 archive="${name}_${version#v}_linux_$arch.tar.gz"
 
 tmp=$(mktemp -d)
@@ -145,6 +147,7 @@ say "installed $(printf '%s\n' "$installed" | head -n 1) to $bindir/$name"
 
 # An older install left a hostlint binary that would keep running the old release: point it at the new one, so
 # units, cron entries and CI that still say hostlint keep working for now (it says it is deprecated).
-if [ "$name" = vmsctl ] && { [ -e "$bindir/hostlint" ] || [ -L "$bindir/hostlint" ]; }; then
+# Only a file that says it is hostlint is replaced: not a directory, not something else of that name.
+if [ "$name" = vmsctl ] && [ -f "$bindir/hostlint" ] && "$bindir/hostlint" version 2>/dev/null | head -n 1 | grep -q '^hostlint v'; then
 	ln -sf vmsctl "$bindir/hostlint" && say "replaced the old $bindir/hostlint with a link to vmsctl: it will go away in a later release"
 fi

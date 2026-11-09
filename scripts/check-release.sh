@@ -35,6 +35,7 @@ if command -v dpkg-deb >/dev/null 2>&1; then
 	for a in amd64 arm64; do
 		contents=$(dpkg-deb --contents "$dist"/vmsctl_*_"$a".deb)
 		echo "$contents" | grep -q ' \./usr/bin/vmsctl$' || fail "no /usr/bin/vmsctl in the $a .deb"
+		echo "$contents" | grep -q ' \./usr/bin/hostlint -> vmsctl$' || fail "no /usr/bin/hostlint link to vmsctl in the $a .deb (ADR 0017)"
 		[ "$(dpkg-deb --field "$dist"/vmsctl_*_"$a".deb Architecture)" = "$a" ] || fail "the $a .deb has another architecture"
 	done
 fi

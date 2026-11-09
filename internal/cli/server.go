@@ -37,7 +37,7 @@ The database is one file (--db). Tokens are made with "vmsctl server token creat
 shown once; only their hash is stored.`,
 		// Without --db the default file is used; a database that has the old default name is kept (ADR 0017).
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			if cmd.Flags().Changed("db") {
+			if cmd.Flags().Changed("db") || cmd.Name() == "demo" { // demo keeps its data in memory
 				return nil
 			}
 			picked, note, err := pickDefaultDB(dbPath, legacyDBPath)

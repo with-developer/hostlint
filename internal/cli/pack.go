@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -265,10 +264,9 @@ func oneLineText(s string) string {
 	return printable(strings.Join(strings.Fields(s), " "))
 }
 
-// packDirsFrom lists the pack directories of a command: those of its --pack flags, then VMSCTL_PACK and the old HOSTLINT_PACK, each once.
+// packDirsFrom lists the pack directories of a command: those of its --pack flags, then VMSCTL_PACK (or, when that is empty, the old HOSTLINT_PACK), each once.
 func packDirsFrom(flagDirs []string) []string {
-	dirs := append(slices.Clone(flagDirs), splitPackEnv(os.Getenv("VMSCTL_PACK"))...)
-	return uniqueDirs(append(dirs, splitPackEnv(os.Getenv("HOSTLINT_PACK"))...)) // the old name of the variable (ADR 0017)
+	return uniqueDirs(append(slices.Clone(flagDirs), splitPackEnv(env("PACK"))...))
 }
 
 // splitPackEnv reads VMSCTL_PACK: a list of directories separated like PATH.

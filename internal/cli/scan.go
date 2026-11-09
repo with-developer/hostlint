@@ -155,9 +155,12 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return err
 	}
 	opts.Packs = packs.infos
-	cfgPath, err := config.Find(f.config)
+	cfgPath, unusedCfg, err := config.FindNotes(f.config)
 	if err != nil {
 		return err
+	}
+	for _, u := range unusedCfg {
+		fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: %s is not used: %s has the new name of the file (the old one is for hosts that still run a release before v0.27.0)\n", u, cfgPath)
 	}
 	var cfg *config.File
 	if cfgPath != "" {

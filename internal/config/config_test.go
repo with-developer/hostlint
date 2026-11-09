@@ -227,7 +227,7 @@ func TestFind(t *testing.T) {
 	}
 }
 
-// The old name of the file is still found, and both names in one place are refused rather than guessed.
+// The old name of the file is still found; when a place has both names, the new one is used and the old one is reported.
 func TestFindOldName(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
@@ -239,8 +239,9 @@ func TestFindOldName(t *testing.T) {
 		t.Errorf("old name: %q, %v", p, err)
 	}
 	write(t, dir, "vmsctl.yaml", valid, 0o644)
-	if _, err := Find(""); err == nil || !strings.Contains(err.Error(), "both vmsctl.yaml and hostlint.yaml") {
-		t.Errorf("both names: %v", err)
+	p, unused, err := FindNotes("")
+	if err != nil || p != "vmsctl.yaml" || len(unused) != 1 || unused[0] != "hostlint.yaml" {
+		t.Errorf("both names: %q, unused %v, %v", p, unused, err)
 	}
 	if LegacyName("/etc/vmsctl/vmsctl.yaml") {
 		t.Error("the new name counts as the old one")

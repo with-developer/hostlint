@@ -89,14 +89,21 @@ func LegacyName(name string) bool { return path.Base(name) == "hostlint.yaml" }
 
 // Find returns the configuration file to use: explicit when given (it must
 // exist), else the first place of Locations that has one, else "". A place that
-// has both the new name and the old one is an error: which one counts would be
-// a guess, and the file may hold waivers.
+// has both the new name and the old one uses the new one: the old file may be
+// there for hosts that still run a release before v0.27.0, which read only that
+// name.
 func Find(explicit string) (string, error) {
+	path, _, err := FindNotes(explicit)
+	return path, err
+}
+
+// FindNotes is Find, and also the files it did not use because the new name of the same place won.
+func FindNotes(explicit string) (path string, unused []string, err error) {
 	if explicit != "" {
 		if _, err := os.Stat(explicit); err != nil {
-			return "", fmt.Errorf("--config: %w", err)
+			return "", nil, fmt.Errorf("--config: %w", err)
 		}
-		return explicit, nil
+		return explicit, nil, nil
 	}
 	for _, place := range Locations {
 		var found []string
@@ -105,18 +112,14 @@ func Find(explicit string) (string, error) {
 			case err == nil:
 				found = append(found, p)
 			case !errors.Is(err, fs.ErrNotExist):
-				return "", err
+				return "", nil, err
 			}
 		}
-		switch len(found) {
-		case 0:
-		case 1:
-			return found[0], nil
-		default:
-			return "", fmt.Errorf("both %s and %s exist: remove the old one (%s), or name the file with --config", found[0], found[1], found[1])
+		if len(found) > 0 {
+			return found[0], found[1:], nil
 		}
 	}
-	return "", nil
+	return "", nil, nil
 }
 
 // maxFile is the largest configuration file.

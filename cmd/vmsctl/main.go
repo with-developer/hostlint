@@ -13,8 +13,9 @@ import (
 )
 
 func main() {
-	// The packages keep a "hostlint" link for a while after the rename (ADR 0017): say so when it is used.
-	if filepath.Base(os.Args[0]) == "hostlint" {
+	// The packages keep a "hostlint" link for a while after the rename (ADR 0017): say so when a person runs it. Cron
+	// jobs and units that still use the name get nothing on standard error, which they may mail or treat as a failure.
+	if fi, err := os.Stderr.Stat(); err == nil && fi.Mode()&os.ModeCharDevice != 0 && filepath.Base(os.Args[0]) == "hostlint" {
 		_, _ = os.Stderr.WriteString("vmsctl: this program is now called vmsctl; the name hostlint will stop working in a later release\n")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
