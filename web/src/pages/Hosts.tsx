@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago, hostsAddress, isList, parseHostsView } from "../lib/format";
+import { ago, hostsAddress, parseHostsView } from "../lib/format";
 import type { HostFilter, HostSort } from "../lib/format";
-import { rememberListAddress } from "../lib/listAddress";
+import { useListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, SignedBadge, StatusBar } from "../components/ui";
 import { MiniSpark } from "../components/charts";
 import { IconDownload, IconSearch } from "../components/icons";
@@ -24,26 +24,19 @@ export function HostsPage() {
   const [sort, setSort] = useState<Sort>(initial.sort);
   const [label, setLabel] = useState(initial.label); // "key=value": only the hosts with that label
   const [pages, setPages] = useState(1);
-  // The filters are in the address (#/hosts?status=failing&label=env%3Dprod): the back button from a host returns to the
-  // same list, and a link shares it. Typing replaces the entry rather than adding one.
-  useEffect(() => {
-    const next = hostsAddress({ q, filter, sort, label });
-    rememberListAddress("hosts", next);
-    if (isList(location.hash, "hosts") && location.hash !== next) history.replaceState(null, "", next);
-  }, [q, filter, sort, label]);
-  // Following a link to the list (the menu's Hosts, a pasted address) sets the filters from the address.
-  useEffect(() => {
-    const on = () => {
-      if (!isList(location.hash, "hosts")) return;
-      const a = parseHostsView(location.hash);
-      setQ(a.q);
-      setFilter(a.filter);
-      setSort(a.sort);
-      setLabel(a.label);
-    };
-    addEventListener("hashchange", on);
-    return () => removeEventListener("hashchange", on);
-  }, []);
+  // The filters are in the address (#/hosts?status=failing&label=env%3Dprod).
+  useListAddress(
+    "hosts",
+    { q, filter, sort, label },
+    (v) => {
+      setQ(v.q);
+      setFilter(v.filter);
+      setSort(v.sort);
+      setLabel(v.label);
+    },
+    parseHostsView,
+    hostsAddress,
+  );
   const query = useDebounced(q, 250);
   useEffect(() => setPages(1), [query, filter, sort, label]);
   const params = { q: query, status: filter, sort, label, staleDays: STALE_DAYS };

@@ -98,7 +98,9 @@ export function hostsAddress(v: HostsView): string {
 }
 
 /** The list itself ("#/hosts", with or without a query), not a detail page that shows the same component for a bad id. */
-export function isList(hash: string, list: "hosts" | "controls"): boolean {
+export type ListName = "hosts" | "controls";
+
+export function isList(hash: string, list: ListName): boolean {
   const r = parseRoute(hash);
   return r.length === 1 && r[0] === list;
 }

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { compareControls, controlsAddress, ctitle, isList, parseControlsView } from "../lib/format";
-import { lastListAddress, rememberListAddress } from "../lib/listAddress";
+import { compareControls, controlsAddress, ctitle, parseControlsView } from "../lib/format";
+import { lastListAddress, useListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, Inline, PageHeader, Severity, Skeleton, StatusBadge, StatusBar } from "../components/ui";
 import { IconSearch } from "../components/icons";
 import { STATUSES, type Status } from "../lib/types";
@@ -15,22 +15,17 @@ export function ControlsPage() {
   const [initial] = useState(() => parseControlsView(location.hash));
   const [q, setQ] = useState(initial.q);
   const [failing, setFailing] = useState(initial.failing);
-  // The filters are in the address, as on the host list: a link shares them, and coming back from a control keeps them.
-  useEffect(() => {
-    const next = controlsAddress({ q, failing });
-    rememberListAddress("controls", next);
-    if (isList(location.hash, "controls") && location.hash !== next) history.replaceState(null, "", next);
-  }, [q, failing]);
-  useEffect(() => {
-    const on = () => {
-      if (!isList(location.hash, "controls")) return;
-      const a = parseControlsView(location.hash);
-      setQ(a.q);
-      setFailing(a.failing);
-    };
-    addEventListener("hashchange", on);
-    return () => removeEventListener("hashchange", on);
-  }, []);
+  // The filters are in the address, as on the host list.
+  useListAddress(
+    "controls",
+    { q, failing },
+    (v) => {
+      setQ(v.q);
+      setFailing(v.failing);
+    },
+    parseControlsView,
+    controlsAddress,
+  );
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (state.data?.controls ?? [])
