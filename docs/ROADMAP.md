@@ -61,7 +61,8 @@ against a compromised server) and a webhook for regressions and silent hosts (v0
 the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy packs, your own checks and profiles
 (v0.15), a Markdown output and a job summary in the Action (v0.16), `vmsctl explain` and `vmsctl pack facts` (v0.18),
 fix hints in the results (v0.21), a firewall and automatic updates in `essentials` (revision 3), policy-pack and image results in the fleet server (ADR 0016), a container image of every release (ghcr.io, [docs/container.md](container.md)), a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
-(v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)).
+(v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)). The project was renamed from hostlint to vmsctl in v0.27
+([ADR 0017](adr/0017-rename-to-vmsctl.md), [migration guide](migrating-from-hostlint.md)).
 
 **Next:**
 - Roles beyond viewer and operator, and OIDC inside vmsctl: not now ([ADR 0015](adr/0015-dashboard-sign-in.md); an
