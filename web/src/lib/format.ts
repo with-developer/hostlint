@@ -62,6 +62,47 @@ export function hashParams(hash: string): URLSearchParams {
   return new URLSearchParams(i < 0 ? "" : hash.slice(i + 1));
 }
 
+export type HostFilter = "" | "failing" | "stale";
+export type HostSort = "name" | "score" | "last";
+export interface HostsView {
+  q: string;
+  filter: HostFilter;
+  sort: HostSort;
+  label: string;
+}
+const HOST_FILTERS: readonly string[] = ["", "failing", "stale"];
+const HOST_SORTS: readonly string[] = ["name", "score", "last"];
+
+/** The host list's filters as an address says them; an unknown status or sort is the default, not an error. */
+export function parseHostsView(hash: string): HostsView {
+  const p = hashParams(hash);
+  const status = p.get("status") ?? "";
+  const sort = p.get("sort") ?? "name";
+  return {
+    q: p.get("q") ?? "",
+    filter: HOST_FILTERS.includes(status) ? (status as HostFilter) : "",
+    sort: HOST_SORTS.includes(sort) ? (sort as HostSort) : "name",
+    label: p.get("label") ?? "",
+  };
+}
+
+/** The address of the host list with these filters; the defaults are left out. */
+export function hostsAddress(v: HostsView): string {
+  const p = new URLSearchParams();
+  if (v.q) p.set("q", v.q);
+  if (v.filter) p.set("status", v.filter);
+  if (v.sort !== "name") p.set("sort", v.sort);
+  if (v.label) p.set("label", v.label);
+  const qs = p.toString(); // not p.size: older browsers have no such property
+  return "#/hosts" + (qs ? "?" + qs : "");
+}
+
+/** The list itself ("#/hosts", with or without a query), not a host page that shows the same component for a bad id. */
+export function isHostsList(hash: string): boolean {
+  const r = parseRoute(hash);
+  return r.length === 1 && r[0] === "hosts";
+}
+
 /** A stable hue (0-359) for a name, for the avatars. */
 export function hue(name: string): number {
   let h = 0;

@@ -3,6 +3,7 @@ import { ApiError, api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { ago, compareControls, ctitle } from "../lib/format";
+import { lastHostsAddress } from "../lib/hostsAddress";
 import { Avatar, Await, Empty, Gauge, Inline, ScorePill, Severity, SignedBadge, StatusBadge, StatusBar } from "../components/ui";
 import { TrendChart } from "../components/charts";
 import { IconChevron, IconSearch } from "../components/icons";
@@ -16,11 +17,11 @@ export function HostPage({ id }: { id: number }) {
   const state = useAsync(() => api.host(id, STALE_DAYS), [id], false);
   return (
     <>
-      <Await state={state} skeleton={<p className="crumb"><a href="#/hosts">{t("host.back")}</a></p>}>
+      <Await state={state} skeleton={<p className="crumb"><a href={lastHostsAddress()}>{t("host.back")}</a></p>}>
         {(h) => (
           <div className="stack">
             <p className="crumb">
-              {h.kind === "image" ? <a href="#/images">{t("host.backImages")}</a> : <a href="#/hosts">{t("host.back")}</a>}
+              {h.kind === "image" ? <a href="#/images">{t("host.backImages")}</a> : <a href={lastHostsAddress()}>{t("host.back")}</a>}
             </p>
             <header className="card hosthead">
               <Avatar name={h.name} size={52} />

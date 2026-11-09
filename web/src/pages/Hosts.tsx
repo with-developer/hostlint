@@ -2,36 +2,23 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago, hashParams } from "../lib/format";
+import { ago, hostsAddress, isHostsList, parseHostsView } from "../lib/format";
+import type { HostFilter, HostSort } from "../lib/format";
+import { rememberHostsAddress } from "../lib/hostsAddress";
 import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, SignedBadge, StatusBar } from "../components/ui";
 import { MiniSpark } from "../components/charts";
 import { IconDownload, IconSearch } from "../components/icons";
 import type { HostSummary } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
 
-type Filter = "" | "failing" | "stale";
-type Sort = "name" | "score" | "last";
+type Filter = HostFilter;
+type Sort = HostSort;
 const PAGE = 50;
-const FILTERS: readonly Filter[] = ["", "failing", "stale"];
-const SORTS: readonly Sort[] = ["name", "score", "last"];
-
-/** The filters of the list as the address says them (an unknown value is the default, not an error). */
-function fromAddress() {
-  const p = hashParams(location.hash);
-  const status = p.get("status") ?? "";
-  const sort = p.get("sort") ?? "name";
-  return {
-    q: p.get("q") ?? "",
-    filter: (FILTERS as readonly string[]).includes(status) ? (status as Filter) : "",
-    sort: (SORTS as readonly string[]).includes(sort) ? (sort as Sort) : "name",
-    label: p.get("label") ?? "",
-  };
-}
 
 export function HostsPage() {
   const { t } = useI18n();
   const now = useNow();
-  const [initial] = useState(fromAddress);
+  const [initial] = useState(() => parseHostsView(location.hash));
   const [q, setQ] = useState(initial.q);
   const [filter, setFilter] = useState<Filter>(initial.filter);
   const [sort, setSort] = useState<Sort>(initial.sort);
@@ -40,18 +27,15 @@ export function HostsPage() {
   // The filters are in the address (#/hosts?status=failing&label=env%3Dprod): the back button from a host returns to the
   // same list, and a link shares it. Typing replaces the entry rather than adding one.
   useEffect(() => {
-    const p = new URLSearchParams();
-    if (q) p.set("q", q);
-    if (filter) p.set("status", filter);
-    if (sort !== "name") p.set("sort", sort);
-    if (label) p.set("label", label);
-    const next = "#/hosts" + (p.size ? "?" + p.toString() : "");
-    if (location.hash !== next) history.replaceState(null, "", next);
+    const next = hostsAddress({ q, filter, sort, label });
+    rememberHostsAddress(next);
+    if (isHostsList(location.hash) && location.hash !== next) history.replaceState(null, "", next);
   }, [q, filter, sort, label]);
   // Following a link to the list (the menu's Hosts, a pasted address) sets the filters from the address.
   useEffect(() => {
     const on = () => {
-      const a = fromAddress();
+      if (!isHostsList(location.hash)) return;
+      const a = parseHostsView(location.hash);
       setQ(a.q);
       setFilter(a.filter);
       setSort(a.sort);

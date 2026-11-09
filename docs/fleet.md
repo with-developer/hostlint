@@ -13,10 +13,11 @@ release binaries are, and a source build uses `make build-web` (Node 22). A bina
 has the API only and says so at `/`. Sign in with a read token (`vmsctl server token create --scope
 api`): the dashboard shows the fleet overview (pass rate, the pass rate over time for 7, 30 or 90 days, hosts with a failing control, hosts that
 stopped reporting, the controls that fail most, recent regressions), the host list (search, filters,
-sorting, CSV export; the filters are in the address, so a link shares a filtered list and the back button returns to it; and for each host its operating system, labels, a trend line of its latest scans and whether
+sorting, CSV export, and for each host its operating system, labels, a trend line of its latest scans and whether
 its agent is connected), a list of controls (and for each one what it checks, why it matters, how to fix it and the hosts that fail it), a matrix of every control on every host, and for each host its controls with the evidence of every check, its history and a
 comparison of any scan with the one before. It is available in English and Korean and follows the
-system's light or dark theme. Everything a host sent is shown as text.
+system's light or dark theme. Everything a host sent is shown as text. The filters of the host list are in the
+address: a link shares a filtered list, and both the browser's back button and the back link of a host page return to it.
 
 ## Try it without any host
 
