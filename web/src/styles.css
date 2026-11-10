@@ -271,7 +271,8 @@ table.matrix .cell:hover { outline: 2px solid var(--text); outline-offset: 0; }
   .hosthead .gauge { grid-column: 1 / -1; }
 }
 @media (max-width: 760px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
+  /* a short page must not hand its spare height to the top bar: the rows keep their size and the page ends where it ends */
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .hero, .hosthead { min-width: 0; }
   .gauge svg { max-width: 180px; }
   .legend { justify-content: flex-start; }
