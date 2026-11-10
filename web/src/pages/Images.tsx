@@ -2,7 +2,8 @@ import { useState } from "react";
 import { api } from "../lib/api";
 import { useAsync, useDebounced, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago } from "../lib/format";
+import { ago, imagesAddress, parseImagesView } from "../lib/format";
+import { useListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, PageHeader, ScorePill, Skeleton, SignedBadge, StatusBar } from "../components/ui";
 import { MiniSpark } from "../components/charts";
 import { IconSearch } from "../components/icons";
@@ -13,7 +14,8 @@ import { STALE_DAYS } from "./Overview";
 export function ImagesPage() {
   const { t } = useI18n();
   const now = useNow();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => parseImagesView(location.hash).q);
+  useListAddress("images", { q }, (v) => setQ(v.q), parseImagesView, imagesAddress);
   const query = useDebounced(q, 250);
   const state = useAsync(() => api.hosts({ q: query, kind: "image", sort: "recent", limit: 200, staleDays: STALE_DAYS }), [query]);
   return (

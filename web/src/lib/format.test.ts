@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, compareControls, ctitle, hashParams, controlsAddress, hostsAddress, hue, isList, parseControlsView, parseHostsView, parseRoute, percent, score, total } from "./format";
+import { ago, compareControls, ctitle, hashParams, controlsAddress, hostsAddress, hue, imagesAddress, isList, parseControlsView, parseHostsView, parseImagesView, parseRoute, percent, score, total } from "./format";
 
 const t = (key: string, n?: number) => `${key}:${n ?? ""}`;
 
@@ -105,5 +105,18 @@ describe("the address of the control list", () => {
   it("tells the list from a control page", () => {
     expect(isList("#/controls?q=a", "controls")).toBe(true);
     expect(isList("#/controls/kisa-2026/U-01", "controls")).toBe(false);
+  });
+});
+
+describe("the address of the image list", () => {
+  it("leaves the default out and round-trips the search", () => {
+    expect(imagesAddress({ q: "" })).toBe("#/images");
+    expect(imagesAddress({ q: "ghcr.io/acme app" })).toBe("#/images?q=ghcr.io%2Facme+app");
+    expect(parseImagesView("#/images?q=ghcr.io%2Facme+app")).toEqual({ q: "ghcr.io/acme app" });
+    expect(parseImagesView("#/images")).toEqual({ q: "" });
+  });
+  it("tells the list from an image page", () => {
+    expect(isList("#/images?q=a", "images")).toBe(true);
+    expect(isList("#/images/4", "images")).toBe(false);
   });
 });

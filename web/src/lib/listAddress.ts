@@ -1,11 +1,11 @@
-// The address of a list (hosts, controls): the filters live in it, so a link shares a filtered list and a detail page's
+// The address of a list (hosts, controls, images): the filters live in it, so a link shares a filtered list and a detail page's
 // "back" link returns to the same list as the browser's back button does.
 import { useEffect, useRef } from "react";
 import { isList, parseRoute } from "./format";
 import type { ListName } from "./format";
 import { useDebounced } from "./hooks";
 
-const DEFAULTS: Record<ListName, string> = { hosts: "#/hosts", controls: "#/controls" };
+const DEFAULTS: Record<ListName, string> = { hosts: "#/hosts", controls: "#/controls", images: "#/images" };
 const last: Record<ListName, string> = { ...DEFAULTS };
 
 export function rememberListAddress(list: ListName, address: string): void {

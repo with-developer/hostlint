@@ -21,7 +21,7 @@ export function HostPage({ id }: { id: number }) {
         {(h) => (
           <div className="stack">
             <p className="crumb">
-              {h.kind === "image" ? <a href="#/images">{t("host.backImages")}</a> : <a href={lastListAddress("hosts")}>{t("host.back")}</a>}
+              {h.kind === "image" ? <a href={lastListAddress("images")}>{t("host.backImages")}</a> : <a href={lastListAddress("hosts")}>{t("host.back")}</a>}
             </p>
             <header className="card hosthead">
               <Avatar name={h.name} size={52} />

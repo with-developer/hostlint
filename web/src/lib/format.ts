@@ -98,7 +98,7 @@ export function hostsAddress(v: HostsView): string {
 }
 
 /** The list itself ("#/hosts", with or without a query), not a detail page that shows the same component for a bad id. */
-export type ListName = "hosts" | "controls";
+export type ListName = "hosts" | "controls" | "images";
 
 export function isList(hash: string, list: ListName): boolean {
   const r = parseRoute(hash);
@@ -123,6 +123,21 @@ export function controlsAddress(v: ControlsView): string {
   if (v.failing) p.set("status", "failing");
   const qs = p.toString();
   return "#/controls" + (qs ? "?" + qs : "");
+}
+
+export interface ImagesView {
+  q: string;
+}
+
+/** The image list's filter as an address says it. */
+export function parseImagesView(hash: string): ImagesView {
+  return { q: hashParams(hash).get("q") ?? "" };
+}
+
+/** The address of the image list with this filter; the default is left out. */
+export function imagesAddress(v: ImagesView): string {
+  const qs = v.q ? new URLSearchParams({ q: v.q }).toString() : "";
+  return "#/images" + (qs ? "?" + qs : "");
 }
 
 /** A stable hue (0-359) for a name, for the avatars. */
