@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 882c71d -->
+<!-- translated from README.md @ bc434e0 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -137,7 +137,7 @@ vmsctl explain U-02 ssh.permit-root-login
 vmsctl diff before.json after.json
 vmsctl diff baseline.json current.json --fail-on-regression   # 컨트롤이 나빠졌으면 종료 코드 1
 
-# 여러 호스트의 결과를 모으는 서버(초기 단계, docs/fleet.ko.md 참고)
+# 여러 호스트의 결과를 모아 대시보드로 보여 주는 서버 (docs/fleet.ko.md 참고)
 vmsctl server run --db server.db --listen :8443
 sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443
 

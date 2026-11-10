@@ -139,7 +139,7 @@ vmsctl explain U-02 ssh.permit-root-login
 vmsctl diff before.json after.json
 vmsctl diff baseline.json current.json --fail-on-regression   # exit 1 when a control got worse
 
-# A fleet server that collects results from many hosts (early; see docs/fleet.md)
+# A fleet server with a dashboard that collects results from many hosts (docs/fleet.md)
 vmsctl server run --db server.db --listen :8443
 sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443
 

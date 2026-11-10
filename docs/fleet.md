@@ -1,7 +1,8 @@
-# Fleet server (early)
+# Fleet server
 
-> Phase 1 of [ADR 0010](adr/0010-fleet-server-and-dashboard.md): the server receives and stores
-> results and answers read requests. The dashboard comes next. Treat the interface as unstable.
+> [ADR 0010](adr/0010-fleet-server-and-dashboard.md) has the design: hosts push results, the server stores them,
+> answers read requests and serves the dashboard. Before v1.0 the API and the database schema can still change in a
+> minor release; the release notes say so.
 
 Hosts scan themselves and **push** the result to a server. The server never connects to a host:
 it cannot make one scan, run anything or read anything there.

@@ -27,7 +27,7 @@ func newServerCommand() *cobra.Command {
 	var dbPath string
 	cmd := &cobra.Command{
 		Use:   "server",
-		Short: "Run the fleet server that collects scan results (early; see docs/adr/0010)",
+		Short: "Run the fleet server and dashboard that collect scan results (docs/fleet.md)",
 		Long: `The server receives the scan results that hosts push with "vmsctl push",
 keeps them in a SQLite database and checks every request: a valid token, a bounded and
 well-formed result, a host identity that fits the token. It has no connection to the hosts:
