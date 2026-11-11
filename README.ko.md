@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 8adc288 -->
+<!-- translated from README.md @ d520f74 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -83,6 +83,8 @@ vmsctl server demo      # 가상의 호스트 12대로 둘러보기. 실제로 �
 - **파이프라인에 바로 쓸 수 있습니다.** 터미널 표, JSON(스키마 포함), SARIF, JUnit을 지원하고, 종료 코드는 정해 둔
   심각도를 따릅니다. 실패한 점검에는 조치 방법도 붙습니다: `explain`, JSON(`remediation`), SARIF(코드 스캐닝이
   경고와 함께 보여 주는 규칙 도움말), Markdown 요약, HTML 보고서, 대시보드.
+
+Lynis, OpenSCAP, Wazuh와 무엇이 다르고 어떤 경우에 그쪽이 더 나은지는 [docs/comparison.ko.md](docs/comparison.ko.md)에 정리했습니다.
 
 ## 빠른 시작
 

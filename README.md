@@ -86,6 +86,8 @@ Try it in ten seconds with the demo above, or send real results: [docs/fleet.md]
   (`remediation`), SARIF (the rule's help, which code scanning shows with the alert), the Markdown summary,
   the HTML report and the dashboard.
 
+How vmsctl differs from Lynis, OpenSCAP and Wazuh, and when to pick them instead: [docs/comparison.md](docs/comparison.md).
+
 ## Quick start
 
 Install a release (Linux, amd64 or arm64). `install.sh` verifies the SHA-256 of the archive and,
