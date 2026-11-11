@@ -155,7 +155,7 @@ described in [docs/configuration.md](docs/configuration.md).
 | Flag | Meaning |
 |---|---|
 | `-p, --profile` | Profile to check against (default `kisa-2026`); repeat it to check several at once |
-| `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown` (for a job summary or a comment) or `csv` (one row per control, for a spreadsheet: opens in Excel with the Korean titles; a cell that would start a formula starts with an apostrophe) |
+| `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown` (for a job summary or a comment) or `csv` (one row per control, for a spreadsheet: opens in Excel with the Korean titles; a cell that would start a formula starts with an apostrophe, which Excel shows when it opens a CSV file) |
 | `-o, --output` | Write the report to a file |
 | `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
 | `--pack DIR` | Load a policy pack: your own checks and profiles ([docs/packs.md](docs/packs.md)); select its profile with `-p` |

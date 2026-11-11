@@ -3,6 +3,7 @@ package output
 import (
 	"encoding/csv"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/with-developer/vmsctl/internal/engine"
@@ -26,7 +27,8 @@ var csvHeader = []string{"host", "profile", "control", "title", "title_ko", "sev
 // csvCell makes text safe for a spreadsheet. What a scan prints comes from the scanned host (a file name, a value in a
 // configuration) or from a pack, and a spreadsheet takes a cell that starts with = + - @ (or a tab or a carriage return) for a
 // formula: a value such as =HYPERLINK(...) would then run when the report is opened. Such a cell starts with an apostrophe, which
-// the spreadsheet does not show and which stops the formula. Line breaks and control characters are escaped, as in the table.
+// stops the formula. A spreadsheet that opens a CSV file shows that apostrophe (it hides one only when it is typed into a cell), so
+// a value such as -rw-r--r-- appears with it: a visible mark is the price of a report that cannot run anything. Line breaks and control characters are escaped, as in the table.
 func csvCell(s string) string {
 	s = clipTo(oneLine(s), maxCSVCell)
 	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
@@ -50,17 +52,31 @@ func writeCSV(w io.Writer, res *engine.Result) error {
 	for _, c := range res.Controls {
 		var look, evidence []string
 		var fix string
+		undecided := 0
 		for _, ref := range c.Checks {
 			ck := byRef[ref]
-			if ck == nil || ck.Status == engine.StatusPass || ck.Status == engine.StatusNotApplicable {
+			if ck == nil {
+				// A result that lacks the check a control names (a partial or filtered one): say so, never an empty row.
+				look = append(look, ref)
+				evidence = append(evidence, ref+": the result has no detail of this check")
 				continue
 			}
+			if ck.Status == engine.StatusPass || ck.Status == engine.StatusNotApplicable {
+				continue
+			}
+			// The fix comes from the first failed check before any cap, so a long list never hides it; a waived control has
+			// been accepted: its evidence says what was, and there is nothing left to fix.
+			if fix == "" && ck.Status == engine.StatusFail && c.Waiver == nil {
+				fix = ck.Remediation
+			}
 			if len(look) >= maxCSVChecks {
+				undecided++
 				continue
 			}
 			look = append(look, ck.ID)
 			for i, e := range ck.Evidence {
 				if i >= maxCSVEvidence {
+					evidence = append(evidence, ck.ID+": ... "+strconv.Itoa(len(ck.Evidence)-maxCSVEvidence)+" more in the JSON result")
 					break
 				}
 				text := e.Key + " " + e.Text
@@ -69,9 +85,9 @@ func writeCSV(w io.Writer, res *engine.Result) error {
 				}
 				evidence = append(evidence, ck.ID+": "+oneLine(text))
 			}
-			if fix == "" && ck.Status == engine.StatusFail {
-				fix = ck.Remediation
-			}
+		}
+		if undecided > 0 {
+			look = append(look, "... "+strconv.Itoa(undecided)+" more")
 		}
 		waiver := ""
 		if c.Waiver != nil {
