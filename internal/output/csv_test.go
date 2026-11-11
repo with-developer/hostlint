@@ -54,6 +54,7 @@ func TestCSVReport(t *testing.T) {
 				t.Errorf("a passing control with checks, evidence or a fix: %q", row)
 			}
 			passed = true
+		default: // the other statuses have no promise to keep here
 		}
 	}
 	if !failed || !passed {
