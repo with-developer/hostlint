@@ -197,6 +197,22 @@ LoginDefs are the `login_defs` facts: /etc/login.defs (shadow-utils).
 | `login_defs.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
 | `login_defs.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
 
+## `mac`
+
+MAC are the `mac` facts: the configuration of mandatory access control where a package or a unit alone does not say it. SELinux
+is the case: the mode it starts in is the SELINUX of /etc/selinux/config. (AppArmor has no such file for it: it is on when its
+package is installed and its unit is enabled, which are the `packages` and `services` facts.) The file says what the next boot
+does, not what the running kernel does.
+
+| Path | Type | |
+|---|---|---|
+| `mac.selinux` | object |  |
+| `mac.selinux.present` | bool | Present is true when the file exists. |
+| `mac.selinux.settings` | map of setting | Settings has "mode", the SELINUX of the file ("enforcing", "permissive" or "disabled": case and quotes do not matter) and "type", its SELINUXTYPE ("targeted", "minimum", "mls"); a key the file does not set is absent. |
+| `mac.selinux.settings{}.value` | string | Value is the effective value as text. |
+| `mac.selinux.settings{}.explicit` | bool | Explicit is true when the value is set in a configuration file, false when it is a default. |
+| `mac.selinux.settings{}.source` | string | Source is where the value came from, e.g. "/etc/login.defs:25", "default (OpenSSH 9.6)" or "sshd -T". |
+
 ## `nfs`
 
 NFS is the `nfs` facts: /etc/exports and /etc/exports.d/*.exports. They

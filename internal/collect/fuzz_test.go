@@ -156,3 +156,7 @@ const mountinfoSeed = `596 433 0:69 / / rw,relatime master:179 - overlay overlay
 func FuzzSysctl(f *testing.F) {
 	fuzzCollector(f, sysctlCollector{}, "/etc/sysctl.d/10-kernel-hardening.conf", "sysctl-ubuntu-24.04", "sysctl-rocky-9")
 }
+
+func FuzzSelinuxConfig(f *testing.F) {
+	fuzzCollector(f, macCollector{}, "/etc/selinux/config", "mac/rocky-9", "mac/amazonlinux-2023", "mac/centos-7")
+}

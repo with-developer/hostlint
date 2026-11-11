@@ -1,7 +1,7 @@
 # vmsctl essentials: a short baseline of the settings most Linux server hardening guides agree
 # on, over the same checks as the other profiles. The control IDs and titles are vmsctl's own.
 id: essentials
-revision: 3
+revision: 4
 title: vmsctl essentials — a short hardening baseline for Linux servers
 title_ko: vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 controls:
@@ -125,3 +125,8 @@ controls:
     title_ko: 보안 업데이트가 자동으로 설치됨
     severity: medium
     checks: [updates.security-automatic]
+  - id: ES-25
+    title: Mandatory access control is on
+    title_ko: 필수 접근 제어가 켜져 있음
+    severity: medium
+    checks: [mac.enabled]

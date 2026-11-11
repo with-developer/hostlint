@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/with-developer/vmsctl/internal/engine"
 	"github.com/with-developer/vmsctl/internal/facts"
@@ -52,23 +51,8 @@ func (firewallCollector) Collect(_ context.Context, h *hostfs.Host) (engine.Fact
 	return engine.Facts{Value: f, Complete: true}, nil
 }
 
-// ufwEnabled reads ENABLED from ufw.conf: shell-style KEY=value lines, "#" comments. The last line of the key wins (the
-// file is sourced by a shell). A value that is not yes or no is kept as it is, so a check does not take it for either.
+// ufwEnabled reads ENABLED from ufw.conf: shell-style KEY=value lines (see shellAssignment). A value that is not yes or no is kept as
+// it is, so a check does not take it for either.
 func ufwEnabled(data []byte) (facts.Setting, bool) {
-	var out facts.Setting
-	found := false
-	for i, line := range strings.Split(string(data), "\n") {
-		text := strings.TrimSpace(line)
-		if text == "" || text[0] == '#' {
-			continue
-		}
-		key, value, ok := strings.Cut(text, "=")
-		if !ok || strings.TrimSpace(key) != "ENABLED" {
-			continue
-		}
-		value = strings.ToLower(strings.Trim(strings.TrimSpace(stripInlineComment(value)), `"'`))
-		out = facts.Setting{Value: value, Explicit: true, Source: fmt.Sprintf("%s:%d", ufwConf, i+1)}
-		found = true
-	}
-	return out, found
+	return shellAssignment(ufwConf, data, "ENABLED")
 }

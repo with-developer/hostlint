@@ -1,0 +1,114 @@
+id: mac.enabled
+version: 1
+title: Mandatory access control is on
+title_ko: 필수 접근 제어가 켜져 있음
+severity: medium
+description: >-
+  SELinux: /etc/selinux/config sets SELINUX=enforcing (permissive only logs what the policy would have denied, and disabled loads no policy). AppArmor:
+  the apparmor package is installed and its unit is enabled, which is what Ubuntu and Debian do by default. This reads what the next boot does, not the
+  running kernel: a kernel started without the module (a boot parameter, or a kernel that was built without it) or `setenforce 0` since boot is not seen here.
+  Only these two are looked for: SELinux on any host with its configuration file, AppArmor on a Debian-style host (the supported RHEL relatives use SELinux). Without
+  systemd the units of AppArmor cannot be read, so the check applies only where SELinux has a configuration file. A host that confines its services another way, such
+  as a hardened container runtime around it, is a choice to record as a waiver with its reason.
+rationale: >-
+  Mandatory access control limits what a compromised service can reach, whatever its own permissions are: a flaw in a web server then does not hand over the
+  rest of the host.
+remediation: >-
+  RHEL and its relatives: set `SELINUX=enforcing` in /etc/selinux/config and run `setenforce 1` (after a time with SELinux disabled, label the files first with
+  `touch /.autorelabel` and reboot). Debian and Ubuntu: `apt install apparmor apparmor-utils` and `systemctl enable --now apparmor`.
+applies: >-
+  !target.image && (packages.manager == "dpkg" || packages.manager == "rpm") && (services.systemd || mac.selinux.present)
+expect: >-
+  (mac.selinux.present && "mode" in mac.selinux.settings && mac.selinux.settings["mode"].value == "enforcing") ||
+  (packages.manager == "dpkg" && "apparmor" in packages.installed &&
+    "apparmor.service" in services.units && services.units["apparmor.service"].enabled && !services.units["apparmor.service"].masked)
+failure: >-
+  no mandatory access control starts at boot: SELinux is not enforcing, and AppArmor is not installed and enabled
+tests:
+  - name: SELinux is enforcing (Rocky, Alma, CentOS)
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: true, settings: {mode: {value: enforcing, explicit: true, source: "/etc/selinux/config:7"}, type: {value: targeted, explicit: true, source: "/etc/selinux/config:11"}}}}
+      services: {systemd: true, units: {}}
+    want: PASS
+  - name: SELinux is permissive (what Amazon Linux 2023 ships)
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: true, settings: {mode: {value: permissive, explicit: true, source: "/etc/selinux/config:22"}}}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: SELinux is disabled
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: true, settings: {mode: {value: disabled, explicit: true, source: "/etc/selinux/config:7"}}}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: the file does not set the mode
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: true, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: no SELinux on an rpm host
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: AppArmor is installed and its unit is enabled (Ubuntu, Debian)
+    facts:
+      packages: {manager: dpkg, installed: {apparmor: [{version: "4.0.1", arch: amd64, state: installed}]}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {"apparmor.service": {enabled: true, masked: false, file: /usr/lib/systemd/system/apparmor.service}}}
+    want: PASS
+  - name: AppArmor is installed and its unit is not enabled
+    facts:
+      packages: {manager: dpkg, installed: {apparmor: [{version: "4.0.1", arch: amd64, state: installed}]}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {"apparmor.service": {enabled: false, masked: false, file: /usr/lib/systemd/system/apparmor.service}}}
+    want: FAIL
+  - name: the unit of AppArmor is masked
+    facts:
+      packages: {manager: dpkg, installed: {apparmor: [{version: "4.0.1", arch: amd64, state: installed}]}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {"apparmor.service": {enabled: true, masked: true, file: /dev/null}}}
+    want: FAIL
+  - name: AppArmor is not installed
+    facts:
+      packages: {manager: dpkg, installed: {}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: FAIL
+  - name: a container image confines nothing of its own
+    facts:
+      target: {live: false, image: true}
+      packages: {manager: dpkg, installed: {}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: NOT_APPLICABLE
+  - name: no systemd to read the units of
+    facts:
+      packages: {manager: dpkg, installed: {}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: false, units: {}}
+    want: NOT_APPLICABLE
+  - name: the configuration of SELinux could not be read on an rpm host, so it is not known whether SELinux is enforcing
+    input: incomplete
+    incomplete: [mac]
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: false, settings: {}}}
+      services: {systemd: true, units: {}}
+    want: ERROR
+  - name: no systemd, and SELinux is disabled in its file (the file decides without units)
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: true, settings: {mode: {value: disabled, explicit: true, source: "/etc/selinux/config:7"}}}}
+      services: {systemd: false, units: {}}
+    want: FAIL
+  - name: no systemd, and SELinux is enforcing in its file
+    facts:
+      packages: {manager: rpm, installed: {}}
+      mac: {selinux: {present: true, settings: {mode: {value: enforcing, explicit: true, source: "/etc/selinux/config:7"}}}}
+      services: {systemd: false, units: {}}
+    want: PASS

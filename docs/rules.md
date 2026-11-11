@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are vmsctl's own. Parameters can be made stricter in
 [vmsctl.yaml](configuration.md).
 
-## essentials (revision 3)
+## essentials (revision 4)
 
 vmsctl essentials — a short hardening baseline for Linux servers
 
@@ -37,6 +37,7 @@ vmsctl essentials — a short hardening baseline for Linux servers
 | ES-22 | medium | The kernel limits what unprivileged code can see and do (커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함) | [`sysctl.aslr`](#sysctlaslr), [`sysctl.kptr-restrict`](#sysctlkptr-restrict), [`sysctl.dmesg-restrict`](#sysctldmesg-restrict), [`sysctl.suid-dumpable`](#sysctlsuid-dumpable), [`sysctl.ptrace-scope`](#sysctlptrace-scope), [`sysctl.protected-links`](#sysctlprotected-links) |
 | ES-23 | medium | A host firewall is enabled (호스트 방화벽이 켜져 있음) | [`firewall.enabled`](#firewallenabled), [`firewall.review-rules`](#firewallreview-rules) |
 | ES-24 | medium | Security updates are installed automatically (보안 업데이트가 자동으로 설치됨) | [`updates.security-automatic`](#updatessecurity-automatic) |
+| ES-25 | medium | Mandatory access control is on (필수 접근 제어가 켜져 있음) | [`mac.enabled`](#macenabled) |
 
 ### Checks
 
@@ -425,6 +426,16 @@ Lists accounts whose shell startup files (.profile, .bashrc, .bash_profile, ...)
 **Why.** A startup file runs whenever its user logs in; whoever can change it runs commands as that user.
 
 **Fix.** Run `chown <user>` and `chmod go-w` on each listed file, and remove links to missing files.
+
+#### `mac.enabled`
+
+Mandatory access control is on (필수 접근 제어가 켜져 있음) — severity medium, evaluates an expression.
+
+SELinux: /etc/selinux/config sets SELINUX=enforcing (permissive only logs what the policy would have denied, and disabled loads no policy). AppArmor: the apparmor package is installed and its unit is enabled, which is what Ubuntu and Debian do by default. This reads what the next boot does, not the running kernel: a kernel started without the module (a boot parameter, or a kernel that was built without it) or `setenforce 0` since boot is not seen here. Only these two are looked for: SELinux on any host with its configuration file, AppArmor on a Debian-style host (the supported RHEL relatives use SELinux). Without systemd the units of AppArmor cannot be read, so the check applies only where SELinux has a configuration file. A host that confines its services another way, such as a hardened container runtime around it, is a choice to record as a waiver with its reason.
+
+**Why.** Mandatory access control limits what a compromised service can reach, whatever its own permissions are: a flaw in a web server then does not hand over the rest of the host.
+
+**Fix.** RHEL and its relatives: set `SELINUX=enforcing` in /etc/selinux/config and run `setenforce 1` (after a time with SELinux disabled, label the files first with `touch /.autorelabel` and reboot). Debian and Ubuntu: `apt install apparmor apparmor-utils` and `systemctl enable --now apparmor`.
 
 #### `services.no-finger`
 

@@ -197,7 +197,7 @@ func summary(r *engine.Result) string {
 	// The firewall and the automatic updates of a container are those of nobody: a container is not a host that has
 	// them (an image, which is what is deployed, has no such checks: they do not apply to it), so their results stay out
 	// of the goldens too, and the rule tests carry them.
-	services := func(c engine.ControlResult) bool { return only(c, "firewall.", "updates.") }
+	services := func(c engine.ControlResult) bool { return only(c, "firewall.", "updates.", "mac.") }
 	for _, p := range r.Profiles {
 		counts := map[engine.Status]int{}
 		hostKernel, hostServices := 0, 0
@@ -222,7 +222,7 @@ func summary(r *engine.Result) string {
 			fmt.Fprintf(&b, " (and %d controls of the kernel of the host)", hostKernel)
 		}
 		if hostServices > 0 {
-			fmt.Fprintf(&b, " (and %d controls of the firewall and updates of a host)", hostServices)
+			fmt.Fprintf(&b, " (and %d controls of the firewall, updates and access control of a host)", hostServices)
 		}
 		b.WriteByte('\n')
 	}
@@ -236,7 +236,7 @@ func summary(r *engine.Result) string {
 	}
 	for _, c := range r.Controls {
 		if services(c) {
-			fmt.Fprintf(&b, "\n%s (the firewall and updates of a host)\n", c.ID)
+			fmt.Fprintf(&b, "\n%s (the firewall, updates and access control of a host)\n", c.ID)
 			for _, ref := range c.Checks {
 				fmt.Fprintf(&b, "  %s\n", checks[ref].ID)
 			}

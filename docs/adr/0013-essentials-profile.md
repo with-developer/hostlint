@@ -71,3 +71,17 @@ target without systemd, and they never read a command.
   yum-cron enabled with `apply_updates = yes`. What may be installed (the origins, `upgrade_type`) is not read.
 - Not added: auditd and persistent-journal checks (a legitimate "no" is too common for a default `FAIL`).
 - The e2e goldens leave the results of these controls out for containers, like the kernel's.
+
+## Amendment: revision 4 (2026-11-11, decided by the maintainer: the owner asked for choices like this to be made without asking)
+
+`essentials` revision 4 adds `ES-25` (mandatory access control is on): 25 controls. One check, `mac.enabled`, over a small collector
+`mac` (`/etc/selinux/config`) and the package and unit facts that exist. It passes when SELinux is set to `enforcing` in its
+configuration, or the `apparmor` package is installed and its unit is enabled (what Ubuntu and Debian do by default); `permissive`,
+`disabled` and no mandatory access control at all fail. It reads what the next boot does, not the running kernel (a kernel started
+without the module, or `setenforce 0` since boot, is not seen), and it says so. It does not apply to an image or to a target without systemd.
+
+- The configuration files of Rocky Linux 9, AlmaLinux 9, CentOS 7 and Amazon Linux 2023 are real (taken from their `selinux-policy`
+  packages): the first three ship `enforcing`, and Amazon Linux 2023 ships `permissive`, so a stock Amazon Linux 2023 fails this
+  control, which is what the control is for.
+- Like every revision that adds a control, it changes the revision, so a waiver of an `essentials` control (which names the revision it
+  was written for) stops applying until it is written again for revision 4 (the scan says which).
