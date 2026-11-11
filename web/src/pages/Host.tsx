@@ -247,11 +247,11 @@ function History({ scans }: { scans: ScanRow[] }) {
                   {s.counts.ERROR ? <span className="badge s-ERROR">{s.counts.ERROR}</span> : null}
                 </span>
                 <span className="push">
-                  <a className="button small" href={`/api/v1/scans/${s.id}?format=csv`} download title={t("host.csv")}>
+                  <a className="button compact" href={api.scanCSV(s.id)} download title={t("host.csv")} aria-label={`CSV: ${t("host.scan", { id: s.id })}`}>
                     <IconDownload /> CSV
                   </a>
                   {previous && (
-                    <button className="small" title={t("host.compare")} onClick={() => setPair([previous.id, s.id])}>
+                    <button className="compact" title={t("host.compare")} onClick={() => setPair([previous.id, s.id])}>
                       {t("host.compare")}
                     </button>
                   )}

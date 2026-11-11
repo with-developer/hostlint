@@ -291,35 +291,71 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "not a scan ID")
 		return
 	}
+	format := r.URL.Query().Get("format")
+	if format != "" && format != "csv" {
+		writeError(w, http.StatusBadRequest, "format is csv, or leave it out for the JSON result")
+		return
+	}
 	doc, err := s.cfg.Store.ScanDoc(r.Context(), id)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		writeError(w, http.StatusNotFound, "no such scan")
+		return
 	case err != nil:
 		s.fail(w, err)
-	case r.URL.Query().Get("format") == "csv":
-		// The same report as `vmsctl scan --format csv`, from the stored result, as a download for a spreadsheet.
-		res, err := output.ReadResult(bytes.NewReader(doc))
-		if err != nil {
-			s.fail(w, err)
-			return
-		}
-		var buf bytes.Buffer
-		if err := output.Write(&buf, res, "csv", output.Options{}); err != nil {
-			s.fail(w, err)
-			return
-		}
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="vmsctl-scan-%d.csv"`, id))
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(buf.Bytes())
-	case r.URL.Query().Get("format") != "":
-		writeError(w, http.StatusBadRequest, "format is csv, or leave it out for the JSON result")
-	default:
+		return
+	}
+	if format == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(doc)
+		return
 	}
+	// The CSV report of `vmsctl scan --format csv`, from the stored result, as a download for a spreadsheet.
+	res, err := output.ReadResult(bytes.NewReader(doc))
+	if err != nil {
+		s.fail(w, fmt.Errorf("stored scan %d: %w", id, err))
+		return
+	}
+	for i := range res.Controls { // the Korean titles the dashboard shows for a result that came without them
+		if res.Controls[i].TitleKo == "" {
+			res.Controls[i].TitleKo = s.titleKo(res.Controls[i].Profile, res.Controls[i].ID)
+		}
+	}
+	var buf bytes.Buffer
+	if err := output.Write(&buf, res, "csv", output.Options{}); err != nil {
+		s.fail(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, csvFileName(res, id)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(buf.Bytes())
+}
+
+// csvFileName names the download after the host and the day of the scan, so files of several scans tell themselves apart:
+// vmsctl-web-01-2026-11-11-scan-15.csv. The host name is the host's own text: only letters, digits, dot, dash and underscore stay.
+func csvFileName(res *engine.Result, id int64) string {
+	var host strings.Builder
+	for _, r := range res.Host.Hostname {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '-', r == '_':
+			host.WriteRune(r)
+		default:
+			host.WriteByte('-')
+		}
+		if host.Len() >= 60 {
+			break
+		}
+	}
+	name := "vmsctl"
+	if host.Len() > 0 {
+		name += "-" + strings.Trim(host.String(), ".-")
+	}
+	if len(res.Scan.StartedAt) >= 10 {
+		name += "-" + res.Scan.StartedAt[:10]
+	}
+	return fmt.Sprintf("%s-scan-%d.csv", name, id)
 }
 
 // handleDiff compares two stored scans with the code of `vmsctl diff`.
