@@ -1,4 +1,4 @@
-<!-- translated from README.md @ dc1ea41 -->
+<!-- translated from README.md @ 1e7ca7a -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -92,15 +92,15 @@ Lynis, OpenSCAP, Wazuh와 무엇이 다르고 어떤 경우에 그쪽이 더 나
 `cosign`이 설치되어 있으면 체크섬의 Sigstore 서명까지 확인합니다.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.29.0/install.sh
-sudo sh install.sh -v v0.29.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
+curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.30.0/install.sh
+sudo sh install.sh -v v0.30.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
 sudo vmsctl scan
 ```
 
 컨테이너 이미지로 실행할 수도 있습니다. 호스트의 루트를 읽기 전용으로 마운트합니다([docs/container.ko.md](docs/container.ko.md)).
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.29.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.30.0 scan --root /host
 ```
 
 [릴리스](https://github.com/with-developer/vmsctl/releases)에는 `.deb`·`.rpm` 패키지, SBOM, 빌드 출처 증명도
@@ -110,7 +110,7 @@ docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.29.0 scan --root /
 바이너리 자체에는 외부 의존성이 없습니다:
 
 ```sh
-go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.29.0
+go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.30.0
 sudo "$(go env GOPATH)/bin/vmsctl" scan
 ```
 
@@ -153,7 +153,7 @@ sudo vmsctl scan --config vmsctl.yaml
 | 플래그 | 의미 |
 |---|---|
 | `-p, --profile` | 점검할 프로파일(기본값 `kisa-2026`). 여러 번 쓰면 한 번에 여러 개를 점검합니다 |
-| `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown`(작업 요약이나 댓글용) |
+| `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown`(작업 요약이나 댓글용), `csv`(점검 항목마다 한 줄, 스프레드시트용: 엑셀에서 한글 제목이 깨지지 않고 열립니다. 수식으로 읽힐 값은 작은따옴표로 시작하는데, 엑셀이 CSV 파일을 열 때는 그 따옴표가 그대로 보입니다) |
 | `-o, --output` | 결과를 파일로 저장합니다 |
 | `--fail-on` | 이 심각도 이상의 컨트롤이 실패하거나 판단하지 못하면(`ERROR`) 종료 코드 1을 돌려줍니다: `low`(기본값), `medium`, `high`, `none` |
 | `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옵니다([docs/packs.ko.md](docs/packs.ko.md)). 팩의 프로파일은 `-p`로 고릅니다 |
@@ -252,7 +252,7 @@ vmsctl은 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), �
 대한 컨테이너 테스트, 컨테이너 이미지 점검([docs/images.ko.md](docs/images.ko.md)), GitHub Action
 ([docs/ci.ko.md](docs/ci.ko.md)), 대시보드가 있는 서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md)),
 요청이 오면 점검하는 에이전트, 컨테이너 이미지 배포([docs/container.ko.md](docs/container.ko.md))까지 갖췄고, 최신
-릴리스는 v0.29.0입니다. 앞으로의 계획은 [로드맵](docs/ROADMAP.md)을 참고하세요.
+릴리스는 v0.30.0입니다. 앞으로의 계획은 [로드맵](docs/ROADMAP.md)을 참고하세요.
 
 ## 라이선스
 

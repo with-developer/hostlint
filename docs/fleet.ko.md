@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ bc434e0 -->
+<!-- translated from docs/fleet.md @ 267c061 -->
 # 서버로 모아 보기
 
 > 설계는 [ADR 0010](adr/0010-fleet-server-and-dashboard.md)에 있습니다. 호스트가 결과를 보내고, 서버가 저장해 두었다가 조회
@@ -302,7 +302,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://vmsctl.exam
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | 컨트롤 전체와 최신 스캔의 상태별 개수. 컨트롤 하나의 경우 해당 호스트, 무엇을 점검하는지, 어떻게 고치는지 |
 | `GET /api/v1/matrix` | 모든 호스트의 모든 컨트롤의 최신 상태. 가장 많이 실패한 호스트가 먼저 나옵니다 |
 | `GET /api/v1/hosts/ID` | 호스트 하나의 최신 컨트롤과 이력 |
-| `GET /api/v1/scans/ID` | 저장된 결과를 받은 그대로 |
+| `GET /api/v1/scans/ID` | 저장된 결과를 받은 그대로. `?format=csv`를 붙이면 `vmsctl scan --format csv`와 같은 스프레드시트용 CSV 보고서(대시보드는 호스트의 이력에서 내려받게 해 줍니다) |
 | `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이에서 바뀐 것(`vmsctl diff`와 같습니다) |
 
 ### 대시보드 세션

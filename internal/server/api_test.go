@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -733,5 +734,115 @@ func TestSignedReplayAndTampering(t *testing.T) {
 	}
 	if _, _, err := f.store.VerifyAudit(ctx); err == nil {
 		t.Error("an edited audit row went unnoticed")
+	}
+}
+
+// A stored scan can be downloaded as the CSV report of `vmsctl scan --format csv`; it needs the same token as the JSON.
+func TestScanDocAsCSV(t *testing.T) {
+	f := newAPIFixture(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/scans/2?format=csv", nil)
+	req.Header.Set("Authorization", "Bearer "+f.api)
+	rec := httptest.NewRecorder()
+	f.srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "text/csv; charset=utf-8" {
+		t.Fatalf("%d %v", rec.Code, rec.Header())
+	}
+	if d := rec.Header().Get("Content-Disposition"); !strings.HasPrefix(d, `attachment; filename="vmsctl-web-01-20`) || !strings.HasSuffix(d, `-scan-2.csv"`) {
+		t.Errorf("Content-Disposition = %q: the file should say the host and the day", d)
+	}
+	body := rec.Body.Bytes()
+	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("host,profile,control,title,title_ko,severity,status")) || bytes.Count(body, []byte("\n")) < 3 {
+		t.Errorf("not the CSV report: %q", body[:min(120, len(body))])
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/scans/2?format=xml"); code != http.StatusBadRequest {
+		t.Errorf("an unknown format: %d", code)
+	}
+	if code, body := f.get(t, f.api, "/api/v1/scans/2?format="); code != http.StatusOK || !bytes.Equal(body, fixture(t, "web-01.json")) {
+		t.Errorf("an empty format is the JSON result: %d", code)
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/scans/99?format=csv"); code != http.StatusNotFound {
+		t.Errorf("an unknown scan: %d", code)
+	}
+	if code, _ := f.get(t, "", "/api/v1/scans/2?format=csv"); code != http.StatusUnauthorized {
+		t.Errorf("no token: %d", code)
+	}
+}
+
+// What a host reports is untrusted: a host name or a title that starts a formula must not reach a spreadsheet as one, and the
+// name of the download keeps only safe characters, whatever the host called itself.
+func TestScanCSVOfAHostileResult(t *testing.T) {
+	f := newAPIFixture(t)
+	var doc map[string]any
+	if err := json.Unmarshal(fixture(t, "db-01.json"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	host := doc["host"].(map[string]any)
+	host["hostname"] = `=HYPERLINK("http://evil.example/")/../a b"`
+	host["hostId"] = strings.Repeat("ab", 16)
+	doc["scan"].(map[string]any)["id"] = "hostile-scan"
+	for i, c := range doc["controls"].([]any) {
+		c.(map[string]any)["title"] = "@SUM(1+1)"
+		delete(c.(map[string]any), "titleKo") // the server fills the Korean title in
+		if i == 0 {
+			c.(map[string]any)["profile"], c.(map[string]any)["id"] = "kisa-2026", "U-01"
+		}
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ingest := token(t, f.store, ScopeIngest, "")
+	code, out := post(t, f.srv, ingest, raw)
+	if code != http.StatusCreated {
+		t.Fatalf("the hostile result was not stored: %d %v", code, out)
+	}
+	var scans struct {
+		Scans []struct{ ID int64 } `json:"scans"`
+	}
+	var hosts struct {
+		Hosts []struct {
+			ID   int64
+			Name string
+		} `json:"hosts"`
+	}
+	f.json(t, "/api/v1/hosts?q=HYPERLINK", &hosts)
+	if len(hosts.Hosts) != 1 {
+		t.Fatalf("hosts = %+v", hosts)
+	}
+	f.json(t, "/api/v1/hosts/"+itoa(hosts.Hosts[0].ID), &scans)
+	if len(scans.Scans) == 0 {
+		t.Fatal("no scan stored")
+	}
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := New(Config{Store: f.store, Rate: 100000, Now: func() time.Time { return f.clock }, Content: content})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/scans/"+itoa(scans.Scans[0].ID)+"?format=csv", nil)
+	req.Header.Set("Authorization", "Bearer "+f.api)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	if d := rec.Header().Get("Content-Disposition"); strings.ContainsAny(strings.TrimSuffix(strings.TrimPrefix(d, `attachment; filename="`), `"`), `"/\ =(),:;`) {
+		t.Errorf("the file name keeps unsafe characters: %q", d)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(bytes.TrimPrefix(rec.Body.Bytes(), []byte("\xef\xbb\xbf")))).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for r, row := range rows {
+		for c, cell := range row {
+			if cell != "" && strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
+				t.Errorf("row %d column %d starts a formula: %q", r, c, cell)
+			}
+		}
+	}
+	if len(rows) < 2 || rows[1][0] != `'=HYPERLINK("http://evil.example/")/../a b"` || rows[1][3] != "'@SUM(1+1)" {
+		t.Errorf("the first row = %q", rows[1])
+	}
+	if rows[1][2] != "U-01" || rows[1][4] == "" {
+		t.Errorf("a control that came without a Korean title gets the server's, as in the dashboard: %q", rows[1])
 	}
 }

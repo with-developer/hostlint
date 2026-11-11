@@ -6,7 +6,7 @@ import { ago, compareControls, ctitle } from "../lib/format";
 import { lastListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, Gauge, Inline, ScorePill, Severity, SignedBadge, StatusBadge, StatusBar } from "../components/ui";
 import { TrendChart } from "../components/charts";
-import { IconChevron, IconSearch } from "../components/icons";
+import { IconChevron, IconDownload, IconSearch } from "../components/icons";
 import { STATUSES, type ControlChange, type ControlRow, type Diff, type ScanDoc, type ScanRow, type Status } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
 
@@ -246,11 +246,16 @@ function History({ scans }: { scans: ScanRow[] }) {
                   {s.counts.FAIL ? <span className="badge s-FAIL">{s.counts.FAIL}</span> : null}
                   {s.counts.ERROR ? <span className="badge s-ERROR">{s.counts.ERROR}</span> : null}
                 </span>
-                <span className="push">{previous && (
-                    <button title={t("host.compare")} onClick={() => setPair([previous.id, s.id])}>
+                <span className="push">
+                  <a className="button compact" href={api.scanCSV(s.id)} download title={t("host.csv")} aria-label={`CSV: ${t("host.scan", { id: s.id })}`}>
+                    <IconDownload /> CSV
+                  </a>
+                  {previous && (
+                    <button className="compact" title={t("host.compare")} onClick={() => setPair([previous.id, s.id])}>
                       {t("host.compare")}
                     </button>
-                  )}</span>
+                  )}
+                </span>
               </li>
             );
           })}

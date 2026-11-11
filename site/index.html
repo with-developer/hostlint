@@ -39,7 +39,7 @@
       <a class="opt" href="#dashboard">Dashboard</a>
       <a class="opt" href="#ci">CI</a>
       <a class="opt" href="#start">Install</a>
-      <a class="opt" href="https://github.com/with-developer/vmsctl/blob/main/README.md">Docs</a>
+      <a class="opt" href="https://github.com/with-developer/vmsctl/blob/main/docs/README.md">Docs</a>
       <a href="https://github.com/with-developer/vmsctl">GitHub</a>
       <a class="lang" href="ko/" hreflang="ko">한국어</a>
     </nav>
@@ -60,8 +60,8 @@
     <div class="try">
       <small>Try it right now: scan this machine's root, read-only, without installing anything</small>
       <div class="cmd">
-        <pre tabindex="0"><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.29.0 scan --root /host</pre>
-        <button class="copy" type="button" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.29.0 scan --root /host">Copy</button>
+        <pre tabindex="0"><span class="p">$ </span>docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.30.0 scan --root /host</pre>
+        <button class="copy" type="button" data-copy="docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.30.0 scan --root /host">Copy</button>
       </div>
     </div>
 
@@ -114,7 +114,7 @@
     <div class="term">
       <div class="bar"><i></i><i></i><i></i></div>
 <pre tabindex="0"><span class="d">$ sudo vmsctl scan</span>
-vmsctl v0.29.0 · kisa-2026 · web-01 (Ubuntu 24.04)
+vmsctl v0.30.0 · kisa-2026 · web-01 (Ubuntu 24.04)
 
 <span class="f">✗ FAIL</span>   U-02   Password policy [high]
     <span class="f">✗</span> accounts.password-min-length
@@ -189,7 +189,7 @@ docker save app:1.4 -o app.tar
 vmsctl scan --image-tar app.tar --fail-on high
 
 <span class="d"># GitHub Actions</span>
-- uses: with-developer/vmsctl@v0.29.0
+- uses: with-developer/vmsctl@v0.30.0
   with:
     image: app:ci
     fail-on: high
@@ -220,9 +220,9 @@ vmsctl scan --image-tar app.tar --fail-on high
       <div class="step">
         <h3>Install</h3>
         <p>Download the installer, read it, then run it. It verifies the archive's SHA-256 (and the signature, when <code>cosign</code> is installed).</p>
-        <div class="cmd"><pre tabindex="0">curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.29.0/install.sh
-sudo sh install.sh -v v0.29.0</pre><button class="copy" type="button" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.29.0/install.sh&#10;sudo sh install.sh -v v0.29.0">Copy</button></div>
-        <p style="margin-top:10px">Or use a <code>.deb</code> or <code>.rpm</code> from the <a href="https://github.com/with-developer/vmsctl/releases">releases</a>, the container image, or <code>go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.29.0</code>.</p>
+        <div class="cmd"><pre tabindex="0">curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.30.0/install.sh
+sudo sh install.sh -v v0.30.0</pre><button class="copy" type="button" data-copy="curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.30.0/install.sh&#10;sudo sh install.sh -v v0.30.0">Copy</button></div>
+        <p style="margin-top:10px">Or use a <code>.deb</code> or <code>.rpm</code> from the <a href="https://github.com/with-developer/vmsctl/releases">releases</a>, the container image, or <code>go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.30.0</code>.</p>
       </div>
       <div class="step">
         <h3>Scan</h3>
@@ -248,6 +248,8 @@ vmsctl report *.json --output report.html</pre><button class="copy" type="button
     <span>
       <a href="https://github.com/with-developer/vmsctl/blob/main/README.md">README</a> ·
       <a href="https://github.com/with-developer/vmsctl/blob/main/docs/configuration.md">vmsctl.yaml</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/docs/README.md">All documentation</a> ·
+      <a href="https://github.com/with-developer/vmsctl/blob/main/docs/comparison.md">How it compares</a> ·
       <a href="https://github.com/with-developer/vmsctl/blob/main/docs/rules.md">Rule reference</a> ·
       <a href="https://github.com/with-developer/vmsctl/blob/main/SECURITY.md">Security</a>
     </span>

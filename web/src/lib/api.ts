@@ -73,6 +73,7 @@ export const api = {
   profiles: () => request<ProfileList>("/api/v1/profiles"),
   overview: (staleDays: number) => request<Overview>(withProfile(`/api/v1/overview?staleDays=${staleDays}`)),
   hosts: (params: HostsParams) => request<{ hosts: HostSummary[]; total: number }>(withProfile(`/api/v1/hosts?${hostsQuery(params)}`)),
+  scanCSV: (id: number) => `/api/v1/scans/${id}?format=csv`,
   hostsCSV: (params: HostsParams) => withProfile(`/api/v1/hosts?${hostsQuery({ ...params, limit: undefined, offset: undefined })}&format=csv`),
   trend: (days: number) => request<{ points: TrendPoint[] }>(withProfile(`/api/v1/trend?days=${days}`)),
   controls: () => request<{ controls: ControlSummary[] }>(withProfile("/api/v1/controls")),
