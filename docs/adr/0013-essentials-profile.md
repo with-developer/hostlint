@@ -72,7 +72,7 @@ target without systemd, and they never read a command.
 - Not added: auditd and persistent-journal checks (a legitimate "no" is too common for a default `FAIL`).
 - The e2e goldens leave the results of these controls out for containers, like the kernel's.
 
-## Amendment: revision 4 (2026-11-11, proposed: waits for the owner's approval)
+## Amendment: revision 4 (2026-11-11, decided by the maintainer: the owner asked for choices like this to be made without asking)
 
 `essentials` revision 4 adds `ES-25` (mandatory access control is on): 25 controls. One check, `mac.enabled`, over a small collector
 `mac` (`/etc/selinux/config`) and the package and unit facts that exist. It passes when SELinux is set to `enforcing` in its
