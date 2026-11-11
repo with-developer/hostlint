@@ -1,5 +1,5 @@
 // Package output renders scan results: a terminal table, the JSON result
-// document, SARIF 2.1.0, JUnit XML, Markdown for job summaries and comments, and an HTML report merging many hosts.
+// document, SARIF 2.1.0, JUnit XML, Markdown for job summaries and comments, CSV for a spreadsheet, and an HTML report merging many hosts.
 // It is the only package that may create files, and only the output file the
 // user asked for (ADR 0004).
 package output
@@ -20,7 +20,7 @@ import (
 )
 
 // Formats lists the supported output formats.
-var Formats = []string{"table", "json", "sarif", "junit", "markdown"}
+var Formats = []string{"table", "json", "sarif", "junit", "markdown", "csv"}
 
 // Options control rendering.
 type Options struct {
@@ -46,6 +46,8 @@ func Write(w io.Writer, res *engine.Result, format string, opts Options) error {
 		return writeJUnit(w, res)
 	case "markdown":
 		return writeMarkdown(w, res)
+	case "csv":
+		return writeCSV(w, res)
 	}
 	return fmt.Errorf("unknown format %q (use %s)", format, strings.Join(Formats, ", "))
 }
