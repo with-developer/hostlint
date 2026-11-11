@@ -297,6 +297,24 @@ func (s *Server) handleScan(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no such scan")
 	case err != nil:
 		s.fail(w, err)
+	case r.URL.Query().Get("format") == "csv":
+		// The same report as `vmsctl scan --format csv`, from the stored result, as a download for a spreadsheet.
+		res, err := output.ReadResult(bytes.NewReader(doc))
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		var buf bytes.Buffer
+		if err := output.Write(&buf, res, "csv", output.Options{}); err != nil {
+			s.fail(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="vmsctl-scan-%d.csv"`, id))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buf.Bytes())
+	case r.URL.Query().Get("format") != "":
+		writeError(w, http.StatusBadRequest, "format is csv, or leave it out for the JSON result")
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

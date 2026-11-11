@@ -270,7 +270,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://vmsctl.exam
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | Every control with the status counts of the latest scans; one control with its hosts, and what it checks and how to fix it |
 | `GET /api/v1/matrix` | The latest status of every control on every host, hosts that fail most first |
 | `GET /api/v1/hosts/ID` | One host: its latest controls and its history |
-| `GET /api/v1/scans/ID` | A stored result, exactly as received |
+| `GET /api/v1/scans/ID` | A stored result, exactly as received; with `?format=csv`, the CSV report of `vmsctl scan --format csv` for a spreadsheet (the dashboard offers it in the history of a host) |
 | `GET /api/v1/diff?old=ID&new=ID` | What changed between two scans, as `vmsctl diff` |
 
 ### Dashboard sessions

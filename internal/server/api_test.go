@@ -735,3 +735,28 @@ func TestSignedReplayAndTampering(t *testing.T) {
 		t.Error("an edited audit row went unnoticed")
 	}
 }
+
+// A stored scan can be downloaded as the CSV report of `vmsctl scan --format csv`; it needs the same token as the JSON.
+func TestScanDocAsCSV(t *testing.T) {
+	f := newAPIFixture(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/scans/2?format=csv", nil)
+	req.Header.Set("Authorization", "Bearer "+f.api)
+	rec := httptest.NewRecorder()
+	f.srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "text/csv; charset=utf-8" || rec.Header().Get("Content-Disposition") != `attachment; filename="vmsctl-scan-2.csv"` {
+		t.Fatalf("%d %v", rec.Code, rec.Header())
+	}
+	body := rec.Body.Bytes()
+	if !bytes.HasPrefix(body, []byte("\xef\xbb\xbf")) || !bytes.Contains(body, []byte("host,profile,control,title,title_ko,severity,status")) || bytes.Count(body, []byte("\n")) < 3 {
+		t.Errorf("not the CSV report: %q", body[:min(120, len(body))])
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/scans/2?format=xml"); code != http.StatusBadRequest {
+		t.Errorf("an unknown format: %d", code)
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/scans/99?format=csv"); code != http.StatusNotFound {
+		t.Errorf("an unknown scan: %d", code)
+	}
+	if code, _ := f.get(t, "", "/api/v1/scans/2?format=csv"); code != http.StatusUnauthorized {
+		t.Errorf("no token: %d", code)
+	}
+}
