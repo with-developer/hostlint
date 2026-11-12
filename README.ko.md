@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 2a3550e -->
+<!-- translated from README.md @ 24b9b35 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -92,15 +92,15 @@ Lynis, OpenSCAP, Wazuh와 무엇이 다르고 어떤 경우에 그쪽이 더 나
 `cosign`이 설치되어 있으면 체크섬의 Sigstore 서명까지 확인합니다.
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.36.0/install.sh
-sudo sh install.sh -v v0.36.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
+curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.37.0/install.sh
+sudo sh install.sh -v v0.37.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
 sudo vmsctl scan
 ```
 
 컨테이너 이미지로 실행할 수도 있습니다. 호스트의 루트를 읽기 전용으로 마운트합니다([docs/container.ko.md](docs/container.ko.md)).
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.36.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.37.0 scan --root /host
 ```
 
 [릴리스](https://github.com/with-developer/vmsctl/releases)에는 `.deb`·`.rpm` 패키지, SBOM, 빌드 출처 증명도
@@ -110,7 +110,7 @@ docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.36.0 scan --root /
 바이너리 자체에는 외부 의존성이 없습니다:
 
 ```sh
-go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.36.0
+go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.37.0
 sudo "$(go env GOPATH)/bin/vmsctl" scan
 ```
 
@@ -253,7 +253,7 @@ vmsctl은 활발히 개발 중입니다. KISA 2026 프로파일(U-01–U-67), �
 대한 컨테이너 테스트, 컨테이너 이미지 점검([docs/images.ko.md](docs/images.ko.md)), GitHub Action
 ([docs/ci.ko.md](docs/ci.ko.md)), 대시보드가 있는 서버와 서명된 결과, 웹훅([docs/fleet.ko.md](docs/fleet.ko.md)),
 요청이 오면 점검하는 에이전트, 컨테이너 이미지 배포([docs/container.ko.md](docs/container.ko.md))까지 갖췄고, 최신
-릴리스는 v0.36.0입니다. 앞으로의 계획은 [로드맵](docs/ROADMAP.md)을 참고하세요.
+릴리스는 v0.37.0입니다. 앞으로의 계획은 [로드맵](docs/ROADMAP.md)을 참고하세요.
 
 ## 라이선스
 
