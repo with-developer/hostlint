@@ -285,7 +285,7 @@
     return el('div', {class: 'check'},
       el('div', {class: 'check-head'}, badge(hk.s), ' ', el('code', {}, c.id), ' ', title(c),
         hk.o ? el('span', {class: 'muted'}, ' (was ' + NAME[hk.o] + ')') : null),
-      hk.r ? el('p', {class: 'reason'}, str(hk.r)) : null,
+      hk.r ? el('p', {class: 'reason'}, str(state.lang === 'ko' && hk.rk ? hk.rk : hk.r)) : null,
       c.remediation && (hk.s === 'FAIL' || hk.s === 'ERROR' || hk.s === 'WAIVED') ? el('p', {class: 'remedy'}, el('strong', {}, state.lang === 'ko' && c.remediationKo ? '조치 방법: ' : 'How to fix: '), str(state.lang === 'ko' && c.remediationKo ? c.remediationKo : c.remediation)) : null,
       hk.a ? attestation(hk.a) : null,
       hk.w ? waiver(hk.w) : null,

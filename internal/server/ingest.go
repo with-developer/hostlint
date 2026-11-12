@@ -294,9 +294,9 @@ func checkLimits(res *engine.Result, now time.Time) error {
 		for _, fix := range []struct {
 			text  string
 			limit int
-		}{{c.Remediation, maxRemediation}, {c.RemediationKo, maxRemediationKo}} {
+		}{{c.Remediation, maxRemediation}, {c.RemediationKo, maxRemediationKo}, {c.ReasonKo, maxRemediationKo}} {
 			if len(fix.text) > fix.limit || !utf8.ValidString(fix.text) || strings.ContainsFunc(fix.text, func(r rune) bool { return r != '\n' && r != '\t' && unicode.IsControl(r) }) {
-				return fmt.Errorf("check %.40q has a remediation that is too long or not text", c.Ref)
+				return fmt.Errorf("check %.40q has a remediation or a Korean reason that is too long or not text", c.Ref)
 			}
 		}
 	}

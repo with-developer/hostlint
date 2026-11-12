@@ -547,3 +547,31 @@ func TestKoreanFixHints(t *testing.T) {
 		t.Error("the CSV has no Korean fix hint")
 	}
 }
+
+// The reason of a manual check is Korean on request where the check has Korean guidance, in the table and in Markdown.
+func TestKoreanManualReason(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	for i := range res.Checks {
+		res.Checks[i].Status = engine.StatusManual
+		res.Checks[i].Reason = "Check the list."
+		res.Checks[i].ReasonKo = "목록을 확인하세요."
+	}
+	for i := range res.Controls {
+		res.Controls[i].Status = engine.StatusManual
+	}
+	for _, format := range []string{"table", "markdown"} {
+		var en, ko bytes.Buffer
+		if err := Write(&en, res, format, Options{}); err != nil {
+			t.Fatal(err)
+		}
+		if err := Write(&ko, res, format, Options{Lang: "ko"}); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(en.String(), "목록을 확인하세요.") || !strings.Contains(en.String(), "Check the list.") {
+			t.Errorf("%s: English by default:\n%s", format, en.String())
+		}
+		if !strings.Contains(ko.String(), "목록을 확인하세요.") || strings.Contains(ko.String(), "Check the list.") {
+			t.Errorf("%s: Korean on request:\n%s", format, ko.String())
+		}
+	}
+}

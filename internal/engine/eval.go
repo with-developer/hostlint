@@ -46,6 +46,8 @@ type evalEnv struct {
 type outcome struct {
 	status   Status
 	reason   string
+	// reasonKo is the reason in Korean, where the rule has it (the guidance of a MANUAL check).
+	reasonKo string
 	evidence []Evidence
 	omitted  int // evidence items not built
 	coverage *Coverage
@@ -250,14 +252,24 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 		return e.evalViolations(cc, b)
 	case c.Manual != nil:
 		o := outcome{status: StatusManual, reason: c.Manual.Guidance}
+		if c.Manual.GuidanceKo != "" {
+			o.reasonKo = c.Manual.GuidanceKo
+		}
 		if cc.show != nil {
 			v, _, err := e.eval(cc.show, b.strict)
 			switch {
 			case err != nil:
 				o.reason += " (evidence unavailable: " + err.Error() + ")"
+				if o.reasonKo != "" {
+					o.reasonKo += " (evidence unavailable: " + err.Error() + ")"
+				}
 				o.showErr = err.Error()
 			case types.IsUnknown(v):
-				o.reason += " (evidence unavailable: " + e.unknownReason(b, v) + ")"
+				why := e.unknownReason(b, v)
+				o.reason += " (evidence unavailable: " + why + ")"
+				if o.reasonKo != "" {
+					o.reasonKo += " (evidence unavailable: " + why + ")"
+				}
 			default:
 				o.evidence, o.omitted = listEvidence("show", v)
 				o.evidenceDigest, _ = showDigest(v)

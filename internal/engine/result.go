@@ -169,6 +169,8 @@ type CheckResult struct {
 	OriginalStatus Status   `json:"originalStatus,omitempty"`
 	StatusSource   string   `json:"statusSource"` // observed or attested
 	Reason         string   `json:"reason,omitempty"`
+	// ReasonKo is the reason in Korean, for a MANUAL check whose rule has Korean guidance.
+	ReasonKo string `json:"reasonKo,omitempty"`
 	// Remediation is the check's guidance on fixing a failure: static text of the rule, set for a check that
 	// failed (not one that could not be decided: there is nothing to fix yet), so a result says what to do about
 	// what it found.

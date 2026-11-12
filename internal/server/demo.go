@@ -190,6 +190,10 @@ func demoResult(content *engine.Content, profile *engine.Profile, h demoHost, da
 				Status: st, StatusSource: "observed", Reason: demoReason(st),
 				Evidence: demoEvidence(st, id), DurationMs: 3,
 			}
+			if st == engine.StatusManual && check.Manual != nil { // the rule's own guidance, as a real scan reports it
+				cres.Reason = truncate(strings.TrimSpace(check.Manual.Guidance), maxText)
+				cres.ReasonKo = truncate(strings.TrimSpace(check.Manual.GuidanceKo), maxRemediationKo)
+			}
 			if st == engine.StatusFail { // as a real scan does: the rule's own guidance on a failed check
 				cres.Remediation = truncate(strings.TrimSpace(check.Remediation), maxRemediation)
 				cres.RemediationKo = truncate(strings.TrimSpace(check.RemediationKo), maxRemediationKo)
