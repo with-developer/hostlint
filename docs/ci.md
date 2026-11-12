@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t app:ci .
-      - uses: with-developer/vmsctl@v0.37.0
+      - uses: with-developer/vmsctl@v0.38.0
         with:
           image: app:ci
           fail-on: high
@@ -54,7 +54,7 @@ failed check ("How to fix"), and the JSON result has it in `remediation`. It is 
 | `summary` | `true` (default): write a Markdown report of the findings to the job summary of the run, even when the scan fails the step |
 | `sarif-file` | Also write SARIF here, even when the scan fails the step |
 | `lang` | `en` (default) or `ko`: the titles and fix hints in the log and the job summary in Korean (needs vmsctl v0.33.0 or later; SARIF is not translated) |
-| `version` | The release to install; by default the one the action is pinned to (`@v0.37.0`) |
+| `version` | The release to install; by default the one the action is pinned to (`@v0.38.0`) |
 
 Set exactly one of `image`, `image-tar` and `root`. Pin the action to a release tag: it installs the
 vmsctl release of that tag. Pinned to a commit, set `version` (the action refuses a commit pin without it).
@@ -73,7 +73,7 @@ vmsctl:
     - apk add --no-cache curl
     - docker build -t app:ci .
     - docker save app:ci -o app.tar
-    - curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.37.0/install.sh | sh -s -- -v v0.37.0 -b /usr/local/bin
+    - curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.38.0/install.sh | sh -s -- -v v0.38.0 -b /usr/local/bin
     - vmsctl scan --image-tar app.tar --fail-on high --format junit --output vmsctl.xml
   artifacts:
     when: always
@@ -84,7 +84,7 @@ vmsctl:
 ## Any other CI
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.37.0/install.sh | sh -s -- -v v0.37.0
+curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.38.0/install.sh | sh -s -- -v v0.38.0
 docker save app:ci -o app.tar
 vmsctl scan --image-tar app.tar --fail-on high --format sarif --output vmsctl.sarif
 ```
