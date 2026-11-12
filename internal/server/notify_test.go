@@ -220,3 +220,21 @@ func TestNotifierBaselineRejectionAndReusedRows(t *testing.T) {
 		}
 	}
 }
+
+func TestNotifierTextLanguage(t *testing.T) {
+	for _, tc := range []struct {
+		lang, regression, stale string
+	}{
+		{"", "vmsctl: web-01 got worse: 2 control(s) now fail (U-01, U-02)", "vmsctl: web-01 has not reported since 2026-11-01"},
+		{"en", "vmsctl: web-01 got worse: 2 control(s) now fail (U-01, U-02)", "vmsctl: web-01 has not reported since 2026-11-01"},
+		{"ko", "vmsctl: 호스트 web-01에서 점검 항목 2개가 새로 실패했습니다 (U-01, U-02)", "vmsctl: 호스트 web-01의 결과가 2026-11-01 이후 오지 않습니다"},
+	} {
+		n := &Notifier{Lang: tc.lang}
+		if got := n.regressionText("web-01", 2, "U-01, U-02"); got != tc.regression {
+			t.Errorf("lang %q regression = %q, want %q", tc.lang, got, tc.regression)
+		}
+		if got := n.staleText("web-01", "2026-11-01"); got != tc.stale {
+			t.Errorf("lang %q stale = %q, want %q", tc.lang, got, tc.stale)
+		}
+	}
+}

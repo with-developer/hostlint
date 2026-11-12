@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 267c061 -->
+<!-- translated from docs/fleet.md @ 24f5c49 -->
 # 서버로 모아 보기
 
 > 설계는 [ADR 0010](adr/0010-fleet-server-and-dashboard.md)에 있습니다. 호스트가 결과를 보내고, 서버가 저장해 두었다가 조회
@@ -440,7 +440,8 @@ VMSCTL_WEBHOOK_URL=https://hooks.example.com/services/XXX \
 - `stale`: `--stale-after`(기본 7일) 동안 보고하지 않은 호스트입니다. 그 호스트의 최신 스캔마다 한 번씩
   보냅니다.
 
-본문은 JSON이고 `text` 줄이 들어 있어서 Slack, Mattermost, Discord의 Slack 호환 엔드포인트에 그대로 표시됩니다.
+본문은 JSON이고 `text` 줄이 들어 있어서 Slack, Mattermost, Discord의 Slack 호환 엔드포인트에 그대로 표시됩니다
+(`--webhook-lang ko`나 `VMSCTL_LANG=ko`를 주면 이 줄이 한국어로 나옵니다).
 점검 항목 ID와 상태만 담고 근거는 절대 담지 않습니다. `--webhook-secret-file`을 주면 본문에 서명을 붙입니다.
 `X-Hostlint-Signature-256: sha256=<본문의 HMAC-SHA256 16진수>` 형식입니다. URL은 https여야 하고(루프백 주소로
 보낼 때만 http 허용), `--webhook-url`이나 `VMSCTL_WEBHOOK_URL`로 줍니다. 웹훅 URL은 비밀이고 로그에도 남기지
