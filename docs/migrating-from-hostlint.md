@@ -22,7 +22,7 @@ its results, tokens, signatures or the server's database changes. What you type 
 | `hostlint-scan.service`, `hostlint-agent.service`, `hostlint-server.service` (the unit names in the docs) | `vmsctl-scan.service` and so on; unit names are yours to choose |
 
 The old environment variables, configuration file names and database file name still work. The new name wins when
-both are set (`VMSCTL_PACK` replaces `HOSTLINT_PACK` rather than adding to it). A place that has both `vmsctl.yaml`
+both are set (`VMSCTL_PACK` replaces `HOSTLINT_PACK` rather than adding to it). A directory that has both `vmsctl.yaml`
 and `hostlint.yaml` uses `vmsctl.yaml`, so a fleet that mixes v0.26 and v0.27 hosts can keep both files; the scan
 says on standard error which one it did not use. A directory that has both database files is an error: remove or rename
 one, or pass `--db`. A scan that finds only `hostlint.yaml` says so on standard error and goes on.
