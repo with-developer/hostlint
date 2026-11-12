@@ -4,15 +4,25 @@ title: Review accounts that can log in
 title_ko: 로그인할 수 있는 계정 검토
 severity: low
 description: Lists every account with a login shell, for a reviewer to confirm each is still needed.
+description_ko: >-
+  로그인 셸이 있는 모든 계정을 나열해서, 검토하는 사람이 각 계정이 아직 필요한지 확인하게 합니다.
 rationale: Accounts left behind by departed users or old services are easy targets.
+rationale_ko: >-
+  퇴사한 사용자나 오래된 서비스가 남긴 계정은 공격하기 쉬운 대상입니다.
 remediation: >-
   Remove accounts that are no longer needed (userdel). An account that must stay but should not
   log in gets a nologin shell and a locked password (usermod -L -s /usr/sbin/nologin).
+remediation_ko: >-
+  더 이상 필요 없는 계정은 지우세요(`userdel`). 남겨야 하지만 로그인은 막아야 하는 계정에는 nologin 셸을 주고 비밀번호를 잠그세요(`usermod -L -s
+  /usr/sbin/nologin`).
 manual:
   guidance: >-
     Confirm that every listed account is still needed, especially accounts of people who have
     left. Default accounts such as lp, uucp or games appear here only when they were given a
     login shell, which they should not have.
+  guidance_ko: >-
+    나열된 계정이 모두 아직 필요한지, 특히 퇴사한 사람의 계정이 없는지 확인하세요. lp, uucp, games 같은 기본 계정은 로그인 셸이 주어졌을 때만 여기에
+    나타나는데, 원래는 셸이 없어야 합니다.
   show: >-
     accounts.users.filter(u, u.login_shell).map(u, u.name + " (uid " + string(u.uid) + ", " + (u.shell == "" ? "/bin/sh, empty field" : u.shell) + ")")
 tests:

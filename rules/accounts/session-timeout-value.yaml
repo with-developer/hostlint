@@ -6,8 +6,15 @@ severity: low
 description: >-
   Lists TMOUT assignments that are empty, zero or longer than `max_seconds`, and unset TMOUT
   commands, including those inside if or case blocks, which can apply to some sessions.
+description_ko: >-
+  비어 있거나 0이거나 `max_seconds`보다 긴 TMOUT 대입과, TMOUT을 unset하는 명령을 나열합니다. 일부 세션에만 적용될 수 있는 if나 case 블록
+  안의 것도 포함합니다.
 rationale: A long or disabled timeout leaves idle sessions open.
+rationale_ko: >-
+  제한 시간이 길거나 꺼져 있으면 유휴 세션이 열린 채 남습니다.
 remediation: Set `TMOUT=600` (or less) and remove larger assignments and unset commands.
+remediation_ko: >-
+  `TMOUT=600`(또는 그보다 짧은 값)을 설정하고, 더 큰 값의 대입과 unset 명령은 지우세요.
 params:
   max_seconds: {type: int, default: 600, stricter: lower, description: Longest acceptable idle timeout in seconds}
 violations:

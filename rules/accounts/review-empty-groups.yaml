@@ -4,12 +4,20 @@ title: Review groups without accounts
 title_ko: 계정이 속하지 않은 그룹 검토
 severity: low
 description: Lists groups that have no members and are no account's primary group.
+description_ko: >-
+  구성원이 없고 어떤 계정의 기본 그룹도 아닌 그룹을 나열합니다.
 rationale: Unused groups can still own files and be reused by a new account by mistake.
+rationale_ko: >-
+  쓰지 않는 그룹도 파일을 소유할 수 있고, 새 계정이 실수로 그 그룹을 다시 쓸 수 있습니다.
 remediation: Remove groups that are not needed (groupdel), after checking which files they own.
+remediation_ko: >-
+  그 그룹이 소유한 파일을 확인한 뒤, 필요 없는 그룹은 지우세요(`groupdel`).
 manual:
   guidance: >-
     Confirm whether each listed group is still needed; many belong to installed software and
     own files or devices.
+  guidance_ko: >-
+    나열된 그룹이 아직 필요한지 확인하세요. 설치된 소프트웨어에 속한 그룹이 많고, 파일이나 장치를 소유하고 있을 수 있습니다.
   show: >-
     accounts.empty_groups.map(g, g.name + " (gid " + string(g.gid) + ")")
 tests:

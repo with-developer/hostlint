@@ -6,10 +6,16 @@ severity: high
 description: >-
   Lists accounts whose /etc/passwd password field holds a hash or is empty instead of
   pointing to /etc/shadow ("x").
+description_ko: >-
+  /etc/passwd의 비밀번호 필드가 /etc/shadow를 가리키는 "x"가 아니라 해시이거나 비어 있는 계정을 나열합니다.
 rationale: >-
   /etc/passwd is readable by every user, so a hash there can be cracked offline, and an empty
   field means no password at all.
+rationale_ko: >-
+  /etc/passwd는 모든 사용자가 읽을 수 있어서 그 안의 해시는 오프라인으로 크래킹할 수 있고, 필드가 비어 있으면 비밀번호가 아예 없다는 뜻입니다.
 remediation: Run `pwconv` to move passwords to /etc/shadow, and lock or set passwords for empty ones.
+remediation_ko: >-
+  `pwconv`로 비밀번호를 /etc/shadow로 옮기고, 필드가 비어 있던 계정은 잠그거나 비밀번호를 설정하세요.
 violations:
   over: accounts.users
   as: u
