@@ -8,8 +8,16 @@ description: >-
   stricter). shadow-utils and pam_umask use it for new sessions and home directories. The
   check reads UMASK only: with `USERGROUPS_ENAB yes` (the default of Debian and Red Hat family
   systems) users whose primary group is their own private group get group write added to it.
+description_ko: >-
+  /etc/login.defs의 UMASK가 그룹과 다른 사용자의 쓰기 권한을 없애는지(022 또는 더 엄격한 값) 확인합니다. shadow-utils와 pam_umask가
+  새 세션과 홈 디렉터리에 이 값을 씁니다. 이 점검은 UMASK만 읽습니다. `USERGROUPS_ENAB yes`(Debian과 Red Hat 계열의 기본값)이면 기본
+  그룹이 자기 이름의 전용 그룹인 사용자는 그룹 쓰기 권한이 더해집니다.
 rationale: A permissive umask makes new files writable by other users.
+rationale_ko: >-
+  umask가 느슨하면 새로 만든 파일을 다른 사용자가 수정할 수 있습니다.
 remediation: Set `UMASK 022` (or `027`) in /etc/login.defs.
+remediation_ko: >-
+  /etc/login.defs에 `UMASK 022`(또는 `027`)를 설정하세요.
 setting:
   fact: login_defs.settings.UMASK
   matches: "0*[0-7]?[2367][2367]"

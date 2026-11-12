@@ -7,8 +7,15 @@ description: >-
   Lists accounts whose shell startup files (.profile, .bashrc, .bash_profile, ...) are owned by
   someone other than the account or root, are writable by group or others, or are symbolic
   links to missing files.
+description_ko: >-
+  셸 시작 파일(.profile, .bashrc, .bash_profile 등)을 그 계정이나 root가 아닌 다른 사람이 소유하고 있거나, 그룹이나 다른 사용자가 쓸 수
+  있거나, 없는 파일을 가리키는 심볼릭 링크인 계정을 나열합니다.
 rationale: A startup file runs whenever its user logs in; whoever can change it runs commands as that user.
+rationale_ko: >-
+  시작 파일은 그 사용자가 로그인할 때마다 실행되므로, 이 파일을 바꿀 수 있는 사람은 그 사용자의 권한으로 명령을 실행할 수 있습니다.
 remediation: Run `chown <user>` and `chmod go-w` on each listed file, and remove links to missing files.
+remediation_ko: >-
+  나열된 파일마다 `chown 사용자`와 `chmod go-w`를 실행하고, 없는 파일을 가리키는 링크는 지우세요.
 violations:
   over: homes.accounts
   as: h

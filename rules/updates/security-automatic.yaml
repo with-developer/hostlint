@@ -9,12 +9,27 @@ description: >-
   RHEL and its relatives: dnf-automatic with its install timer enabled, or its timer enabled with apply_updates = yes (the default is no: it only reports), or
   yum-cron enabled with apply_updates = yes. It does not read what may be installed (the origins of unattended-upgrades, the upgrade_type of dnf-automatic): the
   defaults are the security updates, and a host patched by a pipeline instead is a choice to record as a waiver with its reason.
+description_ko: >-
+  Debian과 Ubuntu: unattended-upgrades가 설치되어 있고, APT::Periodic::Unattended-Upgrade와
+  APT::Periodic::Update-Package-Lists가 0이 아니며(컨테이너 이미지처럼 apt의 주기 실행 전체를 끄는 APT::Periodic::Enable도
+  0이 아니어야 합니다), apt-daily와 apt-daily-upgrade 타이머가 켜져 있는지 확인합니다. RHEL 계열: dnf-automatic과 그 install
+  타이머가 켜져 있거나, 타이머가 켜져 있고 apply_updates = yes이거나(기본값은 no이며 알리기만 합니다), yum-cron이 켜져 있고
+  apply_updates = yes인 경우입니다. 어떤 업데이트를 설치할지(unattended-upgrades의 origins, dnf-automatic의
+  upgrade_type)는 읽지 않습니다. 기본값은 보안 업데이트이며, 파이프라인으로 패치하는 호스트라면 그 이유를 적어 예외(waiver)로 기록하세요.
 rationale: >-
   Most compromises use a flaw that has been fixed for weeks; a host that waits for someone to remember is behind.
+rationale_ko: >-
+  침해 대부분은 몇 주 전에 이미 고쳐진 취약점을 씁니다. 누군가 기억해 주기를 기다리는 호스트는 뒤처집니다.
 remediation: >-
   On Debian or Ubuntu: `apt install unattended-upgrades` and `dpkg-reconfigure -plow unattended-upgrades`, which writes /etc/apt/apt.conf.d/20auto-upgrades with
   `APT::Periodic::Update-Package-Lists "1";` and `APT::Periodic::Unattended-Upgrade "1";`. On RHEL and its relatives: `dnf install dnf-automatic` and
   `systemctl enable --now dnf-automatic-install.timer` (or set `apply_updates = yes` in /etc/dnf/automatic.conf and enable dnf-automatic.timer).
+remediation_ko: >-
+  Debian이나 Ubuntu: `apt install unattended-upgrades` 후 `dpkg-reconfigure -plow
+  unattended-upgrades`를 실행하면 /etc/apt/apt.conf.d/20auto-upgrades에
+  `APT::Periodic::Update-Package-Lists "1";`와 `APT::Periodic::Unattended-Upgrade "1";`가 적힙니다. RHEL
+  계열: `dnf install dnf-automatic` 후 `systemctl enable --now dnf-automatic-install.timer`(또는
+  /etc/dnf/automatic.conf에 `apply_updates = yes`를 설정하고 dnf-automatic.timer를 켜세요).
 applies: >-
   !target.image && services.systemd && (packages.manager == "dpkg" || packages.manager == "rpm")
 expect: >-

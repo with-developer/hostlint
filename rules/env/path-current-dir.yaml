@@ -6,10 +6,18 @@ severity: high
 description: >-
   Lists PATH assignments in the system-wide and root's startup files that put the current
   directory (".", an empty entry, or a relative one such as "./bin" or "bin") anywhere but last.
+description_ko: >-
+  시스템 전체 시작 파일과 root의 시작 파일에서 PATH에 현재 디렉터리(".", 빈 항목, "./bin"이나 "bin" 같은 상대 경로)를 맨 뒤가 아닌 곳에 넣은
+  대입을 나열합니다.
 rationale: >-
   With the current directory early in PATH, a program named like a system command in the
   directory you are in runs instead of it, as you.
+rationale_ko: >-
+  PATH 앞쪽에 현재 디렉터리가 있으면, 지금 있는 디렉터리에 시스템 명령과 같은 이름으로 만들어 둔 프로그램이 그 명령 대신 실행됩니다. 실행하는 사람의 권한으로
+  말입니다.
 remediation: Remove "." , empty and relative entries from PATH, or move them to the end.
+remediation_ko: >-
+  PATH에서 ".", 빈 항목, 상대 경로를 지우거나 맨 뒤로 옮기세요.
 violations:
   over: shell_env.path
   as: p

@@ -10,12 +10,25 @@ description: >-
   Only these two are looked for: SELinux on any host with its configuration file, AppArmor on a Debian-style host (the supported RHEL relatives use SELinux). Without
   systemd the units of AppArmor cannot be read, so the check applies only where SELinux has a configuration file. A host that confines its services another way, such
   as a hardened container runtime around it, is a choice to record as a waiver with its reason.
+description_ko: >-
+  SELinux는 /etc/selinux/config가 SELINUX=enforcing으로 설정되어 있는지 봅니다(permissive는 정책이 거부했을 일을 기록만 하고,
+  disabled는 정책을 불러오지 않습니다). AppArmor는 apparmor 패키지가 설치되어 있고 그 유닛이 활성화되어 있는지 보며, Ubuntu와 Debian의 기본
+  상태입니다. 실행 중인 커널이 아니라 다음 부팅에서 일어날 일을 읽으므로, 모듈 없이 시작한 커널(부팅 매개변수나 모듈 없이 빌드한 커널)이나 부팅 뒤의
+  `setenforce 0`은 여기서 알 수 없습니다. 이 두 가지만 찾습니다. SELinux는 설정 파일이 있는 모든 호스트에서, AppArmor는 Debian 계열
+  호스트에서만 봅니다(지원하는 RHEL 계열은 SELinux를 씁니다). systemd가 없으면 AppArmor의 유닛을 읽을 수 없으므로, 이때는 SELinux 설정 파일이
+  있는 곳에만 적용됩니다. 호스트를 감싼 하드닝된 컨테이너 런타임처럼 서비스를 다른 방식으로 가두는 호스트라면, 그 이유를 적어 예외(waiver)로 기록하세요.
 rationale: >-
   Mandatory access control limits what a compromised service can reach, whatever its own permissions are: a flaw in a web server then does not hand over the
   rest of the host.
+rationale_ko: >-
+  강제 접근 제어는 서비스 자체의 권한과 상관없이 침해된 서비스가 닿을 수 있는 범위를 제한합니다. 그래서 웹 서버의 취약점 하나가 호스트의 나머지를 넘겨주지 않습니다.
 remediation: >-
   RHEL and its relatives: set `SELINUX=enforcing` in /etc/selinux/config and run `setenforce 1` (after a time with SELinux disabled, label the files first with
   `touch /.autorelabel` and reboot). Debian and Ubuntu: `apt install apparmor apparmor-utils` and `systemctl enable --now apparmor`.
+remediation_ko: >-
+  RHEL 계열: /etc/selinux/config에 `SELINUX=enforcing`을 설정하고 `setenforce 1`을 실행하세요(SELinux를 꺼 두었던
+  호스트는 먼저 `touch /.autorelabel`로 파일에 레이블을 다시 붙이고 재부팅합니다). Debian과 Ubuntu: `apt install apparmor
+  apparmor-utils`, `systemctl enable --now apparmor`.
 applies: >-
   !target.image && (packages.manager == "dpkg" || packages.manager == "rpm") && (services.systemd || mac.selinux.present)
 expect: >-
