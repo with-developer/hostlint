@@ -1,4 +1,4 @@
-<!-- translated from docs/migrating-from-hostlint.md @ 2ca0d64 -->
+<!-- translated from docs/migrating-from-hostlint.md @ bd440c1 -->
 # hostlint에서 vmsctl로 옮기기
 
 hostlint는 v0.27.0에서 vmsctl로 이름을 바꿨습니다([ADR 0017](adr/0017-rename-to-vmsctl.md)). hostlint는 관계없는 호스팅 회사의

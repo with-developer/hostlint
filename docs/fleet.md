@@ -56,8 +56,8 @@ sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan \
 ```
 
 The scan runs first and its report is printed as usual (`--format`, `--output` and `--fail-on` work as
-always); then the result is sent. A result that cannot be sent is an error (exit status 2), and a token
-that is missing is found out before the scan starts. To send a result you saved earlier:
+always); then the result is sent. A result that cannot be sent is an error (exit status 2), and a missing
+token is detected before the scan starts. To send a result you saved earlier:
 
 ```sh
 VMSCTL_TOKEN=hlt_ing_... vmsctl push result.json \
@@ -145,7 +145,7 @@ NoNewPrivileges=yes
 WantedBy=multi-user.target
 ```
 
-What the server can ask is one thing: a scan with a profile that **this host's own** `--allow-profile` list names
+The server can ask for exactly one thing: a scan with a profile that **this host's own** `--allow-profile` list names
 (one to eight built-in profiles), and at most once a minute. It cannot send waivers, parameters, paths or commands:
 `vmsctl.yaml` stays a file of the host, and the result goes back as `vmsctl scan --push` sends it: the same
 token, the same `--pin`, the same signature. An agent also refuses a request for a profile it does not allow, or one
@@ -184,8 +184,8 @@ A scan of an image archive (`vmsctl scan --image-tar app.tar --push ...`, [docs/
 lists images apart from hosts (**Images**, once there is one), and the fleet's numbers (overview, trend, matrix, controls,
 stale and silent-host alerts) are those of the hosts. `GET /api/v1/hosts?kind=image` lists the images; every host entry has
 a `kind`, and a scan row of an image its `imageRef` and `imageDigest`. A token for CI is bound to a prefix
-(`server token create --host 'ghcr.io/acme/*'`); a prefix ends with `/*` after an owner (so `ghcr.io/acme*` is refused: it would take `ghcr.io/acme-evil` too), it is an
-ingest token's alone, and a prefix token is for images (a host result under the prefix is refused; an agent speaks for one
+(`server token create --host 'ghcr.io/acme/*'`); a prefix ends with `/*` after an owner (so `ghcr.io/acme*` is refused: it would take `ghcr.io/acme-evil` too), only an
+ingest token can have one, and a prefix token is for images (a host result under the prefix is refused; an agent speaks for one
 host). Images are listed newest scan first (`?sort=recent`). A name is a host or an image, never both.
 
 ## Signing people in with your company's identity
@@ -291,7 +291,7 @@ not reported for `staleDays`.
 ## Running it
 
 A service with systemd (`/etc/systemd/system/vmsctl-server.service`); the state directory is
-created and owned by a throw-away user:
+created and owned by a temporary user:
 
 ```ini
 [Unit]
@@ -393,7 +393,7 @@ VMSCTL_WEBHOOK_URL=https://hooks.example.com/services/XXX \
   vmsctl server run --webhook-secret-file webhook.secret --stale-after 72h
 ```
 
-- `regression`: a result in which a control is FAIL or ERROR that was not in the host's previous scan.
+- `regression`: a result in which a control is FAIL or ERROR that was not FAIL or ERROR in the host's previous scan.
   It lists the controls (profile, ID, title, severity, old and new status), at most 20.
 - `stale`: a host that has not reported for `--stale-after` (7 days by default), once for each of its
   latest scans.

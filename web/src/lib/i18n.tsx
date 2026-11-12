@@ -26,7 +26,7 @@ const en = {
   "overview.distribution": "Control results across the fleet",
   "overview.topFailing": "Controls that fail on most hosts",
   "overview.regressions": "Recent regressions",
-  "overview.regressionsHelp": "Controls that are failing in a host's latest scan and were not in the one before.",
+  "overview.regressionsHelp": "Controls that are failing in a host's latest scan and were not failing in the one before.",
   "overview.none": "Nothing to show.",
   "overview.empty": "No results yet. Push one with: vmsctl push result.json --server …",
   "hosts.title": "Hosts",
@@ -56,7 +56,7 @@ const en = {
   "overview.trend": "Pass rate over time",
   "overview.trendHelp": "The fleet as it was each day: every host's latest scan until then.",
   "trend.days": "{n} days",
-  "trend.detail": "{hosts} hosts · {failing} with failures",
+  "trend.detail": "Hosts: {hosts} · with failures: {failing}",
   "trend.scanDetail": "{scan} · {fail} failing",
   "trend.none": "A trend needs at least two days of results: nothing to draw yet.",
   "hosts.filterLabel": "Show only {label}",
@@ -75,7 +75,7 @@ const en = {
   "host.packs": "Policy pack",
   "nav.images": "Images",
   "images.title": "Images",
-  "images.subtitle": "Container images that CI scanned and pushed: every tag is a scan of one image",
+  "images.subtitle": "Container images that CI scanned and pushed: each scan is of one tag of an image",
   "images.none": "No image matches.",
   "images.search": "Search by name",
   "host.image": "Image",
@@ -138,7 +138,7 @@ const en = {
   "hosts.showing": "Showing {n} of {total}",
   "hosts.none": "No host matches.",
   "matrix.title": "Matrix",
-  "matrix.subtitle": "Every control on every host. Hosts that fail most are first.",
+  "matrix.subtitle": "Every control on every host. Hosts that fail most come first.",
   "matrix.legend": "Click a cell to open the host.",
   "matrix.moreHosts": "Show more hosts",
   "matrix.search": "Filter hosts by name",
@@ -340,10 +340,18 @@ const dictionaries: Record<Lang, Record<Key, string>> = { en, ko };
 
 export type Translate = (key: Key | string, n?: number | Record<string, string | number>) => string;
 
+/** English wording for a count of exactly one (Korean has no plural). Used when {n} is 1. */
+const enOne: Record<string, string> = {
+  "overview.stale": "Hosts not reporting for 1 day",
+  "trend.days": "1 day",
+  "profile.hosts": "1 host",
+  "profile.other": "1 host scanned with another profile is not counted here. Pick that profile to see it.",
+};
+
 /** Fills {name} slots; a number fills {n}. Unknown keys show as themselves. */
 export function translate(lang: Lang, key: string, vars?: number | Record<string, string | number>): string {
-  const text = (dictionaries[lang] as Record<string, string>)[key] ?? key;
   const slots: Record<string, string | number> = typeof vars === "number" ? { n: vars } : (vars ?? {});
+  const text = (lang === "en" && slots.n === 1 ? enOne[key] : undefined) ?? (dictionaries[lang] as Record<string, string>)[key] ?? key;
   return text.replace(/\{(\w+)\}/g, (_, name: string) => String(slots[name] ?? `{${name}}`));
 }
 

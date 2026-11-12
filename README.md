@@ -13,7 +13,7 @@ it — and a dashboard that shows the whole fleet.
 
 ```text
 $ sudo vmsctl scan
-vmsctl v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+vmsctl v0.39.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
@@ -197,7 +197,7 @@ The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 editio
 - **Services, patching and logging (U-34–U-67):** finger, r-services, telnet, tftp, NFS, NIS,
   SNMP and other legacy services (enabled units, running units, init scripts, inetd and xinetd),
   SNMP community strings and access (read from `snmpd.conf`, never copied into the result), Postfix
-  open relay and VRFY, BIND zone transfers and updates, NFS exports, vsftpd banner, TLS, root login and anonymous access, Samba guest shares, cron and sudoers permissions, time synchronization.
+  open relay and VRFY, BIND zone transfers and updates, NFS exports, vsftpd (banner, TLS, root login, anonymous access), Samba guest shares, cron and sudoers permissions, time synchronization.
 
 Controls that need a person's judgment (accounts to keep, banners, logging policy, patch level, who may
 reach a service) and the settings of servers whose configuration is not parsed yet (mail servers other
@@ -211,9 +211,9 @@ agree on, outside any national standard: SSH (no root login, no password logins,
 attempts, no X11 forwarding, no broken ciphers, logging on, and no `Match` block that undoes them), UID 0 and password files, password
 length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions,
 time synchronization and the kernel parameters that matter (address randomization, `kptr_restrict`, ICMP redirects,
-reverse path filtering, SYN cookies, ...), a host firewall, automatic security updates, mandatory access control (SELinux or AppArmor), empty passwords and print and discovery services (CUPS, Avahi). It has 29 controls with its own
+reverse path filtering, SYN cookies, ...), a host firewall, automatic security updates, mandatory access control (SELinux or AppArmor) and the print and discovery services (CUPS, Avahi). It has 29 controls with its own
 IDs (`ES-01`–`ES-29`), mostly over the checks of the other profile plus ten new SSH checks, eleven of kernel parameters, and
-the firewall, the updates, mandatory access control, empty passwords and the print and discovery services; those do not apply to a container image, which has no kernel, firewall, updates or access control of its own.
+the firewall, the updates, mandatory access control, empty passwords and the print and discovery services. The kernel, firewall, updates and access control ones do not apply to a container image, which has none of its own.
 
 Your own standard goes into a [policy pack](docs/packs.md): a directory of checks and profiles in the same
 YAML format, tested with `vmsctl pack test`, reviewed with `vmsctl pack show`, used with `vmsctl scan

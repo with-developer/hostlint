@@ -41,7 +41,7 @@ These are non-negotiable. Changing one requires the owner's approval and an ADR.
    tokens. Sensitive paths are denied to generic file reads, and results carry evidence
    summaries rather than raw file contents.
 3. **Server compromise must not become fleet compromise.** In fleet mode the agent dials out
-   over mutual TLS and performs only the observations its own collectors and denylist allow,
+   over HTTPS with its own token and a pinned server key, and performs only the observations its own collectors and denylist allow,
    whatever the server asks for.
 4. **No false PASS.** A wrong PASS is worse than a missing check. Controls that cannot be
    decided automatically are reported as `MANUAL`, never guessed.
@@ -62,5 +62,5 @@ These are non-negotiable. Changing one requires the owner's approval and an ADR.
 
 vmsctl is a ground-up rewrite of VMS (2023–2024), which ran server vulnerability checks from
 a central Flask/MongoDB server. It keeps the goal — see many servers' hardening status in one
-place — and changes the architecture: outbound mTLS agents instead of listening ones,
+place — and changes the architecture: outbound agents instead of listening ones,
 declarative checks instead of per-distro shell scripts, structured results instead of parsed text.

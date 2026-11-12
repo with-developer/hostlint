@@ -1,4 +1,4 @@
-<!-- translated from README.md @ fcee967 -->
+<!-- translated from README.md @ bd440c1 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -13,7 +13,7 @@
 
 ```text
 $ sudo vmsctl scan
-vmsctl v0.2.1 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+vmsctl v0.39.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login

@@ -24,7 +24,7 @@ example:
 - a file on the scanned host that makes vmsctl write, delete or change something;
 - input that makes vmsctl execute a program or follow a path outside the scanned root, including a
   crafted container image archive (`--image-tar`), which is untrusted input: a name, a link or a layer
-  that reaches the scanner's own files, a hard link that gets a denylisted file read, or a hostile
+  that reaches the scanner's own files, a hard link that lets a denylisted file be read, or a hostile
   archive that makes a check pass that should not;
 - a password hash, key or credential that ends up in a result, log or error;
 - a configuration that vmsctl reports as `PASS` while it is not met (a false PASS).

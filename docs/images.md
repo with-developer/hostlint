@@ -72,14 +72,14 @@ checks for absent files pass.
 ## Sending the result to a fleet server
 
 An image is an asset of its own on a [fleet server](fleet.md), next to the hosts: the dashboard has an **Images** list, and an
-image is never "stale" (nothing reports for it on a schedule) and not one of the fleet's hosts in its numbers.
+image is never "stale" (nothing reports for it on a schedule) and is not counted among the fleet's hosts in its numbers.
 
 ```sh
 docker save ghcr.io/acme/app:1.4 -o app.tar
 VMSCTL_TOKEN=hlt_ing_... vmsctl scan --image-tar app.tar --push https://vmsctl.example.org:8443 --fail-on high
 ```
 
-The image goes by its repository (`ghcr.io/acme/app`: the reference of the archive without its tag), so the tags of one
+The image is named by its repository (`ghcr.io/acme/app`: the reference of the archive without its tag), so the tags of one
 image are one history: every scan records the tag and the image ID (the digest of its configuration). An archive that names
 no image (saved without a tag) needs `--name ghcr.io/acme/app`, and `--name` overrides the name of a tagged one. The token
 of CI is bound to a prefix, so one token serves an organization and no further:

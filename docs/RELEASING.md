@@ -101,7 +101,7 @@ pre-release) for amd64 and arm64 from `packaging/container/Dockerfile`, signs th
 its build provenance and SBOM. It is a separate workflow so that a failure there never holds back a release; rerun it
 for the tag. The package took the visibility of the repository (public) at its first publication; if it is ever private, change
 it once in the package's settings (GitHub does not allow that from a workflow). The run for a new tag starts by itself
-after the Release workflow, which is first exercised by the next release: if it does not, run it by hand for the tag. The base image is pinned by
+after the Release workflow; if it does not, run it by hand for the tag. The base image is pinned by
 digest in the Dockerfile; Dependabot proposes new digests.
 
 ## Locally

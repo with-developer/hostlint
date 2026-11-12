@@ -43,6 +43,6 @@ cosign verify ghcr.io/with-developer/vmsctl:0.39.0 \
 gh attestation verify oci://ghcr.io/with-developer/vmsctl:0.39.0 --repo with-developer/vmsctl
 ```
 
-The binary inside is the one of the release archive (`checksums.txt` is verified, then each file, before the image is
+The binary inside is the same one as in the release archive (`checksums.txt` is verified, then each file, before the image is
 built); it prints the version of the tag it is named for. The image writes nothing, so `--read-only`
 is fine.
