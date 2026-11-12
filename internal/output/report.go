@@ -243,10 +243,12 @@ type reportHostControl struct {
 // reportHostCheck is a host's result for one check: c indexes the report's
 // checks; evidence is [text, source] string indexes.
 type reportHostCheck struct {
-	Check    int              `json:"c"`
-	Status   engine.Status    `json:"s"`
-	Original engine.Status    `json:"o,omitempty"`
-	Reason   int              `json:"r,omitempty"`
+	Check    int           `json:"c"`
+	Status   engine.Status `json:"s"`
+	Original engine.Status `json:"o,omitempty"`
+	Reason   int           `json:"r,omitempty"`
+	// ReasonKo is the reason in Korean (an index into Strings), for a MANUAL check whose rule has Korean guidance.
+	ReasonKo int              `json:"rk,omitempty"`
 	Evidence [][2]int         `json:"e,omitempty"`
 	Omitted  int              `json:"m,omitempty"`
 	Coverage *engine.Coverage `json:"v,omitempty"`
@@ -486,7 +488,7 @@ func (b *reportBuilder) addHost(in ReportInput, ambiguous bool) {
 	for _, c := range r.Checks {
 		checkIndex[c.Ref] = len(h.Checks)
 		hc := reportHostCheck{
-			Check: b.check(c), Status: c.Status, Original: c.OriginalStatus, Reason: b.str(c.Reason),
+			Check: b.check(c), Status: c.Status, Original: c.OriginalStatus, Reason: b.str(c.Reason), ReasonKo: b.str(c.ReasonKo),
 			Omitted: c.EvidenceOmitted, Coverage: c.Coverage, Waiver: c.Waiver, Attestation: c.Attestation,
 		}
 		for _, e := range c.Evidence {

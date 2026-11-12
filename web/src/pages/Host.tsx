@@ -182,7 +182,7 @@ function ControlDetail({ control, doc }: { control: ControlRow; doc: ScanDoc }) 
           <div className="check-head">
             <StatusBadge status={ch.status} /> <span className="mono">{ch.ref}</span> <span className="muted">{localized(lang, ch.title, ch.titleKo)}</span>
           </div>
-          {ch.reason && <p className="muted small">{ch.reason}</p>}
+          {ch.reason && <p className="muted small">{localized(lang, ch.reason, ch.reasonKo)}</p>}
           {ch.remediation && (
             <p className="prose remedy small">
               <strong>{t("host.howToFix")}</strong> <Inline text={localized(lang, ch.remediation, ch.remediationKo)} />

@@ -107,6 +107,7 @@ func waiveChecks(waivers []Waiver, checks map[string]*CheckResult, hostname stri
 			cr.OriginalStatus, cr.Status = cr.Status, StatusWaived
 			cr.Waiver = w.of("check")
 			cr.Reason = "waived: " + w.Reason
+			cr.ReasonKo = ""
 			applied = true
 		}
 		switch {

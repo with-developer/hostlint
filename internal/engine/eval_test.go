@@ -91,6 +91,24 @@ func TestManualShowEvidence(t *testing.T) {
 	}
 }
 
+// A manual check carries its Korean guidance as the Korean reason (also after the note that its evidence was unavailable), and
+// no other status does.
+func TestManualGuidanceKo(t *testing.T) {
+	svc := manyUsers(3)
+	got := scanOne(t, &Check{ID: "x.review", Manual: &ManualSpec{Guidance: "look", GuidanceKo: "확인하세요"}}, svc, demoHost())
+	if got.Status != StatusManual || got.Reason != "look" || got.ReasonKo != "확인하세요" {
+		t.Errorf("manual: %s %q %q", got.Status, got.Reason, got.ReasonKo)
+	}
+	got = scanOne(t, &Check{ID: "x.review", Manual: &ManualSpec{Guidance: "look", GuidanceKo: "확인하세요", Show: "svc.config.nosuchkey.value"}}, svc, demoHost())
+	if !strings.HasPrefix(got.ReasonKo, "확인하세요 (evidence unavailable: ") || !strings.HasPrefix(got.Reason, "look (evidence unavailable: ") {
+		t.Errorf("manual with a failing show: %q / %q", got.Reason, got.ReasonKo)
+	}
+	got = scanOne(t, &Check{ID: "x.review", Manual: &ManualSpec{Guidance: "look"}}, svc, demoHost())
+	if got.ReasonKo != "" {
+		t.Errorf("no Korean guidance, yet reasonKo = %q", got.ReasonKo)
+	}
+}
+
 // An OS without a version keeps its id and family: only checks that read
 // the version cannot decide.
 func TestOSWithoutVersion(t *testing.T) {

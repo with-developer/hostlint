@@ -104,6 +104,7 @@ func attestChecks(atts []Attestation, checks map[string]*CheckResult, hostname s
 				cr.OriginalStatus, cr.Status, cr.StatusSource = StatusManual, a.Status, "attested"
 				cr.Attestation = &AttestationOf{Status: a.Status, By: a.By, At: a.At.Format(dateLayout), Expires: a.Expires.Format(dateLayout), Note: a.Note}
 				cr.Reason = truncate(fmt.Sprintf("attested %s by %s on %s: %s", a.Status, a.By, a.At.Format(dateLayout), a.Note), maxReasonLen)
+				cr.ReasonKo = "" // the Korean guidance of the review is not the reason any more
 			}
 		}
 		switch {

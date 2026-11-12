@@ -896,12 +896,15 @@ func TestIngestBoundsTheFixHints(t *testing.T) {
 		key, value string
 		ok         bool
 	}{
-		"a Korean hint":                  {"remediationKo", "/etc/ssh/sshd_config에 `PermitRootLogin no`를 설정하고 sshd를 다시 불러오세요.", true},
-		"a Korean hint of 1300 letters":  {"remediationKo", strings.Repeat("가", 1300), true},
-		"a Korean hint of 2000 letters":  {"remediationKo", strings.Repeat("가", 2000), false},
-		"a Korean hint with an escape":   {"remediationKo", "고치세요\x1b[2J", false},
-		"an English hint with an escape": {"remediation", "fix it\x1b[2J", false},
-		"line breaks and tabs are text":  {"remediationKo", "첫째 줄\n\t둘째 줄", true},
+		"a Korean hint":                   {"remediationKo", "/etc/ssh/sshd_config에 `PermitRootLogin no`를 설정하고 sshd를 다시 불러오세요.", true},
+		"a Korean hint of 1300 letters":   {"remediationKo", strings.Repeat("가", 1300), true},
+		"a Korean hint of 2000 letters":   {"remediationKo", strings.Repeat("가", 2000), false},
+		"a Korean hint with an escape":    {"remediationKo", "고치세요\x1b[2J", false},
+		"an English hint with an escape":  {"remediation", "fix it\x1b[2J", false},
+		"line breaks and tabs are text":   {"remediationKo", "첫째 줄\n\t둘째 줄", true},
+		"a Korean reason":                 {"reasonKo", "나열된 계정이 아직 필요한지 확인하세요.", true},
+		"a Korean reason with an escape":  {"reasonKo", "확인하세요\x1b[2J", false},
+		"a Korean reason of 2000 letters": {"reasonKo", strings.Repeat("가", 2000), false},
 	} {
 		n++
 		if code := post1(n, tc.key, tc.value); (code == http.StatusCreated) != tc.ok {

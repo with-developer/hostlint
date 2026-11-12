@@ -131,7 +131,7 @@ func writeCheck(b *strings.Builder, p painter, c engine.CheckResult, lang string
 	st := statusStyle[c.Status]
 	fmt.Fprintf(b, "    %s %s %s\n", p.paint(st.color, st.mark), oneLine(c.ID), p.paint(dim, "— "+oneLine(titleIn(lang, c.Title, c.TitleKo))))
 	if c.Reason != "" && c.Status != engine.StatusFail {
-		fmt.Fprintf(b, "        %s\n", oneLine(c.Reason))
+		fmt.Fprintf(b, "        %s\n", oneLine(titleIn(lang, c.Reason, c.ReasonKo)))
 	}
 	if c.Status == engine.StatusPass || c.Status == engine.StatusNotApplicable {
 		return

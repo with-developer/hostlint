@@ -17,7 +17,7 @@ func waiverScan(t *testing.T, opts Options) *Result {
 	svc := demoSvc()
 	checks := []*Check{
 		{ID: "x.fail", Expect: `svc.config.permitrootlogin.value == "yes"`},
-		{ID: "x.manual", Manual: &ManualSpec{Guidance: "look"}},
+		{ID: "x.manual", Manual: &ManualSpec{Guidance: "look", GuidanceKo: "확인하세요"}},
 		{ID: "x.error", Expect: `svc.config.nosuchkey.value == "x"`},
 		{ID: "x.age", Params: map[string]ParamSpec{"max_days": {Type: "int", Default: 90, Stricter: "lower"}},
 			Setting: &SettingSpec{Fact: "svc.config.PASS_MAX_DAYS", Range: &RangeSpec{Min: &Bound{Value: 1}, Max: &Bound{Param: "max_days"}}, Absent: "fail"}},
@@ -83,6 +83,10 @@ func TestCheckWaivers(t *testing.T) {
 			}
 			if tt.want == StatusWaived && (got.OriginalStatus == "" || got.Waiver == nil || !strings.HasPrefix(got.Reason, "waived: ")) {
 				t.Errorf("waived result %+v", got)
+			}
+			// The Korean guidance of a review is not the reason of a waived check: only the waiver's own text is.
+			if (tt.want == StatusWaived) != (got.ReasonKo == "") && tt.check == "x.manual" {
+				t.Errorf("reasonKo = %q for %s", got.ReasonKo, got.Status)
 			}
 			if notes := len(res.Waivers); (tt.note == "") != (notes == 0) || notes > 0 && res.Waivers[0].Problem != tt.note {
 				t.Errorf("notes %+v, want %q", res.Waivers, tt.note)

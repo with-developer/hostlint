@@ -213,7 +213,7 @@ func writeMarkdown(w io.Writer, res *engine.Result, lang string) error {
 			wrote = true
 			fmt.Fprintf(&b, "**%s** %s &mdash; %s\n\n", mdText(ck.ID), ck.Status, mdText(titleIn(lang, ck.Title, ck.TitleKo)))
 			if ck.Reason != "" && ck.Status != engine.StatusFail {
-				fmt.Fprintf(&b, "%s\n\n", mdText(ck.Reason))
+				fmt.Fprintf(&b, "%s\n\n", mdText(titleIn(lang, ck.Reason, ck.ReasonKo)))
 			}
 			var ev []string
 			for j, e := range ck.Evidence {
