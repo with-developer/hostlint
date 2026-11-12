@@ -57,9 +57,9 @@ esac
 
 # U-01: no direct root login over SSH. sshd keeps the first value it reads.
 sed -i '1i PermitRootLogin no' /etc/ssh/sshd_config
-# The essentials profile: keys only, few attempts, no X11 forwarding (the first value wins here too), and a
+# The essentials profile: keys only, few attempts, no X11 forwarding, no broken algorithms (the first value wins here too), and a
 # Match block that does not weaken any of it.
-sed -i '1i PasswordAuthentication no\nKbdInteractiveAuthentication no\nChallengeResponseAuthentication no\nMaxAuthTries 4\nLoginGraceTime 60\nX11Forwarding no' /etc/ssh/sshd_config
+sed -i '1i PasswordAuthentication no\nKbdInteractiveAuthentication no\nChallengeResponseAuthentication no\nMaxAuthTries 4\nLoginGraceTime 60\nX11Forwarding no\nCiphers aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-512,hmac-sha2-256\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256' /etc/ssh/sshd_config
 printf '\nMatch User e2e-backup\n    MaxAuthTries 3\n' >> /etc/ssh/sshd_config
 # On a server sshd has started once: it has host keys and, on Debian, its
 # privilege separation directory. `sshd -T` needs both.

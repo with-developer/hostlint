@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile essentials revision 6: FAIL 7 MANUAL 2 PASS 8 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
+profile essentials revision 7: FAIL 7 MANUAL 2 PASS 8 NOT_APPLICABLE 7 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
 
 ES-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -211,3 +211,11 @@ ES-26 PASS
 
 ES-27 PASS
   services.no-print-discovery PASS
+
+ES-28 NOT_APPLICABLE
+  ssh.weak-algorithms NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-29 NOT_APPLICABLE
+  ssh.log-level NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false

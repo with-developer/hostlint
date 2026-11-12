@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are vmsctl's own. Parameters can be made stricter in
 [vmsctl.yaml](configuration.md).
 
-## essentials (revision 6)
+## essentials (revision 7)
 
 vmsctl essentials — a short hardening baseline for Linux servers
 
@@ -40,6 +40,8 @@ vmsctl essentials — a short hardening baseline for Linux servers
 | ES-25 | medium | Mandatory access control is on (필수 접근 제어가 켜져 있음) | [`mac.enabled`](#macenabled) |
 | ES-26 | high | No account has an empty password (비밀번호가 비어 있는 계정이 없음) | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
 | ES-27 | medium | Printing and network discovery are off unless needed (필요하지 않으면 인쇄와 네트워크 검색이 꺼져 있음) | [`services.no-print-discovery`](#servicesno-print-discovery) |
+| ES-28 | medium | SSH offers no broken ciphers, MACs or key exchanges (SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음) | [`ssh.weak-algorithms`](#sshweak-algorithms) |
+| ES-29 | medium | SSH logs who logs in (SSH가 누가 로그인하는지 기록함) | [`ssh.log-level`](#sshlog-level) |
 
 ### Checks
 
@@ -539,6 +541,16 @@ Checks the global IgnoreRhosts setting of the OpenSSH server. On a live host the
 
 **Fix.** Set `IgnoreRhosts yes` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
 
+#### `ssh.log-level`
+
+SSH logs who logs in (SSH가 누가 로그인하는지 기록함) — severity medium, evaluates an expression.
+
+Checks the global LogLevel setting of the OpenSSH server: INFO (the default) and VERBOSE record logins and failed attempts; QUIET, FATAL and ERROR do not, and DEBUG levels log what a production host should not. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** Without a record of logins and failed attempts, a break-in over SSH leaves nothing to investigate.
+
+**Fix.** Set `LogLevel VERBOSE` (or `INFO`) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
 #### `ssh.login-grace-time`
 
 SSH gives a client little time to log in (SSH가 클라이언트에게 로그인할 시간을 짧게 줌) — severity low, compares one setting.
@@ -630,6 +642,16 @@ Checks the global PermitUserEnvironment setting of the OpenSSH server. On a live
 **Why.** Environment settings from a user's own files can change how the login shell and PAM modules behave, which defeats restrictions set for the account.
 
 **Fix.** Set `PermitUserEnvironment no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.weak-algorithms`
+
+SSH offers no broken ciphers, MACs or key exchanges (SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음) — severity medium, evaluates an expression.
+
+Checks that the global Ciphers, MACs and KexAlgorithms settings of the OpenSSH server include no algorithm that is broken or obsolete: the ciphers 3des-cbc, blowfish-cbc, cast128-cbc and the arcfour family; the MACs hmac-md5, hmac-md5-96, hmac-sha1-96 and umac-64 (also in their -etm form); the key exchanges diffie-hellman-group1-sha1 and gss-group1-sha1. On a live host the effective list comes from `sshd -T`, so the defaults of the installed version count (those of OpenSSH 7.4 on RHEL 7 still include some of them). A list that removes algorithms (it starts with "-") cannot be judged from the file, and without `sshd -T` an unset list is unknown.
+
+**Why.** A client that offers a broken algorithm lets an attacker who can sit on the network force the connection down to it, and recover what was sent.
+
+**Fix.** Set the lists in /etc/ssh/sshd_config (or a file it includes) to modern algorithms only, for example `Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr`, or remove the lines that add the listed ones, and reload sshd. Check that your clients support them first.
 
 #### `ssh.x11-forwarding`
 

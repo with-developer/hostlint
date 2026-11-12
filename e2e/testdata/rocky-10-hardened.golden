@@ -3,7 +3,7 @@ profile kisa-2026 revision 15: MANUAL 11 PASS 37 NOT_APPLICABLE 19
 
 U-01 PASS
   ssh.permit-root-login PASS
-    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:7]
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:10]
   ssh.match-permit-root-login PASS
   services.review-remote-root-login NOT_APPLICABLE: applies is false: services.started.exists(s, s.service in ["telnet", "telnetd", "rlogin", "rlogind", "krlogind", "ktelnet", "ktelnetd"] || (s.service == "login" && s.kind in ["inetd", "xinetd"]) || s.program.matches("/((in\\.)?(telnetd|rlogind)|k(telnetd|rlogind))$"))
     - services.started = [{chronyd chronyd.service unit /usr/sbin/chronyd /etc/systemd/system/multi-user.target.wants/chronyd.service}, {dbus dbus.socket unit /etc/systemd/system/sockets.target.wants/dbus.socket}, {dev-hugepages dev-hugepages.mount unit /usr/lib/systemd/system/sysinit.target.wants/dev-h…

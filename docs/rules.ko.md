@@ -6,7 +6,7 @@
 ([ADR 0006](adr/0006-rule-format-evaluation-results.md), 영어). 점검 항목 ID는 기준 문서에서 오고, 제목과 설명은 vmsctl이 직접 쓴 것입니다.
 매개변수는 [vmsctl.yaml](configuration.ko.md)에서 더 엄격하게 바꿀 수 있습니다. 영어판은 [rules.md](rules.md)입니다.
 
-## essentials (리비전 6)
+## essentials (리비전 7)
 
 vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 
@@ -39,6 +39,8 @@ vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 | ES-25 | 중간 | 필수 접근 제어가 켜져 있음 | [`mac.enabled`](#macenabled) |
 | ES-26 | 높음 | 비밀번호가 비어 있는 계정이 없음 | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
 | ES-27 | 중간 | 필요하지 않으면 인쇄와 네트워크 검색이 꺼져 있음 | [`services.no-print-discovery`](#servicesno-print-discovery) |
+| ES-28 | 중간 | SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음 | [`ssh.weak-algorithms`](#sshweak-algorithms) |
+| ES-29 | 중간 | SSH가 누가 로그인하는지 기록함 | [`ssh.log-level`](#sshlog-level) |
 
 ### 점검
 
@@ -538,6 +540,16 @@ OpenSSH 서버의 전역 IgnoreRhosts 설정을 확인합니다. 실행 중인 �
 
 **조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `IgnoreRhosts yes`를 설정하고 sshd를 다시 불러오세요.
 
+#### `ssh.log-level`
+
+SSH가 누가 로그인하는지 기록함 — 심각도 중간, 식을 평가합니다.
+
+OpenSSH 서버의 전역 LogLevel 설정을 확인합니다. INFO(기본값)와 VERBOSE는 로그인과 실패한 시도를 기록하지만, QUIET, FATAL, ERROR는 기록하지 않고, DEBUG 단계는 운영 호스트가 남기지 말아야 할 것까지 기록합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로 설치된 버전의 기본값도 반영됩니다.
+
+**이유.** 로그인과 실패한 시도의 기록이 없으면, SSH로 침입당해도 조사할 것이 남지 않습니다.
+
+**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `LogLevel VERBOSE`(또는 `INFO`)를 설정하고 sshd를 다시 불러오세요.
+
 #### `ssh.login-grace-time`
 
 SSH가 클라이언트에게 로그인할 시간을 짧게 줌 — 심각도 낮음, 설정 하나를 비교합니다.
@@ -629,6 +641,16 @@ OpenSSH 서버의 전역 PermitUserEnvironment 설정을 확인합니다. 실행
 **이유.** 사용자가 자기 파일로 지정하는 환경 변수는 로그인 셸과 PAM 모듈의 동작을 바꿀 수 있어서, 그 계정에 걸어 둔 제한을 무력화합니다.
 
 **조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `PermitUserEnvironment no`를 설정하고 sshd를 다시 불러오세요.
+
+#### `ssh.weak-algorithms`
+
+SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음 — 심각도 중간, 식을 평가합니다.
+
+OpenSSH 서버의 전역 Ciphers, MACs, KexAlgorithms 설정에 깨졌거나 낡은 알고리즘이 들어 있지 않은지 확인합니다. 암호는 3des-cbc, blowfish-cbc, cast128-cbc와 arcfour 계열, MAC은 hmac-md5, hmac-md5-96, hmac-sha1-96, umac-64(-etm 형태 포함), 키 교환은 diffie-hellman-group1-sha1과 gss-group1-sha1입니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 목록을 쓰므로 설치된 버전의 기본값도 반영됩니다(RHEL 7의 OpenSSH 7.4 기본값에는 이 중 일부가 아직 들어 있습니다). "-"로 시작해 알고리즘을 빼는 목록은 파일만으로 판단할 수 없고, `sshd -T`가 없으면 설정하지 않은 목록은 알 수 없습니다.
+
+**이유.** 깨진 알고리즘을 제공하면 네트워크 중간에 끼어든 공격자가 연결을 그 알고리즘으로 낮추도록 강제해서, 오간 내용을 알아낼 수 있습니다.
+
+**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)의 목록을 최신 알고리즘만 남기도록 정하세요. 예를 들어 `Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr`입니다. 나열된 알고리즘을 추가하는 줄은 지우고 sshd를 다시 불러오세요. 먼저 쓰고 있는 클라이언트가 지원하는지 확인하세요.
 
 #### `ssh.x11-forwarding`
 

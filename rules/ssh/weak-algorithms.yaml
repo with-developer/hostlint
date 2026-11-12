@@ -1,0 +1,84 @@
+id: ssh.weak-algorithms
+version: 1
+title: SSH offers no broken ciphers, MACs or key exchanges
+title_ko: SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음
+severity: medium
+description: >-
+  Checks that the global Ciphers, MACs and KexAlgorithms settings of the OpenSSH server include no
+  algorithm that is broken or obsolete: the ciphers 3des-cbc, blowfish-cbc, cast128-cbc and the arcfour
+  family; the MACs hmac-md5, hmac-md5-96, hmac-sha1-96 and umac-64 (also in their -etm form); the key
+  exchanges diffie-hellman-group1-sha1 and gss-group1-sha1. On a live host the effective list comes from
+  `sshd -T`, so the defaults of the installed version count (those of OpenSSH 7.4 on RHEL 7 still include
+  some of them). A list that removes algorithms (it starts with "-") cannot be judged from the file, and
+  without `sshd -T` an unset list is unknown.
+description_ko: >-
+  OpenSSH 서버의 전역 Ciphers, MACs, KexAlgorithms 설정에 깨졌거나 낡은 알고리즘이 들어 있지 않은지 확인합니다. 암호는 3des-cbc,
+  blowfish-cbc, cast128-cbc와 arcfour 계열, MAC은 hmac-md5, hmac-md5-96, hmac-sha1-96, umac-64(-etm 형태 포함), 키 교환은
+  diffie-hellman-group1-sha1과 gss-group1-sha1입니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 목록을 쓰므로 설치된 버전의
+  기본값도 반영됩니다(RHEL 7의 OpenSSH 7.4 기본값에는 이 중 일부가 아직 들어 있습니다). "-"로 시작해 알고리즘을 빼는 목록은 파일만으로 판단할
+  수 없고, `sshd -T`가 없으면 설정하지 않은 목록은 알 수 없습니다.
+rationale: >-
+  A client that offers a broken algorithm lets an attacker who can sit on the network force the connection
+  down to it, and recover what was sent.
+rationale_ko: >-
+  깨진 알고리즘을 제공하면 네트워크 중간에 끼어든 공격자가 연결을 그 알고리즘으로 낮추도록 강제해서, 오간 내용을 알아낼 수 있습니다.
+remediation: >-
+  Set the lists in /etc/ssh/sshd_config (or a file it includes) to modern algorithms only, for example
+  `Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr`,
+  or remove the lines that add the listed ones, and reload sshd. Check that your clients support them first.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)의 목록을 최신 알고리즘만 남기도록 정하세요. 예를 들어
+  `Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr`입니다.
+  나열된 알고리즘을 추가하는 줄은 지우고 sshd를 다시 불러오세요. 먼저 쓰고 있는 클라이언트가 지원하는지 확인하세요.
+applies: >-
+  sshd.present
+failure: >-
+  The Ciphers, MACs or KexAlgorithms list of the OpenSSH server includes a broken algorithm (see the values below).
+expect: >-
+  !(
+    (!sshd.config.ciphers.value.startsWith("-") &&
+      sshd.config.ciphers.value.matches("(^|[,+^])(3des-cbc|blowfish-cbc|cast128-cbc|arcfour(128|256)?)(,|$)")) ||
+    (!sshd.config.macs.value.startsWith("-") &&
+      sshd.config.macs.value.matches("(^|[,+^])(hmac-md5(-96)?|hmac-sha1-96|umac-64)(-etm)?(@openssh[.]com)?(,|$)")) ||
+    (!sshd.config.kexalgorithms.value.startsWith("-") &&
+      sshd.config.kexalgorithms.value.matches("(^|[,+^])(diffie-hellman-group1-sha1|gss-group1-sha1)(,|$)"))
+  )
+tests:
+  - name: modern lists
+    facts:
+      sshd: {present: true, config: {ciphers: {value: "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com", explicit: true, source: "/etc/ssh/sshd_config:30"}, macs: {value: "hmac-sha2-256-etm@openssh.com", source: "sshd -T (default)"}, kexalgorithms: {value: "curve25519-sha256,diffie-hellman-group14-sha256", source: "sshd -T (default)"}}}
+    want: PASS
+  - name: a default list with 3des (OpenSSH 7.4)
+    facts:
+      sshd: {present: true, config: {ciphers: {value: "aes128-ctr,aes256-ctr,3des-cbc", source: "sshd -T (default)"}, macs: {value: "hmac-sha2-256", source: "sshd -T (default)"}, kexalgorithms: {value: "curve25519-sha256", source: "sshd -T (default)"}}}
+    want: FAIL
+  - name: a weak MAC in its etm form
+    facts:
+      sshd: {present: true, config: {macs: {value: "hmac-sha2-256,umac-64-etm@openssh.com", explicit: true, source: "/etc/ssh/sshd_config:31"}}}
+    want: FAIL
+  - name: a weak algorithm added with a plus
+    facts:
+      sshd: {present: true, config: {kexalgorithms: {value: "+diffie-hellman-group1-sha1", explicit: true, source: "/etc/ssh/sshd_config:32"}}}
+    want: FAIL
+  - name: a list that only removes algorithms cannot be judged and is left out
+    facts:
+      sshd: {present: true, config: {ciphers: {value: "-3des-cbc", explicit: true, source: "/etc/ssh/sshd_config:33"}, macs: {value: "hmac-sha2-256", explicit: true, source: "/etc/ssh/sshd_config:34"}, kexalgorithms: {value: "curve25519-sha256", explicit: true, source: "/etc/ssh/sshd_config:35"}}}
+    want: PASS
+  - name: a weak algorithm is a failure even when the other lists are unknown
+    input: absent
+    facts:
+      sshd: {present: true, config: {ciphers: {value: "aes128-ctr,arcfour256", explicit: true, source: "/etc/ssh/sshd_config:36"}}}
+    want: FAIL
+  - name: modern names that contain a weak name as a part are fine
+    facts:
+      sshd: {present: true, config: {ciphers: {value: "aes256-gcm@openssh.com", source: "sshd -T"}, macs: {value: "hmac-sha1,hmac-sha1-etm@openssh.com,umac-128-etm@openssh.com", source: "sshd -T"}, kexalgorithms: {value: "diffie-hellman-group14-sha1,curve25519-sha256", source: "sshd -T"}}}
+    want: PASS
+  - name: no SSH server
+    facts:
+      sshd: {present: false}
+    want: NOT_APPLICABLE
+  - name: no list is set and the defaults are unknown on a mounted root
+    input: absent
+    facts:
+      sshd: {present: true, config: {}}
+    want: ERROR

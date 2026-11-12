@@ -1,9 +1,9 @@
 os: Ubuntu 22.04.5 LTS (id ubuntu, version 22.04, family debian, supported true)
-profile essentials revision 6: MANUAL 2 PASS 20 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
+profile essentials revision 7: MANUAL 2 PASS 22 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
 
 ES-01 PASS
   ssh.permit-root-login PASS
-    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:7]
+    - "no" (explicit); expected one of [no]  [/etc/ssh/sshd_config:10]
   ssh.match-permit-root-login PASS
 
 ES-02 PASS
@@ -69,7 +69,7 @@ ES-09 PASS
     - pam.lockout.login.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
     - pam.lockout.sshd.enforced = true
     - pam.lockout.sshd.settings.deny = "5" (explicit)  [/etc/security/faillock.conf:1]
-    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config:92]
+    - sshd.config.usepam = "yes" (explicit)  [/etc/ssh/sshd_config:95]
     - sshd.present = true
 
 ES-10 PASS
@@ -215,3 +215,13 @@ ES-26 PASS
 
 ES-27 PASS
   services.no-print-discovery PASS
+
+ES-28 PASS
+  ssh.weak-algorithms PASS
+    - sshd.config.ciphers = "aes256-ctr,aes192-ctr,aes128-ctr" (explicit)  [/etc/ssh/sshd_config:7]
+    - sshd.config.kexalgorithms = "curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" (explicit)  [/etc/ssh/sshd_config:9]
+    - sshd.config.macs = "hmac-sha2-512,hmac-sha2-256" (explicit)  [/etc/ssh/sshd_config:8]
+
+ES-29 PASS
+  ssh.log-level PASS
+    - sshd.config.loglevel = "INFO" (default)  [sshd -T (default)]
