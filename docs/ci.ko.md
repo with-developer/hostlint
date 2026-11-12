@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t app:ci .
-      - uses: with-developer/vmsctl@v0.31.0
+      - uses: with-developer/vmsctl@v0.32.0
         with:
           image: app:ci
           fail-on: high
@@ -54,7 +54,7 @@ jobs:
 | `config` | [`vmsctl.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일을 적은 예외 |
 | `summary` | `true`(기본값)이면 점검이 단계를 실패시키더라도 발견 사항을 Markdown 보고서로 실행의 작업 요약에 씁니다 |
 | `sarif-file` | 점검이 단계를 실패시키더라도 SARIF를 이 경로에도 씁니다 |
-| `version` | 설치할 릴리스. 기본값은 액션을 고정한 릴리스(`@v0.31.0`)입니다 |
+| `version` | 설치할 릴리스. 기본값은 액션을 고정한 릴리스(`@v0.32.0`)입니다 |
 
 `image`, `image-tar`, `root` 중 정확히 하나만 지정하세요. 액션은 릴리스 태그에 고정해서 쓰세요. 그 태그의 vmsctl
 릴리스를 설치합니다. 커밋에 고정할 때는 `version`을 함께 지정해야 하며, 지정하지 않으면 액션이 거부합니다. Linux
@@ -72,7 +72,7 @@ vmsctl:
     - apk add --no-cache curl
     - docker build -t app:ci .
     - docker save app:ci -o app.tar
-    - curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.31.0/install.sh | sh -s -- -v v0.31.0 -b /usr/local/bin
+    - curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.32.0/install.sh | sh -s -- -v v0.32.0 -b /usr/local/bin
     - vmsctl scan --image-tar app.tar --fail-on high --format junit --output vmsctl.xml
   artifacts:
     when: always
@@ -83,7 +83,7 @@ vmsctl:
 ## 그 밖의 CI
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.31.0/install.sh | sh -s -- -v v0.31.0
+curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/v0.32.0/install.sh | sh -s -- -v v0.32.0
 docker save app:ci -o app.tar
 vmsctl scan --image-tar app.tar --fail-on high --format sarif --output vmsctl.sarif
 ```
