@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -123,6 +124,13 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 	if !opts.Verbose {
 		b.WriteString(p.paint(dim, "Passing and not-applicable controls are hidden; use --verbose to list them.") + "\n")
 	}
+	if slices.ContainsFunc(res.Checks, func(c engine.CheckResult) bool { return c.Status == engine.StatusFail }) {
+		hint := "How to fix a failed check: vmsctl explain CHECK-ID (for example vmsctl explain " + firstFailed(res) + ")."
+		if opts.Lang == "ko" {
+			hint = "실패한 점검의 조치 방법: vmsctl explain 점검ID --lang ko (예: vmsctl explain " + firstFailed(res) + " --lang ko)."
+		}
+		b.WriteString(p.paint(dim, hint) + "\n")
+	}
 	_, err := io.WriteString(w, b.String())
 	return err
 }
@@ -173,4 +181,14 @@ func oneLine(s string) string {
 		b.WriteString(q[1 : len(q)-1])
 	}
 	return b.String()
+}
+
+// firstFailed is the ID of the first failed check, for the example of the hint.
+func firstFailed(res *engine.Result) string {
+	for _, c := range res.Checks {
+		if c.Status == engine.StatusFail {
+			return oneLine(c.ID)
+		}
+	}
+	return "CHECK-ID"
 }
