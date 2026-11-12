@@ -51,14 +51,17 @@ export interface Diff {
 }
 // The stored result document: only the parts the dashboard shows. Every string is host text.
 export interface Evidence { key: string; text: string; source?: string }
-export interface DocCheck { ref: string; title: string; status: Status; reason?: string; remediation?: string; evidence?: Evidence[]; evidenceOmitted?: number }
+export interface DocCheck { ref: string; title: string; status: Status; reason?: string; remediation?: string; remediationKo?: string; evidence?: Evidence[]; evidenceOmitted?: number }
 export interface DocControl { profile: string; id: string; reason?: string; checks: string[]; waiver?: { reason: string; expires: string } }
 export interface ScanDoc { controls: DocControl[]; checks: DocCheck[] }
 
 export interface ControlSummary { profile: string; id: string; title: string; titleKo?: string; severity: string; counts: Counts }
 export interface ControlHost { hostId: number; host: string; status: Status; stale: boolean }
-export interface CheckInfo { id: string; title: string; titleKo?: string; description: string; rationale: string; remediation: string }
-export interface ControlInfo { titleKo?: string; manual?: string; checks: CheckInfo[] }
+export interface CheckInfo {
+  id: string; title: string; titleKo?: string; description: string; rationale: string; remediation: string;
+  descriptionKo?: string; rationaleKo?: string; remediationKo?: string; // the rule's Korean text, where it has it
+}
+export interface ControlInfo { titleKo?: string; manual?: string; manualKo?: string; checks: CheckInfo[] }
 export interface ControlDetail extends ControlSummary { hosts: ControlHost[] }
 export interface MatrixControl { profile: string; id: string; title: string; titleKo?: string; severity: string }
 export interface MatrixHost { id: number; name: string; stale: boolean; statuses: string }

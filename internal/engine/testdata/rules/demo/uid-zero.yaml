@@ -4,6 +4,8 @@ title: Only root has UID 0
 severity: high
 remediation: >-
   Give every account but root its own UID, or remove it.
+remediation_ko: >-
+  root를 뺀 모든 계정에 각자의 UID를 주거나 계정을 지우세요.
 violations:
   over: svc.users
   as: u

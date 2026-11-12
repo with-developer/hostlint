@@ -92,6 +92,11 @@ types, so a misspelled field is an error.
   mail server, a missing configuration file) uses `applies`.
 - A profile's `revision` goes up with every change to which checks a control maps to. Control
   waivers written for an older revision stop applying, which is intended.
+- A check may carry Korean text next to the English: `description_ko`, `rationale_ko`, `remediation_ko` (and `guidance_ko` in `manual`),
+  written in natural Korean, not word by word (the terms the project uses: 점검 항목 for a control, 프로파일 for a profile). Where it
+  is there, `explain --lang ko`, the dashboard (in Korean), the Markdown and HTML reports and the result's `remediationKo` use it;
+  where it is not, the English is shown. When you change the English text of a check, change its Korean too, or say so in the pull
+  request: the Korean text is not checked against the English by a test (only that it is Korean and has an English original).
 - A check that no profile control maps fails `TestBuiltinContent`. A contributor leaves `profiles/`
   alone (mapping a check changes a profile revision, which the maintainer decides) and lists the
   check's ID in the `awaitingProfile` set of `rules/rules_test.go`; the test fails when an entry is

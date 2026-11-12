@@ -846,3 +846,66 @@ func TestScanCSVOfAHostileResult(t *testing.T) {
 		t.Errorf("a control that came without a Korean title gets the server's, as in the dashboard: %q", rows[1])
 	}
 }
+
+// The answer about a control carries the Korean guidance of the rules that have it, next to the English, for the dashboard.
+func TestControlInfoCarriesKoreanGuidance(t *testing.T) {
+	f := newAPIFixture(t)
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.srv.cfg.Content = content
+	info := f.srv.controlInfo("kisa-2026", "U-01")
+	if info == nil {
+		t.Fatal("no info for U-01")
+	}
+	for _, c := range info.Checks {
+		if c.ID == "ssh.permit-root-login" {
+			if c.Description == "" || c.DescriptionKo == "" || c.RationaleKo == "" || c.RemediationKo == "" || !strings.Contains(c.RemediationKo, "PermitRootLogin no") {
+				t.Errorf("ssh.permit-root-login = %+v", c)
+			}
+			return
+		}
+	}
+	t.Error("U-01 has no ssh.permit-root-login")
+}
+
+// The fix hints of a received result (English and Korean) are shown as guidance, so each is bounded, valid text without control
+// characters; a Korean one has room for three-byte letters.
+func TestIngestBoundsTheFixHints(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	post1 := func(n int, key, value string) int {
+		var doc map[string]any
+		if err := json.Unmarshal(fixture(t, "db-01.json"), &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["host"].(map[string]any)["hostname"] = "hint-" + itoa(int64(n))
+		doc["host"].(map[string]any)["hostId"] = strings.Repeat("c", 30) + itoa(int64(10+n))
+		doc["scan"].(map[string]any)["id"] = "hint-scan-" + itoa(int64(n))
+		doc["checks"].([]any)[0].(map[string]any)[key] = value
+		raw, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		code, _ := post(t, f.srv, ingest, raw)
+		return code
+	}
+	n := 0
+	for name, tc := range map[string]struct {
+		key, value string
+		ok         bool
+	}{
+		"a Korean hint":                  {"remediationKo", "/etc/ssh/sshd_config에 `PermitRootLogin no`를 설정하고 sshd를 다시 불러오세요.", true},
+		"a Korean hint of 1300 letters":  {"remediationKo", strings.Repeat("가", 1300), true},
+		"a Korean hint of 2000 letters":  {"remediationKo", strings.Repeat("가", 2000), false},
+		"a Korean hint with an escape":   {"remediationKo", "고치세요\x1b[2J", false},
+		"an English hint with an escape": {"remediation", "fix it\x1b[2J", false},
+		"line breaks and tabs are text":  {"remediationKo", "첫째 줄\n\t둘째 줄", true},
+	} {
+		n++
+		if code := post1(n, tc.key, tc.value); (code == http.StatusCreated) != tc.ok {
+			t.Errorf("%s: %d", name, code)
+		}
+	}
+}

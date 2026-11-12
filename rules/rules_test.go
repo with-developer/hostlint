@@ -81,3 +81,53 @@ func TestRuleFilesAreEmbedded(t *testing.T) {
 		}
 	}
 }
+
+// The Korean text of a check is optional, but where it is there it is a translation of text that exists (an English one), and
+// it is Korean: a field that holds English, or no letter of Korean at all, is a paste that went to the wrong key.
+func TestKoreanGuidanceIsKorean(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hangul := func(s string) bool {
+		for _, r := range s {
+			if r >= 0xAC00 && r <= 0xD7A3 {
+				return true
+			}
+		}
+		return false
+	}
+	for id, c := range content.Checks {
+		for name, pair := range map[string][2]string{
+			"description": {c.Description, c.DescriptionKo}, "rationale": {c.Rationale, c.RationaleKo}, "remediation": {c.Remediation, c.RemediationKo},
+		} {
+			en, ko := strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1])
+			switch {
+			case ko == "":
+			case en == "":
+				t.Errorf("%s has %s_ko and no %s", id, name, name)
+			case !hangul(ko):
+				t.Errorf("%s: %s_ko has no Korean in it", id, name)
+			}
+		}
+		if c.Manual != nil && strings.TrimSpace(c.Manual.GuidanceKo) != "" {
+			if strings.TrimSpace(c.Manual.Guidance) == "" {
+				t.Errorf("%s has manual.guidance_ko and no manual.guidance", id)
+			}
+			if !hangul(c.Manual.GuidanceKo) {
+				t.Errorf("%s: manual.guidance_ko has no Korean in it", id)
+			}
+		}
+	}
+	for pid, p := range content.Profiles {
+		for _, ctl := range p.Controls {
+			switch ko := strings.TrimSpace(ctl.ManualKo); {
+			case ko == "":
+			case strings.TrimSpace(ctl.Manual) == "":
+				t.Errorf("%s %s has manual_ko and no manual", pid, ctl.ID)
+			case !hangul(ko):
+				t.Errorf("%s %s: manual_ko has no Korean in it", pid, ctl.ID)
+			}
+		}
+	}
+}

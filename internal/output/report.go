@@ -204,6 +204,8 @@ type reportCheck struct {
 	Params   map[string]any  `json:"params,omitempty"`
 	// Remediation is how to fix a failure of the check, when some host failed it.
 	Remediation string `json:"remediation,omitempty"`
+	// RemediationKo is the same in Korean, where the rule has it.
+	RemediationKo string `json:"remediationKo,omitempty"`
 }
 
 type reportHost struct {
@@ -515,6 +517,9 @@ func (b *reportBuilder) addHost(in ReportInput, ambiguous bool) {
 func (b *reportBuilder) check(c engine.CheckResult) int {
 	key := c.Ref + "\x00" + c.Digest
 	if i, ok := b.checks[key]; ok {
+		if b.data.Checks[i].RemediationKo == "" {
+			b.data.Checks[i].RemediationKo = c.RemediationKo
+		}
 		if b.data.Checks[i].Remediation == "" {
 			b.data.Checks[i].Remediation = c.Remediation // the first host to scan it may have passed
 		}
@@ -522,7 +527,7 @@ func (b *reportBuilder) check(c engine.CheckResult) int {
 	}
 	b.checks[key] = len(b.data.Checks)
 	b.data.Checks = append(b.data.Checks, reportCheck{
-		Ref: c.Ref, ID: c.ID, Version: c.Version, Title: c.Title, TitleKo: c.TitleKo, Severity: c.Severity, Params: c.Params, Remediation: c.Remediation,
+		Ref: c.Ref, ID: c.ID, Version: c.Version, Title: c.Title, TitleKo: c.TitleKo, Severity: c.Severity, Params: c.Params, Remediation: c.Remediation, RemediationKo: c.RemediationKo,
 	})
 	return len(b.data.Checks) - 1
 }

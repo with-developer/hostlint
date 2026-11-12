@@ -196,15 +196,16 @@ func plainText(c *Check, p *Profile) error {
 	}
 	var errs []error
 	if c != nil {
-		errs = append(errs, line("title", c.Title), line("title_ko", c.TitleKo), prose("failure", c.Failure), prose("remediation", c.Remediation))
+		errs = append(errs, line("title", c.Title), line("title_ko", c.TitleKo), prose("failure", c.Failure), prose("remediation", c.Remediation),
+			prose("description_ko", c.DescriptionKo), prose("rationale_ko", c.RationaleKo), prose("remediation_ko", c.RemediationKo))
 		if c.Manual != nil {
-			errs = append(errs, prose("manual.guidance", c.Manual.Guidance))
+			errs = append(errs, prose("manual.guidance", c.Manual.Guidance), prose("manual.guidance_ko", c.Manual.GuidanceKo))
 		}
 	}
 	if p != nil {
 		errs = append(errs, line("title", p.Title), line("title_ko", p.TitleKo))
 		for _, ctl := range p.Controls {
-			errs = append(errs, line("control id", ctl.ID), line("control "+ctl.ID+" title", ctl.Title), line("control "+ctl.ID+" title_ko", ctl.TitleKo), prose("control "+ctl.ID+" manual", ctl.Manual))
+			errs = append(errs, line("control id", ctl.ID), line("control "+ctl.ID+" title", ctl.Title), line("control "+ctl.ID+" title_ko", ctl.TitleKo), prose("control "+ctl.ID+" manual", ctl.Manual), prose("control "+ctl.ID+" manual_ko", ctl.ManualKo))
 		}
 	}
 	return errors.Join(errs...)

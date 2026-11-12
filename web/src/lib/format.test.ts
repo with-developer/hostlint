@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, compareControls, ctitle, hashParams, controlsAddress, hostsAddress, hue, imagesAddress, isList, parseControlsView, parseHostsView, parseImagesView, parseRoute, percent, score, total } from "./format";
+import { localized, ago, compareControls, ctitle, hashParams, controlsAddress, hostsAddress, hue, imagesAddress, isList, parseControlsView, parseHostsView, parseImagesView, parseRoute, percent, score, total } from "./format";
 
 const t = (key: string, n?: number) => `${key}:${n ?? ""}`;
 
@@ -118,5 +118,14 @@ describe("the address of the image list", () => {
   it("tells the list from an image page", () => {
     expect(isList("#/images?q=a", "images")).toBe(true);
     expect(isList("#/images/4", "images")).toBe(false);
+  });
+});
+
+describe("localized", () => {
+  it("takes the Korean text only on a Korean page, and only when there is one", () => {
+    expect(localized("ko", "fix it", "고치세요")).toBe("고치세요");
+    expect(localized("ko", "fix it", "")).toBe("fix it");
+    expect(localized("ko", "fix it")).toBe("fix it");
+    expect(localized("en", "fix it", "고치세요")).toBe("fix it");
   });
 });

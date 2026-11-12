@@ -22,7 +22,7 @@ const (
 	maxCSVChecks   = 5
 )
 
-var csvHeader = []string{"host", "profile", "control", "title", "title_ko", "severity", "status", "checks_to_look_at", "evidence", "how_to_fix", "waiver"}
+var csvHeader = []string{"host", "profile", "control", "title", "title_ko", "severity", "status", "checks_to_look_at", "evidence", "how_to_fix", "waiver", "how_to_fix_ko"}
 
 // csvCell makes text safe for a spreadsheet. What a scan prints comes from the scanned host (a file name, a value in a
 // configuration) or from a pack, and a spreadsheet takes a cell that starts with = + - @ (or a tab or a carriage return) for a
@@ -51,7 +51,7 @@ func writeCSV(w io.Writer, res *engine.Result) error {
 	}
 	for _, c := range res.Controls {
 		var look, evidence []string
-		var fix string
+		var fix, fixKo string
 		undecided := 0
 		for _, ref := range c.Checks {
 			ck := byRef[ref]
@@ -67,7 +67,7 @@ func writeCSV(w io.Writer, res *engine.Result) error {
 			// The fix comes from the first failed check before any cap, so a long list never hides it; a waived control has
 			// been accepted: its evidence says what was, and there is nothing left to fix.
 			if fix == "" && ck.Status == engine.StatusFail && c.Waiver == nil {
-				fix = ck.Remediation
+				fix, fixKo = ck.Remediation, ck.RemediationKo
 			}
 			if len(look) >= maxCSVChecks {
 				undecided++
@@ -96,7 +96,7 @@ func writeCSV(w io.Writer, res *engine.Result) error {
 		row := []string{
 			csvCell(res.Host.Hostname), csvCell(c.Profile), csvCell(c.ID), csvCell(c.Title), csvCell(c.TitleKo),
 			csvCell(string(c.Severity)), csvCell(string(c.Status)),
-			csvCell(strings.Join(look, "; ")), csvCell(strings.Join(evidence, " | ")), csvCell(fix), csvCell(waiver),
+			csvCell(strings.Join(look, "; ")), csvCell(strings.Join(evidence, " | ")), csvCell(fix), csvCell(waiver), csvCell(fixKo),
 		}
 		if err := cw.Write(row); err != nil {
 			return err

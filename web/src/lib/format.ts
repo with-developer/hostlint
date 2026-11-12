@@ -140,6 +140,11 @@ export function imagesAddress(v: ImagesView): string {
   return "#/images" + (qs ? "?" + qs : "");
 }
 
+/** The text in the language of the page: the Korean one when the page is Korean and there is one. */
+export function localized(lang: string, en: string, ko?: string): string {
+  return lang === "ko" && ko ? ko : en;
+}
+
 /** A stable hue (0-359) for a name, for the avatars. */
 export function hue(name: string): number {
   let h = 0;

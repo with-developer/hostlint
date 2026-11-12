@@ -6,17 +6,18 @@ import (
 	"maps"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
 	"github.com/with-developer/vmsctl/internal/engine"
+	"github.com/with-developer/vmsctl/internal/output"
 	"github.com/with-developer/vmsctl/profiles"
 	"github.com/with-developer/vmsctl/rules"
 )
 
 func newExplainCommand() *cobra.Command {
 	var packs []string
+	var langFlag string
 	cmd := &cobra.Command{
 		Use:   "explain ID...",
 		Short: "Explain a control or a check: what it looks at, why, and how to fix it",
@@ -24,7 +25,8 @@ func newExplainCommand() *cobra.Command {
 to fix a failure. A scan lists what failed; this tells what to do about it. ID is a control of a profile
 (U-02, ES-07: every profile that has it is shown) or a check (ssh.permit-root-login).`,
 		Example: `  vmsctl explain U-02
-  vmsctl explain ssh.permit-root-login accounts.lockout-threshold`,
+  vmsctl explain ssh.permit-root-login accounts.lockout-threshold
+  vmsctl explain U-02 --lang ko`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := engine.Load(rules.FS, profiles.FS)
@@ -34,15 +36,19 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 			if _, err := addPacks(cmd, content, packDirsFrom(packs)); err != nil {
 				return err
 			}
+			lang, err := resolveLang(langFlag)
+			if err != nil {
+				return err
+			}
 			out := cmd.OutOrStdout()
 			missing := 0
 			for i, id := range args {
 				if i > 0 {
 					fmt.Fprintln(out)
 				}
-				found := explain(out, content, id)
+				found := explain(out, content, id, lang)
 				if !found && strings.ToUpper(id) != id {
-					found = explain(out, content, strings.ToUpper(id)) // control IDs are upper case: u-02
+					found = explain(out, content, strings.ToUpper(id), lang) // control IDs are upper case: u-02
 				}
 				if !found {
 					fmt.Fprintf(cmd.ErrOrStderr(), "vmsctl: nothing is called %s: it is neither a check nor a control of a profile (profiles: %s)\n", oneLineText(id), strings.Join(sortedProfileIDs(content), ", "))
@@ -55,6 +61,7 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&langFlag, "lang", "", "language of the text: "+strings.Join(output.Languages, " or ")+", where a rule has Korean text (default: VMSCTL_LANG, else en)")
 	cmd.Flags().StringArrayVar(&packs, "pack", nil, "also know the checks and profiles of this policy pack (docs/packs.md)")
 	return cmd
 }
@@ -62,10 +69,10 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 func sortedProfileIDs(c *engine.Content) []string { return slices.Sorted(maps.Keys(c.Profiles)) }
 
 // explain prints a check, or the controls with this ID; it reports whether there was anything.
-func explain(w io.Writer, c *engine.Content, id string) bool {
+func explain(w io.Writer, c *engine.Content, id string, lang string) bool {
 	found := false
 	if ch := c.Checks[id]; ch != nil {
-		explainCheck(w, ch, "")
+		explainCheck(w, ch, "", lang)
 		found = true
 	}
 	for _, pid := range sortedProfileIDs(c) {
@@ -77,14 +84,14 @@ func explain(w io.Writer, c *engine.Content, id string) bool {
 				fmt.Fprintln(w)
 			}
 			found = true
-			fmt.Fprintf(w, "%s  %s  [%s]\nprofile %s, %s\n", oneLineText(ctl.ID), oneLineText(ctl.Title), ctl.Severity, oneLineText(pid), oneLineText(c.Profiles[pid].Title))
+			fmt.Fprintf(w, "%s  %s  [%s]\nprofile %s, %s\n", oneLineText(ctl.ID), oneLineText(pick(lang, ctl.Title, ctl.TitleKo)), ctl.Severity, oneLineText(pid), oneLineText(c.Profiles[pid].Title))
 			if ctl.Manual != "" {
-				fmt.Fprintf(w, "\nA person decides this one:\n%s\n", wrap(ctl.Manual, "  "))
+				fmt.Fprintf(w, "\n%s\n%s\n", label(lang, "A person decides this one:", "사람이 판단하는 항목입니다:"), wrap(pick(lang, ctl.Manual, ctl.ManualKo), "  "))
 			}
 			for _, ref := range ctl.Checks {
 				if ch := c.Checks[ref]; ch != nil {
 					fmt.Fprintln(w)
-					explainCheckWith(w, ch, "  ", ctl.Params[ref])
+					explainCheckWith(w, ch, "  ", ctl.Params[ref], lang)
 				}
 			}
 		}
@@ -92,50 +99,85 @@ func explain(w io.Writer, c *engine.Content, id string) bool {
 	return found
 }
 
-func explainCheck(w io.Writer, c *engine.Check, indent string) { explainCheckWith(w, c, indent, nil) }
+func explainCheck(w io.Writer, c *engine.Check, indent, lang string) {
+	explainCheckWith(w, c, indent, nil, lang)
+}
+
+// pick is the text in the language asked for: the Korean one where it is asked for and there is one.
+func pick(lang, text, ko string) string {
+	if lang == "ko" && strings.TrimSpace(ko) != "" {
+		return ko
+	}
+	return text
+}
+
+// label is a heading in the language asked for.
+func label(lang, en, ko string) string {
+	if lang == "ko" {
+		return ko
+	}
+	return en
+}
 
 // explainCheckWith is explainCheck for a check as a control maps it: set are the parameters the control gives it.
-func explainCheckWith(w io.Writer, c *engine.Check, indent string, set map[string]any) {
-	fmt.Fprintf(w, "%s%s  %s  [%s]\n", indent, oneLineText(c.ID), oneLineText(c.Title), c.Severity)
+func explainCheckWith(w io.Writer, c *engine.Check, indent string, set map[string]any, lang string) {
+	fmt.Fprintf(w, "%s%s  %s  [%s]\n", indent, oneLineText(c.ID), oneLineText(pick(lang, c.Title, c.TitleKo)), c.Severity)
 	section := func(name, text string) {
 		if strings.TrimSpace(text) != "" {
 			fmt.Fprintf(w, "%s%s:\n%s\n", indent, name, wrap(text, indent+"  "))
 		}
 	}
-	section("What it looks at", c.Description)
-	section("Why it matters", c.Rationale)
-	section("How to fix it", c.Remediation)
+	section(label(lang, "What it looks at", "무엇을 점검하나"), pick(lang, c.Description, c.DescriptionKo))
+	section(label(lang, "Why it matters", "왜 중요한가"), pick(lang, c.Rationale, c.RationaleKo))
+	section(label(lang, "How to fix it", "조치 방법"), pick(lang, c.Remediation, c.RemediationKo))
 	if c.Manual != nil {
-		section("A person decides", c.Manual.Guidance)
+		section(label(lang, "A person decides", "사람이 판단합니다"), pick(lang, c.Manual.Guidance, c.Manual.GuidanceKo))
 	}
 	if len(c.Platforms) > 0 {
-		fmt.Fprintf(w, "%sApplies to: %s\n", indent, oneLineText(strings.Join(c.Platforms, ", ")))
+		fmt.Fprintf(w, "%s%s %s\n", indent, label(lang, "Applies to:", "적용 대상:"), oneLineText(strings.Join(c.Platforms, ", ")))
 	}
 	if c.Applies != "" {
-		fmt.Fprintf(w, "%sApplies when: %s\n", indent, oneLineText(c.Applies))
+		fmt.Fprintf(w, "%s%s %s\n", indent, label(lang, "Applies when:", "적용 조건:"), oneLineText(c.Applies))
 	}
 	for _, name := range slices.Sorted(maps.Keys(c.Params)) {
 		p := c.Params[name]
 		dir := ""
 		if p.Stricter != "" {
 			dir = ", stricter is " + p.Stricter
+			if lang == "ko" {
+				dir = ", 더 엄격한 쪽은 " + map[string]string{"lower": "낮은 값", "higher": "높은 값"}[p.Stricter]
+			}
 		}
-		value := fmt.Sprintf("default %v%s", oneLineText(fmt.Sprint(p.Default)), dir)
+		value := fmt.Sprintf(label(lang, "default %v%s", "기본값 %v%s"), oneLineText(fmt.Sprint(p.Default)), dir)
 		if v, ok := set[name]; ok {
-			value = fmt.Sprintf("this control requires %v; the check's default is %v%s", oneLineText(fmt.Sprint(v)), oneLineText(fmt.Sprint(p.Default)), dir)
+			value = fmt.Sprintf(label(lang, "this control requires %v; the check's default is %v%s", "이 점검 항목은 %v을(를) 요구합니다. 점검의 기본값은 %v%s"), oneLineText(fmt.Sprint(v)), oneLineText(fmt.Sprint(p.Default)), dir)
 		}
-		fmt.Fprintf(w, "%sParameter %s (%s): %s\n", indent, oneLineText(name), value, oneLineText(p.Description))
+		fmt.Fprintf(w, "%s%s %s (%s): %s\n", indent, label(lang, "Parameter", "매개변수"), oneLineText(name), value, oneLineText(p.Description))
 	}
 }
 
 // wrap makes text one paragraph, cut into lines of about 100 characters, each starting with indent. The text
 // may come from a pack, so control characters do not reach the terminal.
+// displayWidth is how many terminal columns a text takes: a Korean (or other East Asian) letter takes two.
+func displayWidth(s string) int {
+	n := 0
+	for _, r := range s {
+		switch {
+		case r >= 0x1100 && r <= 0x115F, r >= 0x2E80 && r <= 0xA4CF, r >= 0xAC00 && r <= 0xD7A3, r >= 0xF900 && r <= 0xFAFF, r >= 0xFF00 && r <= 0xFF60:
+			n += 2
+		default:
+			n++
+		}
+	}
+	return n
+}
+
 func wrap(text, indent string) string {
 	words := strings.Fields(oneLineText(text)) // one paragraph, and what a pack wrote does not reach the terminal raw
 	var lines []string
 	line := indent
 	for _, w := range words {
-		if utf8.RuneCountInString(line)+utf8.RuneCountInString(w)+1 > 100 && strings.TrimSpace(line) != "" {
+		if displayWidth(line)+displayWidth(w)+1 > 100 && strings.TrimSpace(line) != "" {
 			lines = append(lines, line)
 			line = indent
 		}

@@ -192,6 +192,7 @@ func demoResult(content *engine.Content, profile *engine.Profile, h demoHost, da
 			}
 			if st == engine.StatusFail { // as a real scan does: the rule's own guidance on a failed check
 				cres.Remediation = truncate(strings.TrimSpace(check.Remediation), maxRemediation)
+				cres.RemediationKo = truncate(strings.TrimSpace(check.RemediationKo), maxRemediationKo)
 			}
 			res.Checks = append(res.Checks, cres)
 			if rank(st) > rank(worst) {

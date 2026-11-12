@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { compareControls, controlsAddress, ctitle, parseControlsView } from "../lib/format";
+import { compareControls, controlsAddress, ctitle, localized, parseControlsView } from "../lib/format";
 import { lastListAddress, useListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, Inline, PageHeader, Severity, Skeleton, StatusBadge, StatusBar } from "../components/ui";
 import { IconSearch } from "../components/icons";
@@ -128,7 +128,7 @@ export function ControlPage({ profile, id }: { profile: string; id: string }) {
               {info?.manual && (
                 <section className="card">
                   <h2>{t("controls.review")}</h2>
-                  <p>{info.manual}</p>
+                  <p>{localized(lang, info.manual, info.manualKo)}</p>
                 </section>
               )}
               {info?.checks.map((ch) => (
@@ -136,23 +136,18 @@ export function ControlPage({ profile, id }: { profile: string; id: string }) {
                   <h2>
                     <span className="mono">{ch.id}</span> {lang === "ko" && ch.titleKo ? ch.titleKo : ch.title}
                   </h2>
-                  {ch.description && (
-                    <>
-                      <h3>{t("controls.what")}</h3>
-                      <p className="prose"><Inline text={ch.description} /></p>
-                    </>
-                  )}
-                  {ch.rationale && (
-                    <>
-                      <h3>{t("controls.why")}</h3>
-                      <p className="prose"><Inline text={ch.rationale} /></p>
-                    </>
-                  )}
-                  {ch.remediation && (
-                    <>
-                      <h3>{t("controls.fix")}</h3>
-                      <p className="prose remedy"><Inline text={ch.remediation} /></p>
-                    </>
+                  {[
+                    ["controls.what", localized(lang, ch.description, ch.descriptionKo), ""],
+                    ["controls.why", localized(lang, ch.rationale, ch.rationaleKo), ""],
+                    ["controls.fix", localized(lang, ch.remediation, ch.remediationKo), " remedy"],
+                  ].map(
+                    ([key, text, cls]) =>
+                      text && (
+                        <Fragment key={key}>
+                          <h3>{t(key as "controls.what")}</h3>
+                          <p className={`prose${cls}`}><Inline text={text} /></p>
+                        </Fragment>
+                      ),
                   )}
                 </section>
               ))}

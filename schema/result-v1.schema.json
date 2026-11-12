@@ -249,6 +249,7 @@
         "statusSource": {"enum": ["observed", "attested"]},
         "reason": {"type": "string"},
         "remediation": {"description": "How to fix a failure: the check's own guidance, present on a check that failed.", "type": "string", "maxLength": 1600},
+        "remediationKo": {"description": "The same guidance in Korean, present when the rule has it.", "type": "string", "maxLength": 1600},
         "params": {"description": "Effective parameter values.", "type": "object"},
         "customized": {"type": "boolean"},
         "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
