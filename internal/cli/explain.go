@@ -18,16 +18,27 @@ import (
 func newExplainCommand() *cobra.Command {
 	var packs []string
 	var langFlag string
+	var list bool
 	cmd := &cobra.Command{
-		Use:   "explain ID...",
+		Use:   "explain ID... | --list",
 		Short: "Explain a control or a check: what it looks at, why, and how to fix it",
 		Long: `Explain prints what a control or a check is for: its severity, what it looks at, why it matters, and how
 to fix a failure. A scan lists what failed; this tells what to do about it. ID is a control of a profile
-(U-02, ES-07: every profile that has it is shown) or a check (ssh.permit-root-login).`,
-		Example: `  vmsctl explain U-02
+(U-02, ES-07: every profile that has it is shown) or a check (ssh.permit-root-login). --list prints every
+control and check with its title, to find the ID.`,
+		Example: `  vmsctl explain --list
+  vmsctl explain U-02
   vmsctl explain ssh.permit-root-login accounts.lockout-threshold
   vmsctl explain U-02 --lang ko`,
-		Args: cobra.MinimumNArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if list && len(args) > 0 {
+				return fmt.Errorf("--list takes no ID")
+			}
+			if !list {
+				return cobra.MinimumNArgs(1)(cmd, args)
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := engine.Load(rules.FS, profiles.FS)
 			if err != nil {
@@ -41,6 +52,10 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 				return err
 			}
 			out := cmd.OutOrStdout()
+			if list {
+				listContent(out, content, lang)
+				return nil
+			}
 			missing := 0
 			for i, id := range args {
 				if i > 0 {
@@ -62,8 +77,26 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 		},
 	}
 	cmd.Flags().StringVar(&langFlag, "lang", "", "language of the text: "+strings.Join(output.Languages, " or ")+", where a rule has Korean text (default: VMSCTL_LANG, else en)")
+	cmd.Flags().BoolVar(&list, "list", false, "list every control of every profile and every check with its title, to find the ID to explain")
 	cmd.Flags().StringArrayVar(&packs, "pack", nil, "also know the checks and profiles of this policy pack (docs/packs.md)")
 	return cmd
+}
+
+// listContent prints the controls of every profile and every check, one line each: the IDs that explain takes.
+func listContent(w io.Writer, c *engine.Content, lang string) {
+	fmt.Fprintf(w, "%s\n", label(lang, "Controls and checks: vmsctl explain ID", "점검 항목과 점검: vmsctl explain ID"))
+	for _, pid := range sortedProfileIDs(c) {
+		p := c.Profiles[pid]
+		fmt.Fprintf(w, "\n%s (%s %d): %s\n", oneLineText(pid), label(lang, "revision", "리비전"), p.Revision, oneLineText(pick(lang, p.Title, p.TitleKo)))
+		for _, ctl := range p.Controls {
+			fmt.Fprintf(w, "  %-6s [%s]  %s\n", oneLineText(ctl.ID), ctl.Severity, oneLineText(pick(lang, ctl.Title, ctl.TitleKo)))
+		}
+	}
+	fmt.Fprintf(w, "\n%s\n", label(lang, "Checks", "점검"))
+	for _, id := range slices.Sorted(maps.Keys(c.Checks)) {
+		ch := c.Checks[id]
+		fmt.Fprintf(w, "  %-44s %s\n", oneLineText(id), oneLineText(pick(lang, ch.Title, ch.TitleKo)))
+	}
 }
 
 func sortedProfileIDs(c *engine.Content) []string { return slices.Sorted(maps.Keys(c.Profiles)) }
