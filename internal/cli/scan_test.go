@@ -42,3 +42,15 @@ func TestFailedAtOrAboveCountsErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestLanguageOfEnv(t *testing.T) {
+	for in, want := range map[string]string{"ko": "ko", "KO": "ko", "ko_KR": "ko", "ko_KR.UTF-8": "ko", "ko-KR": "ko", "en": "en", "en_US.UTF-8": "en",
+		"": "", "C": "", "POSIX": "", "fr_FR": "", "korean": "", "k": ""} {
+		if got := languageOfEnv(in); got != want {
+			t.Errorf("languageOfEnv(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := languageOfEnv("  ko\n"); got != "ko" { // surrounding white space is not part of the language
+		t.Errorf("a value with white space: %q", got)
+	}
+}

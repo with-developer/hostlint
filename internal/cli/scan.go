@@ -111,7 +111,9 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return fmt.Errorf("unknown --format %q (use %s)", f.format, strings.Join(output.Formats, ", "))
 	}
 	if f.lang == "" {
-		f.lang = os.Getenv("VMSCTL_LANG")
+		// The environment names a locale as often as a language (ko_KR.UTF-8, KO): take its language, and ignore a value that
+		// is none of ours, so a shell profile never breaks a scan in a format that has no language.
+		f.lang = languageOfEnv(os.Getenv("VMSCTL_LANG"))
 	}
 	if f.lang == "" {
 		f.lang = "en"
@@ -370,4 +372,17 @@ func assetName(flag, ref string) (string, error) {
 		return "", fmt.Errorf("%q is not a name for an image: give one with --name", ref)
 	}
 	return repo, nil
+}
+
+// languageOfEnv is the language of the value of VMSCTL_LANG: "ko" for ko, KO, ko_KR and ko_KR.UTF-8, "" when it is not a language
+// vmsctl has titles in.
+func languageOfEnv(v string) string {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if i := strings.IndexAny(v, "_.-@"); i >= 0 {
+		v = v[:i]
+	}
+	if slices.Contains(output.Languages, v) {
+		return v
+	}
+	return ""
 }
