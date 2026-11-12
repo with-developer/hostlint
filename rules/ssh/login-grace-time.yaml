@@ -1,0 +1,63 @@
+id: ssh.login-grace-time
+version: 1
+title: SSH gives a client little time to log in
+title_ko: SSH가 클라이언트에게 로그인할 시간을 짧게 줌
+severity: low
+description: >-
+  Checks the global LoginGraceTime setting of the OpenSSH server, the time a client has to
+  finish logging in before sshd closes the connection. It passes between 1 and `max_seconds`
+  seconds; 0 means no limit and fails. On a live host the effective value comes from `sshd -T`,
+  which prints seconds, so the default of the installed version (120) counts. On a mounted root
+  only a value written in the files is known: a plain number is read as seconds, and a value
+  with a unit (`1m`, `30s`) is not converted and reports ERROR.
+rationale: >-
+  Every unauthenticated connection holds a slot until it logs in or times out; a long grace
+  time lets a client keep many of them open and use up MaxStartups, so real users cannot
+  connect.
+remediation: >-
+  Set `LoginGraceTime 60` (or less, in seconds) in /etc/ssh/sshd_config (or a file it includes)
+  and reload sshd.
+applies: >-
+  sshd.present
+params:
+  max_seconds: {type: int, default: 60, stricter: lower, description: Longest time in seconds a client may take to log in}
+setting:
+  fact: sshd.config.logingracetime
+  range: {min: 1, max: params.max_seconds}
+  absent: default
+tests:
+  - name: a minute
+    facts:
+      sshd: {present: true, config: {logingracetime: {value: "60", explicit: true, source: "/etc/ssh/sshd_config:38"}}}
+    want: PASS
+  - name: thirty seconds
+    facts:
+      sshd: {present: true, config: {logingracetime: {value: "30", explicit: true, source: "/etc/ssh/sshd_config.d/50-hardening.conf:4"}}}
+    want: PASS
+  - name: the OpenSSH default of two minutes
+    facts:
+      sshd: {present: true, config: {logingracetime: {value: "120", source: "sshd -T (default)"}}}
+    want: FAIL
+  - name: zero means no limit
+    facts:
+      sshd: {present: true, config: {logingracetime: {value: "0", explicit: true, source: "/etc/ssh/sshd_config:38"}}}
+    want: FAIL
+  - name: a stricter limit set by parameter
+    params: {max_seconds: 20}
+    facts:
+      sshd: {present: true, config: {logingracetime: {value: "30", explicit: true, source: "/etc/ssh/sshd_config:38"}}}
+    want: FAIL
+  - name: a value with a unit from the files cannot be judged
+    input: absent
+    facts:
+      sshd: {present: true, config: {logingracetime: {value: "1m", explicit: true, source: "/etc/ssh/sshd_config:38"}}}
+    want: ERROR
+  - name: no SSH server
+    facts:
+      sshd: {present: false}
+    want: NOT_APPLICABLE
+  - name: the default is unknown on a mounted root
+    input: absent
+    facts:
+      sshd: {present: true, config: {}}
+    want: ERROR

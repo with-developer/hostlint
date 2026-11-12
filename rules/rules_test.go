@@ -38,10 +38,26 @@ func TestBuiltinContent(t *testing.T) {
 		}
 	}
 	for id := range content.Checks {
-		if !used[id] {
+		if !used[id] && !awaitingProfile[id] {
 			t.Errorf("check %s is not mapped to any profile control", id)
 		}
 	}
+	for id := range awaitingProfile {
+		switch {
+		case content.Checks[id] == nil:
+			t.Errorf("awaitingProfile lists %s, which is not a built-in check", id)
+		case used[id]:
+			t.Errorf("check %s is mapped to a profile control: remove it from awaitingProfile", id)
+		}
+	}
+}
+
+// awaitingProfile lists built-in checks that are merged before a profile
+// revision maps them to a control. Mapping a check changes the profile
+// revision, which is the maintainer's decision; remove an entry when its
+// check is mapped.
+var awaitingProfile = map[string]bool{
+	"ssh.login-grace-time": true,
 }
 
 // TestRuleFilesAreEmbedded fails on a file under rules/ that go:embed would
