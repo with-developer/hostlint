@@ -399,7 +399,7 @@ VMSCTL_WEBHOOK_URL=https://hooks.example.com/services/XXX \
   latest scans.
 
 The body is JSON with a `text` line that Slack, Mattermost and Discord's Slack-compatible endpoint show as it
-is. It carries control IDs and statuses, never evidence. With `--webhook-secret-file` the body is signed:
+is (`--webhook-lang ko`, or `VMSCTL_LANG=ko`, writes that line in Korean). It carries control IDs and statuses, never evidence. With `--webhook-secret-file` the body is signed:
 `X-Hostlint-Signature-256: sha256=<hex HMAC-SHA256 of the body>`. The URL must be https (http only to a
 loopback address); it is read from `--webhook-url` or `VMSCTL_WEBHOOK_URL` (prefer the variable: a
 webhook URL is a secret, and it is never logged). Redirects are not followed.

@@ -124,6 +124,7 @@ type Notifier struct {
 	Store      *Store
 	Hook       *Webhook
 	StaleAfter time.Duration // a host that has not reported for this long is reported (7 days by default)
+	Lang       string        // the language of the Text line: "ko" for Korean, anything else is English
 	Logger     *slog.Logger
 }
 
@@ -270,7 +271,7 @@ func (n *Notifier) scanPass(ctx context.Context, cur string) (bool, error) {
 				if len(reg) > maxRegressedInEvent {
 					ev.More, ev.Regressed = len(reg)-maxRegressedInEvent, reg[:maxRegressedInEvent]
 				}
-				ev.Text = fmt.Sprintf("vmsctl: %s got worse: %d control(s) now fail (%s)", x.name, len(reg), joinIDs(reg))
+				ev.Text = n.regressionText(x.name, len(reg), joinIDs(reg))
 				if err := n.Hook.Send(ctx, ev); err != nil {
 					if !errors.Is(err, ErrRejected) {
 						if serr := save(); serr != nil {
@@ -290,6 +291,22 @@ func (n *Notifier) scanPass(ctx context.Context, cur string) (bool, error) {
 		return false, err
 	}
 	return len(scans) == scanBatch, nil
+}
+
+// regressionText and staleText are the one-line summaries that chat services show. The JSON fields
+// of the event do not depend on the language.
+func (n *Notifier) regressionText(host string, count int, ids string) string {
+	if n.Lang == "ko" {
+		return fmt.Sprintf("vmsctl: 호스트 %s에서 점검 항목 %d개가 새로 실패했습니다 (%s)", host, count, ids)
+	}
+	return fmt.Sprintf("vmsctl: %s got worse: %d control(s) now fail (%s)", host, count, ids)
+}
+
+func (n *Notifier) staleText(host, since string) string {
+	if n.Lang == "ko" {
+		return fmt.Sprintf("vmsctl: 호스트 %s의 결과가 %s 이후 오지 않습니다", host, since)
+	}
+	return fmt.Sprintf("vmsctl: %s has not reported since %s", host, since)
 }
 
 func joinIDs(reg []RegressedEntry) string {
@@ -379,7 +396,7 @@ func (n *Notifier) tickStale(ctx context.Context) error {
 			continue
 		}
 		ev := Event{ID: "stale-" + q.stateName() + "-" + q.stateValue(), Event: "stale", At: st.stamp(), Host: q.name, HostID: q.hostID, LastScan: q.received,
-			Text: fmt.Sprintf("vmsctl: %s has not reported since %s", q.name, q.received)}
+			Text: n.staleText(q.name, q.received)}
 		if err := n.Hook.Send(ctx, ev); err != nil && !errors.Is(err, ErrRejected) {
 			return err
 		} else if err != nil && n.Logger != nil {

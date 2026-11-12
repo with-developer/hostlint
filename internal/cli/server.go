@@ -61,7 +61,7 @@ func newServerRunCommand(dbPath *string) *cobra.Command {
 	var maxBody int64
 	var rate int
 	var retention, staleAfter time.Duration
-	var webhookURL, webhookSecretFile string
+	var webhookURL, webhookSecretFile, webhookLang string
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Listen for results",
@@ -89,6 +89,10 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 			} else if webhookSecretFile != "" {
 				return errors.New("--webhook-secret-file needs --webhook-url")
 			}
+			lang, err := resolveLang(webhookLang)
+			if err != nil {
+				return fmt.Errorf("--webhook-lang: %w", err)
+			}
 			store, err := server.OpenStore(*dbPath)
 			if err != nil {
 				return err
@@ -106,7 +110,7 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 				go pruneLoop(cmd.Context(), store, retention, logger)
 			}
 			if hook != nil {
-				n := &server.Notifier{Store: store, Hook: hook, StaleAfter: staleAfter, Logger: logger}
+				n := &server.Notifier{Store: store, Hook: hook, StaleAfter: staleAfter, Lang: lang, Logger: logger}
 				go n.Run(cmd.Context(), 30*time.Second)
 			}
 			return srv.Serve(cmd.Context(), lc, func(addr, pin string) {
@@ -128,6 +132,7 @@ HTTP is only allowed on a loopback address, or behind a TLS proxy with --behind-
 	fl.IntVar(&rate, "rate", 60, "results per minute one token may send")
 	fl.StringVar(&webhookURL, "webhook-url", "", "post an event here when a host gets worse or stops reporting (https; or set VMSCTL_WEBHOOK_URL: the URL can be a secret)")
 	fl.StringVar(&webhookSecretFile, "webhook-secret-file", "", "a file with the secret the webhook body is signed with (HMAC-SHA256 in "+server.HeaderWebhookSignature+")")
+	fl.StringVar(&webhookLang, "webhook-lang", "", "the language of the one-line text of a webhook event: en or ko (default: VMSCTL_LANG, else en)")
 	fl.DurationVar(&staleAfter, "stale-after", 7*24*time.Hour, "report a host that has not reported for this long (with --webhook-url)")
 	fl.DurationVar(&retention, "retention", 400*24*time.Hour, "delete scans older than this once a day, except the latest scan of each host (0 keeps everything)")
 	return cmd
