@@ -6,8 +6,15 @@ severity: high
 description: >-
   Checks that /etc/inetd.conf, /etc/xinetd.conf and the files in /etc/xinetd.d are owned by
   root with mode 0600 or stricter. Not applicable when none exists.
+description_ko: >-
+  /etc/inetd.conf, /etc/xinetd.conf와 /etc/xinetd.d의 파일을 root가 소유하고 모드가 0600 또는 더 엄격한지 확인합니다. 이
+  파일들이 하나도 없으면 해당하지 않습니다.
 rationale: The super-server starts the programs these files name, as the users they name.
+rationale_ko: >-
+  슈퍼 서버는 이 파일들이 지정한 프로그램을 지정한 사용자 권한으로 시작합니다.
 remediation: Run `chown root` and `chmod 600` on each file.
+remediation_ko: >-
+  나열된 파일마다 `chown root`와 `chmod 600`을 실행하세요.
 file:
   paths: [/etc/inetd.conf, /etc/xinetd.conf, /etc/xinetd.d/*]
   owner: [root]

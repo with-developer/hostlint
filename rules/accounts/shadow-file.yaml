@@ -4,8 +4,14 @@ title: Password hashes are kept in /etc/shadow
 title_ko: 비밀번호 해시는 /etc/shadow에 보관
 severity: high
 description: Checks that /etc/shadow exists, so hashes are kept out of the world-readable /etc/passwd.
+description_ko: >-
+  /etc/shadow가 있는지 확인합니다. 있어야 해시가 누구나 읽을 수 있는 /etc/passwd에 들어가지 않습니다.
 rationale: Without /etc/shadow, password hashes have to live in /etc/passwd where anyone can read them.
+rationale_ko: >-
+  /etc/shadow가 없으면 비밀번호 해시를 누구나 읽을 수 있는 /etc/passwd에 보관해야 합니다.
 remediation: Run `pwconv` (and `grpconv` for groups).
+remediation_ko: >-
+  `pwconv`를 실행하세요(그룹은 `grpconv`).
 expect: >-
   shadow.present
 tests:

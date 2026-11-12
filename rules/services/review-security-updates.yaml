@@ -7,15 +7,26 @@ description: >-
   Shows what the host has for applying updates: the release and whether it is in the tested matrix, and the
   automatic update services that are enabled (unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron).
   Whether the updates are actually applied on time is for a person to check.
+description_ko: >-
+  호스트가 업데이트를 적용하는 수단을 보여 줍니다. 릴리스와 검증된 목록에 있는지, 그리고 활성화된 자동 업데이트 서비스(unattended-upgrades,
+  apt-daily-upgrade, dnf-automatic, yum-cron)입니다. 업데이트가 제때 실제로 적용되는지는 사람이 확인해야 합니다.
 rationale: An unpatched host is attacked with exploits that already have a fix.
+rationale_ko: >-
+  패치하지 않은 호스트는 이미 고쳐진 취약점으로 공격당합니다.
 remediation: >-
   Apply security updates on a schedule (`unattended-upgrades` on Debian and Ubuntu, `dnf-automatic` on the RHEL
   family) or through your patch process, and move off a release that no longer gets updates.
+remediation_ko: >-
+  보안 업데이트를 정해진 주기로(Debian과 Ubuntu는 `unattended-upgrades`, RHEL 계열은 `dnf-automatic`) 또는 조직의 패치 절차로
+  적용하고, 더 이상 업데이트를 받지 못하는 릴리스에서는 옮겨 가세요.
 manual:
   guidance: >-
     Check that security updates are applied regularly (for example `apt list --upgradable` or
     `dnf updateinfo list --security`) and that the release is still supported. The list shows the release and
     the automatic update services that are enabled.
+  guidance_ko: >-
+    보안 업데이트가 정기적으로 적용되는지(예: `apt list --upgradable` 또는 `dnf updateinfo list --security`)와 릴리스가 아직
+    지원되는지 확인하세요. 목록에는 릴리스와 활성화된 자동 업데이트 서비스가 나옵니다.
   show: >-
     ["release " + os.name + " (" + os.id + " " + os.version_id + ")" + (os.supported ? "" : ", not in the tested matrix")] +
     ["unattended-upgrades.service", "apt-daily-upgrade.timer", "dnf-automatic.timer", "dnf-automatic-install.timer", "dnf-automatic-notifyonly.timer", "yum-cron.service"]

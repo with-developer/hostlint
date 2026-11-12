@@ -5,10 +5,18 @@ title_ko: vsftpd가 TLS를 사용함
 severity: medium
 description: >-
   Checks ssl_enable in vsftpd.conf and that local logins are still required to use it (force_local_logins_ssl, YES by default). Plain FTP sends passwords and files in clear text. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+description_ko: >-
+  vsftpd.conf의 ssl_enable과, 로컬 로그인이 여전히 TLS를 쓰도록 강제되는지(force_local_logins_ssl, 기본값은 YES)를 확인합니다.
+  일반 FTP는 비밀번호와 파일을 평문으로 보냅니다. 기본 vsftpd.conf만 읽습니다(두 번째 기본 파일이나 그 옆의 다른 .conf가 있으면 결과는 ERROR입니다).
+  vsftpd가 시작되어 있고 vsftpd.conf가 있을 때 적용되며, 다른 FTP 서버는 services.review-ftp-other가 봅니다.
 rationale: >-
   Plain FTP sends passwords in clear text.
+rationale_ko: >-
+  일반 FTP는 비밀번호를 평문으로 보냅니다.
 remediation: >-
   Set `ssl_enable=YES` with a certificate (`rsa_cert_file`) in vsftpd.conf, or replace FTP by SFTP.
+remediation_ko: >-
+  vsftpd.conf에 `ssl_enable=YES`와 인증서(`rsa_cert_file`)를 설정하거나, FTP를 SFTP로 대체하세요.
 applies: >-
   ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
 failure: TLS is off, or optional for local logins, so passwords can still be sent in clear text.

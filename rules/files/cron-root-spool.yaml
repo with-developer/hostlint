@@ -7,8 +7,15 @@ description: >-
   Checks that root's crontab (/var/spool/cron/crontabs/root on Debian and Ubuntu,
   /var/spool/cron/root on the RHEL family) is owned by root and can be read and written by root
   only (mode 0600 or stricter).
+description_ko: >-
+  root의 crontab(Debian과 Ubuntu는 /var/spool/cron/crontabs/root, RHEL 계열은 /var/spool/cron/root)을
+  root가 소유하고 root만 읽고 쓸 수 있는지(모드 0600 또는 더 엄격) 확인합니다.
 rationale: Whoever can change root's crontab runs commands as root.
+rationale_ko: >-
+  root의 crontab을 바꿀 수 있는 사람은 root 권한으로 명령을 실행할 수 있습니다.
 remediation: Run `chown root` and `chmod 600` on the listed crontab.
+remediation_ko: >-
+  나열된 crontab에 `chown root`와 `chmod 600`을 실행하세요.
 file:
   paths: [/var/spool/cron/crontabs/root, /var/spool/cron/root]
   owner: [root]

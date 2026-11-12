@@ -5,10 +5,17 @@ title_ko: 주소 공간 배치 무작위화가 완전히 켜져 있음
 severity: medium
 description: >-
   Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+description_ko: >-
+  커널 매개변수 kernel.randomize_va_space를 확인합니다(스택, 라이브러리, 힙을 모두 무작위로 배치하는 2여야 합니다). 실행 중인 호스트에서는 커널이
+  알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
 rationale: >-
   Randomized addresses make memory-corruption bugs much harder to turn into working exploits.
+rationale_ko: >-
+  주소를 무작위로 배치하면 메모리 손상 취약점을 실제로 동작하는 공격으로 바꾸기가 훨씬 어려워집니다.
 remediation: >-
   Set `kernel.randomize_va_space = 2` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에 `kernel.randomize_va_space = 2`를 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:

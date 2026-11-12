@@ -6,10 +6,17 @@ severity: high
 description: >-
   Lists the ways the finger service (fingerd, cfingerd) is started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  finger 서비스(fingerd, cfingerd)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스
+  이름이나 프로그램으로 찾아 나열합니다.
 rationale: >-
   finger tells anyone on the network who your users are and when they log in.
+rationale_ko: >-
+  finger는 네트워크의 누구에게나 이 호스트의 사용자가 누구이고 언제 로그인하는지 알려 줍니다.
 remediation: >-
   Disable the service: remove its inetd/xinetd entry, or `systemctl disable --now` its unit.
+remediation_ko: >-
+  서비스를 끄세요. inetd/xinetd 항목을 지우거나 그 유닛을 `systemctl disable --now`로 끕니다.
 violations:
   over: services.started
   as: s

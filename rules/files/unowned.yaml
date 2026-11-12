@@ -7,9 +7,16 @@ description: >-
   Lists files and directories on local filesystems whose owner or group has no account in
   /etc/passwd or /etc/group. Accounts that only a directory service (LDAP, SSSD, NIS) provides
   are not looked up, so files they own are listed too.
+description_ko: >-
+  소유자나 그룹이 /etc/passwd나 /etc/group에 계정으로 없는 파일과 디렉터리를 로컬 파일 시스템에서 나열합니다. 디렉터리 서비스(LDAP, SSSD,
+  NIS)만 제공하는 계정은 조회하지 않으므로, 그 계정이 소유한 파일도 여기에 나열됩니다.
 rationale: >-
   A file left behind by a deleted account belongs to whoever is next given its UID or GID.
+rationale_ko: >-
+  지워진 계정이 남긴 파일은 그 UID나 GID를 다음에 받는 사람의 것이 됩니다.
 remediation: Give each listed file an owner and group (`chown`), or remove it.
+remediation_ko: >-
+  나열된 파일마다 소유자와 그룹을 주거나(`chown`) 파일을 지우세요.
 violations:
   over: filesystem.unowned
   as: f

@@ -6,8 +6,14 @@ severity: medium
 description: >-
   Lists accounts with a login shell whose home directory is owned by another account or is
   writable by others.
+description_ko: >-
+  로그인 셸이 있는 계정 중에서 홈 디렉터리를 다른 계정이 소유하고 있거나 다른 사용자가 쓸 수 있는 것을 나열합니다.
 rationale: Whoever can write a home directory can replace its startup files and keys.
+rationale_ko: >-
+  홈 디렉터리에 쓸 수 있는 사람은 그 안의 시작 파일과 키를 바꿔치기할 수 있습니다.
 remediation: Run `chown <user> <home>` and `chmod o-w <home>` for each listed account.
+remediation_ko: >-
+  나열된 계정마다 `chown 사용자 홈` 과 `chmod o-w 홈`을 실행하세요.
 violations:
   over: homes.accounts
   as: h

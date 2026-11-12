@@ -5,10 +5,21 @@ title_ko: root가 vsftpd에 로그인할 수 없음
 severity: medium
 description: >-
   Checks that root is refused: the FTP service's PAM stack has a pam_listfile line (item=user, sense=deny) whose file lists root (/etc/ftpusers, /etc/vsftpd/ftpusers), or userlist_enable makes vsftpd refuse root (a user list that holds it with userlist_deny=YES, or one that does not with userlist_deny=NO). Nested PAM includes are not followed, and a PAM rule before pam_listfile that may let root skip it (sufficient, an include) makes the result ERROR. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+description_ko: >-
+  root가 거부되는지 확인합니다. FTP 서비스의 PAM 스택에 root를 담은 파일(/etc/ftpusers, /etc/vsftpd/ftpusers)을 가리키는
+  pam_listfile 줄(item=user, sense=deny)이 있거나, userlist_enable 때문에 vsftpd가 root를 거부하는 경우입니다(root가
+  들어 있는 사용자 목록에 userlist_deny=YES이거나, 들어 있지 않은 목록에 userlist_deny=NO). 중첩된 PAM include는 따라가지 않으며,
+  root가 pam_listfile을 건너뛰게 할 수 있는 규칙(sufficient, include)이 그 앞에 있으면 결과는 ERROR입니다. 기본 vsftpd.conf만
+  읽습니다(두 번째 기본 파일이나 그 옆의 다른 .conf가 있으면 결과는 ERROR입니다). vsftpd가 시작되어 있고 vsftpd.conf가 있을 때 적용되며, 다른
+  FTP 서버는 services.review-ftp-other가 봅니다.
 rationale: >-
   A root password sent over FTP, even over TLS, puts the whole host at the mercy of one login.
+rationale_ko: >-
+  FTP로 보내는 root 비밀번호는 TLS를 쓰더라도, 로그인 한 번에 호스트 전체의 운명이 달리게 만듭니다.
 remediation: >-
   List root in /etc/ftpusers (or /etc/vsftpd/ftpusers) and keep the pam_listfile line in the vsftpd PAM service.
+remediation_ko: >-
+  root를 /etc/ftpusers(또는 /etc/vsftpd/ftpusers)에 올리고, vsftpd PAM 서비스의 pam_listfile 줄을 유지하세요.
 applies: >-
   ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
 failure: Nothing refuses root, so list root in the file of a pam_listfile line of the vsftpd PAM service (ftpusers), or use the user list.

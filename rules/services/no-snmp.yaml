@@ -6,10 +6,17 @@ severity: medium
 description: >-
   Lists the ways the SNMP agent (snmpd) is started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  SNMP 에이전트(snmpd)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로
+  찾아 나열합니다.
 rationale: >-
   An SNMP agent exposes system details and, misconfigured, lets others change settings.
+rationale_ko: >-
+  SNMP 에이전트는 시스템 정보를 드러내고, 설정이 잘못되면 다른 사람이 설정을 바꿀 수 있게 합니다.
 remediation: >-
   Disable snmpd if nothing monitors this host through SNMP; otherwise waive this check and secure snmpd.
+remediation_ko: >-
+  SNMP로 이 호스트를 감시하는 것이 없다면 snmpd를 끄세요. 필요하다면 이 점검을 예외(waiver)로 두고 snmpd를 안전하게 설정하세요.
 violations:
   over: services.started
   as: s

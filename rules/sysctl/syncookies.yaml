@@ -5,10 +5,17 @@ title_ko: TCP SYN 쿠키가 켜져 있음
 severity: medium
 description: >-
   Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+description_ko: >-
+  커널 매개변수 net.ipv4.tcp_syncookies를 확인합니다(1이면 연결 대기열이 가득 찼을 때 쏟아지는 연결 시도에 쿠키로 응답합니다). 실행 중인 호스트에서는
+  커널이 알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
 rationale: >-
   SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
+rationale_ko: >-
+  SYN 쿠키는 반쯤 열린 연결이 쏟아져도 연결 대기열의 메모리가 바닥나지 않게 막아 줍니다.
 remediation: >-
   Set `net.ipv4.tcp_syncookies = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에 `net.ipv4.tcp_syncookies = 1`를 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:

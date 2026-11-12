@@ -4,8 +4,14 @@ title: Every account has its own UID
 title_ko: 계정마다 UID가 다름
 severity: medium
 description: Lists accounts that share a UID with another account.
+description_ko: >-
+  다른 계정과 UID가 같은 계정을 나열합니다.
 rationale: Accounts sharing a UID are the same user to the kernel, so access and audit trails cannot tell them apart.
+rationale_ko: >-
+  UID가 같은 계정은 커널에게 같은 사용자이므로, 접근 권한과 감사 기록으로는 서로 구분할 수 없습니다.
 remediation: Give each account a unique UID (usermod -u) and fix the ownership of its files.
+remediation_ko: >-
+  계정마다 고유한 UID를 주고(`usermod -u`), 그 계정의 파일 소유자를 바로잡으세요.
 violations:
   over: accounts.users
   as: u

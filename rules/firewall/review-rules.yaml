@@ -7,10 +7,19 @@ description: >-
   Asks for the rules to be read when the only firewall found is an nftables, netfilter-persistent or iptables service: a service that starts at boot
   says nothing about what its rules allow, and vmsctl does not read them. It does not apply when ufw is on or firewalld is enabled, which keep rules of their own that a
   person set with their commands, nor when no such service is enabled (the check before it fails then).
+description_ko: >-
+  찾은 방화벽이 nftables, netfilter-persistent, iptables 서비스뿐일 때 규칙을 직접 읽어 보라고 안내합니다. 부팅할 때 시작하는 서비스라는
+  사실만으로는 규칙이 무엇을 허용하는지 알 수 없고, vmsctl은 그 규칙을 읽지 않습니다. ufw가 켜져 있거나 firewalld가 활성화되어 있으면 사람이 그 명령으로
+  정한 자체 규칙이 있으므로 해당하지 않고, 그런 서비스가 하나도 없을 때도 해당하지 않습니다(앞의 점검이 실패합니다).
 rationale: >-
   A firewall whose rules accept everything protects nothing, and a default of "accept" is what a fresh nftables or iptables setup has.
+rationale_ko: >-
+  모든 것을 받아들이는 규칙의 방화벽은 아무것도 지켜 주지 않으며, 새로 설치한 nftables나 iptables의 기본 정책이 바로 "accept"입니다.
 remediation: >-
   List the rules (`nft list ruleset`, or `iptables-save`) and check that the input chain drops what the host does not serve; set the policy of the chain to drop and allow SSH first.
+remediation_ko: >-
+  규칙을 확인하세요(`nft list ruleset` 또는 `iptables-save`). 입력 체인이 호스트가 제공하지 않는 것을 버리는지 보고, 체인의 정책을 drop으로
+  정한 뒤 SSH를 먼저 허용하세요.
 applies: >-
   !target.image && services.systemd &&
   !((firewall.ufw.present && "enabled" in firewall.ufw.settings && firewall.ufw.settings["enabled"].value == "yes") && "ufw.service" in services.units && services.units["ufw.service"].enabled && !services.units["ufw.service"].masked) &&
@@ -19,6 +28,8 @@ applies: >-
 manual:
   guidance: >-
     A firewall service is enabled, which is not the same as rules that protect the host. Read the rules and check that the input chain drops what the host does not serve.
+  guidance_ko: >-
+    방화벽 서비스는 켜져 있지만, 그것이 호스트를 지키는 규칙이라는 뜻은 아닙니다. 규칙을 읽고 입력 체인이 호스트가 제공하지 않는 것을 버리는지 확인하세요.
   show: >-
     ["nftables.service", "netfilter-persistent.service", "iptables.service"].filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked).map(n, "firewall service enabled: " + n)
 tests:

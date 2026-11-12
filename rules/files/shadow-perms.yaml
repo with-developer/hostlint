@@ -6,8 +6,15 @@ severity: high
 description: >-
   Checks that /etc/shadow is owned by root with mode 0400 or stricter. Debian-family systems
   ship it as 0640 with group shadow, which this check reports.
+description_ko: >-
+  /etc/shadow를 root가 소유하고 모드가 0400 또는 더 엄격한지 확인합니다. Debian 계열은 이 파일을 shadow 그룹의 0640으로 배포하는데, 이
+  점검은 그 경우를 보고합니다.
 rationale: Password hashes in /etc/shadow can be cracked offline by anyone who can read them.
+rationale_ko: >-
+  /etc/shadow의 비밀번호 해시는 읽을 수 있는 사람이 오프라인으로 크래킹할 수 있습니다.
 remediation: Run `chown root /etc/shadow` and `chmod 400 /etc/shadow`.
+remediation_ko: >-
+  `chown root /etc/shadow`와 `chmod 400 /etc/shadow`를 실행하세요.
 file:
   paths: [/etc/shadow]
   owner: [root]

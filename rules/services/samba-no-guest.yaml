@@ -8,10 +8,19 @@ description: >-
   default in [global]. The printer sections are not shares. An include or config file line is not followed and
   makes the result ERROR, as does another .conf next to smb.conf (smbd may be started with it). Applies when Samba is started and has an smb.conf; otherwise
   services.review-anonymous-sharing asks for a review.
+description_ko: >-
+  /etc/samba/smb.conf에서 "guest ok = yes"나 "public = yes"인 공유를 나열합니다. 그 공유에 적었거나 [global]의 기본값으로 정한
+  경우를 모두 봅니다. 프린터 섹션은 공유가 아닙니다. include나 config file 줄은 따라가지 않고 결과를 ERROR로 만들며, smb.conf 옆의 다른
+  .conf도 마찬가지입니다(smbd가 그것으로 시작되었을 수 있습니다). Samba가 시작되어 있고 smb.conf가 있을 때 적용되며, 그렇지 않으면
+  services.review-anonymous-sharing이 검토를 요청합니다.
 rationale: >-
   A share open to guests lets anyone who can reach the server read, and sometimes write, its files.
+rationale_ko: >-
+  게스트에게 열린 공유는 서버에 닿을 수 있는 누구나 그 파일을 읽을 수 있게 하고, 때로는 쓸 수도 있게 합니다.
 remediation: >-
   Set `guest ok = no` on the share (and remove `public = yes`), and give the users that need it Samba accounts.
+remediation_ko: >-
+  공유에 `guest ok = no`를 설정하고(`public = yes`는 지우고), 필요한 사용자에게는 Samba 계정을 만들어 주세요.
 applies: >-
   samba.present && services.started.exists(s, s.service in ["smb", "smbd", "samba", "samba-ad-dc"] || s.program.matches("/(smbd|samba)$"))
 violations:

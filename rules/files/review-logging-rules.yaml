@@ -7,15 +7,25 @@ description: >-
   Shows the logging services that are enabled (rsyslog, syslog-ng, systemd-journald) and the selector rules of
   /etc/rsyslog.conf and the files it includes, with where each sends its messages. Whether they record what your
   policy requires is for a person to judge.
+description_ko: >-
+  켜져 있는 로그 서비스(rsyslog, syslog-ng, systemd-journald)와 /etc/rsyslog.conf 및 그 파일이 포함하는 파일의 선택 규칙을, 각
+  규칙이 메시지를 어디로 보내는지와 함께 보여 줍니다. 정책이 요구하는 것을 기록하는지는 사람이 판단합니다.
 rationale: Without logs of logins, privileged commands and system events, an intrusion leaves nothing to investigate.
+rationale_ko: >-
+  로그인, 권한 있는 명령, 시스템 이벤트의 로그가 없으면 침입이 일어나도 조사할 것이 남지 않습니다.
 remediation: >-
   Log authentication (auth, authpriv), privileged commands and system events to files or a log server, and keep them
   as long as your policy requires.
+remediation_ko: >-
+  인증(auth, authpriv), 권한 있는 명령, 시스템 이벤트를 파일이나 로그 서버에 기록하고, 정책이 요구하는 기간 동안 보관하세요.
 manual:
   guidance: >-
     Check that the syslog configuration records authentication, privileged commands and system events as your
     policy requires, and that logs are kept long enough. The list shows the enabled logging services and the rules
     of rsyslog.
+  guidance_ko: >-
+    syslog 설정이 정책대로 인증, 권한 있는 명령, 시스템 이벤트를 기록하는지, 로그를 충분히 오래 보관하는지 확인하세요. 목록에는 켜져 있는 로그 서비스와
+    rsyslog의 규칙이 나옵니다.
   show: >-
     ["rsyslog.service", "syslog-ng.service", "systemd-journald.service"]
       .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)

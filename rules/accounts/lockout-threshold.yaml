@@ -8,11 +8,20 @@ description: >-
   after at most `max_failures` failed attempts, with pam_faillock or pam_tally2. pam_faillock
   only locks with an authfail line plus a preauth or authsucc line, and sshd only uses PAM with
   UsePAM yes.
+description_ko: >-
+  login과 (SSH 서버가 있으면) sshd의 PAM 스택이 pam_faillock이나 pam_tally2로 로그인 실패 `max_failures`번 이내에 계정을
+  잠그는지 확인합니다. pam_faillock은 authfail 줄과 함께 preauth나 authsucc 줄이 있어야 잠그고, sshd는 UsePAM yes일 때만 PAM을
+  사용합니다.
 rationale: Without a lockout, an attacker can try passwords against an account indefinitely.
+rationale_ko: >-
+  잠금이 없으면 공격자가 한 계정에 대해 비밀번호를 끝없이 시도할 수 있습니다.
 remediation: >-
   Enable pam_faillock (authselect enable-feature with-faillock, or preauth, authfail and
   account lines on Debian), set `deny = 10` or less in /etc/security/faillock.conf, and keep
   `UsePAM yes` in sshd_config.
+remediation_ko: >-
+  pam_faillock을 켜고(`authselect enable-feature with-faillock`, Debian에서는 preauth, authfail, account
+  줄 추가), /etc/security/faillock.conf에 `deny = 10` 이하를 설정하고, sshd_config에는 `UsePAM yes`를 유지하세요.
 params:
   max_failures: {type: int, default: 10, stricter: lower, description: Failed attempts before an account locks}
 expect: >-

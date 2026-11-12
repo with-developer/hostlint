@@ -8,15 +8,25 @@ description: >-
   (vsftpd with a configuration is checked by services.vsftpd-banner, services.vsftpd-tls and
   services.vsftpd-no-root); then shows how it was started, for a review of its configuration. Not applicable
   otherwise.
+description_ko: >-
+  vsftpd가 아닌 FTP 서버가 시작되어 있거나, vsftpd가 시작되어 있는데 vsftpd.conf가 없을 때 적용됩니다(설정이 있는 vsftpd는
+  services.vsftpd-banner, services.vsftpd-tls, services.vsftpd-no-root가 봅니다). 설정을 검토할 수 있도록 그 서버가
+  시작된 경로를 보여 줍니다. 그 밖에는 해당하지 않습니다.
 rationale: >-
   Plain FTP sends passwords in clear text, a version banner tells attackers which exploits to try, and a root login over FTP exposes the host.
+rationale_ko: >-
+  일반 FTP는 비밀번호를 평문으로 보내고, 버전이 적힌 배너는 공격자에게 어떤 공격을 시도할지 알려 주며, FTP로 root가 로그인하면 호스트가 위험해집니다.
 remediation: >-
   Check that the FTP server requires TLS (or is replaced by SFTP), hides its version in the banner and refuses root (ftpusers).
+remediation_ko: >-
+  FTP 서버가 TLS를 요구하는지(또는 SFTP로 대체했는지), 배너에 버전을 감추는지, root를 거부하는지(ftpusers) 확인하세요.
 applies: >-
   services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd)$")) || (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$")))
 manual:
   guidance: >-
     Check that the FTP server requires TLS (or is replaced by SFTP), hides its version in the banner and refuses root (ftpusers).
+  guidance_ko: >-
+    FTP 서버가 TLS를 요구하는지(또는 SFTP로 대체했는지), 배너에 버전을 감추는지, root를 거부하는지(ftpusers) 확인하세요.
   show: >-
     services.started.filter(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "wu-ftpd", "in.ftpd"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:

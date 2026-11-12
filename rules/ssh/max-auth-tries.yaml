@@ -7,11 +7,18 @@ description: >-
   Checks the global MaxAuthTries setting of the OpenSSH server, the number of authentication
   attempts allowed on one connection. On a live host the effective value comes from `sshd -T`,
   so the default of the installed version (6) counts.
+description_ko: >-
+  OpenSSH 서버의 전역 MaxAuthTries 설정, 즉 연결 하나에서 허용하는 인증 시도 횟수를 확인합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제
+  적용값을 쓰므로 설치된 버전의 기본값(6)도 반영됩니다.
 rationale: >-
   Every attempt on a connection is a free guess for an attacker; a low limit makes guessing
   slower and noisier.
+rationale_ko: >-
+  연결 하나에서 시도할 수 있는 횟수만큼 공격자는 공짜로 추측을 할 수 있습니다. 한도를 낮추면 추측이 느려지고 흔적도 더 많이 남습니다.
 remediation: >-
   Set `MaxAuthTries 4` (or less) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `MaxAuthTries 4`(또는 그보다 작은 값)를 설정하고 sshd를 다시 불러오세요.
 applies: >-
   sshd.present
 params:

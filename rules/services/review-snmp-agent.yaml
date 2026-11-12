@@ -8,15 +8,26 @@ description: >-
   configuration from elsewhere); then shows how it was started, for a review of its
   configuration. When the file is there, services.snmp-v3-only, services.snmp-community-strong and
   services.snmp-access-restricted decide. Not applicable otherwise.
+description_ko: >-
+  SNMP 에이전트가 시작되어 있는데 /etc/snmp/snmpd.conf가 없을 때 적용됩니다(설정을 다른 곳에서 가져올 수 있습니다). 설정을 검토할 수 있도록 에이전트가
+  시작된 경로를 보여 줍니다. 파일이 있으면 services.snmp-v3-only, services.snmp-community-strong,
+  services.snmp-access-restricted가 판단합니다. 그 밖에는 해당하지 않습니다.
 rationale: >-
   SNMP v1/v2c communities travel in clear text and default ones are the first thing scanners try.
+rationale_ko: >-
+  SNMP v1/v2c의 community는 평문으로 오가고, 기본 community는 스캐너가 가장 먼저 시도하는 것입니다.
 remediation: >-
   Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, uses no default or guessable community, and answers only the management hosts that need it.
+remediation_ko: >-
+  SNMP 에이전트가 인증과 암호화가 있는 SNMPv3만 받는지, 기본값이나 추측하기 쉬운 community를 쓰지 않는지, 필요한 관리 호스트에게만 응답하는지 확인하세요.
 applies: >-
   !snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
 manual:
   guidance: >-
     Check that the SNMP agent accepts only SNMPv3 with authentication and privacy, uses no default or guessable community, and answers only the management hosts that need it.
+  guidance_ko: >-
+    SNMP 에이전트가 인증과 암호화가 있는 SNMPv3만 받는지, 기본값이나 추측하기 쉬운 community를 쓰지 않는지, 필요한 관리 호스트에게만 응답하는지
+    확인하세요.
   show: >-
     services.started.filter(s, s.service in ["snmpd"] || s.program.matches("/snmpd$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:

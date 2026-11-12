@@ -10,13 +10,23 @@ description: >-
   which prints seconds, so the default of the installed version (120) counts. On a mounted root
   only a value written in the files is known: a plain number is read as seconds, and a value
   with a unit (`1m`, `30s`) is not converted and reports ERROR.
+description_ko: >-
+  OpenSSH 서버의 전역 LoginGraceTime 설정, 즉 클라이언트가 로그인을 마쳐야 하는 시간을 확인합니다. 1초부터 `max_seconds`초까지는 통과하고,
+  0은 제한이 없다는 뜻이라 실패합니다. 실행 중인 호스트에서는 `sshd -T`가 초 단위로 알려 주는 실제 적용값을 쓰므로 설치된 버전의 기본값(120)도 반영됩니다.
+  마운트한 루트에서는 파일에 적힌 값만 알 수 있습니다. 숫자만 적힌 값은 초로 읽고, `1m`, `30s`처럼 단위가 붙은 값은 변환하지 않고 ERROR로 보고합니다.
 rationale: >-
   Every unauthenticated connection holds a slot until it logs in or times out; a long grace
   time lets a client keep many of them open and use up MaxStartups, so real users cannot
   connect.
+rationale_ko: >-
+  인증을 마치지 않은 연결도 로그인하거나 시간이 다 될 때까지 접속 자리를 차지합니다. 제한 시간이 길면 클라이언트 하나가 그런 연결을 많이 열어 두어 MaxStartups를
+  다 쓸 수 있고, 그러면 정상 사용자가 접속하지 못합니다.
 remediation: >-
   Set `LoginGraceTime 60` (or less, in seconds) in /etc/ssh/sshd_config (or a file it includes)
   and reload sshd.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `LoginGraceTime 60`(또는 그보다 짧은 초 단위 값)을 설정하고 sshd를 다시
+  불러오세요.
 applies: >-
   sshd.present
 params:

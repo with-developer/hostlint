@@ -4,8 +4,14 @@ title: Accounts that can log in have a home directory
 title_ko: 로그인 가능 계정의 홈 디렉터리 존재
 severity: medium
 description: Lists accounts with a login shell whose home directory does not exist.
+description_ko: >-
+  로그인 셸이 있는 계정 중에서 홈 디렉터리가 없는 것을 나열합니다.
 rationale: Without a home directory a user logs in to "/", and startup files and keys end up in unexpected places.
+rationale_ko: >-
+  홈 디렉터리가 없으면 사용자가 "/"로 로그인하게 되고, 시작 파일과 키가 엉뚱한 곳에 생깁니다.
 remediation: Create the home directory (`mkhomedir_helper <user>`), or remove or lock the account.
+remediation_ko: >-
+  홈 디렉터리를 만들거나(`mkhomedir_helper 사용자`), 계정을 지우거나 잠그세요.
 violations:
   over: homes.accounts
   as: h

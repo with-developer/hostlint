@@ -9,13 +9,23 @@ description: >-
   by root, group wheel, sudo, admin or adm, setuid, not executable by others). A line with trust or
   deny, a control that does not deny (optional, sufficient), or a sufficient rule earlier in
   the stack does not restrict su.
+description_ko: >-
+  su의 PAM 스택에 wheel 그룹(또는 group=으로 지정한 그룹) 밖의 사용자를 거부하는 pam_wheel 줄이 있는지, 또는 su 자체가 권한으로 제한되어
+  있는지(root 소유, 그룹은 wheel, sudo, admin, adm 중 하나, setuid, 다른 사용자는 실행 불가) 확인합니다. trust나 deny가 붙은 줄,
+  거부하지 않는 제어값(optional, sufficient), 스택에서 더 앞에 있는 sufficient 규칙은 su를 제한하지 못합니다.
 rationale: >-
   Without the restriction, any user who learns the root password can become root with su.
+rationale_ko: >-
+  제한이 없으면 root 비밀번호를 알게 된 사용자는 누구나 su로 root가 될 수 있습니다.
 remediation: >-
   Add `auth required pam_wheel.so use_uid` to /etc/pam.d/su, before the common-auth or
   system-auth include, and add administrators to the wheel group. Or restrict the program to an
   administrators' group (`chgrp wheel /usr/bin/su && chmod 4750 /usr/bin/su`; on Debian and Ubuntu use the
   group sudo and `dpkg-statoverride`, so that package updates keep it).
+remediation_ko: >-
+  /etc/pam.d/su에서 common-auth나 system-auth 포함 줄보다 앞에 `auth required pam_wheel.so use_uid`를 추가하고,
+  관리자를 wheel 그룹에 넣으세요. 또는 프로그램 자체를 관리자 그룹으로 제한하세요(`chgrp wheel /usr/bin/su && chmod 4750
+  /usr/bin/su`. Debian과 Ubuntu에서는 그룹을 sudo로 하고 `dpkg-statoverride`를 써야 패키지 업데이트 뒤에도 유지됩니다).
 setting:
   fact: pam.effective.su_wheel
   in: [restricted]

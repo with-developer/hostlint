@@ -4,11 +4,20 @@ title: Review who owns the log files
 title_ko: 로그 파일 소유자 검토
 severity: medium
 description: Lists the files and directories under /var/log that root does not own.
+description_ko: >-
+  /var/log 아래에서 root가 소유하지 않은 파일과 디렉터리를 나열합니다.
 rationale: A log owned by a login account can be rewritten by whoever uses it; one owned by the logging service is expected.
+rationale_ko: >-
+  로그인 계정이 소유한 로그는 그 계정을 쓰는 사람이 고쳐 쓸 수 있습니다. 로그를 쓰는 서비스가 소유하는 것은 정상입니다.
 remediation: Run `chown root` on logs that no service writes as another account.
+remediation_ko: >-
+  다른 계정으로 로그를 쓰는 서비스가 없는 로그에는 `chown root`를 실행하세요.
 manual:
   guidance: >-
     Check that each listed log belongs to the service that writes it (syslog, a database, a web
     server) and not to a person's login account. Logs owned by root are not listed.
+  guidance_ko: >-
+    나열된 로그가 사람의 로그인 계정이 아니라 그 로그를 쓰는 서비스(syslog, 데이터베이스, 웹 서버)의 것인지 확인하세요. root가 소유한 로그는 나열하지
+    않습니다.
   show: >-
     filesystem.log_files.map(f, f.path + " " + f.mode + " " + (f.owner != "" ? f.owner : string(f.uid)) + ":" + (f.group != "" ? f.group : string(f.gid)))

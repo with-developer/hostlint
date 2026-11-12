@@ -4,12 +4,20 @@ title: Review the time servers
 title_ko: 시각 동기화 서버 검토
 severity: low
 description: Shows the time synchronization services that are started, to check their servers against your standard.
+description_ko: >-
+  시작된 시각 동기화 서비스를 보여 주어, 그 서버가 조직의 기준에 맞는지 확인하게 합니다.
 rationale: A synchronized clock is only as good as the servers it follows.
+rationale_ko: >-
+  동기화된 시계는 그것이 따르는 서버만큼만 믿을 수 있습니다.
 remediation: Point the service at the time servers your organization approves (`server` or `pool` lines).
+remediation_ko: >-
+  서비스가 조직이 승인한 시간 서버를 가리키게 하세요(`server`나 `pool` 줄).
 applies: >-
   services.started.exists(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"])
 manual:
   guidance: Check that the time service uses your approved servers (chrony.conf, ntp.conf or timesyncd.conf).
+  guidance_ko: >-
+    시간 서비스가 조직이 승인한 서버를 쓰는지 확인하세요(chrony.conf, ntp.conf, timesyncd.conf).
   show: >-
     services.started.filter(s, s.service in ["chronyd", "chrony", "ntpd", "ntp", "ntpsec", "systemd-timesyncd"]).map(s, s.name + " (" + s.kind + ")")
 tests:

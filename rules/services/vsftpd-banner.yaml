@@ -5,10 +5,19 @@ title_ko: vsftpd 접속 배너에 버전이 없음
 severity: low
 description: >-
   Checks what vsftpd tells a client that connects. Without ftpd_banner or banner_file it says "(vsFTPd x.y.z)"; a custom text or file that still contains a version number or the name vsftpd fails too. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
+description_ko: >-
+  vsftpd가 접속한 클라이언트에게 무엇을 알려 주는지 확인합니다. ftpd_banner나 banner_file이 없으면 "(vsFTPd x.y.z)"라고 알립니다. 버전
+  번호나 vsftpd라는 이름이 아직 들어 있는 직접 쓴 문구나 파일도 실패합니다. 기본 vsftpd.conf만 읽습니다(두 번째 기본 파일이나 그 옆의 다른 .conf가
+  있으면 결과는 ERROR입니다). vsftpd가 시작되어 있고 vsftpd.conf가 있을 때 적용되며, 다른 FTP 서버는 services.review-ftp-other가
+  봅니다.
 rationale: >-
   A version banner tells attackers which exploits to try.
+rationale_ko: >-
+  버전이 적힌 배너는 공격자에게 어떤 공격을 시도할지 알려 줍니다.
 remediation: >-
   Set `ftpd_banner=Authorized users only.` in vsftpd.conf, with no version number and not the name vsftpd.
+remediation_ko: >-
+  vsftpd.conf에 버전 번호도 vsftpd라는 이름도 없는 `ftpd_banner=Authorized users only.`를 설정하세요.
 applies: >-
   ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
 failure: The connection banner shows the vsftpd version or its name, so set ftpd_banner to a text without them.

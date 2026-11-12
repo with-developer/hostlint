@@ -6,8 +6,15 @@ severity: high
 description: >-
   Checks that /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly and /etc/cron.monthly and the
   scripts in them are owned by root and writable by no one else (mode 0755 or stricter).
+description_ko: >-
+  /etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly, /etc/cron.monthly와 그 안의 스크립트를 root가 소유하고 다른
+  사람은 쓸 수 없는지(모드 0755 또는 더 엄격) 확인합니다.
 rationale: These scripts run as root on a schedule; whoever can change one gets root at the next run.
+rationale_ko: >-
+  이 스크립트들은 root 권한으로 정해진 시간에 실행되므로, 하나라도 바꿀 수 있는 사람은 다음 실행 때 root 권한을 얻습니다.
 remediation: Run `chown root` and `chmod go-w` on each listed script or directory.
+remediation_ko: >-
+  나열된 스크립트나 디렉터리마다 `chown root`와 `chmod go-w`를 실행하세요.
 file:
   paths: [/etc/cron.hourly, /etc/cron.daily, /etc/cron.weekly, /etc/cron.monthly, /etc/cron.hourly/*, /etc/cron.daily/*, /etc/cron.weekly/*, /etc/cron.monthly/*]
   owner: [root]

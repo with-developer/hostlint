@@ -6,11 +6,18 @@ severity: high
 description: >-
   Lists Match blocks of the OpenSSH server configuration that set PermitRootLogin to
   anything but "no", which re-enables root login for the connections they match.
+description_ko: >-
+  OpenSSH 서버 설정의 Match 블록 중에서 PermitRootLogin을 "no"가 아닌 값으로 둔 것을 나열합니다. 이런 블록은 조건에 맞는 연결에 대해 root
+  로그인을 다시 허용합니다.
 rationale: >-
   A Match block overrides the global setting for matching connections, so a hardened global
   value can be undone for a whole network or user group.
+rationale_ko: >-
+  Match 블록은 조건에 맞는 연결에 대해 전역 설정을 덮어쓰므로, 전역 값을 강화해도 특정 네트워크나 사용자 그룹에 대해서는 되돌려질 수 있습니다.
 remediation: >-
   Remove PermitRootLogin from the Match block or set it to "no" there as well.
+remediation_ko: >-
+  Match 블록에서 PermitRootLogin을 지우거나, 그 블록에서도 "no"로 설정하세요.
 applies: >-
   sshd.present
 violations:

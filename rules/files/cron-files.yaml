@@ -6,8 +6,14 @@ severity: high
 description: >-
   Checks that /etc/crontab, /etc/cron.d/*, and the cron and at allow and deny files are owned by
   root with mode 0640 or stricter.
+description_ko: >-
+  /etc/crontab, /etc/cron.d/*, 그리고 cron과 at의 허용·거부 파일을 root가 소유하고 모드가 0640 또는 더 엄격한지 확인합니다.
 rationale: These files decide what runs as root on a schedule and who may schedule jobs.
+rationale_ko: >-
+  이 파일들이 root 권한으로 정해진 시간에 무엇을 실행할지, 누가 작업을 예약할 수 있는지를 정합니다.
 remediation: Run `chown root` and `chmod 640` on each listed file.
+remediation_ko: >-
+  나열된 파일마다 `chown root`와 `chmod 640`을 실행하세요.
 file:
   paths: [/etc/crontab, /etc/cron.d/*, /etc/cron.allow, /etc/cron.deny, /etc/at.allow, /etc/at.deny]
   owner: [root]

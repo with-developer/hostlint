@@ -7,14 +7,25 @@ description: >-
   Shows the banner files (/etc/issue, /etc/issue.net, /etc/motd) with their first line, whether they show
   system details (the getty escapes \S, \s, \r, \v, \m, \n), and the SSH Banner setting. Whether the text warns
   against misuse is for a person to judge.
+description_ko: >-
+  배너 파일(/etc/issue, /etc/issue.net, /etc/motd)의 첫 줄, 시스템 정보를 드러내는지(getty 이스케이프 \S, \s, \r, \v, \m,
+  \n), 그리고 SSH의 Banner 설정을 보여 줍니다. 문구가 오남용을 경고하는지는 사람이 판단합니다.
 rationale: A warning that unauthorized use is prohibited supports action against an intruder, and a banner that names the system or kernel helps an attacker.
+rationale_ko: >-
+  허가받지 않은 사용을 금지한다는 경고는 침입자에 대한 조치를 뒷받침하고, 시스템이나 커널 이름을 알려 주는 배너는 공격자에게 도움이 됩니다.
 remediation: >-
   Put your organization's warning in /etc/issue, /etc/issue.net and /etc/motd without the system escapes, and set
   `Banner /etc/issue.net` in sshd_config.
+remediation_ko: >-
+  /etc/issue, /etc/issue.net, /etc/motd에 시스템 이스케이프 없이 조직의 경고 문구를 넣고, sshd_config에 `Banner
+  /etc/issue.net`을 설정하세요.
 manual:
   guidance: >-
     Check that /etc/issue, /etc/issue.net, /etc/motd and the SSH banner show your organization's warning and no
     system details. The list shows what each file starts with.
+  guidance_ko: >-
+    /etc/issue, /etc/issue.net, /etc/motd와 SSH 배너가 조직의 경고 문구를 보여 주고 시스템 정보는 드러내지 않는지 확인하세요. 목록에는 각
+    파일이 무엇으로 시작하는지 나옵니다.
   show: >-
     banner.files.filter(f, f.exists && !f.empty).map(f, f.path + ": " + f.first + (size(f.system_details) > 0 ? " (shows system details, for example " + f.system_details[0] + ")" : "")) +
     banner.files.filter(f, !f.exists || f.empty).map(f, f.path + ": " + (f.exists ? "empty" : "missing")) +

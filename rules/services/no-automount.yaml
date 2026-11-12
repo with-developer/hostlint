@@ -6,10 +6,17 @@ severity: high
 description: >-
   Lists the ways the automounter (autofs) is started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  자동 마운터(autofs)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아
+  나열합니다.
 rationale: >-
   The automounter mounts file systems on access, which can expose local or remote file systems unexpectedly.
+rationale_ko: >-
+  자동 마운터는 접근할 때 파일 시스템을 마운트하므로, 로컬이나 원격 파일 시스템이 뜻하지 않게 드러날 수 있습니다.
 remediation: >-
   Disable autofs (`systemctl disable --now autofs`) if nothing needs it.
+remediation_ko: >-
+  필요한 것이 없다면 autofs를 끄세요(`systemctl disable --now autofs`).
 violations:
   over: services.started
   as: s

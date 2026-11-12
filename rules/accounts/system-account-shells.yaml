@@ -6,8 +6,15 @@ severity: low
 description: >-
   Lists system accounts (UID 1 to `system_uid_max`, and the overflow accounts such as nobody,
   UID 65534 or 4294967294) that have a login shell instead of nologin or false.
+description_ko: >-
+  시스템 계정(UID 1부터 `system_uid_max`까지, 그리고 nobody, UID 65534, 4294967294 같은 오버플로 계정) 중에서 nologin이나
+  false가 아닌 로그인 셸을 가진 것을 나열합니다.
 rationale: A service account with a shell gives an attacker who reaches it an interactive foothold.
+rationale_ko: >-
+  셸이 있는 서비스 계정은 그 계정에 접근한 공격자에게 대화형으로 발판을 줍니다.
 remediation: Set the shell to /usr/sbin/nologin (usermod -s /usr/sbin/nologin account).
+remediation_ko: >-
+  셸을 /usr/sbin/nologin으로 바꾸세요(`usermod -s /usr/sbin/nologin 계정`).
 params:
   system_uid_max: {type: int, default: 999, stricter: higher, description: Highest UID of system accounts}
 violations:

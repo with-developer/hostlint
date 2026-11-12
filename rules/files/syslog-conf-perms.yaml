@@ -6,8 +6,16 @@ severity: high
 description: >-
   Checks that /etc/syslog.conf, /etc/rsyslog.conf, /etc/rsyslog.d/*.conf, /etc/syslog-ng/syslog-ng.conf and /etc/syslog-ng/conf.d/*.conf are owned by root,
   bin or sys with mode 0640 or stricter. Not applicable without a syslog daemon configuration.
+description_ko: >-
+  /etc/syslog.conf, /etc/rsyslog.conf, /etc/rsyslog.d/*.conf, /etc/syslog-ng/syslog-ng.conf,
+  /etc/syslog-ng/conf.d/*.conf를 root, bin, sys 중 하나가 소유하고 모드가 0640 또는 더 엄격한지 확인합니다. syslog 데몬 설정이
+  없으면 해당하지 않습니다.
 rationale: Whoever can change the logging configuration can hide their tracks.
+rationale_ko: >-
+  로그 설정을 바꿀 수 있는 사람은 자기 흔적을 숨길 수 있습니다.
 remediation: Run `chown root` and `chmod 640` on each file.
+remediation_ko: >-
+  나열된 파일마다 `chown root`와 `chmod 640`을 실행하세요.
 file:
   paths: [/etc/syslog.conf, /etc/rsyslog.conf, /etc/rsyslog.d/*.conf, /etc/syslog-ng/syslog-ng.conf, /etc/syslog-ng/conf.d/*.conf]
   owner: [root, bin, sys]

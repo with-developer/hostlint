@@ -6,11 +6,20 @@ severity: high
 description: >-
   Lists the ways legacy RPC services (rusersd, rwalld, sprayd, rstatd, rexd, the CDE calendar and tooltalk daemons, sadmind, pcnfsd, ypupdated, rquotad, nisd) are started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  오래된 RPC 서비스(rusersd, rwalld, sprayd, rstatd, rexd, CDE 달력과 tooltalk 데몬, sadmind, pcnfsd,
+  ypupdated, rquotad, nisd)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스
+  이름이나 프로그램으로 찾아 나열합니다.
 rationale: >-
   These RPC services have a long record of remote exploits and are rarely needed. rpc.statd is
   not listed: NFS clients use it for file locking (services.no-nfs-server covers NFS servers).
+rationale_ko: >-
+  이 RPC 서비스들은 원격 공격 사례가 오래 쌓였고 필요한 경우가 드뭅니다. rpc.statd는 NFS 클라이언트가 파일 잠금에 쓰므로 나열하지 않습니다(NFS 서버는
+  services.no-nfs-server가 봅니다).
 remediation: >-
   Disable each listed service.
+remediation_ko: >-
+  나열된 서비스를 모두 끄세요.
 violations:
   over: services.started
   as: s

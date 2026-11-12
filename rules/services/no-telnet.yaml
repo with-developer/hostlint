@@ -6,10 +6,17 @@ severity: medium
 description: >-
   Lists the ways the telnet service is started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  telnet 서비스가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아
+  나열합니다.
 rationale: >-
   Telnet sends passwords and sessions in clear text.
+rationale_ko: >-
+  텔넷은 비밀번호와 세션을 평문으로 보냅니다.
 remediation: >-
   Disable telnet and use SSH.
+remediation_ko: >-
+  텔넷을 끄고 SSH를 쓰세요.
 violations:
   over: services.started
   as: s

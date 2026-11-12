@@ -5,10 +5,18 @@ title_ko: BIND 동적 업데이트가 제한됨
 severity: high
 description: >-
   Lists the primary zones of /etc/named.conf (or /etc/bind/named.conf) and the files it includes whose allow-update contains any. Dynamic updates are off unless allow-update or update-policy is set; addresses, keys and an update-policy count as restricted. Applies when BIND is started and has a configuration; another DNS server is services.review-dns-other.
+description_ko: >-
+  /etc/named.conf(또는 /etc/bind/named.conf)와 그 파일이 포함하는 파일에서, allow-update에 any가 들어 있는 primary 존을
+  나열합니다. allow-update나 update-policy를 설정하지 않으면 동적 업데이트는 꺼져 있습니다. 주소, 키, update-policy는 제한한 것으로
+  봅니다. BIND가 시작되어 있고 설정이 있을 때 적용되며, 다른 DNS 서버는 services.review-dns-other가 봅니다.
 rationale: >-
   Whoever can update a zone can point its names at their own hosts.
+rationale_ko: >-
+  존을 업데이트할 수 있는 사람은 그 존의 이름을 자기 호스트로 돌릴 수 있습니다.
 remediation: >-
   Allow updates only with a key (`allow-update { key dhcp-updates; };`) or an update-policy, or remove allow-update.
+remediation_ko: >-
+  키(`allow-update { key dhcp-updates; };`)나 update-policy가 있을 때만 업데이트를 허용하거나, allow-update를 지우세요.
 applies: >-
   bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
 violations:

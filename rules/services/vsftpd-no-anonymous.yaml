@@ -8,9 +8,17 @@ description: >-
   configurations set it). Only the default vsftpd.conf is read (a second default file or another .conf next to
   it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; otherwise
   services.review-anonymous-sharing asks for a review.
+description_ko: >-
+  vsftpd.conf의 anonymous_enable을 확인합니다. vsftpd는 이 값이 NO가 아니면 익명 로그인을 허용합니다(배포판 패키지의 설정은 NO로 둡니다).
+  기본 vsftpd.conf만 읽습니다(두 번째 기본 파일이나 그 옆의 다른 .conf가 있으면 결과는 ERROR입니다). vsftpd가 시작되어 있고 vsftpd.conf가
+  있을 때 적용되며, 그렇지 않으면 services.review-anonymous-sharing이 검토를 요청합니다.
 rationale: >-
   Anonymous FTP lets anyone read, and sometimes write, the files it shares.
+rationale_ko: >-
+  익명 FTP는 누구나 공유 파일을 읽을 수 있게 하고, 때로는 쓸 수도 있게 합니다.
 remediation: Set `anonymous_enable=NO` in vsftpd.conf and reload vsftpd.
+remediation_ko: >-
+  vsftpd.conf에 `anonymous_enable=NO`를 설정하고 vsftpd를 다시 불러오세요.
 applies: >-
   ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))
 setting:

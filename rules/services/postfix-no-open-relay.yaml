@@ -13,10 +13,22 @@ description: >-
   that overrides one of these parameters makes the result ERROR, since it cannot be judged from main.cf.
   Applies when Postfix is started and has a main.cf; another mail server is
   services.review-mail-relay-other.
+description_ko: >-
+  /etc/postfix/main.cf에서 Postfix를 오픈 릴레이로 만드는 두 가지 방식을 읽습니다. 모든 주소와 맞는 항목(프리픽스 길이 0)이 있는
+  mynetworks와, reject_unauth_destination, defer_unauth_destination, 단독 reject나 defer가 먼저 나오지 않은 채
+  단독 permit이나 목록의 끝(허용으로 끝납니다)에 이르는 릴레이 목록(smtpd_relay_restrictions)입니다. 수신자 목록이 거부하는 경우는 예외입니다.
+  Postfix 2.10 이후의 기본값은 안전하므로, main.cf가 설정한 것만 이 점검을 실패시킬 수 있습니다. 따라가지 않는 것은 조회 테이블(hash:와 cidr:
+  항목), 정책 서비스, mynetworks_style입니다. 이 매개변수 중 하나를 덮어쓰는 master.cf 옵션이 있으면 main.cf만으로는 판단할 수 없으므로 결과는
+  ERROR입니다. Postfix가 시작되어 있고 main.cf가 있을 때 적용되며, 다른 메일 서버는 services.review-mail-relay-other가 봅니다.
 rationale: An open relay sends spam for anyone and gets the server blocked.
+rationale_ko: >-
+  오픈 릴레이는 누구를 대신해서든 스팸을 보내 주어서 서버가 차단당하게 됩니다.
 remediation: >-
   Set `mynetworks` to your own networks and end the relay restrictions with
   `defer_unauth_destination` (or `reject_unauth_destination`), with no bare `permit` before it, and do not let a list end without it.
+remediation_ko: >-
+  `mynetworks`를 자기 네트워크로 정하고, 릴레이 제한을 `defer_unauth_destination`(또는 `reject_unauth_destination`)으로
+  끝내세요. 그보다 앞에 단독 `permit`을 두지 말고, 이것 없이 목록이 끝나지 않게 하세요.
 applies: >-
   postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$"))
 violations:

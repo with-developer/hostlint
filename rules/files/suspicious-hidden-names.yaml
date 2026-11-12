@@ -7,8 +7,15 @@ description: >-
   Lists files and directories on local filesystems (and in /dev) whose name is made only of dots and spaces
   (other than "." and ".."), such as "..." or ". ". Nothing legitimate needs such a name, and
   it hides a directory among the entries of a listing.
+description_ko: >-
+  이름이 점과 공백만으로 된("."과 ".."은 제외) 파일과 디렉터리를 로컬 파일 시스템과 /dev에서 나열합니다. "..."이나 ". " 같은 이름입니다. 정상적인 용도로
+  이런 이름이 필요한 경우는 없으며, 이런 이름은 목록에서 디렉터리를 눈에 띄지 않게 숨깁니다.
 rationale: A directory named "..." or ". " is easy to overlook next to "." and "..", which makes it a place to hide files.
+rationale_ko: >-
+  "..."이나 ". "이라는 이름의 디렉터리는 ".", ".." 옆에서 놓치기 쉬워서 파일을 숨기는 곳이 됩니다.
 remediation: Look at what the entry holds, then remove or rename it.
+remediation_ko: >-
+  그 항목에 무엇이 들어 있는지 확인한 뒤 지우거나 이름을 바꾸세요.
 violations:
   over: filesystem.odd_names
   as: f

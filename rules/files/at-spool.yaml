@@ -7,8 +7,15 @@ description: >-
   Checks that the queued jobs and sequence file of at (/var/spool/at on the RHEL family,
   /var/spool/cron/atjobs on Debian and Ubuntu) can be read, written and run by their owner only
   (mode 0700 or stricter).
+description_ko: >-
+  at의 대기 작업과 순번 파일(RHEL 계열은 /var/spool/at, Debian과 Ubuntu는 /var/spool/cron/atjobs)을 소유자만 읽고 쓰고 실행할
+  수 있는지(모드 0700 또는 더 엄격) 확인합니다.
 rationale: A job other users can change runs their commands as the job's owner.
+rationale_ko: >-
+  다른 사용자가 바꿀 수 있는 작업은 그 작업 소유자의 권한으로 그 사용자의 명령을 실행하게 됩니다.
 remediation: Run `chmod 700` on each listed job.
+remediation_ko: >-
+  나열된 작업마다 `chmod 700`을 실행하세요.
 file:
   paths: [/var/spool/at/*, /var/spool/cron/atjobs/*]
   mode: "0700"

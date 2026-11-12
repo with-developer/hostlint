@@ -7,10 +7,19 @@ description: >-
   Lists the members of the root (GID 0), wheel, sudo and admin groups: the accounts whose
   primary group it is (/etc/passwd), which pam_wheel and sudo count as members too, and the
   supplementary members listed in /etc/group.
+description_ko: >-
+  root(GID 0), wheel, sudo, admin 그룹의 구성원을 나열합니다. 해당 그룹을 기본 그룹으로 가진 계정(/etc/passwd, pam_wheel과
+  sudo는 이들도 구성원으로 봅니다)과 /etc/group에 적힌 추가 구성원이 모두 포함됩니다.
 rationale: Every member of these groups can gain or already has administrative power.
+rationale_ko: >-
+  이 그룹의 구성원은 모두 관리자 권한을 얻을 수 있거나 이미 가지고 있습니다.
 remediation: Remove accounts that do not need administrative rights (gpasswd -d user group).
+remediation_ko: >-
+  관리자 권한이 필요 없는 계정은 그룹에서 빼세요(`gpasswd -d 사용자 그룹`).
 manual:
   guidance: Confirm that only administrators who need it belong to each listed group.
+  guidance_ko: >-
+    나열된 그룹마다 꼭 필요한 관리자만 속해 있는지 확인하세요.
   show: >-
     accounts.groups.filter(g, g.gid == 0 || g.name in ["wheel", "sudo", "admin"])
       .map(g, g.name + ": " + (

@@ -6,8 +6,15 @@ severity: medium
 description: >-
   Lists files and directories under /var/log that every user can write (directories without the
   sticky bit). Who owns them is for files.review-log-files.
+description_ko: >-
+  /var/log 아래에서 모든 사용자가 쓸 수 있는 파일과 디렉터리(스티키 비트가 없는 디렉터리)를 나열합니다. 소유자는 files.review-log-files가 따로
+  봅니다.
 rationale: Whoever can change a log can remove the trace of what they did.
+rationale_ko: >-
+  로그를 바꿀 수 있는 사람은 자기가 한 일의 흔적을 지울 수 있습니다.
 remediation: Remove write permission for others (`chmod o-w`), or set the sticky bit on a shared directory (`chmod +t`).
+remediation_ko: >-
+  다른 사용자의 쓰기 권한을 없애거나(`chmod o-w`), 여럿이 쓰는 디렉터리에는 스티키 비트를 설정하세요(`chmod +t`).
 violations:
   over: filesystem.world_writable
   as: f

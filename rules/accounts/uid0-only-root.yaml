@@ -4,8 +4,14 @@ title: Only root has UID 0
 title_ko: UID 0은 root만 가짐
 severity: high
 description: Lists accounts other than root whose UID is 0.
+description_ko: >-
+  root가 아닌데 UID가 0인 계정을 나열합니다.
 rationale: Every UID 0 account has full root privileges, under a name that may escape notice.
+rationale_ko: >-
+  UID 0 계정은 모두 완전한 root 권한을 가지며, 눈에 띄지 않을 수 있는 이름을 쓸 수 있습니다.
 remediation: Give the account another UID (usermod -u) or remove it.
+remediation_ko: >-
+  그 계정에 다른 UID를 주거나(`usermod -u`) 계정을 지우세요.
 violations:
   over: accounts.users
   as: u

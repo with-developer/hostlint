@@ -6,10 +6,17 @@ severity: medium
 description: >-
   Checks the global HostbasedAuthentication setting of the OpenSSH server. On a live host the effective value
   comes from `sshd -T`, so the default of the installed version counts.
+description_ko: >-
+  OpenSSH 서버의 전역 HostbasedAuthentication 설정을 확인합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로, 설치된
+  버전의 기본값도 함께 반영됩니다.
 rationale: >-
   Host-based authentication trusts a whole machine instead of a person, so one compromised host opens every account that trusts it.
+rationale_ko: >-
+  호스트 기반 인증은 사람이 아니라 기계 전체를 신뢰합니다. 그래서 호스트 하나가 침해되면 그 호스트를 신뢰하는 모든 계정이 함께 뚫립니다.
 remediation: >-
   Set `HostbasedAuthentication no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `HostbasedAuthentication no`를 설정하고 sshd를 다시 불러오세요.
 applies: >-
   sshd.present
 setting:

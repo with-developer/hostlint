@@ -6,15 +6,25 @@ severity: high
 description: >-
   Applies when a DNS server is started; then shows how, and the installed versions of its packages, for a review of its configuration. Not
   applicable otherwise.
+description_ko: >-
+  DNS 서버가 시작되어 있을 때 적용됩니다. 설정을 검토할 수 있도록 그 서버가 시작된 경로와 설치된 패키지의 버전을 보여 줍니다. 그 밖에는 해당하지 않습니다.
 rationale: >-
   Zone transfers map your network for attackers, and open dynamic updates let them change it.
+rationale_ko: >-
+  존 전송은 공격자에게 네트워크 지도를 건네고, 열린 동적 업데이트는 그것을 바꾸게 합니다.
 remediation: >-
   Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
+remediation_ko: >-
+  DNS 서버가 최신 상태인지, 존 전송을 secondary에게만 허용하는지(BIND의 allow-transfer), 동적 업데이트를 키가 있을 때만 허용하거나
+  막는지(allow-update, update-policy) 확인하세요.
 applies: >-
   services.started.exists(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$"))
 manual:
   guidance: >-
     Check that the DNS server is up to date, allows zone transfers only to its secondaries (BIND allow-transfer) and dynamic updates only with keys or not at all (allow-update, update-policy).
+  guidance_ko: >-
+    DNS 서버가 최신 상태인지, 존 전송을 secondary에게만 허용하는지(BIND의 allow-transfer), 동적 업데이트를 키가 있을 때만 허용하거나
+    막는지(allow-update, update-policy) 확인하세요.
   show: >-
     services.started.filter(s, s.service in ["named", "bind9", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source) +
     ["bind9", "bind", "bind-chroot", "unbound", "pdns", "pdns-server", "knot", "nsd"]

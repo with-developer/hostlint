@@ -4,8 +4,14 @@ title: /etc/hosts.lpd is owned by root and private, if it exists
 title_ko: /etc/hosts.lpd는 있으면 root 소유, 비공개
 severity: low
 description: Checks that /etc/hosts.lpd, if present, is owned by root with mode 0600 or stricter.
+description_ko: >-
+  /etc/hosts.lpd가 있다면 root가 소유하고 모드가 0600 또는 더 엄격한지 확인합니다.
 rationale: The file lists hosts allowed to print; whoever can change it can open the print service to others.
+rationale_ko: >-
+  이 파일은 인쇄를 허용할 호스트를 적은 것이어서, 바꿀 수 있는 사람은 인쇄 서비스를 다른 호스트에 열 수 있습니다.
 remediation: Remove /etc/hosts.lpd if printing from other hosts is not needed; otherwise `chown root` and `chmod 600` it.
+remediation_ko: >-
+  다른 호스트에서 인쇄할 필요가 없으면 /etc/hosts.lpd를 지우고, 필요하면 `chown root`와 `chmod 600`을 실행하세요.
 file:
   paths: [/etc/hosts.lpd]
   owner: [root]

@@ -7,10 +7,17 @@ description: >-
   Lists files with the set-user-ID or set-group-ID bit outside /usr/bin, /usr/sbin, /usr/lib,
   /usr/lib64, /usr/libexec, /bin, /sbin, /lib and /lib64, such as in home directories, /tmp,
   /var, /opt or /srv.
+description_ko: >-
+  시스템 디렉터리(/usr/bin, /usr/sbin, /usr/lib, /usr/lib64, /usr/libexec, /bin, /sbin, /lib, /lib64) 밖에
+  있는 set-user-ID, set-group-ID 파일을 나열합니다. 홈 디렉터리, /tmp, /var, /opt, /srv 등이 해당합니다.
 rationale: >-
   Distributions install their set-ID programs in the system directories; one anywhere else is
   usually a leftover or a backdoor that grants its owner's rights to whoever runs it.
+rationale_ko: >-
+  배포판은 set-ID 프로그램을 시스템 디렉터리에 설치하므로, 다른 곳에 있는 것은 대개 남겨진 파일이거나 실행하는 사람에게 소유자의 권한을 주는 백도어입니다.
 remediation: Remove the set-ID bits (`chmod u-s,g-s`) or the file, unless the software needs them.
+remediation_ko: >-
+  소프트웨어가 필요로 하지 않는다면 set-ID 비트를 떼거나(`chmod u-s,g-s`) 파일을 지우세요.
 violations:
   over: filesystem.setid
   as: f

@@ -4,8 +4,14 @@ title: sudoers files are owned by root and not writable by others
 title_ko: sudoers 파일은 root 소유, 다른 사용자 쓰기 금지
 severity: medium
 description: Checks that /etc/sudoers and the files in /etc/sudoers.d are owned by root with mode 0640 or stricter.
+description_ko: >-
+  /etc/sudoers와 /etc/sudoers.d의 파일을 root가 소유하고 모드가 0640 또는 더 엄격한지 확인합니다.
 rationale: Whoever can change the sudo rules can give themselves root.
+rationale_ko: >-
+  sudo 규칙을 바꿀 수 있는 사람은 스스로 root가 될 수 있습니다.
 remediation: Run `chown root` and `chmod 440` on each file (visudo keeps them that way).
+remediation_ko: >-
+  각 파일에 `chown root`와 `chmod 440`을 실행하세요(visudo는 이 모드를 유지합니다).
 file:
   paths: [/etc/sudoers, /etc/sudoers.d/*]
   owner: [root]

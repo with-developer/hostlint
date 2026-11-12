@@ -6,10 +6,17 @@ severity: low
 description: >-
   Checks the global X11Forwarding setting of the OpenSSH server. On a live host the effective value
   comes from `sshd -T`, so the default of the installed version counts.
+description_ko: >-
+  OpenSSH 서버의 전역 X11Forwarding 설정을 확인합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로, 설치된 버전의 기본값도
+  함께 반영됩니다.
 rationale: >-
   X11 forwarding exposes the client's display to the server, and anything that controls the server can then watch or drive it.
+rationale_ko: >-
+  X11 전달은 클라이언트의 화면을 서버에 노출합니다. 서버를 장악한 쪽은 그 화면을 몰래 보거나 조작할 수 있습니다.
 remediation: >-
   Set `X11Forwarding no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `X11Forwarding no`를 설정하고 sshd를 다시 불러오세요.
 applies: >-
   sshd.present
 setting:

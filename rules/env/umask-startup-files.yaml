@@ -6,8 +6,15 @@ severity: medium
 description: >-
   Lists umask commands in the system-wide and root's startup files that leave write permission
   for group or others, including those inside if or case blocks, and symbolic ones to review.
+description_ko: >-
+  시스템 전체 시작 파일과 root의 시작 파일에서 그룹이나 다른 사용자에게 쓰기 권한을 남기는 umask 명령을 나열합니다. if나 case 블록 안의 것과, 검토가 필요한
+  기호식 umask도 포함합니다.
 rationale: A permissive umask in a startup file overrides the system default for every session.
+rationale_ko: >-
+  시작 파일에 느슨한 umask가 있으면 모든 세션에서 시스템 기본값을 덮어씁니다.
 remediation: Use `umask 022` (or stricter) and remove permissive or symbolic umask commands.
+remediation_ko: >-
+  `umask 022`(또는 더 엄격한 값)를 쓰고, 느슨한 umask와 기호식 umask는 지우세요.
 violations:
   over: shell_env.umask
   as: u
