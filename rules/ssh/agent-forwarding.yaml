@@ -1,0 +1,48 @@
+id: ssh.agent-forwarding
+version: 1
+title: SSH does not forward authentication agents
+title_ko: SSH가 인증 에이전트를 전달하지 않음
+severity: low
+description: >-
+  Checks the global AllowAgentForwarding setting of the OpenSSH server. OpenSSH enables agent
+  forwarding by default; a compromised host could use a forwarded agent to authenticate elsewhere
+  as the client user. On a live host the effective value comes from `sshd -T`. Any conditional
+  re-enabling within Match blocks is evaluated separately by match-hardening checks.
+description_ko: >-
+  OpenSSH 서버의 전역 AllowAgentForwarding 설정을 확인합니다. OpenSSH는 에이전트 전달을 기본적으로 허용하므로, 호스트가 손상될 경우 전달된 에이전트를 통해 클라이언트 권한으로 다른 시스템에 무단 접근할 위험이 있습니다. 실행 중인 호스트에서는 `sshd -T`의 실제 적용값을 확인합니다. Match 블록 내의 조건부 허용 설정은 별도의 Match 보안 점검에서 다룹니다.
+rationale: >-
+  Authentication agent forwarding exposes the client's local SSH agent socket on the server. If the server is compromised or an attacker has superuser access, they can intercept and abuse the agent socket to authenticate to other systems without possessing the private key.
+rationale_ko: >-
+  인증 에이전트 전달은 서버에 클라이언트의 로컬 SSH 에이전트 소켓을 노출합니다. 서버가 침해당하거나 관리자 권한을 가진 공격자가 소켓에 접근하면 개인 키를 직접 탈취하지 않고도 다른 시스템에 임의로 로그인할 수 있습니다.
+remediation: >-
+  Set `AllowAgentForwarding no` in /etc/ssh/sshd_config (or an included configuration file) and reload sshd.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 포함된 설정 파일)에 `AllowAgentForwarding no`를 설정하고 sshd를 다시 불러오세요.
+applies: >-
+  sshd.present
+setting:
+  fact: sshd.config.allowagentforwarding
+  in: ["no"]
+  absent: default
+tests:
+  - name: agent forwarding disabled as required
+    facts:
+      sshd: {present: true, config: {allowagentforwarding: {value: "no", explicit: true, source: "/etc/ssh/sshd_config:25"}}}
+    want: PASS
+  - name: default enabled fails
+    facts:
+      sshd: {present: true, config: {allowagentforwarding: {value: "yes", source: "sshd -T (default)"}}}
+    want: FAIL
+  - name: explicit yes fails
+    facts:
+      sshd: {present: true, config: {allowagentforwarding: {value: "yes", explicit: true, source: "/etc/ssh/sshd_config:25"}}}
+    want: FAIL
+  - name: no SSH server installed
+    facts:
+      sshd: {present: false}
+    want: NOT_APPLICABLE
+  - name: config absent on mounted root
+    input: absent
+    facts:
+      sshd: {present: true, config: {}}
+    want: ERROR

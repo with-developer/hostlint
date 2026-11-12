@@ -56,7 +56,9 @@ func TestBuiltinContent(t *testing.T) {
 // revision maps them to a control. Mapping a check changes the profile
 // revision, which is the maintainer's decision; remove an entry when its
 // check is mapped.
-var awaitingProfile = map[string]bool{}
+var awaitingProfile = map[string]bool{
+	"ssh.agent-forwarding": true,
+}
 
 // TestRuleFilesAreEmbedded fails on a file under rules/ that go:embed would
 // silently leave out (a .yml file, a nested directory), which would drop a
