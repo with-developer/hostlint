@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 24b9b35 -->
+<!-- translated from README.md @ 4ddefb5 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -207,7 +207,7 @@ Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentO
 권하는 항목만 추린 짧은 기준입니다. SSH(root 로그인 금지, 비밀번호 로그인 금지, 빈 비밀번호 금지, 시도 횟수 제한,
 X11 전달 금지, 깨진 암호 알고리즘 금지, 로그 기록, 이를 뒤집는 `Match` 블록 금지), UID 0과 비밀번호 파일, 비밀번호 길이·해시·사용 기간·잠금, `su`와
 sudo, cron, 오래된 원격 서비스, 위험한 파일 권한, 시각 동기화, 중요한 커널 매개변수(주소 무작위화, `kptr_restrict`,
-ICMP 리다이렉트, 역방향 경로 필터링, SYN 쿠키 등), 호스트 방화벽, 자동 보안 업데이트, 필수 접근 제어(SELinux나 AppArmor), 빈 비밀번호, 인쇄·네트워크 검색 서비스(CUPS, Avahi)를
+ICMP 리다이렉트, 역방향 경로 필터링, SYN 쿠키 등), 호스트 방화벽, 자동 보안 업데이트, 강제 접근 제어(SELinux나 AppArmor), 빈 비밀번호, 인쇄·네트워크 검색 서비스(CUPS, Avahi)를
 다룹니다. 점검 항목 29개(`ES-01`–`ES-29`)에는 자체 ID가 있고, 대부분 다른 프로파일과 같은 점검을 쓰며, SSH 점검 10개와 커널 매개변수
 점검 11개, 방화벽·업데이트·접근 제어·빈 비밀번호·인쇄/검색 서비스 점검이 새로 더해졌습니다. 커널·방화벽·업데이트·접근 제어 점검은 자체 커널도 방화벽도 없는
 컨테이너 이미지에는 적용되지 않습니다.

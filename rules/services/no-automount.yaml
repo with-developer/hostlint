@@ -1,7 +1,7 @@
 id: services.no-automount
 version: 1
 title: The automounter is not started
-title_ko: automountd 미사용
+title_ko: 자동 마운터(autofs) 미사용
 severity: high
 description: >-
   Lists the ways the automounter (autofs) is started: enabled units, units running now, init scripts and

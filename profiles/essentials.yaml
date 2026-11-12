@@ -127,7 +127,7 @@ controls:
     checks: [updates.security-automatic]
   - id: ES-25
     title: Mandatory access control is on
-    title_ko: 필수 접근 제어가 켜져 있음
+    title_ko: 강제 접근 제어가 켜져 있음
     severity: medium
     checks: [mac.enabled]
   - id: ES-26

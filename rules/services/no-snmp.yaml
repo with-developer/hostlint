@@ -1,7 +1,7 @@
 id: services.no-snmp
 version: 1
 title: SNMP is not started unless needed
-title_ko: SNMP 서비스 미사용
+title_ko: 필요하지 않으면 SNMP 서비스를 시작하지 않음
 severity: medium
 description: >-
   Lists the ways the SNMP agent (snmpd) is started: enabled units, units running now, init scripts and

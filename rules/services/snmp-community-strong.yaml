@@ -7,7 +7,7 @@ description: >-
   Lists the community strings of /etc/snmp/snmpd.conf and the files it includes that are a well-known name (public, private, ...) or shorter than 8 characters. The strings themselves are never read into the result. Applies when the agent is started and the configuration is at its usual place.
 description_ko: >-
   /etc/snmp/snmpd.conf와 그 파일이 포함하는 파일에서, 잘 알려진 이름(public, private 등)이거나 8자보다 짧은 community 문자열을
-  나열합니다. 문자열 자체는 결과에 읽어 넣지 않습니다. 에이전트가 시작되어 있고 설정이 일반적인 위치에 있을 때 적용됩니다.
+  나열합니다. 문자열 자체는 결과에 담지 않습니다. 에이전트가 시작되어 있고 설정이 일반적인 위치에 있을 때 적용됩니다.
 rationale: >-
   Default community names are the first thing scanners try; a short one falls to guessing.
 rationale_ko: >-
@@ -15,7 +15,7 @@ rationale_ko: >-
 remediation: >-
   Choose a community of at least 8 random characters, or move to SNMPv3 (services.snmp-v3-only).
 remediation_ko: >-
-  무작위 문자 8자 이상으로 community를 정하거나, SNMPv3로 옮기세요(services.snmp-v3-only).
+  무작위 문자 8자 이상으로 community를 정하거나, SNMPv3으로 옮기세요(services.snmp-v3-only).
 applies: >-
   snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
 violations:

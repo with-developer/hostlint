@@ -1,7 +1,7 @@
 id: services.postfix-no-open-relay
 version: 1
 title: Postfix does not relay for everyone
-title_ko: Postfix가 모든 곳의 메일을 중계하지 않음
+title_ko: Postfix가 아무에게나 메일을 중계하지 않음
 severity: high
 description: >-
   Reads /etc/postfix/main.cf for the two ways to make Postfix an open relay: mynetworks with an entry
@@ -22,7 +22,7 @@ description_ko: >-
   ERROR입니다. Postfix가 시작되어 있고 main.cf가 있을 때 적용되며, 다른 메일 서버는 services.review-mail-relay-other가 봅니다.
 rationale: An open relay sends spam for anyone and gets the server blocked.
 rationale_ko: >-
-  오픈 릴레이는 누구를 대신해서든 스팸을 보내 주어서 서버가 차단당하게 됩니다.
+  오픈 릴레이는 누구의 스팸이든 대신 보내 주므로 서버가 차단당합니다.
 remediation: >-
   Set `mynetworks` to your own networks and end the relay restrictions with
   `defer_unauth_destination` (or `reject_unauth_destination`), with no bare `permit` before it, and do not let a list end without it.

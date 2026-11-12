@@ -18,7 +18,7 @@ rationale_ko: >-
 remediation: >-
   Set `MaxAuthTries 4` (or less) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
 remediation_ko: >-
-  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `MaxAuthTries 4`(또는 그보다 작은 값)를 설정하고 sshd를 다시 불러오세요.
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `MaxAuthTries 4`(또는 그보다 작은 값)을 설정하고 sshd를 다시 불러오세요.
 applies: >-
   sshd.present
 params:

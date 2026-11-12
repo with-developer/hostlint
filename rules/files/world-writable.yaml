@@ -1,7 +1,7 @@
 id: files.world-writable
 version: 1
 title: No world-writable files, and no world-writable directories without the sticky bit
-title_ko: 모든 사용자 쓰기 가능 파일·디렉터리 없음
+title_ko: 모든 사용자가 쓸 수 있는 파일과 스티키 비트 없는 디렉터리가 없음
 severity: high
 description: >-
   Lists regular files that every user can write, and directories every user can write that lack

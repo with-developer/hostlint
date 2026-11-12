@@ -16,7 +16,7 @@ rationale_ko: >-
 remediation: >-
   Set `kernel.yama.ptrace_scope = 1` (or more) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
 remediation_ko: >-
-  /etc/sysctl.d의 파일에 `kernel.yama.ptrace_scope = 1`(또는 그 이상)를 설정하고 `sysctl --system`으로 적용하세요.
+  /etc/sysctl.d의 파일에 `kernel.yama.ptrace_scope = 1`(또는 그 이상)을 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:
