@@ -133,6 +133,7 @@ sudo vmsctl scan --fail-on high --format junit --output vmsctl.xml
 vmsctl report results/*.json --output report.html
 
 # 실패한 점검 항목이 무슨 뜻이고 어떻게 고치는지
+vmsctl explain --list                         # 모든 점검 항목과 점검을 제목과 함께 나열
 vmsctl explain U-02 ssh.permit-root-login
 
 # 지난 점검 이후 무엇이 바뀌었는지: 새로 실패한 것, 해결된 것, 그 원인이 된 점검

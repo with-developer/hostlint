@@ -135,6 +135,7 @@ sudo vmsctl scan --fail-on high --format junit --output vmsctl.xml
 vmsctl report results/*.json --output report.html
 
 # What a failed control means and how to fix it
+vmsctl explain --list                         # every control and check with its title
 vmsctl explain U-02 ssh.permit-root-login
 
 # What changed since the last scan: new failures, fixes, and the checks behind them

@@ -158,3 +158,26 @@ func TestExplainLang(t *testing.T) {
 		t.Errorf("a control in Korean:\n%s", ctl)
 	}
 }
+
+// --list prints every control and check with its title, in Korean on request, and takes no ID.
+func TestExplainList(t *testing.T) {
+	code, out, stderr := run(context.Background(), t, "explain", "--list")
+	if code != ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	for _, want := range []string{"kisa-2026 (revision ", "U-01", "ES-29", "ssh.permit-root-login", "SSH does not allow direct root login", "\nChecks\n"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("no %q in the list:\n%s", want, out)
+		}
+	}
+	code, out, _ = run(context.Background(), t, "explain", "--list", "--lang", "ko")
+	if code != ExitOK || !strings.Contains(out, "리비전") || !strings.Contains(out, "SSH로 root가 직접 로그인할 수 없음") {
+		t.Errorf("Korean list: exit %d\n%s", code, out)
+	}
+	if code, _, stderr = run(context.Background(), t, "explain", "--list", "U-01"); code == ExitOK || !strings.Contains(stderr, "--list takes no ID") {
+		t.Errorf("--list with an ID: exit %d, %s", code, stderr)
+	}
+	if code, _, _ = run(context.Background(), t, "explain"); code == ExitOK {
+		t.Error("explain without an ID or --list succeeded")
+	}
+}
