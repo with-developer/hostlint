@@ -18,7 +18,7 @@
 
 ## 참고 자료
 
-- [규칙과 프로파일](rules.md): 모든 점검과 점검 항목이 무엇을 보고, 왜 중요하고, 어떻게 고치는지(영어)
+- [규칙과 프로파일](rules.ko.md): 모든 점검과 점검 항목이 무엇을 보고, 왜 중요하고, 어떻게 고치는지(영어판: [rules.md](rules.md))
 - [사실(facts)](facts.md): collector가 읽는 것. 직접 점검을 만들 때 참고(영어)
 - [결과 스키마](../schema/result-v1.schema.json): JSON 결과와 [올바른 예시](../schema/result-v1.example.json)
 

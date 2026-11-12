@@ -17,7 +17,7 @@
 
 ## Reference
 
-- [Rules and profiles](rules.md): every check and control, with what it looks at, why, and how to fix it
+- [Rules and profiles](rules.md): every check and control, with what it looks at, why, and how to fix it (in Korean: [rules.ko.md](rules.ko.md))
 - [Facts](facts.md): what the collectors read, for writing your own checks
 - [Result schema](../schema/result-v1.schema.json): the JSON result, with a [valid example](../schema/result-v1.example.json)
 
