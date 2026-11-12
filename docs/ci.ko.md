@@ -1,4 +1,4 @@
-<!-- translated from docs/ci.md @ 2ca0d64 -->
+<!-- translated from docs/ci.md @ 9fd84eb -->
 # CI에서 vmsctl 쓰기
 
 vmsctl은 파이프라인에서 쓰기 좋게 만들었습니다. 점검은 데몬도 네트워크 접근도 필요 없는 명령 한 줄이고, 종료
