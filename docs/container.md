@@ -5,8 +5,8 @@ the static binary on a minimal base (CA certificates, no shell, no package manag
 reads, so the host's root is mounted read-only and scanned the way `--root` scans a mounted filesystem:
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.34.0 scan --root /host
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.34.0 scan --root /host --fail-on high --format json > web-01.json
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.35.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.35.0 scan --root /host --fail-on high --format json > web-01.json
 ```
 
 Use a version tag in anything you keep (`:0.27.0`); `:latest` follows the newest release and never a pre-release.
@@ -23,7 +23,7 @@ The image is a good fit for CI, for scanning a mounted disk or a snapshot, and f
 server:
 
 ```sh
-docker run --rm -v /:/host:ro -v /etc/vmsctl:/etc/vmsctl:ro ghcr.io/with-developer/vmsctl:0.34.0 \
+docker run --rm -v /:/host:ro -v /etc/vmsctl:/etc/vmsctl:ro ghcr.io/with-developer/vmsctl:0.35.0 \
   scan --root /host --fail-on none --push https://vmsctl.example.org:8443 --token-file /etc/vmsctl/token
 ```
 
@@ -37,10 +37,10 @@ at 0.26.0.
 The image is signed by the release pipeline (Sigstore keyless) and carries build provenance and an SBOM:
 
 ```sh
-cosign verify ghcr.io/with-developer/vmsctl:0.34.0 \
+cosign verify ghcr.io/with-developer/vmsctl:0.35.0 \
   --certificate-identity-regexp '^https://github\.com/with-developer/vmsctl/\.github/workflows/container\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/with-developer/vmsctl:0.34.0 --repo with-developer/vmsctl
+gh attestation verify oci://ghcr.io/with-developer/vmsctl:0.35.0 --repo with-developer/vmsctl
 ```
 
 The binary inside is the one of the release archive (`checksums.txt` is verified, then each file, before the image is
