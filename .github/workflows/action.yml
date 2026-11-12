@@ -39,6 +39,22 @@ jobs:
           version: v0.12.0
       - name: It did
         run: test "${{ steps.gate.outcome }}" = failure
+      - name: Korean titles in the log and the summary (a release that has --lang)
+        uses: ./
+        with:
+          image: debian:12
+          fail-on: none
+          lang: ko
+          version: v0.37.0
+      - name: A language that is none of ours is refused
+        id: badlang
+        continue-on-error: true
+        uses: ./
+        with:
+          image: debian:12
+          lang: fr
+          version: v0.37.0
+      - run: test "${{ steps.badlang.outcome }}" = failure
       - name: No input is refused
         id: none
         continue-on-error: true

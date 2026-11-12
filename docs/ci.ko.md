@@ -54,6 +54,7 @@ jobs:
 | `config` | [`vmsctl.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일을 적은 예외 |
 | `summary` | `true`(기본값)이면 점검이 단계를 실패시키더라도 발견한 내용을 Markdown 보고서로 만들어 그 실행의 작업 요약(job summary)에 씁니다 |
 | `sarif-file` | 점검이 단계를 실패시키더라도 SARIF를 이 경로에도 씁니다 |
+| `lang` | `en`(기본값) 또는 `ko`: 로그와 작업 요약의 제목과 조치 방법을 한국어로 보여 줍니다(vmsctl v0.33.0 이상 필요, SARIF는 번역하지 않습니다) |
 | `version` | 설치할 릴리스. 기본값은 액션을 고정한 릴리스(`@v0.37.0`)입니다 |
 
 `image`, `image-tar`, `root` 중 정확히 하나만 지정하세요. 액션은 릴리스 태그에 고정해서 쓰세요. 그 태그의 vmsctl

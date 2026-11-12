@@ -53,6 +53,7 @@ failed check ("How to fix"), and the JSON result has it in `remediation`. It is 
 | `config` | A [`vmsctl.yaml`](configuration.md): stricter thresholds, waivers with a reason and an expiry |
 | `summary` | `true` (default): write a Markdown report of the findings to the job summary of the run, even when the scan fails the step |
 | `sarif-file` | Also write SARIF here, even when the scan fails the step |
+| `lang` | `en` (default) or `ko`: the titles and fix hints in the log and the job summary in Korean (needs vmsctl v0.33.0 or later; SARIF is not translated) |
 | `version` | The release to install; by default the one the action is pinned to (`@v0.37.0`) |
 
 Set exactly one of `image`, `image-tar` and `root`. Pin the action to a release tag: it installs the
