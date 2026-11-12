@@ -1,4 +1,4 @@
-<!-- translated from docs/fleet.md @ 24f5c49 -->
+<!-- translated from docs/fleet.md @ f480bf9 -->
 # 서버로 모아 보기
 
 > 설계는 [ADR 0010](adr/0010-fleet-server-and-dashboard.md)에 있습니다. 호스트가 결과를 보내고, 서버가 저장해 두었다가 조회
