@@ -1,4 +1,4 @@
-<!-- translated from docs/images.md @ 2ca0d64 -->
+<!-- translated from docs/images.md @ bd440c1 -->
 # 컨테이너 이미지 점검
 
 `vmsctl scan --image-tar FILE`은 `docker save`(또는 `skopeo copy ... oci-archive:FILE`)로 만든 아카이브에서

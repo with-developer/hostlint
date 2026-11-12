@@ -1,4 +1,4 @@
-<!-- translated from docs/container.md @ 2ca0d64 -->
+<!-- translated from docs/container.md @ bd440c1 -->
 # vmsctl을 컨테이너로 실행하기
 
 릴리스마다 `ghcr.io/with-developer/vmsctl` 이미지(linux/amd64, linux/arm64)도 함께 게시합니다. 정적 바이너리를
