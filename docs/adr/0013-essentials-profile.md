@@ -108,3 +108,17 @@ was hardened for `MaxAuthTries` and `X11Forwarding` passed before and now also n
 Like every revision that adds controls, it changes the revision, so waivers of `essentials` controls have to be written again for revision 6
 (the scan says which). Both checks apply to a container image too: the shadow file and the started services are in the image.
 
+## Amendment: revision 7 (2026-11-12, decided by the maintainer)
+
+`essentials` revision 7 adds two controls over two new SSH checks, 29 in all; neither needs a new collector (the `sshd` facts hold every keyword):
+
+- `ES-28` (SSH offers no broken ciphers, MACs or key exchanges): `ssh.weak-algorithms` fails when the effective `Ciphers`, `MACs` or `KexAlgorithms`
+  list includes 3des-cbc, blowfish-cbc, cast128-cbc, the arcfour family, hmac-md5, hmac-md5-96, hmac-sha1-96, umac-64 (and their `-etm` forms),
+  diffie-hellman-group1-sha1 or gss-group1-sha1. Only clearly broken names are listed (hmac-sha1 and the CBC modes of AES are left to the reader's
+  policy). On a live host the lists come from `sshd -T`, so a stock CentOS/RHEL 7 (OpenSSH 7.4, whose defaults include 3des-cbc) fails; modern
+  distributions pass. Without `sshd -T` an unset list is unknown (`ERROR`), and a list that starts with `-` is not judged.
+- `ES-29` (SSH logs who logs in): `ssh.log-level` requires `LogLevel` INFO or VERBOSE (any case); QUIET, FATAL, ERROR and the DEBUG levels fail.
+
+The revision changes, so waivers of `essentials` controls have to be written again for revision 7 (the scan says which). The end-to-end hardening
+script sets modern lists so that the hardened hosts keep passing.
+

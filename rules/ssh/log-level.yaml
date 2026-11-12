@@ -1,0 +1,57 @@
+id: ssh.log-level
+version: 1
+title: SSH logs who logs in
+title_ko: SSH가 누가 로그인하는지 기록함
+severity: medium
+description: >-
+  Checks the global LogLevel setting of the OpenSSH server: INFO (the default) and VERBOSE record logins and
+  failed attempts; QUIET, FATAL and ERROR do not, and DEBUG levels log what a production host should not.
+  On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+description_ko: >-
+  OpenSSH 서버의 전역 LogLevel 설정을 확인합니다. INFO(기본값)와 VERBOSE는 로그인과 실패한 시도를 기록하지만, QUIET, FATAL, ERROR는 기록하지
+  않고, DEBUG 단계는 운영 호스트가 남기지 말아야 할 것까지 기록합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로 설치된
+  버전의 기본값도 반영됩니다.
+rationale: >-
+  Without a record of logins and failed attempts, a break-in over SSH leaves nothing to investigate.
+rationale_ko: >-
+  로그인과 실패한 시도의 기록이 없으면, SSH로 침입당해도 조사할 것이 남지 않습니다.
+remediation: >-
+  Set `LogLevel VERBOSE` (or `INFO`) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+remediation_ko: >-
+  /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `LogLevel VERBOSE`(또는 `INFO`)를 설정하고 sshd를 다시 불러오세요.
+applies: >-
+  sshd.present
+failure: >-
+  The LogLevel of the OpenSSH server is not INFO or VERBOSE.
+expect: >-
+  sshd.config.loglevel.value.lowerAscii() in ["info", "verbose"]
+tests:
+  - name: verbose
+    facts:
+      sshd: {present: true, config: {loglevel: {value: "VERBOSE", explicit: true, source: "/etc/ssh/sshd_config:20"}}}
+    want: PASS
+  - name: the default of the installed version
+    facts:
+      sshd: {present: true, config: {loglevel: {value: "INFO", source: "sshd -T (default)"}}}
+    want: PASS
+  - name: written in lower case in the file
+    facts:
+      sshd: {present: true, config: {loglevel: {value: "verbose", explicit: true, source: "/etc/ssh/sshd_config:21"}}}
+    want: PASS
+  - name: quiet
+    facts:
+      sshd: {present: true, config: {loglevel: {value: "QUIET", explicit: true, source: "/etc/ssh/sshd_config:20"}}}
+    want: FAIL
+  - name: debug
+    facts:
+      sshd: {present: true, config: {loglevel: {value: "DEBUG3", explicit: true, source: "/etc/ssh/sshd_config:20"}}}
+    want: FAIL
+  - name: no SSH server
+    facts:
+      sshd: {present: false}
+    want: NOT_APPLICABLE
+  - name: the default is unknown on a mounted root
+    input: absent
+    facts:
+      sshd: {present: true, config: {}}
+    want: ERROR

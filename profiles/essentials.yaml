@@ -1,7 +1,7 @@
 # vmsctl essentials: a short baseline of the settings most Linux server hardening guides agree
 # on, over the same checks as the other profiles. The control IDs and titles are vmsctl's own.
 id: essentials
-revision: 6
+revision: 7
 title: vmsctl essentials — a short hardening baseline for Linux servers
 title_ko: vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 controls:
@@ -140,3 +140,13 @@ controls:
     title_ko: 필요하지 않으면 인쇄와 네트워크 검색이 꺼져 있음
     severity: medium
     checks: [services.no-print-discovery]
+  - id: ES-28
+    title: SSH offers no broken ciphers, MACs or key exchanges
+    title_ko: SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음
+    severity: medium
+    checks: [ssh.weak-algorithms]
+  - id: ES-29
+    title: SSH logs who logs in
+    title_ko: SSH가 누가 로그인하는지 기록함
+    severity: medium
+    checks: [ssh.log-level]

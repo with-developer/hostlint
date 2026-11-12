@@ -80,7 +80,7 @@ func TestScanSeveralProfiles(t *testing.T) {
 	for _, c := range res.Controls {
 		n[c.Profile]++
 	}
-	if n["kisa-2026"] != 67 || n["essentials"] != 27 {
+	if n["kisa-2026"] != 67 || n["essentials"] != 29 {
 		t.Errorf("controls per profile = %v", n)
 	}
 	// A profile twice is one profile.

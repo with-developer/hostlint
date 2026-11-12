@@ -1,5 +1,5 @@
 os: CentOS Linux 7 (Core) (id centos, version 7, family rhel, supported true)
-profile essentials revision 6: FAIL 5 MANUAL 2 PASS 10 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
+profile essentials revision 7: FAIL 5 MANUAL 2 PASS 10 NOT_APPLICABLE 7 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
 
 ES-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -215,3 +215,11 @@ ES-26 PASS
 
 ES-27 PASS
   services.no-print-discovery PASS
+
+ES-28 NOT_APPLICABLE
+  ssh.weak-algorithms NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
+
+ES-29 NOT_APPLICABLE
+  ssh.log-level NOT_APPLICABLE: applies is false: sshd.present
+    - sshd.present = false
