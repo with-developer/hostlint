@@ -93,11 +93,12 @@ func inline(s string) string {
 	parts := strings.Split(s, "`")
 	var b strings.Builder
 	for i, p := range parts {
-		if i%2 == 1 && i < len(parts)-1 {
+		switch {
+		case i%2 == 1 && i < len(parts)-1:
 			b.WriteString("<code>" + html.EscapeString(p) + "</code>")
-		} else if i%2 == 1 { // an unpaired backtick at the end: keep it as text
+		case i%2 == 1: // an unpaired backtick at the end: keep it as text
 			b.WriteString("`" + html.EscapeString(p))
-		} else {
+		default:
 			b.WriteString(html.EscapeString(p))
 		}
 	}
