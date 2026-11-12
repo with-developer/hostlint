@@ -7,8 +7,8 @@ vmsctl은 읽기만 하므로 호스트의 루트를 읽기 전용으로 마운�
 같은 방식으로 점검합니다.
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.33.0 scan --root /host
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.33.0 scan --root /host --fail-on high --format json > web-01.json
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.34.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.34.0 scan --root /host --fail-on high --format json > web-01.json
 ```
 
 CI 설정처럼 오래 두고 쓰는 곳에는 버전 태그(`:0.27.0`)를 쓰세요. `:latest`는 가장 최근의 정식 릴리스를 따라가고,
@@ -24,7 +24,7 @@ CI 설정처럼 오래 두고 쓰는 곳에는 버전 태그(`:0.27.0`)를 쓰�
 이 이미지는 CI에서 쓰거나, 마운트한 디스크나 스냅샷을 점검하거나, 결과를 서버로 보낼 때 알맞습니다.
 
 ```sh
-docker run --rm -v /:/host:ro -v /etc/vmsctl:/etc/vmsctl:ro ghcr.io/with-developer/vmsctl:0.33.0 \
+docker run --rm -v /:/host:ro -v /etc/vmsctl:/etc/vmsctl:ro ghcr.io/with-developer/vmsctl:0.34.0 \
   scan --root /host --fail-on none --push https://vmsctl.example.org:8443 --token-file /etc/vmsctl/token
 ```
 
@@ -38,10 +38,10 @@ docker run --rm -v /:/host:ro -v /etc/vmsctl:/etc/vmsctl:ro ghcr.io/with-develop
 이미지는 릴리스 파이프라인이 서명하고(Sigstore 키리스 방식) 빌드 출처 증명과 SBOM도 함께 담습니다.
 
 ```sh
-cosign verify ghcr.io/with-developer/vmsctl:0.33.0 \
+cosign verify ghcr.io/with-developer/vmsctl:0.34.0 \
   --certificate-identity-regexp '^https://github\.com/with-developer/vmsctl/\.github/workflows/container\.yml@refs/heads/main$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/with-developer/vmsctl:0.33.0 --repo with-developer/vmsctl
+gh attestation verify oci://ghcr.io/with-developer/vmsctl:0.34.0 --repo with-developer/vmsctl
 ```
 
 이미지 안의 바이너리는 릴리스 아카이브에 든 바로 그 바이너리입니다. 이미지를 만들기 전에 `checksums.txt`를 먼저
