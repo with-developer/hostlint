@@ -12,13 +12,13 @@ hostlint는 v0.27.0에서 vmsctl로 이름을 바꿨습니다([ADR 0017](adr/001
 | 이전 (v0.26.0까지) | 지금 (v0.27.0부터) |
 |---|---|
 | `hostlint scan ...` | `vmsctl scan ...` |
-| `/usr/local/bin/hostlint`, `/usr/bin/hostlint` | `vmsctl`. `.deb`·`.rpm` 패키지는 한동안 `hostlint` 링크를 함께 두고, `install.sh`는 예전 `hostlint`를 새 바이너리를 가리키는 링크로 바꿉니다. 둘 다 이름이 곧 없어진다는 안내를 출력합니다 |
+| `/usr/local/bin/hostlint`, `/usr/bin/hostlint` | `vmsctl`. `.deb`·`.rpm` 패키지는 한동안 `hostlint` 링크를 함께 두고, `install.sh`는 예전 `hostlint`를 새 바이너리를 가리키는 링크로 바꿉니다. 둘 다 이 이름은 더 이상 쓰지 않는다(deprecated)는 안내를 출력합니다 |
 | `ghcr.io/with-developer/hostlint:0.26.0` | `ghcr.io/with-developer/vmsctl:0.27.0` (예전 이미지는 남아 있고, 그 이름의 `:latest`는 0.26.0에서 멈춥니다) |
 | `uses: with-developer/hostlint@v0.26.0` | `uses: with-developer/vmsctl@v0.27.0` |
 | `go install github.com/with-developer/hostlint/cmd/hostlint@...` | `go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.27.0` (예전 경로의 `@latest`는 v0.26.0에 머뭅니다) |
 | `HOSTLINT_TOKEN`, `HOSTLINT_PACK`, `HOSTLINT_WEBHOOK_URL` | `VMSCTL_TOKEN`, `VMSCTL_PACK`, `VMSCTL_WEBHOOK_URL` |
 | `hostlint.yaml`, `/etc/hostlint/hostlint.yaml` | `vmsctl.yaml`, `/etc/vmsctl/vmsctl.yaml` |
-| `hostlint-server.db` (데이터베이스 기본 파일) | `vmsctl-server.db` |
+| `hostlint-server.db` (기본 데이터베이스 파일 이름) | `vmsctl-server.db` |
 | `pack.yaml`의 `requires_hostlint:` | `requires_vmsctl:` |
 | `hostlint-scan.service`, `hostlint-agent.service`, `hostlint-server.service` (문서의 유닛 이름) | `vmsctl-scan.service` 등. 유닛 이름은 직접 정하면 됩니다 |
 
@@ -48,7 +48,7 @@ v0.26과 v0.27 호스트가 섞인 환경에서는 두 파일을 같이 두면 �
   모든 호스트가 v0.27 이상이 되면 `requires_vmsctl:`을 쓰세요. `pack.yaml`을 고치면 팩의 다이제스트가 바뀝니다.
 - **릴리스 검증.** v0.26.0까지는 저장소의 예전 이름으로 서명했습니다.
   `cosign verify-blob ... --certificate-identity https://github.com/with-developer/hostlint/.github/workflows/release.yml@refs/tags/vX.Y.Z`,
-  `gh attestation verify 파일 -R with-developer/hostlint`로 검증하세요. v0.27.0부터는 `vmsctl`입니다. `install.sh`는 요청한 버전을 보고
+  `gh attestation verify FILE -R with-developer/hostlint`로 검증하세요. v0.27.0부터는 `vmsctl`입니다. `install.sh`는 요청한 버전을 보고
   알아서 고릅니다.
 - **설치 스크립트.** 문서처럼 태그에 고정해서 쓰세요(`.../vmsctl/v0.27.0/install.sh`). `main`의 `install.sh`는 최신 릴리스를 설치하고,
   더 오래된 버전은 예전 이름으로 설치합니다.

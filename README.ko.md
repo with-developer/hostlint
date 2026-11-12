@@ -41,7 +41,7 @@ kisa-2026: 67 controls — 10 FAIL, 11 MANUAL, 29 PASS, 17 NOT_APPLICABLE
 
 ## 여러 서버를 한눈에 보는 대시보드
 
-서버들이 스스로 점검하고 결과를 `vmsctl server`로 보내면, 서버가 이력을 쌓아 두고 웹 대시보드로
+호스트가 스스로 점검하고 결과를 `vmsctl server`로 보내면, 서버가 이력을 쌓아 두고 웹 대시보드로
 보여 줍니다. 영어와 한국어, 라이트·다크 테마, 휴대폰 화면을 지원합니다.
 
 ![vmsctl 대시보드 투어: 개요, 호스트, 근거와 조치 방법이 있는 호스트, 점검 항목, 매트릭스, 한국어](docs/demo/dashboard-tour.gif)
@@ -56,7 +56,7 @@ vmsctl server demo      # 가상의 호스트 12대로 둘러보기. 실제로 �
 - **모든 호스트 × 모든 점검 항목 매트릭스.** 칸을 누르면 그 호스트로 이동합니다.
 - 프로파일(KISA, essentials, 직접 만든 정책 팩)을 **한 번에 하나씩** 골라 봅니다. 목록에는 호스트의 OS와 라벨이 보입니다.
 - **CI에서 점검한 이미지:** `scan --image-tar app.tar --push`를 쓰면 이미지마다 페이지가 생기고, 빌드마다 태그가 이력으로 쌓입니다.
-- **지금 점검:** 호스트의 에이전트가 먼저 서버에 연결해 두었다가, 대시보드에서 요청하면 호스트가 허용한 프로파일로 점검합니다.
+- **지금 스캔:** 호스트의 에이전트가 먼저 서버에 연결해 두었다가, 대시보드에서 요청하면 호스트가 허용한 프로파일로 점검합니다.
   서버가 호스트에 접속하는 일은 없습니다.
 - **서명된 결과:** 저장된 결과가 바뀌지 않았는지 호스트의 서명 키로 확인할 수 있습니다.
 
@@ -93,7 +93,7 @@ Lynis, OpenSCAP, Wazuh와 무엇이 다르고 어떤 경우에 그쪽이 더 나
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.37.0/install.sh
-sudo sh install.sh -v v0.37.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR
+sudo sh install.sh -v v0.37.0     # 먼저 읽어 보세요. root 없이 설치하려면 -b DIR로 설치 위치를 지정하세요
 sudo vmsctl scan
 ```
 
@@ -104,7 +104,7 @@ docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.37.0 scan --root /
 ```
 
 [릴리스](https://github.com/with-developer/vmsctl/releases)에는 `.deb`·`.rpm` 패키지, SBOM, 빌드 출처 증명도
-함께 올라갑니다(`gh attestation verify 파일 -R with-developer/vmsctl`). v0.26.0까지는 hostlint라는 이름으로 나왔으므로
+함께 올라갑니다(`gh attestation verify FILE -R with-developer/vmsctl`). v0.26.0까지는 hostlint라는 이름으로 나왔으므로
 그 버전은 `-R with-developer/hostlint`로 검증하세요. hostlint를 쓰고 계셨다면
 [docs/migrating-from-hostlint.ko.md](docs/migrating-from-hostlint.ko.md)를 보세요. 직접 빌드하려면 Go 1.26 이상이 필요하고,
 바이너리 자체에는 외부 의존성이 없습니다:
@@ -143,7 +143,7 @@ vmsctl diff baseline.json current.json --fail-on-regression   # 점검 항목이
 vmsctl server run --db server.db --listen :8443
 sudo VMSCTL_TOKEN=hlt_ing_... vmsctl scan --push https://vmsctl.example.org:8443
 
-# 프로파일을 고르고, 기준을 더 엄격하게 바꾸고, 안고 가기로 한 발견은 예외로 처리
+# 프로파일을 고르고, 기준을 더 엄격하게 바꾸고, 감수하기로 한 항목은 예외(waiver)로 처리
 sudo vmsctl scan --config vmsctl.yaml
 ```
 
@@ -154,7 +154,7 @@ sudo vmsctl scan --config vmsctl.yaml
 |---|---|
 | `-p, --profile` | 점검할 프로파일(기본값 `kisa-2026`). 여러 번 쓰면 한 번에 여러 개를 점검합니다 |
 | `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown`(작업 요약이나 댓글용), `csv`(점검 항목마다 한 줄, 스프레드시트용: 엑셀에서 한글 제목이 깨지지 않고 열립니다. 수식으로 읽힐 값은 작은따옴표로 시작하는데, 엑셀이 CSV 파일을 열 때는 그 따옴표가 그대로 보입니다) |
-| `--lang` | `en`(기본값) 또는 `ko`: 표와 Markdown에서 점검 항목과 점검의 제목, 사람이 검토해야 하는 점검의 안내를 규칙에 한국어 글이 있는 것은 한국어로 보여 줍니다. Markdown 보고서의 조치 방법도 포함하고, 근거 같은 나머지 글은 영어 그대로입니다. `vmsctl explain --lang ko`는 점검 항목이나 점검을 같은 방식으로 한국어로 설명하고, `vmsctl diff --lang ko`는 표의 제목을 한국어로 보여 줍니다. `VMSCTL_LANG`로도 정할 수 있고 `ko_KR.UTF-8` 같은 로케일 값도 읽으며, 지원하지 않는 값은 무시합니다. JSON, SARIF, JUnit은 번역하지 않습니다. JSON 결과에는 한국어 조치 방법이 `remediationKo`로, 사람이 검토해야 하는 점검의 한국어 안내가 `reasonKo`로 들어가고, CSV에는 `title_ko`와 마지막 열 `how_to_fix_ko`가 있습니다 |
+| `--lang` | `en`(기본값) 또는 `ko`: 표와 Markdown에서 점검 항목과 점검의 제목, 사람이 검토해야 하는 점검의 안내, Markdown 보고서의 조치 방법을 한국어로 보여 줍니다. 규칙에 한국어 글이 있는 것만 해당하고, 근거 같은 나머지는 영어 그대로입니다. `vmsctl explain --lang ko`는 점검 항목이나 점검을 같은 방식으로 한국어로 설명하고, `vmsctl diff --lang ko`는 표의 제목을 한국어로 보여 줍니다. `VMSCTL_LANG`으로도 정할 수 있고 `ko_KR.UTF-8` 같은 로케일 값도 읽으며, 지원하지 않는 값은 무시합니다. JSON, SARIF, JUnit은 번역하지 않습니다. JSON 결과에는 한국어 조치 방법이 `remediationKo`로, 사람이 검토해야 하는 점검의 한국어 안내가 `reasonKo`로 들어가고, CSV에는 `title_ko`와 마지막 열 `how_to_fix_ko`가 있습니다 |
 | `-o, --output` | 결과를 파일로 저장합니다 |
 | `--fail-on` | 이 심각도 이상의 점검 항목이 실패하거나 판단하지 못하면(`ERROR`) 종료 코드 1을 돌려줍니다: `low`(기본값), `medium`, `high`, `none` |
 | `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옵니다([docs/packs.ko.md](docs/packs.ko.md)). 팩의 프로파일은 `-p`로 고릅니다 |
@@ -200,12 +200,12 @@ sudo vmsctl scan --config vmsctl.yaml
 사람이 판단해야 하는 점검 항목(남길 계정, 배너, 로그 정책, 패치 수준, 서비스 접근 범위)과 아직 설정을 읽지 못하는
 서버(Postfix 외의 메일 서버, BIND 외의 DNS 서버, vsftpd 외의 FTP 서버)의 설정은 `MANUAL`로 나오며, 검토할 사실이
 함께 나열됩니다. 해당 소프트웨어가 실행 중이 아니면 `NOT_APPLICABLE`입니다. 지원 대상은 Ubuntu 22.04/24.04/26.04,
-Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentOS/RHEL 7(최선 노력)입니다. 그 밖의
-버전도 최선을 다해 점검하고, 결과에 그렇게 표시합니다.
+Debian 12/13, RHEL 호환 9/10(Rocky Linux, AlmaLinux), Amazon Linux 2023, CentOS/RHEL 7(가능한 범위에서 지원)입니다. 그 밖의
+버전도 점검은 하되, 결과에 최선 노력(best-effort) 지원이라고 표시합니다.
 
 `essentials` 프로파일(`--profile essentials`)은 특정 국가 표준과 상관없이, 대부분의 리눅스 보안 강화 가이드가 공통으로
 권하는 항목만 추린 짧은 기준입니다. SSH(root 로그인 금지, 비밀번호 로그인 금지, 빈 비밀번호 금지, 시도 횟수 제한,
-X11 전달 금지, 깨진 암호 알고리즘 금지, 로그 기록, 이를 뒤집는 `Match` 블록 금지), UID 0과 비밀번호 파일, 비밀번호 길이·해시·사용 기간·잠금, `su`와
+X11 전달 금지, 취약한 암호 알고리즘 사용 금지, 로그 기록, 이를 뒤집는 `Match` 블록 금지), UID 0과 비밀번호 파일, 비밀번호 길이·해시·사용 기간·잠금, `su`와
 sudo, cron, 오래된 원격 서비스, 위험한 파일 권한, 시각 동기화, 중요한 커널 매개변수(주소 무작위화, `kptr_restrict`,
 ICMP 리다이렉트, 역방향 경로 필터링, SYN 쿠키 등), 호스트 방화벽, 자동 보안 업데이트, 강제 접근 제어(SELinux나 AppArmor), 빈 비밀번호, 인쇄·네트워크 검색 서비스(CUPS, Avahi)를
 다룹니다. 점검 항목 29개(`ES-01`–`ES-29`)에는 자체 ID가 있고, 대부분 다른 프로파일과 같은 점검을 쓰며, SSH 점검 10개와 커널 매개변수
