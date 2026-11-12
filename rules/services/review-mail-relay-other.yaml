@@ -8,10 +8,19 @@ description: >-
   /etc/postfix/main.cf (Postfix with a main.cf is checked by services.postfix-no-open-relay and
   services.postfix-no-vrfy); then shows how it was started, for a review of its configuration. Not
   applicable otherwise.
+description_ko: >-
+  Postfix가 아닌 메일 서버가 시작되어 있거나, Postfix가 시작되어 있는데 /etc/postfix/main.cf가 없을 때 적용됩니다(main.cf가 있는
+  Postfix는 services.postfix-no-open-relay와 services.postfix-no-vrfy가 봅니다). 설정을 검토할 수 있도록 그 서버가 시작된
+  경로를 보여 줍니다. 그 밖에는 해당하지 않습니다.
 rationale: An open mail server is used to send spam and to probe for accounts.
+rationale_ko: >-
+  열려 있는 메일 서버는 스팸을 보내고 계정을 알아내는 데 쓰입니다.
 remediation: >-
   Check that the mail server relays only for your networks and authenticated users and rejects EXPN
   and VRFY (Sendmail: PrivacyOptions noexpn, novrfy).
+remediation_ko: >-
+  메일 서버가 자기 네트워크와 인증된 사용자만 대신 중계하는지, EXPN과 VRFY를 거부하는지 확인하세요(Sendmail은 PrivacyOptions noexpn,
+  novrfy).
 applies: >-
   services.started.exists(s, s.service in ["sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || (!s.program.contains("/postfix/") && s.program.matches("/(sendmail|exim4?|smtpd)$"))) ||
   (!postfix.present && services.started.exists(s, s.service in ["postfix"] || s.program.matches("/postfix/(sbin/)?master$")))
@@ -19,6 +28,9 @@ manual:
   guidance: >-
     Check that the mail server relays only for your networks and authenticated users and rejects EXPN
     and VRFY (Sendmail: PrivacyOptions noexpn, novrfy).
+  guidance_ko: >-
+    메일 서버가 자기 네트워크와 인증된 사용자만 대신 중계하는지, EXPN과 VRFY를 거부하는지 확인하세요(Sendmail은 PrivacyOptions noexpn,
+    novrfy).
   show: >-
     services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:

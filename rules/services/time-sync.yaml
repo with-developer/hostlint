@@ -7,8 +7,15 @@ description: >-
   Checks that chrony, ntpd, ntpsec or systemd-timesyncd is enabled (as a unit or an init script),
   or running on a live host.
   Which servers it uses is for services.review-time-sync.
+description_ko: >-
+  chrony, ntpd, ntpsec, systemd-timesyncd 중 하나가 (유닛이나 init 스크립트로) 활성화되어 있거나, 실행 중인 호스트에서는 실행되고 있는지
+  확인합니다. 어떤 서버를 쓰는지는 services.review-time-sync가 봅니다.
 rationale: Logs from hosts with drifting clocks cannot be correlated, and time-based protocols fail.
+rationale_ko: >-
+  시계가 어긋난 호스트들의 로그는 서로 맞춰 볼 수 없고, 시간에 의존하는 프로토콜이 실패합니다.
 remediation: Enable a time synchronization service (`systemctl enable --now chronyd`).
+remediation_ko: >-
+  시각 동기화 서비스를 켜세요(`systemctl enable --now chronyd`).
 failure: No time synchronization service (chrony, ntpd, ntpsec or systemd-timesyncd) is enabled or running.
 expect: >-
   ("chronyd.service" in services.units && services.units["chronyd.service"].enabled && !services.units["chronyd.service"].masked) ||

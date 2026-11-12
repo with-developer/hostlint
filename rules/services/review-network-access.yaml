@@ -7,16 +7,27 @@ description: >-
   Lists what decides who can reach the host from the network: the host firewall services that are
   enabled (firewalld, ufw, nftables, iptables, netfilter-persistent) and, on a live host, the sockets
   listening on an address other than loopback.
+description_ko: >-
+  네트워크에서 이 호스트에 누가 접근할 수 있는지를 정하는 것들을 나열합니다. 활성화된 호스트 방화벽 서비스(firewalld, ufw, nftables, iptables,
+  netfilter-persistent)와, 실행 중인 호스트에서는 루프백이 아닌 주소에서 대기 중인 소켓입니다.
 rationale: A service open to every address is exposed to everyone who can route to it.
+rationale_ko: >-
+  모든 주소에 열려 있는 서비스는 그곳까지 경로가 닿는 모든 사람에게 노출됩니다.
 remediation: >-
   Restrict each service that is not meant for everyone with a host firewall (nftables, iptables,
   firewalld, ufw) or the service's own access rules (TCP wrappers, allow lists), or bind it to the
   addresses that need it.
+remediation_ko: >-
+  모두를 위한 것이 아닌 서비스는 호스트 방화벽(nftables, iptables, firewalld, ufw)이나 서비스 자체의 접근 규칙(TCP wrappers, 허용
+  목록)으로 제한하거나, 필요한 주소에만 바인드하세요.
 manual:
   guidance: >-
     Check that services accept connections only from the addresses that need them, with a host
     firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the
     firewall services that are enabled and the sockets that listen beyond the host itself.
+  guidance_ko: >-
+    서비스가 필요한 주소의 접속만 받는지 호스트 방화벽(nftables, iptables, firewalld)이나 서비스 자체의 접근 규칙으로 확인하세요. 목록에는 활성화된
+    방화벽 서비스와 호스트 밖으로 대기 중인 소켓이 나옵니다.
   show: >-
     ["firewalld.service", "ufw.service", "nftables.service", "iptables.service", "ip6tables.service", "netfilter-persistent.service"]
       .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)

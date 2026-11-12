@@ -6,10 +6,17 @@ severity: high
 description: >-
   Lists the ways the NIS server and client daemons (ypserv, ypbind, yppasswdd, ypxfrd) are started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  NIS 서버와 클라이언트 데몬(ypserv, ypbind, yppasswdd, ypxfrd)이 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트,
+  inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아 나열합니다.
 rationale: >-
   NIS hands out account data, including password hashes, with weak protection.
+rationale_ko: >-
+  NIS는 비밀번호 해시를 포함한 계정 정보를 약한 보호만으로 내어 줍니다.
 remediation: >-
   Disable the NIS daemons and use a directory service with encryption, such as LDAP over TLS.
+remediation_ko: >-
+  NIS 데몬을 끄고, TLS 위의 LDAP처럼 암호화하는 디렉터리 서비스를 쓰세요.
 violations:
   over: services.started
   as: s

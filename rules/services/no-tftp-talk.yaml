@@ -6,10 +6,17 @@ severity: high
 description: >-
   Lists the ways the tftp, talk and ntalk services are started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  tftp, talk, ntalk 서비스가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나
+  프로그램으로 찾아 나열합니다.
 rationale: >-
   tftp serves files without authentication; talk is an old, unneeded chat service.
+rationale_ko: >-
+  tftp는 인증 없이 파일을 내어 주고, talk는 오래되어 필요 없는 채팅 서비스입니다.
 remediation: >-
   Disable them.
+remediation_ko: >-
+  이 서비스들을 끄세요.
 violations:
   over: services.started
   as: s

@@ -6,15 +6,25 @@ severity: high
 description: >-
   Applies when a mail server is started; then shows how, and the installed versions of its packages, for a review of its configuration. Not
   applicable otherwise.
+description_ko: >-
+  메일 서버가 시작되어 있을 때 적용됩니다. 설정을 검토할 수 있도록 그 서버가 시작된 경로와 설치된 패키지의 버전을 보여 줍니다. 그 밖에는 해당하지 않습니다.
 rationale: >-
   An outdated or open mail server is used to send spam and to probe for accounts.
+rationale_ko: >-
+  오래되었거나 열려 있는 메일 서버는 스팸을 보내고 계정을 알아내는 데 쓰입니다.
 remediation: >-
   Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
+remediation_ko: >-
+  메일 서버가 최신 상태인지, 자기 네트워크와 인증된 사용자만 대신 중계하는지, EXPN과 VRFY를 거부하는지, 큐 실행을 메일 시스템에만 허용하는지
+  확인하세요(Sendmail은 PrivacyOptions restrictqrun, noexpn, novrfy).
 applies: >-
   services.started.exists(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$"))
 manual:
   guidance: >-
     Check that the mail server is up to date, relays only for your networks and authenticated users, rejects EXPN and VRFY, and lets only the mail system run its queue (Sendmail: PrivacyOptions restrictqrun, noexpn, novrfy).
+  guidance_ko: >-
+    메일 서버가 최신 상태인지, 자기 네트워크와 인증된 사용자만 대신 중계하는지, EXPN과 VRFY를 거부하는지, 큐 실행을 메일 시스템에만 허용하는지
+    확인하세요(Sendmail은 PrivacyOptions restrictqrun, noexpn, novrfy).
   show: >-
     services.started.filter(s, s.service in ["postfix", "sendmail", "exim", "exim4", "smtpd", "opensmtpd"] || s.program.matches("/(sendmail|exim4?|postfix/(sbin/)?master|smtpd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source) +
     ["postfix", "exim4", "exim4-daemon-light", "exim4-daemon-heavy", "exim", "sendmail", "sendmail-bin", "opensmtpd"]

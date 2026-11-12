@@ -5,10 +5,19 @@ title_ko: SNMP는 필요한 호스트에만 응답
 severity: high
 description: >-
   Lists the community entries of /etc/snmp/snmpd.conf and the files it includes that answer every source address while the agent is not limited to the host itself with agentAddress. On a live host, a UDP socket on port 161 that is open to other hosts also counts as not limited, since a listen address on the command line (for example in /etc/default/snmpd) overrides agentAddress. Applies when the agent is started and the configuration is at its usual place.
+description_ko: >-
+  /etc/snmp/snmpd.conf와 그 파일이 포함하는 파일에서, 에이전트가 agentAddress로 호스트 자신에게만 한정되어 있지 않은데 모든 출발지 주소에 응답하는
+  community 항목을 나열합니다. 실행 중인 호스트에서는 다른 호스트에게 열린 UDP 161번 포트 소켓도 한정되지 않은 것으로 봅니다. 명령줄의 대기 주소(예:
+  /etc/default/snmpd)가 agentAddress를 덮어쓰기 때문입니다. 에이전트가 시작되어 있고 설정이 일반적인 위치에 있을 때 적용됩니다.
 rationale: >-
   An agent that answers any address with a community string can be asked by anyone who can reach it.
+rationale_ko: >-
+  community 문자열만 맞으면 어떤 주소에든 응답하는 에이전트는 닿을 수 있는 누구나 질의할 수 있습니다.
 remediation: >-
   Give each community the management network as its source (`rocommunity name 10.0.0.0/8`), or set `agentAddress udp:127.0.0.1:161` if only the host itself needs it.
+remediation_ko: >-
+  각 community에 관리 네트워크를 출발지로 지정하세요(`rocommunity 이름 10.0.0.0/8`). 호스트 자신만 필요하다면 `agentAddress
+  udp:127.0.0.1:161`을 설정하세요.
 applies: >-
   snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
 violations:

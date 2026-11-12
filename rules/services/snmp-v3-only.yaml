@@ -5,10 +5,20 @@ title_ko: SNMP 에이전트에 SNMPv1·v2c 접근이 없음
 severity: high
 description: >-
   Lists the SNMPv1 and v2c access entries (rocommunity, rwcommunity, authcommunity, com2sec) of /etc/snmp/snmpd.conf and the files it includes. v1 and v2c send their community string in clear text and cannot authenticate a user. The security level of SNMPv3 users (rouser, rwuser) is not judged. Applies when the agent is started and its configuration is at the usual place; otherwise services.review-snmp-agent asks for a review.
+description_ko: >-
+  /etc/snmp/snmpd.conf와 그 파일이 포함하는 파일에서 SNMPv1과 v2c 접근 항목(rocommunity, rwcommunity, authcommunity,
+  com2sec)을 나열합니다. v1과 v2c는 community 문자열을 평문으로 보내고 사용자를 인증할 수 없습니다. SNMPv3 사용자(rouser, rwuser)의
+  보안 수준은 판단하지 않습니다. 에이전트가 시작되어 있고 설정이 일반적인 위치에 있을 때 적용되며, 그렇지 않으면 services.review-snmp-agent가 검토를
+  요청합니다.
 rationale: >-
   Whoever sniffs a community string can read, and with rwcommunity change, what the agent exposes.
+rationale_ko: >-
+  community 문자열을 엿본 사람은 에이전트가 드러내는 정보를 읽을 수 있고, rwcommunity라면 바꿀 수도 있습니다.
 remediation: >-
   Remove the community lines, create SNMPv3 users (`net-snmp-create-v3-user`) and give them rouser or rwuser lines with `authPriv`.
+remediation_ko: >-
+  community 줄을 지우고, SNMPv3 사용자를 만든 뒤(`net-snmp-create-v3-user`) 그 사용자에게 `authPriv`로 rouser나 rwuser
+  줄을 주세요.
 applies: >-
   snmp.present && services.started.exists(s, s.service in ["snmpd"] || s.program.matches("/snmpd$"))
 violations:

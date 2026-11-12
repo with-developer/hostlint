@@ -9,11 +9,20 @@ description: >-
   the ones that let a remote root act as root (no_root_squash). An export added at run time with
   exportfs is not in these files. Applies when an NFS server is started and /etc/exports or /etc/exports.d is
   there; otherwise services.review-nfs-other asks for a review.
+description_ko: >-
+  /etc/exports와 /etc/exports.d/*.exports의 항목 중에서 모든 호스트에 열려 있는 것(클라이언트가 "*"이거나, `/srv (rw)`처럼 옵션만
+  있는 경우. 괄호 앞에 공백을 넣는 흔한 실수입니다)과, 원격 root가 root로 동작하게 하는 것(no_root_squash)을 나열합니다. 실행 중에 exportfs로
+  추가한 공유는 이 파일들에 없습니다. NFS 서버가 시작되어 있고 /etc/exports나 /etc/exports.d가 있을 때 적용되며, 그렇지 않으면
+  services.review-nfs-other가 검토를 요청합니다.
 rationale: >-
   An export open to everyone, or without root_squash, hands the shared files to any host on the network.
+rationale_ko: >-
+  모두에게 열려 있거나 root_squash가 없는 공유는 네트워크의 어떤 호스트에든 공유 파일을 넘겨줍니다.
 remediation: >-
   List the hosts or networks that need each export (`/srv/data 192.0.2.0/24(rw)`), put no space before the
   parenthesis, and keep root_squash.
+remediation_ko: >-
+  공유마다 필요한 호스트나 네트워크를 나열하고(`/srv/data 192.0.2.0/24(rw)`), 괄호 앞에는 공백을 넣지 말고, root_squash를 유지하세요.
 applies: >-
   nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
 violations:

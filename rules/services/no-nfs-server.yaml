@@ -6,10 +6,16 @@ severity: high
 description: >-
   Lists the ways the NFS server is started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  NFS 서버가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아 나열합니다.
 rationale: >-
   An NFS server shares files over the network; when nobody needs it, it is only exposure.
+rationale_ko: >-
+  NFS 서버는 파일을 네트워크로 공유하므로, 필요한 곳이 없다면 노출만 늘립니다.
 remediation: >-
   Disable it (`systemctl disable --now nfs-server`) if no client needs these shares.
+remediation_ko: >-
+  이 공유를 쓰는 클라이언트가 없다면 끄세요(`systemctl disable --now nfs-server`).
 violations:
   over: services.started
   as: s

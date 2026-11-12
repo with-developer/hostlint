@@ -8,10 +8,19 @@ description: >-
   vsftpd, vsftpd or Samba without their configuration file (vsftpd with a vsftpd.conf is
   services.vsftpd-no-anonymous, Samba with an smb.conf is services.samba-no-guest); then shows how, for a review
   of its configuration. Not applicable otherwise.
+description_ko: >-
+  다른 점검이 읽지 않는 파일 공유 서비스가 시작되어 있을 때 적용됩니다. NFS, vsftpd가 아닌 FTP 서버, 설정 파일이 없는 vsftpd나 Samba가
+  해당합니다(vsftpd.conf가 있는 vsftpd는 services.vsftpd-no-anonymous, smb.conf가 있는 Samba는
+  services.samba-no-guest가 봅니다). 설정을 검토할 수 있도록 그 서비스가 시작되는 경로를 보여 줍니다. 그 밖에는 해당하지 않습니다.
 rationale: >-
   Anonymous access to shared files lets anyone read, and sometimes write, them.
+rationale_ko: >-
+  공유 파일에 익명으로 접근할 수 있으면 누구나 그 파일을 읽을 수 있고, 때로는 쓸 수도 있습니다.
 remediation: >-
   Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
+remediation_ko: >-
+  나열된 서비스가 익명 접근을 허용하지 않는지 확인하세요. vsftpd는 `anonymous_enable=NO`, NFS는 아는 호스트만 허용하고 root_squash를
+  쓰기, Samba는 게스트 접근 금지입니다.
 applies: >-
   services.started.exists(s, s.service in ["proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/(proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd)$")) ||
   (!ftp.present && services.started.exists(s, s.service in ["vsftpd"] || s.program.matches("/vsftpd$"))) ||
@@ -19,6 +28,9 @@ applies: >-
 manual:
   guidance: >-
     Check that the listed services allow no anonymous access: vsftpd `anonymous_enable=NO`, NFS exports limited to known hosts with root_squash, no Samba guest access.
+  guidance_ko: >-
+    나열된 서비스가 익명 접근을 허용하지 않는지 확인하세요. vsftpd는 `anonymous_enable=NO`, NFS는 아는 호스트만 허용하고 root_squash를
+    쓰기, Samba는 게스트 접근 금지입니다.
   show: >-
     services.started.filter(s, s.service in ["vsftpd", "proftpd", "pure-ftpd", "ftp", "ftpd", "nfs-server", "nfs-kernel-server", "nfs", "smb", "smbd", "samba"] || s.program.matches("/(vsftpd|proftpd|pure-ftpd|(in\\.)?ftpd|rpc\\.nfsd|smbd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:

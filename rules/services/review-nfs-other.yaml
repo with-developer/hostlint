@@ -7,15 +7,25 @@ description: >-
   Applies when an NFS server is started but /etc/exports and /etc/exports.d are not there (the exports may
   be made some other way, for example with exportfs at boot); then shows how it was started, for a review.
   With export files, services.nfs-exports-restricted decides. Not applicable otherwise.
+description_ko: >-
+  NFS 서버가 시작되어 있는데 /etc/exports와 /etc/exports.d가 없을 때 적용됩니다(공유를 부팅 때 exportfs로 만드는 등 다른 방식으로 만들었을
+  수 있습니다). 검토할 수 있도록 서버가 시작된 경로를 보여 줍니다. export 파일이 있으면 services.nfs-exports-restricted가 판단합니다. 그
+  밖에는 해당하지 않습니다.
 rationale: >-
   An export open to everyone, or without root_squash, hands the shared files to any host on the network.
+rationale_ko: >-
+  모두에게 열려 있거나 root_squash가 없는 공유는 네트워크의 어떤 호스트에든 공유 파일을 넘겨줍니다.
 remediation: >-
   Check the exports (`exportfs -v`): each is limited to the hosts that need it, never "*", and uses root_squash.
+remediation_ko: >-
+  공유를 확인하세요(`exportfs -v`). 각 공유가 필요한 호스트로만 제한되어 있고, "*"는 쓰지 않으며, root_squash를 쓰는지 봅니다.
 applies: >-
   !nfs.present && services.started.exists(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$"))
 manual:
   guidance: >-
     Check the exports (`exportfs -v`): each is limited to the hosts that need it, never "*", and uses root_squash.
+  guidance_ko: >-
+    공유를 확인하세요(`exportfs -v`). 각 공유가 필요한 호스트로만 제한되어 있고, "*"는 쓰지 않으며, root_squash를 쓰는지 봅니다.
   show: >-
     services.started.filter(s, s.service in ["nfs-server", "nfs-kernel-server", "nfs", "nfsd"] || s.program.matches("/rpc\\.nfsd$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:

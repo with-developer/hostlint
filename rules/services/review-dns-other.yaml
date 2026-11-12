@@ -8,16 +8,26 @@ description: >-
   the usual places (BIND with a configuration is checked by services.bind-restrict-transfer and
   services.bind-restrict-update); then shows how it was started, for a review of its configuration.
   Not applicable otherwise.
+description_ko: >-
+  BIND가 아닌 DNS 서버가 시작되어 있거나, BIND가 시작되어 있는데 일반적인 위치에 named.conf가 없을 때 적용됩니다(설정이 있는 BIND는
+  services.bind-restrict-transfer와 services.bind-restrict-update가 봅니다). 설정을 검토할 수 있도록 서버가 시작된 경로를
+  보여 줍니다. 그 밖에는 해당하지 않습니다.
 rationale: >-
   Zone transfers map your network for attackers, and open dynamic updates let them change it.
+rationale_ko: >-
+  존 전송은 공격자에게 네트워크 지도를 건네고, 열린 동적 업데이트는 그것을 바꾸게 합니다.
 remediation: >-
   Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.
+remediation_ko: >-
+  DNS 서버가 존 전송을 secondary에게만 허용하고, 동적 업데이트는 키가 있을 때만 허용하거나 아예 막는지 확인하세요.
 applies: >-
   services.started.exists(s, s.service in ["pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(pdns_server|knotd|nsd)$")) ||
   (!bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$")))
 manual:
   guidance: >-
     Check that the DNS server allows zone transfers only to its secondaries and dynamic updates only with keys or not at all.
+  guidance_ko: >-
+    DNS 서버가 존 전송을 secondary에게만 허용하고, 동적 업데이트는 키가 있을 때만 허용하거나 아예 막는지 확인하세요.
   show: >-
     services.started.filter(s, s.service in ["named", "bind9", "named-chroot", "bind", "pdns", "pdns-server", "knot", "nsd"] || s.program.matches("/(named|pdns_server|knotd|nsd)$")).map(s, s.name + " (" + s.kind + ") at " + s.source)
 tests:

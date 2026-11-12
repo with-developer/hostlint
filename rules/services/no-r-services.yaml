@@ -6,10 +6,17 @@ severity: high
 description: >-
   Lists the ways rsh, rlogin and rexec (inetd's shell, login and exec services, or their units) are started: enabled units, units running now, init scripts and
   inetd/xinetd entries, found by service name or program.
+description_ko: >-
+  rsh, rlogin, rexec(inetd의 shell, login, exec 서비스나 그 유닛)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init
+  스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아 나열합니다.
 rationale: >-
   The r-services send passwords in clear text and trust hosts by address.
+rationale_ko: >-
+  r 계열 서비스는 비밀번호를 평문으로 보내고 주소만으로 호스트를 신뢰합니다.
 remediation: >-
   Disable rsh, rlogin and rexec and use SSH instead.
+remediation_ko: >-
+  rsh, rlogin, rexec를 끄고 SSH를 쓰세요.
 violations:
   over: services.started
   as: s

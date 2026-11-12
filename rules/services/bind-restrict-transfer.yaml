@@ -5,10 +5,19 @@ title_ko: BIND 존 전송이 제한됨
 severity: high
 description: >-
   Lists the primary and secondary zones of /etc/named.conf (or /etc/bind/named.conf) and the files it includes that any host may transfer: no allow-transfer applies to the zone (BIND then allows everyone), or it contains any. allow-transfer is read from the zone, its view and options, and acl names are followed. The zones every installation defines for the host itself (localhost and the loopback reverse zones) are left out. Applies when BIND is started and has a configuration; another DNS server is services.review-dns-other.
+description_ko: >-
+  /etc/named.conf(또는 /etc/bind/named.conf)와 그 파일이 포함하는 파일에서, 아무 호스트나 존 전송을 받을 수 있는 primary와
+  secondary 존을 나열합니다. 존에 allow-transfer가 적용되지 않거나(BIND는 이때 모두에게 허용합니다) any를 포함하는 경우입니다.
+  allow-transfer는 존, 그 view, options에서 읽고 acl 이름도 따라갑니다. 모든 설치가 호스트 자신을 위해 정의하는 존(localhost와 루프백
+  역방향 존)은 뺍니다. BIND가 시작되어 있고 설정이 있을 때 적용되며, 다른 DNS 서버는 services.review-dns-other가 봅니다.
 rationale: >-
   A zone transfer hands over every name in the zone, which maps the network for an attacker.
+rationale_ko: >-
+  존 전송은 존의 모든 이름을 넘겨주므로, 공격자에게 네트워크 지도를 건네는 셈입니다.
 remediation: >-
   Set `allow-transfer { none; };` in options and list your secondaries (or a TSIG key) in the zones that need it.
+remediation_ko: >-
+  options에 `allow-transfer { none; };`을 설정하고, 전송이 필요한 존에는 secondary(또는 TSIG 키)를 지정하세요.
 applies: >-
   bind.present && services.started.exists(s, s.service in ["named", "bind", "bind9", "named-chroot"] || s.program.matches("/named$"))
 violations:
