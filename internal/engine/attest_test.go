@@ -24,7 +24,7 @@ func attestScanOf(t *testing.T, opts Options, svc *fakeCollector) *Result {
 	t.Helper()
 	checks := []*Check{
 		{ID: "x.show", Manual: &ManualSpec{Guidance: "look", Show: "svc.users.map(u, u.name)"}},
-		{ID: "x.plain", Manual: &ManualSpec{Guidance: "look"}},
+		{ID: "x.plain", Manual: &ManualSpec{Guidance: "look", GuidanceKo: "확인하세요"}},
 		{ID: "x.broken", Manual: &ManualSpec{Guidance: "look", Show: "svc.config.nosuchkey.value"}},
 		{ID: "x.fail", Expect: `svc.config.permitrootlogin.value == "yes"`},
 	}
@@ -111,6 +111,9 @@ func TestAttestations(t *testing.T) {
 			got := checkOf(t, res, tt.check)
 			if got.Status != tt.want || got.StatusSource != tt.source {
 				t.Errorf("status %s (%s), want %s (%s); reason %q", got.Status, got.StatusSource, tt.want, tt.source, got.Reason)
+			}
+			if tt.check == "x.plain" && (tt.source == "attested") != (got.ReasonKo == "") {
+				t.Errorf("reasonKo = %q for an %s result", got.ReasonKo, tt.source) // the review's guidance is not an attested check's reason
 			}
 			if tt.source == "attested" {
 				if got.OriginalStatus != StatusManual || got.Attestation == nil || got.Attestation.By != "alice" || !strings.Contains(got.Reason, "reviewed the list") {

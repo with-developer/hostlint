@@ -27,8 +27,10 @@ const (
 	maxRemediationLen = 1500
 	// maxRemediationKoLen is in bytes like the one above; a Korean letter is three bytes, so the room is twice as big.
 	maxRemediationKoLen = 3000
-	maxSkipped          = 50
-	maxShownKeys        = 20
+	// maxReasonKoLen bounds the Korean reason in bytes: no more than the 1600 characters of the schema, whatever the letters.
+	maxReasonKoLen = 1600
+	maxSkipped     = 50
+	maxShownKeys   = 20
 )
 
 // evalEnv is what checks are evaluated against on one host. Evaluation reads
@@ -56,6 +58,14 @@ type outcome struct {
 	// showErr is a runtime error in a manual check's show expression; the
 	// reason mentions it, and rule tests treat it as a failure.
 	showErr string
+}
+
+// note adds a remark to the reason, and to the Korean one when there is one.
+func (o *outcome) note(text string) {
+	o.reason += text
+	if o.reasonKo != "" {
+		o.reasonKo += text
+	}
 }
 
 func errorOutcome(format string, args ...any) outcome {
@@ -252,24 +262,15 @@ func (e *evalEnv) evaluate(cc *compiledCheck, params map[string]any) outcome {
 		return e.evalViolations(cc, b)
 	case c.Manual != nil:
 		o := outcome{status: StatusManual, reason: c.Manual.Guidance}
-		if c.Manual.GuidanceKo != "" {
-			o.reasonKo = c.Manual.GuidanceKo
-		}
+		o.reasonKo = c.Manual.GuidanceKo
 		if cc.show != nil {
 			v, _, err := e.eval(cc.show, b.strict)
 			switch {
 			case err != nil:
-				o.reason += " (evidence unavailable: " + err.Error() + ")"
-				if o.reasonKo != "" {
-					o.reasonKo += " (evidence unavailable: " + err.Error() + ")"
-				}
+				o.note(" (evidence unavailable: " + err.Error() + ")")
 				o.showErr = err.Error()
 			case types.IsUnknown(v):
-				why := e.unknownReason(b, v)
-				o.reason += " (evidence unavailable: " + why + ")"
-				if o.reasonKo != "" {
-					o.reasonKo += " (evidence unavailable: " + why + ")"
-				}
+				o.note(" (evidence unavailable: " + e.unknownReason(b, v) + ")")
 			default:
 				o.evidence, o.omitted = listEvidence("show", v)
 				o.evidenceDigest, _ = showDigest(v)

@@ -286,7 +286,7 @@ func (e *Engine) checkResult(in *instance, o outcome) *CheckResult {
 		cr.Params = in.params
 	}
 	if o.status == StatusManual {
-		cr.ReasonKo = truncate(strings.TrimSpace(o.reasonKo), maxRemediationKoLen)
+		cr.ReasonKo = truncate(strings.TrimSpace(o.reasonKo), maxReasonKoLen)
 	}
 	if o.status == StatusFail {
 		cr.Remediation = truncate(strings.TrimSpace(c.Remediation), maxRemediationLen)
