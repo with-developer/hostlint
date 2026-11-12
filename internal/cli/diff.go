@@ -9,8 +9,8 @@ import (
 )
 
 type diffFlags struct {
-	format, out, color string
-	failOnRegression   bool
+	format, out, color, lang string
+	failOnRegression         bool
 }
 
 func newDiffCommand() *cobra.Command {
@@ -41,6 +41,7 @@ revisions are compared too, with a note.`,
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: table or json")
 	fl.StringVarP(&f.out, "output", "o", "", "write the diff to this file (default: standard output)")
 	fl.StringVar(&f.color, "color", "auto", "color the table: auto, always or never")
+	fl.StringVar(&f.lang, "lang", "", "language of the titles in the table: en or ko (default: VMSCTL_LANG, else en); JSON is not translated")
 	fl.BoolVar(&f.failOnRegression, "fail-on-regression", false, "exit with status 1 when a control regressed, or a new control is FAIL or ERROR")
 	return cmd
 }
@@ -60,8 +61,12 @@ func runDiff(cmd *cobra.Command, files []string, f diffFlags) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", files[1], err)
 	}
+	lang, err := resolveLang(f.lang)
+	if err != nil {
+		return err
+	}
 	d := output.DiffResults(files[0], older, files[1], newer)
-	opts := output.Options{Color: useColor(f.color, f.out, cmd.OutOrStdout())}
+	opts := output.Options{Color: useColor(f.color, f.out, cmd.OutOrStdout()), Lang: lang}
 	if f.out != "" {
 		err = output.WriteDiffFile(f.out, d, f.format, opts)
 	} else {

@@ -243,3 +243,34 @@ func TestTableEscapesControlCharactersInTitlesAndIDs(t *testing.T) {
 		t.Errorf("a control character reached the table:\n%q", buf.String())
 	}
 }
+
+// --lang ko shows the Korean titles of controls and checks where they exist, and the English ones elsewhere.
+func TestDiffTableInKorean(t *testing.T) {
+	older, newer := readFixture(t, "web-01-old.json"), readFixture(t, "web-01.json")
+	for i := range newer.Controls {
+		if newer.Controls[i].ID == "U-01" {
+			newer.Controls[i].TitleKo = "한글 제목 U-01"
+		}
+	}
+	for i := range newer.Checks {
+		newer.Checks[i].TitleKo = "한글 점검 " + newer.Checks[i].Ref
+	}
+	d := DiffResults("old.json", older, "new.json", newer)
+	var ko, en bytes.Buffer
+	if err := WriteDiff(&ko, d, "table", Options{Lang: "ko"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteDiff(&en, d, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ko.String(), "한글 제목 U-01") || !strings.Contains(ko.String(), "한글 점검 ") {
+		t.Errorf("Korean table lacks the Korean titles:\n%s", ko.String())
+	}
+	if strings.Contains(en.String(), "한글") {
+		t.Errorf("English table has Korean text:\n%s", en.String())
+	}
+	var js bytes.Buffer
+	if err := WriteDiff(&js, d, "json", Options{Lang: "ko"}); err != nil || !strings.Contains(js.String(), `"titleKo"`) {
+		t.Errorf("the JSON carries titleKo: %v", err)
+	}
+}
