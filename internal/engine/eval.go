@@ -44,8 +44,8 @@ type evalEnv struct {
 
 // outcome is a check's result before waivers and attestations.
 type outcome struct {
-	status   Status
-	reason   string
+	status Status
+	reason string
 	// reasonKo is the reason in Korean, where the rule has it (the guidance of a MANUAL check).
 	reasonKo string
 	evidence []Evidence
