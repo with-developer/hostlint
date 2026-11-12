@@ -225,3 +225,24 @@ func TestScanPushSigned(t *testing.T) {
 		t.Errorf("--sign-key alone: exit %d, %q", code, stderr)
 	}
 }
+
+// --lang ko (or VMSCTL_LANG=ko) shows the Korean titles in the table; the default is English, and another language is refused.
+func TestScanLang(t *testing.T) {
+	root := fakeRoot(t)
+	_, en, _ := run(context.Background(), t, "scan", "--root", root, "--fail-on", "none", "--verbose")
+	code, ko, stderr := run(context.Background(), t, "scan", "--root", root, "--fail-on", "none", "--verbose", "--lang", "ko")
+	if code != ExitOK || !strings.Contains(ko, "비밀번호") || strings.Contains(en, "비밀번호") {
+		t.Errorf("ko: %d %q (English output has Korean: %v)", code, stderr, strings.Contains(en, "비밀번호"))
+	}
+	t.Setenv("VMSCTL_LANG", "ko")
+	if _, viaEnv, _ := run(context.Background(), t, "scan", "--root", root, "--fail-on", "none", "--verbose"); !strings.Contains(viaEnv, "비밀번호") {
+		t.Error("VMSCTL_LANG=ko did not give Korean titles")
+	}
+	if _, viaFlag, _ := run(context.Background(), t, "scan", "--root", root, "--fail-on", "none", "--verbose", "--lang", "en"); strings.Contains(viaFlag, "비밀번호") {
+		t.Error("--lang en did not win over VMSCTL_LANG")
+	}
+	t.Setenv("VMSCTL_LANG", "")
+	if code, _, stderr := run(context.Background(), t, "scan", "--root", root, "--lang", "fr"); code != ExitError || !strings.Contains(stderr, "unknown --lang") {
+		t.Errorf("fr: %d %q", code, stderr)
+	}
+}
