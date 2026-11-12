@@ -25,8 +25,10 @@ const (
 	maxReasonItems    = 5
 	maxReasonLen      = 1000
 	maxRemediationLen = 1500
-	maxSkipped        = 50
-	maxShownKeys      = 20
+	// maxRemediationKoLen is in bytes like the one above; a Korean letter is three bytes, so the room is twice as big.
+	maxRemediationKoLen = 3000
+	maxSkipped          = 50
+	maxShownKeys        = 20
 )
 
 // evalEnv is what checks are evaluated against on one host. Evaluation reads

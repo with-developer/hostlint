@@ -114,6 +114,20 @@ func TestKoreanGuidanceIsKorean(t *testing.T) {
 			if strings.TrimSpace(c.Manual.Guidance) == "" {
 				t.Errorf("%s has manual.guidance_ko and no manual.guidance", id)
 			}
+			if !hangul(c.Manual.GuidanceKo) {
+				t.Errorf("%s: manual.guidance_ko has no Korean in it", id)
+			}
+		}
+	}
+	for pid, p := range content.Profiles {
+		for _, ctl := range p.Controls {
+			switch ko := strings.TrimSpace(ctl.ManualKo); {
+			case ko == "":
+			case strings.TrimSpace(ctl.Manual) == "":
+				t.Errorf("%s %s has manual_ko and no manual", pid, ctl.ID)
+			case !hangul(ko):
+				t.Errorf("%s %s: manual_ko has no Korean in it", pid, ctl.ID)
+			}
 		}
 	}
 }

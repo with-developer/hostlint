@@ -521,3 +521,29 @@ func TestKoreanTitles(t *testing.T) {
 		}
 	}
 }
+
+// The fix hint of the Markdown report is Korean on request where the check has one, and English otherwise; the CSV has both.
+func TestKoreanFixHints(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	for i := range res.Checks {
+		res.Checks[i].Status = engine.StatusFail
+		res.Checks[i].Remediation = "Set it right (" + res.Checks[i].ID + ")."
+	}
+	res.Checks[0].RemediationKo = "올바르게 설정하세요."
+	for i := range res.Controls {
+		res.Controls[i].Status = engine.StatusFail
+	}
+	var en, ko, csvOut bytes.Buffer
+	_ = Write(&en, res, "markdown", Options{})
+	_ = Write(&ko, res, "markdown", Options{Lang: "ko"})
+	_ = Write(&csvOut, res, "csv", Options{})
+	if strings.Contains(en.String(), "올바르게") || !strings.Contains(en.String(), "**How to fix:**") {
+		t.Errorf("English by default:\n%s", en.String())
+	}
+	if !strings.Contains(ko.String(), "**조치 방법:** 올바르게 설정하세요.") || !strings.Contains(ko.String(), "**How to fix:** Set it right") {
+		t.Errorf("a check with Korean guidance, and one without:\n%s", ko.String())
+	}
+	if !strings.Contains(csvOut.String(), "올바르게 설정하세요.") {
+		t.Error("the CSV has no Korean fix hint")
+	}
+}

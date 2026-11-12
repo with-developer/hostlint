@@ -110,17 +110,11 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 	if !output.ValidFormat(f.format) {
 		return fmt.Errorf("unknown --format %q (use %s)", f.format, strings.Join(output.Formats, ", "))
 	}
-	if f.lang == "" {
-		// The environment names a locale as often as a language (ko_KR.UTF-8, KO): take its language, and ignore a value that
-		// is none of ours, so a shell profile never breaks a scan in a format that has no language.
-		f.lang = languageOfEnv(os.Getenv("VMSCTL_LANG"))
+	lang, err := resolveLang(f.lang)
+	if err != nil {
+		return err
 	}
-	if f.lang == "" {
-		f.lang = "en"
-	}
-	if !slices.Contains(output.Languages, f.lang) {
-		return fmt.Errorf("unknown --lang %q (use %s)", f.lang, strings.Join(output.Languages, " or "))
-	}
+	f.lang = lang
 	if !slices.Contains(failOnLevels, f.failOn) {
 		return fmt.Errorf("unknown --fail-on %q (use %s)", f.failOn, strings.Join(failOnLevels, ", "))
 	}
@@ -385,4 +379,21 @@ func languageOfEnv(v string) string {
 		return v
 	}
 	return ""
+}
+
+// resolveLang is the language of a command: the --lang flag, else VMSCTL_LANG, else English. The environment names a locale as often
+// as a language (ko_KR.UTF-8, KO): its language is taken, and a value that is none of ours is ignored, so a shell profile never breaks
+// a command; a flag that is none of ours is an error.
+func resolveLang(flag string) (string, error) {
+	lang := flag
+	if lang == "" {
+		lang = languageOfEnv(os.Getenv("VMSCTL_LANG"))
+	}
+	if lang == "" {
+		lang = "en"
+	}
+	if !slices.Contains(output.Languages, lang) {
+		return "", fmt.Errorf("unknown --lang %q (use %s)", lang, strings.Join(output.Languages, " or "))
+	}
+	return lang, nil
 }

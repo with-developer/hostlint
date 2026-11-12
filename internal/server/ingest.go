@@ -291,8 +291,13 @@ func checkLimits(res *engine.Result, now time.Time) error {
 			return fmt.Errorf("check %.40q has text that is too long", c.Ref)
 		}
 		// The fix hint is shown as guidance: bounded, and text (line breaks and tabs are fine).
-		if len(c.Remediation) > maxRemediation || !utf8.ValidString(c.Remediation) || strings.ContainsFunc(c.Remediation, func(r rune) bool { return r != '\n' && r != '\t' && unicode.IsControl(r) }) {
-			return fmt.Errorf("check %.40q has a remediation that is too long or not text", c.Ref)
+		for _, fix := range []struct {
+			text  string
+			limit int
+		}{{c.Remediation, maxRemediation}, {c.RemediationKo, maxRemediationKo}} {
+			if len(fix.text) > fix.limit || !utf8.ValidString(fix.text) || strings.ContainsFunc(fix.text, func(r rune) bool { return r != '\n' && r != '\t' && unicode.IsControl(r) }) {
+				return fmt.Errorf("check %.40q has a remediation that is too long or not text", c.Ref)
+			}
 		}
 	}
 	// An image has no machine: no host ID, and a digest that says which image it was (the ID of its configuration).
@@ -358,6 +363,9 @@ func validPack(p engine.PackInfo) bool {
 
 // maxRemediation bounds the fix hint of a check in a received result (the engine writes at most 1500 bytes).
 const maxRemediation = 2000
+
+// maxRemediationKo bounds the Korean one (the engine writes at most 3000 bytes: a Korean letter is three).
+const maxRemediationKo = 4000
 
 // printable reports whether s is valid UTF-8 without control characters.
 func printable(s string) bool {

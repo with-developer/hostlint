@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"os"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -19,7 +17,7 @@ import (
 
 func newExplainCommand() *cobra.Command {
 	var packs []string
-	var lang string
+	var langFlag string
 	cmd := &cobra.Command{
 		Use:   "explain ID...",
 		Short: "Explain a control or a check: what it looks at, why, and how to fix it",
@@ -38,14 +36,9 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 			if _, err := addPacks(cmd, content, packDirsFrom(packs)); err != nil {
 				return err
 			}
-			if lang == "" {
-				lang = languageOfEnv(os.Getenv("VMSCTL_LANG"))
-			}
-			if lang == "" {
-				lang = "en"
-			}
-			if !slices.Contains(output.Languages, lang) {
-				return fmt.Errorf("unknown --lang %q (use %s)", lang, strings.Join(output.Languages, " or "))
+			lang, err := resolveLang(langFlag)
+			if err != nil {
+				return err
 			}
 			out := cmd.OutOrStdout()
 			missing := 0
@@ -68,7 +61,7 @@ to fix a failure. A scan lists what failed; this tells what to do about it. ID i
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&lang, "lang", "", "language of the text: "+strings.Join(output.Languages, " or ")+", where a rule has Korean text (default: VMSCTL_LANG, else en)")
+	cmd.Flags().StringVar(&langFlag, "lang", "", "language of the text: "+strings.Join(output.Languages, " or ")+", where a rule has Korean text (default: VMSCTL_LANG, else en)")
 	cmd.Flags().StringArrayVar(&packs, "pack", nil, "also know the checks and profiles of this policy pack (docs/packs.md)")
 	return cmd
 }
@@ -141,33 +134,50 @@ func explainCheckWith(w io.Writer, c *engine.Check, indent string, set map[strin
 		section(label(lang, "A person decides", "사람이 판단합니다"), pick(lang, c.Manual.Guidance, c.Manual.GuidanceKo))
 	}
 	if len(c.Platforms) > 0 {
-		fmt.Fprintf(w, "%sApplies to: %s\n", indent, oneLineText(strings.Join(c.Platforms, ", ")))
+		fmt.Fprintf(w, "%s%s %s\n", indent, label(lang, "Applies to:", "적용 대상:"), oneLineText(strings.Join(c.Platforms, ", ")))
 	}
 	if c.Applies != "" {
-		fmt.Fprintf(w, "%sApplies when: %s\n", indent, oneLineText(c.Applies))
+		fmt.Fprintf(w, "%s%s %s\n", indent, label(lang, "Applies when:", "적용 조건:"), oneLineText(c.Applies))
 	}
 	for _, name := range slices.Sorted(maps.Keys(c.Params)) {
 		p := c.Params[name]
 		dir := ""
 		if p.Stricter != "" {
 			dir = ", stricter is " + p.Stricter
+			if lang == "ko" {
+				dir = ", 더 엄격한 쪽은 " + map[string]string{"lower": "낮은 값", "higher": "높은 값"}[p.Stricter]
+			}
 		}
-		value := fmt.Sprintf("default %v%s", oneLineText(fmt.Sprint(p.Default)), dir)
+		value := fmt.Sprintf(label(lang, "default %v%s", "기본값 %v%s"), oneLineText(fmt.Sprint(p.Default)), dir)
 		if v, ok := set[name]; ok {
-			value = fmt.Sprintf("this control requires %v; the check's default is %v%s", oneLineText(fmt.Sprint(v)), oneLineText(fmt.Sprint(p.Default)), dir)
+			value = fmt.Sprintf(label(lang, "this control requires %v; the check's default is %v%s", "이 점검 항목은 %v을(를) 요구합니다. 점검의 기본값은 %v%s"), oneLineText(fmt.Sprint(v)), oneLineText(fmt.Sprint(p.Default)), dir)
 		}
-		fmt.Fprintf(w, "%sParameter %s (%s): %s\n", indent, oneLineText(name), value, oneLineText(p.Description))
+		fmt.Fprintf(w, "%s%s %s (%s): %s\n", indent, label(lang, "Parameter", "매개변수"), oneLineText(name), value, oneLineText(p.Description))
 	}
 }
 
 // wrap makes text one paragraph, cut into lines of about 100 characters, each starting with indent. The text
 // may come from a pack, so control characters do not reach the terminal.
+// displayWidth is how many terminal columns a text takes: a Korean (or other East Asian) letter takes two.
+func displayWidth(s string) int {
+	n := 0
+	for _, r := range s {
+		switch {
+		case r >= 0x1100 && r <= 0x115F, r >= 0x2E80 && r <= 0xA4CF, r >= 0xAC00 && r <= 0xD7A3, r >= 0xF900 && r <= 0xFAFF, r >= 0xFF00 && r <= 0xFF60:
+			n += 2
+		default:
+			n++
+		}
+	}
+	return n
+}
+
 func wrap(text, indent string) string {
 	words := strings.Fields(oneLineText(text)) // one paragraph, and what a pack wrote does not reach the terminal raw
 	var lines []string
 	line := indent
 	for _, w := range words {
-		if utf8.RuneCountInString(line)+utf8.RuneCountInString(w)+1 > 100 && strings.TrimSpace(line) != "" {
+		if displayWidth(line)+displayWidth(w)+1 > 100 && strings.TrimSpace(line) != "" {
 			lines = append(lines, line)
 			line = indent
 		}

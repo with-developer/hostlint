@@ -869,3 +869,43 @@ func TestControlInfoCarriesKoreanGuidance(t *testing.T) {
 	}
 	t.Error("U-01 has no ssh.permit-root-login")
 }
+
+// The fix hints of a received result (English and Korean) are shown as guidance, so each is bounded, valid text without control
+// characters; a Korean one has room for three-byte letters.
+func TestIngestBoundsTheFixHints(t *testing.T) {
+	f := newAPIFixture(t)
+	ingest := token(t, f.store, ScopeIngest, "")
+	post1 := func(n int, key, value string) int {
+		var doc map[string]any
+		if err := json.Unmarshal(fixture(t, "db-01.json"), &doc); err != nil {
+			t.Fatal(err)
+		}
+		doc["host"].(map[string]any)["hostname"] = "hint-" + itoa(int64(n))
+		doc["host"].(map[string]any)["hostId"] = strings.Repeat("c", 30) + itoa(int64(10+n))
+		doc["scan"].(map[string]any)["id"] = "hint-scan-" + itoa(int64(n))
+		doc["checks"].([]any)[0].(map[string]any)[key] = value
+		raw, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		code, _ := post(t, f.srv, ingest, raw)
+		return code
+	}
+	n := 0
+	for name, tc := range map[string]struct {
+		key, value string
+		ok         bool
+	}{
+		"a Korean hint":                  {"remediationKo", "/etc/ssh/sshd_config에 `PermitRootLogin no`를 설정하고 sshd를 다시 불러오세요.", true},
+		"a Korean hint of 1300 letters":  {"remediationKo", strings.Repeat("가", 1300), true},
+		"a Korean hint of 2000 letters":  {"remediationKo", strings.Repeat("가", 2000), false},
+		"a Korean hint with an escape":   {"remediationKo", "고치세요\x1b[2J", false},
+		"an English hint with an escape": {"remediation", "fix it\x1b[2J", false},
+		"line breaks and tabs are text":  {"remediationKo", "첫째 줄\n\t둘째 줄", true},
+	} {
+		n++
+		if code := post1(n, tc.key, tc.value); (code == http.StatusCreated) != tc.ok {
+			t.Errorf("%s: %d", name, code)
+		}
+	}
+}

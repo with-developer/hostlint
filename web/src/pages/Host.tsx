@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, api } from "../lib/api";
 import { useAsync, useNow } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
-import { ago, compareControls, ctitle } from "../lib/format";
+import { ago, compareControls, ctitle, localized } from "../lib/format";
 import { lastListAddress } from "../lib/listAddress";
 import { Avatar, Await, Empty, Gauge, Inline, ScorePill, Severity, SignedBadge, StatusBadge, StatusBar } from "../components/ui";
 import { TrendChart } from "../components/charts";
@@ -185,7 +185,7 @@ function ControlDetail({ control, doc }: { control: ControlRow; doc: ScanDoc }) 
           {ch.reason && <p className="muted small">{ch.reason}</p>}
           {ch.remediation && (
             <p className="prose remedy small">
-              <strong>{t("host.howToFix")}</strong> <Inline text={lang === "ko" && ch.remediationKo ? ch.remediationKo : ch.remediation} />
+              <strong>{t("host.howToFix")}</strong> <Inline text={localized(lang, ch.remediation, ch.remediationKo)} />
             </p>
           )}
           {(ch.evidence?.length ?? 0) > 0 ? (
