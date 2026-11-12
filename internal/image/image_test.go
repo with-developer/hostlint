@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/with-developer/vmsctl/internal/hostfs"
 )
@@ -457,8 +458,16 @@ func FuzzLoad(f *testing.F) {
 		if err := os.WriteFile(p, data, 0o600); err != nil {
 			t.Skip()
 		}
-		if img, err := Load(context.Background(), p); err == nil && img.FS == nil {
+		// A hostile archive is bounded in time as well as in size: a small input must not hold the loader for long.
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		start := time.Now()
+		img, err := Load(ctx, p)
+		if err == nil && img.FS == nil {
 			t.Fatal("no filesystem and no error")
+		}
+		if d := time.Since(start); d > 6*time.Second {
+			t.Fatalf("Load took %v on %d bytes (the context allowed 5s)", d, len(data))
 		}
 	})
 }

@@ -113,7 +113,9 @@ types, so a misspelled field is an error.
   well-known, short, which source), never the string, and a test proves that a planted secret
   appears in no fact.
 - Text files from the host get a fuzz target (`FuzzXxx`) next to their tests: any bytes must give
-  facts or an error, never a panic or a long hang.
+  facts or an error, never a panic or a long hang. Run one with
+  `go test ./internal/collect -run xxx -fuzz '^FuzzXxx$' -fuzztime 60s -fuzzminimizetime 0`: with the default
+  minimization a run can sit on one input for a minute and look stuck.
 - Say what the collector cannot see (an option on a command line, a second configuration
   directory) in the rule's description, and make what would change the verdict incomplete when
   you can detect it (an override in another file).
