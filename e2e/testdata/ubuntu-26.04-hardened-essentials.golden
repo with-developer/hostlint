@@ -1,5 +1,5 @@
 os: Ubuntu 26.04.1 LTS (id ubuntu, version 26.04, family debian, supported true)
-profile essentials revision 5: MANUAL 2 PASS 18 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
+profile essentials revision 6: MANUAL 2 PASS 20 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
 
 ES-01 PASS
   ssh.permit-root-login PASS
@@ -210,3 +210,9 @@ ES-24 (the firewall, updates and access control of a host)
 
 ES-25 (the firewall, updates and access control of a host)
   mac.enabled
+
+ES-26 PASS
+  accounts.no-empty-passwords PASS
+
+ES-27 PASS
+  services.no-print-discovery PASS

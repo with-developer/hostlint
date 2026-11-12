@@ -1,5 +1,5 @@
 os: Debian GNU/Linux 12 (bookworm) (id debian, version 12, family debian, supported true)
-profile essentials revision 5: FAIL 7 MANUAL 2 PASS 6 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
+profile essentials revision 6: FAIL 7 MANUAL 2 PASS 8 NOT_APPLICABLE 5 (and 2 controls of the kernel of the host) (and 3 controls of the firewall, updates and access control of a host)
 
 ES-01 NOT_APPLICABLE
   ssh.permit-root-login NOT_APPLICABLE: applies is false: sshd.present
@@ -204,3 +204,9 @@ ES-24 (the firewall, updates and access control of a host)
 
 ES-25 (the firewall, updates and access control of a host)
   mac.enabled
+
+ES-26 PASS
+  accounts.no-empty-passwords PASS
+
+ES-27 PASS
+  services.no-print-discovery PASS
