@@ -185,7 +185,7 @@ sudo vmsctl scan --config vmsctl.yaml
 ## 무엇을 점검하나
 
 `kisa-2026` 프로파일은 KISA 가이드(2026년판)의 Unix 점검 항목 67개를 모두 담았습니다. 점검 항목별 점검 내용, 매개변수,
-조치 방법은 [규칙 참조](docs/rules.ko.md)에 한국어로 있습니다.
+조치 방법은 [규칙 참조](docs/rules.ko.md)에 한국어로 있고, KISA 점검 항목만 모은 [웹 페이지](https://with-developer.github.io/vmsctl/ko/kisa/)도 있습니다.
 
 - **계정 관리 (U-01–U-13):** root 원격 접속, 비밀번호 길이·복잡도·사용 기간, 계정 잠금, 비밀번호
   파일 보호, UID 0, `su` 제한, 세션 타임아웃, 비밀번호 해시 알고리즘.
