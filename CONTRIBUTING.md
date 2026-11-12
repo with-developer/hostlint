@@ -92,6 +92,11 @@ types, so a misspelled field is an error.
   mail server, a missing configuration file) uses `applies`.
 - A profile's `revision` goes up with every change to which checks a control maps to. Control
   waivers written for an older revision stop applying, which is intended.
+- A check that no profile control maps fails `TestBuiltinContent`. A contributor leaves `profiles/`
+  alone (mapping a check changes a profile revision, which the maintainer decides) and lists the
+  check's ID in the `awaitingProfile` set of `rules/rules_test.go`; the test fails when an entry is
+  mapped later or names no check, so the set cannot go stale. The maintainer maps the check and
+  removes the entry.
 
 ### Writing a collector
 
