@@ -201,7 +201,7 @@ func TestScanDocAndDiff(t *testing.T) {
 func TestHostsCSV(t *testing.T) {
 	f := newAPIFixture(t)
 	code, body := f.get(t, f.api, "/api/v1/hosts?format=csv")
-	if code != http.StatusOK || !strings.HasPrefix(string(body), "host,host_id,last_scan,stale,score,FAIL") || !strings.Contains(string(body), "web-01,") {
+	if code != http.StatusOK || !strings.HasPrefix(string(body), "\xef\xbb\xbfhost,host_id,last_scan,stale,score,FAIL") || !strings.Contains(string(body), "web-01,") {
 		t.Errorf("csv (%d):\n%s", code, body)
 	}
 	for in, want := range map[string]string{"=SUM(A1)": "'=SUM(A1)", "+1": "'+1", "-1": "'-1", "@x": "'@x", "web-01": "web-01", "": ""} {
@@ -907,5 +907,41 @@ func TestIngestBoundsTheFixHints(t *testing.T) {
 		if code := post1(n, tc.key, tc.value); (code == http.StatusCreated) != tc.ok {
 			t.Errorf("%s: %d", name, code)
 		}
+	}
+}
+
+// The matrix as a sheet: a BOM for Excel, a row per host, a column per control, the status names in the cells, the titles
+// of the columns in the language asked for, and no cell that a spreadsheet would run.
+func TestMatrixCSV(t *testing.T) {
+	f := newAPIFixture(t)
+	var m Matrix
+	f.json(t, "/api/v1/matrix", &m)
+	code, body := f.get(t, f.api, "/api/v1/matrix?format=csv")
+	if code != http.StatusOK || !strings.HasPrefix(string(body), "\xef\xbb\xbfhost,stale,") {
+		t.Fatalf("csv (%d):\n%s", code, body)
+	}
+	rows, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(string(body), "\xef\xbb\xbf"))).ReadAll()
+	if err != nil || len(rows) != 1+len(m.Hosts) {
+		t.Fatalf("csv has %d rows (%v), want %d:\n%s", len(rows), err, 1+len(m.Hosts), body)
+	}
+	for i, h := range m.Hosts {
+		row := rows[1+i]
+		if len(row) != 2+len(m.Controls) || row[0] != h.Name {
+			t.Fatalf("row %d = %q", i, row)
+		}
+		for j := range m.Controls {
+			if want := matrixStatus[h.Statuses[j]]; row[2+j] != want {
+				t.Errorf("%s / %s = %q, want %q", h.Name, m.Controls[j].ID, row[2+j], want)
+			}
+		}
+	}
+	if !strings.HasPrefix(rows[0][2], m.Controls[0].ID+" ") {
+		t.Errorf("column header %q", rows[0][2])
+	}
+	if code, _ := f.get(t, f.api, "/api/v1/matrix?format=xml"); code != http.StatusBadRequest {
+		t.Errorf("unknown format: %d", code)
+	}
+	if code, _ := f.get(t, "", "/api/v1/matrix?format=csv"); code != http.StatusUnauthorized {
+		t.Errorf("csv without a token: %d", code)
 	}
 }

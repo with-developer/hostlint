@@ -300,7 +300,7 @@ curl --cacert tls.crt -H "Authorization: Bearer hlt_api_..." https://vmsctl.exam
 | `GET /api/v1/overview` | 호스트 수, 실패한 점검 항목이 있는 호스트 수, 오래 보고하지 않은 호스트 수, 상태별 개수, 가장 많은 호스트에서 실패하는 점검 항목, 최근 악화(`?staleDays=7`) |
 | `GET /api/v1/hosts` | 호스트 목록과 각 호스트의 최신 스캔 개수·통과율(`?q=`, `?status=failing\|stale`, `?sort=name\|score\|last`, `?limit=`, `?offset=`, `?format=csv`, 이미지를 보려면 `?kind=image`, 레이블이 있는 호스트만 보려면 `?label=env%3Dprod`. 대시보드에서는 레이블을 눌러 거릅니다). 호스트마다 `os`, `labels`(최신 결과가 알려 준 값이고 개수에 상한이 있습니다), `agentOnline`, 최근 스캔의 통과율 `trend`도 들어 있습니다 |
 | `GET /api/v1/controls`, `GET /api/v1/controls/PROFILE/ID` | 점검 항목 전체와 최신 스캔의 상태별 개수. 점검 항목 하나의 경우 해당 호스트, 무엇을 점검하는지, 어떻게 고치는지 |
-| `GET /api/v1/matrix` | 모든 호스트의 모든 점검 항목의 최신 상태. 가장 많이 실패한 호스트가 먼저 나옵니다 |
+| `GET /api/v1/matrix` | 모든 호스트의 모든 점검 항목의 최신 상태. 가장 많이 실패한 호스트가 먼저 나옵니다. `?format=csv`를 붙이면 스프레드시트용 표(호스트마다 한 행, 점검 항목마다 한 열, `?lang=ko`로 열 제목을 한국어로)로 받으며, 대시보드의 매트릭스 화면에서 내려받을 수 있습니다 |
 | `GET /api/v1/hosts/ID` | 호스트 하나의 최신 점검 항목과 이력 |
 | `GET /api/v1/scans/ID` | 저장된 결과를 받은 그대로. `?format=csv`를 붙이면 `vmsctl scan --format csv`와 같은 스프레드시트용 CSV 보고서(대시보드는 호스트의 이력에서 내려받게 해 줍니다) |
 | `GET /api/v1/diff?old=ID&new=ID` | 두 스캔 사이에서 바뀐 것(`vmsctl diff`와 같습니다) |

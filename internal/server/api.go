@@ -225,6 +225,7 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 // writeHostsCSV exports the list. A cell that a spreadsheet would run as a formula is made text.
 func writeHostsCSV(w http.ResponseWriter, hosts []HostSummary) {
 	var b bytes.Buffer
+	b.WriteString("\xef\xbb\xbf") // so that Excel reads Korean host names as UTF-8
 	cw := csv.NewWriter(&b)
 	_ = cw.Write([]string{"host", "host_id", "last_scan", "stale", "score", "FAIL", "ERROR", "MANUAL", "WAIVED", "PASS", "NOT_APPLICABLE", "profile", "other_profile"})
 	for _, h := range hosts {
@@ -495,7 +496,51 @@ func (s *Server) handleMatrix(w http.ResponseWriter, r *http.Request) {
 	for i := range m.Controls {
 		m.Controls[i].TitleKo = s.titleKo(m.Controls[i].Profile, m.Controls[i].ID)
 	}
-	writeJSON(w, http.StatusOK, m)
+	switch format := r.URL.Query().Get("format"); format {
+	case "":
+		writeJSON(w, http.StatusOK, m)
+	case "csv":
+		writeMatrixCSV(w, m, r.URL.Query().Get("lang") == "ko")
+	default:
+		writeError(w, http.StatusBadRequest, "format is csv, or leave it out for the JSON result")
+	}
+}
+
+// matrixStatus is the name of the one-letter status of the matrix (see MatrixHost).
+var matrixStatus = map[byte]string{'F': "FAIL", 'E': "ERROR", 'M': "MANUAL", 'W': "WAIVED", 'P': "PASS", 'N': "NOT_APPLICABLE", '-': ""}
+
+// writeMatrixCSV exports the matrix as a sheet: a row per host, a column per control, the status in each cell; the header of a
+// column is the control's ID and title (Korean when asked and there is one). It starts with a byte order mark so that Excel reads
+// Korean text as UTF-8, and makes every cell text that a spreadsheet would run as a formula.
+func writeMatrixCSV(w http.ResponseWriter, m *Matrix, ko bool) {
+	var b bytes.Buffer
+	b.WriteString("\xef\xbb\xbf")
+	cw := csv.NewWriter(&b)
+	header := []string{"host", "stale"}
+	for _, c := range m.Controls {
+		title := c.Title
+		if ko && c.TitleKo != "" {
+			title = c.TitleKo
+		}
+		header = append(header, csvText(c.ID+" "+title))
+	}
+	_ = cw.Write(header)
+	for _, h := range m.Hosts {
+		row := []string{csvText(h.Name), strconv.FormatBool(h.Stale)}
+		for i := 0; i < len(m.Controls); i++ {
+			cell := ""
+			if i < len(h.Statuses) {
+				cell = matrixStatus[h.Statuses[i]]
+			}
+			row = append(row, cell)
+		}
+		_ = cw.Write(row)
+	}
+	cw.Flush()
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="vmsctl-matrix.csv"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(b.Bytes())
 }
 
 func (s *Server) handleControls(w http.ResponseWriter, r *http.Request) {

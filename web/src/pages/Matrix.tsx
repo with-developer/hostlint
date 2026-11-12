@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { useAsync } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
 import { Await, Empty, PageHeader, Skeleton } from "../components/ui";
-import { IconSearch } from "../components/icons";
+import { IconDownload, IconSearch } from "../components/icons";
 import { ctitle } from "../lib/format";
 import { STATUSES, type Matrix, type Status } from "../lib/types";
 import { STALE_DAYS } from "./Overview";
@@ -12,11 +12,19 @@ const LETTER: Record<string, Status | "-"> = { F: "FAIL", E: "ERROR", M: "MANUAL
 const ROWS = 60;
 
 export function MatrixPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const state = useAsync(() => api.matrix(STALE_DAYS), []);
   return (
     <>
-      <PageHeader title={t("matrix.title")} subtitle={t("matrix.subtitle")} />
+      <PageHeader
+        title={t("matrix.title")}
+        subtitle={t("matrix.subtitle")}
+        actions={
+          <a className="button" href={api.matrixCSV(STALE_DAYS, lang)} download>
+            <IconDownload /> {t("hosts.export")}
+          </a>
+        }
+      />
       <Await state={state} skeleton={<div className="card"><Skeleton height={300} /></div>}>
         {(m) =>
           m.hosts.length === 0 ? (
