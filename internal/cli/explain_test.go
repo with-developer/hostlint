@@ -123,3 +123,38 @@ func TestExplainParameterDefaultsOfAPackAreEscaped(t *testing.T) {
 		t.Errorf("a parameter default reached the terminal raw: %q", out)
 	}
 }
+
+// --lang ko explains in Korean where a rule has Korean text, under Korean headings, and in English where it has none; the default
+// is English, a locale-style environment value is read for its language, and an unknown language is refused.
+func TestExplainLang(t *testing.T) {
+	ctx := context.Background()
+	_, en, _ := run(ctx, t, "explain", "ssh.permit-root-login")
+	if strings.Contains(en, "무엇을 점검하나") || !strings.Contains(en, "What it looks at:") {
+		t.Errorf("English by default:\n%s", en)
+	}
+	code, ko, stderr := run(ctx, t, "explain", "ssh.permit-root-login", "--lang", "ko")
+	if code != ExitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	for _, want := range []string{"무엇을 점검하나:", "왜 중요한가:", "조치 방법:", "PermitRootLogin no"} {
+		if !strings.Contains(ko, want) {
+			t.Errorf("no %q in:\n%s", want, ko)
+		}
+	}
+	if strings.Contains(ko, "Administrators log in") {
+		t.Errorf("English guidance where there is Korean:\n%s", ko)
+	}
+	t.Setenv("VMSCTL_LANG", "ko_KR.UTF-8")
+	if _, viaEnv, _ := run(ctx, t, "explain", "ssh.permit-root-login"); !strings.Contains(viaEnv, "조치 방법:") {
+		t.Error("VMSCTL_LANG=ko_KR.UTF-8 did not give Korean")
+	}
+	t.Setenv("VMSCTL_LANG", "")
+	if code, _, stderr := run(ctx, t, "explain", "U-02", "--lang", "fr"); code != ExitError || !strings.Contains(stderr, "unknown --lang") {
+		t.Errorf("fr: %d %q", code, stderr)
+	}
+	// A control in Korean has its Korean title; a check without Korean text keeps its English text under the Korean headings.
+	_, ctl, _ := run(ctx, t, "explain", "U-02", "--lang", "ko")
+	if !strings.Contains(ctl, "비밀번호 정책") || !strings.Contains(ctl, "무엇을 점검하나:") {
+		t.Errorf("a control in Korean:\n%s", ctl)
+	}
+}

@@ -49,17 +49,22 @@ func (s Severity) Rank() int {
 
 // Check is one check, loaded from rules/<area>/<name>.yaml.
 type Check struct {
-	ID          string               `yaml:"id"`
-	Version     int                  `yaml:"version"`
-	Title       string               `yaml:"title"`
-	TitleKo     string               `yaml:"title_ko"`
-	Severity    Severity             `yaml:"severity"`
-	Description string               `yaml:"description"`
-	Rationale   string               `yaml:"rationale"`
-	Remediation string               `yaml:"remediation"`
-	Platforms   []string             `yaml:"platforms"`
-	Applies     string               `yaml:"applies"`
-	Params      map[string]ParamSpec `yaml:"params"`
+	ID          string   `yaml:"id"`
+	Version     int      `yaml:"version"`
+	Title       string   `yaml:"title"`
+	TitleKo     string   `yaml:"title_ko"`
+	Severity    Severity `yaml:"severity"`
+	Description string   `yaml:"description"`
+	Rationale   string   `yaml:"rationale"`
+	Remediation string   `yaml:"remediation"`
+	// The Korean text of the same three: optional, shown where the reader asked for Korean (explain --lang ko, the
+	// dashboard, a report) and replaced by the English where a check has none. Prose, like the English: not in the digest.
+	DescriptionKo string               `yaml:"description_ko"`
+	RationaleKo   string               `yaml:"rationale_ko"`
+	RemediationKo string               `yaml:"remediation_ko"`
+	Platforms     []string             `yaml:"platforms"`
+	Applies       string               `yaml:"applies"`
+	Params        map[string]ParamSpec `yaml:"params"`
 
 	// Exactly one kind is set.
 	Setting    *SettingSpec    `yaml:"setting"`
@@ -140,8 +145,9 @@ type ViolationsSpec struct {
 
 // ManualSpec is a check that needs a human.
 type ManualSpec struct {
-	Guidance string `yaml:"guidance"`
-	Show     string `yaml:"show"`
+	Guidance   string `yaml:"guidance"`
+	GuidanceKo string `yaml:"guidance_ko"`
+	Show       string `yaml:"show"`
 }
 
 // TestCase is one rule test (ADR 0006 §9).
@@ -188,6 +194,7 @@ type Control struct {
 	Severity Severity                  `yaml:"severity"`
 	Checks   []string                  `yaml:"checks"`
 	Manual   string                    `yaml:"manual"`
+	ManualKo string                    `yaml:"manual_ko"`
 	Params   map[string]map[string]any `yaml:"params"` // check ID → param → value
 }
 

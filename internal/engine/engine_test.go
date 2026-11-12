@@ -178,8 +178,13 @@ func TestScan(t *testing.T) {
 func TestResultCarriesRemediationOfFailures(t *testing.T) {
 	res := scanDemo(t, demoSvc(), false)
 	got := map[string]string{}
+	gotKo := map[string]string{}
 	for _, c := range res.Checks {
 		got[c.ID] = c.Remediation
+		gotKo[c.ID] = c.RemediationKo
+	}
+	if gotKo["demo.uid-zero"] != "root를 뺀 모든 계정에 각자의 UID를 주거나 계정을 지우세요." || gotKo["demo.root-login"] != "" {
+		t.Errorf("the Korean guidance: %q for a failing check, %q for a passing one", gotKo["demo.uid-zero"], gotKo["demo.root-login"])
 	}
 	if got["demo.uid-zero"] != "Give every account but root its own UID, or remove it." {
 		t.Errorf("a failing check: %q", got["demo.uid-zero"])

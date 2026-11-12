@@ -846,3 +846,26 @@ func TestScanCSVOfAHostileResult(t *testing.T) {
 		t.Errorf("a control that came without a Korean title gets the server's, as in the dashboard: %q", rows[1])
 	}
 }
+
+// The answer about a control carries the Korean guidance of the rules that have it, next to the English, for the dashboard.
+func TestControlInfoCarriesKoreanGuidance(t *testing.T) {
+	f := newAPIFixture(t)
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.srv.cfg.Content = content
+	info := f.srv.controlInfo("kisa-2026", "U-01")
+	if info == nil {
+		t.Fatal("no info for U-01")
+	}
+	for _, c := range info.Checks {
+		if c.ID == "ssh.permit-root-login" {
+			if c.Description == "" || c.DescriptionKo == "" || c.RationaleKo == "" || c.RemediationKo == "" || !strings.Contains(c.RemediationKo, "PermitRootLogin no") {
+				t.Errorf("ssh.permit-root-login = %+v", c)
+			}
+			return
+		}
+	}
+	t.Error("U-01 has no ssh.permit-root-login")
+}

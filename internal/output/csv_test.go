@@ -28,7 +28,7 @@ func TestCSVReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := readCSV(t, buf.Bytes())
-	if got := strings.Join(rows[0], ","); got != "host,profile,control,title,title_ko,severity,status,checks_to_look_at,evidence,how_to_fix,waiver" {
+	if got := strings.Join(rows[0], ","); got != "host,profile,control,title,title_ko,severity,status,checks_to_look_at,evidence,how_to_fix,waiver,how_to_fix_ko" {
 		t.Errorf("header = %s", got)
 	}
 	if len(rows)-1 != len(res.Controls) {

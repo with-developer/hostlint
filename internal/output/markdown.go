@@ -230,10 +230,18 @@ func writeMarkdown(w io.Writer, res *engine.Result, lang string) error {
 			if len(ev) > 0 {
 				b.WriteString(mdFence(ev) + "\n")
 			}
-			if ck.Remediation != "" && !hinted[ck.Remediation] {
-				hinted[ck.Remediation] = true
+			fix := ck.Remediation
+			if lang == "ko" && ck.RemediationKo != "" {
+				fix = ck.RemediationKo
+			}
+			if fix != "" && !hinted[fix] {
+				hinted[fix] = true
+				label := "How to fix:"
+				if lang == "ko" && ck.RemediationKo != "" {
+					label = "조치 방법:"
+				}
 				// The rule's own guidance (or a pack's), written like any text from outside: as character references.
-				fmt.Fprintf(&b, "**How to fix:** %s\n\n", mdTextTo(ck.Remediation, maxMarkdownFix))
+				fmt.Fprintf(&b, "**%s** %s\n\n", label, mdTextTo(fix, maxMarkdownFix))
 			}
 		}
 		if !wrote && c.Reason != "" {

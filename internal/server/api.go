@@ -523,13 +523,18 @@ type CheckInfo struct {
 	Description string `json:"description"`
 	Rationale   string `json:"rationale"`
 	Remediation string `json:"remediation"`
+	// The same in Korean, where the rule has it (the dashboard shows it when its language is Korean).
+	DescriptionKo string `json:"descriptionKo,omitempty"`
+	RationaleKo   string `json:"rationaleKo,omitempty"`
+	RemediationKo string `json:"remediationKo,omitempty"`
 }
 
 // ControlInfo is the profile's own description of a control, when the server has the profiles.
 type ControlInfo struct {
-	TitleKo string      `json:"titleKo,omitempty"`
-	Manual  string      `json:"manual,omitempty"`
-	Checks  []CheckInfo `json:"checks"`
+	TitleKo  string      `json:"titleKo,omitempty"`
+	Manual   string      `json:"manual,omitempty"`
+	ManualKo string      `json:"manualKo,omitempty"`
+	Checks   []CheckInfo `json:"checks"`
 }
 
 func (s *Server) controlInfo(profile, id string) *ControlInfo {
@@ -544,12 +549,13 @@ func (s *Server) controlInfo(profile, id string) *ControlInfo {
 		if c.ID != id {
 			continue
 		}
-		info := &ControlInfo{TitleKo: c.TitleKo, Manual: strings.TrimSpace(c.Manual), Checks: []CheckInfo{}}
+		info := &ControlInfo{TitleKo: c.TitleKo, Manual: strings.TrimSpace(c.Manual), ManualKo: strings.TrimSpace(c.ManualKo), Checks: []CheckInfo{}}
 		for _, ref := range c.Checks {
 			if ch := s.cfg.Content.Checks[ref]; ch != nil {
 				info.Checks = append(info.Checks, CheckInfo{
 					ID: ch.ID, Title: ch.Title, TitleKo: ch.TitleKo,
 					Description: strings.TrimSpace(ch.Description), Rationale: strings.TrimSpace(ch.Rationale), Remediation: strings.TrimSpace(ch.Remediation),
+					DescriptionKo: strings.TrimSpace(ch.DescriptionKo), RationaleKo: strings.TrimSpace(ch.RationaleKo), RemediationKo: strings.TrimSpace(ch.RemediationKo),
 				})
 			}
 		}

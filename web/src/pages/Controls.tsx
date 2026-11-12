@@ -128,7 +128,7 @@ export function ControlPage({ profile, id }: { profile: string; id: string }) {
               {info?.manual && (
                 <section className="card">
                   <h2>{t("controls.review")}</h2>
-                  <p>{info.manual}</p>
+                  <p>{lang === "ko" && info.manualKo ? info.manualKo : info.manual}</p>
                 </section>
               )}
               {info?.checks.map((ch) => (
@@ -136,22 +136,22 @@ export function ControlPage({ profile, id }: { profile: string; id: string }) {
                   <h2>
                     <span className="mono">{ch.id}</span> {lang === "ko" && ch.titleKo ? ch.titleKo : ch.title}
                   </h2>
-                  {ch.description && (
+                  {(lang === "ko" && ch.descriptionKo ? ch.descriptionKo : ch.description) && (
                     <>
                       <h3>{t("controls.what")}</h3>
-                      <p className="prose"><Inline text={ch.description} /></p>
+                      <p className="prose"><Inline text={lang === "ko" && ch.descriptionKo ? ch.descriptionKo : ch.description} /></p>
                     </>
                   )}
-                  {ch.rationale && (
+                  {(lang === "ko" && ch.rationaleKo ? ch.rationaleKo : ch.rationale) && (
                     <>
                       <h3>{t("controls.why")}</h3>
-                      <p className="prose"><Inline text={ch.rationale} /></p>
+                      <p className="prose"><Inline text={lang === "ko" && ch.rationaleKo ? ch.rationaleKo : ch.rationale} /></p>
                     </>
                   )}
-                  {ch.remediation && (
+                  {(lang === "ko" && ch.remediationKo ? ch.remediationKo : ch.remediation) && (
                     <>
                       <h3>{t("controls.fix")}</h3>
-                      <p className="prose remedy"><Inline text={ch.remediation} /></p>
+                      <p className="prose remedy"><Inline text={lang === "ko" && ch.remediationKo ? ch.remediationKo : ch.remediation} /></p>
                     </>
                   )}
                 </section>

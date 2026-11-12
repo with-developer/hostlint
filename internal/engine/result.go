@@ -173,6 +173,7 @@ type CheckResult struct {
 	// failed (not one that could not be decided: there is nothing to fix yet), so a result says what to do about
 	// what it found.
 	Remediation     string         `json:"remediation,omitempty"`
+	RemediationKo   string         `json:"remediationKo,omitempty"` // the same in Korean, where the rule has it
 	Params          map[string]any `json:"params,omitempty"`
 	Customized      bool           `json:"customized,omitempty"`
 	Evidence        []Evidence     `json:"evidence"`
