@@ -10,11 +10,21 @@ description: >-
   IgnoreRhosts to anything but "yes", or MaxAuthTries above `max_tries` (a parameter of this
   check; ssh.max-auth-tries has its own, so set both to change the limit). A Match block overrides
   the global value for the connections it matches.
+description_ko: >-
+  OpenSSH 서버 설정의 Match 블록 중에서 PasswordAuthentication, KbdInteractiveAuthentication,
+  ChallengeResponseAuthentication, PermitEmptyPasswords, X11Forwarding, HostbasedAuthentication,
+  PermitUserEnvironment를 "no"가 아닌 값으로 두거나, IgnoreRhosts를 "yes"가 아닌 값으로 두거나, MaxAuthTries를
+  `max_tries`보다 크게 둔 것을 나열합니다(`max_tries`는 이 점검의 매개변수이고 ssh.max-auth-tries에도 따로 있으므로, 한도를 바꾸려면 둘 다
+  바꾸세요). Match 블록은 조건에 맞는 연결에 대해 전역 값을 덮어씁니다.
 rationale: >-
   A hardened global value can be undone for a whole network or user group by a Match block, and
   the global check would not notice.
+rationale_ko: >-
+  전역 설정을 강화해도 Match 블록이 특정 네트워크나 사용자 그룹에 대해서는 그 설정을 되돌릴 수 있고, 전역 값만 보는 점검은 이를 알아채지 못합니다.
 remediation: >-
   Remove the setting from the Match block, or give it the hardened value there as well.
+remediation_ko: >-
+  Match 블록에서 그 설정을 지우거나, 그 블록에서도 강화된 값을 쓰도록 하세요.
 applies: >-
   sshd.present
 params:
