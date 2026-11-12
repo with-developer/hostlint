@@ -63,6 +63,58 @@ func TestRulesKoDocIsUpToDate(t *testing.T) {
 	}
 }
 
+// site/ko/kisa/index.html is what RenderKISASiteKo makes of the KISA profile. After changing a rule or a profile, run `make docs`.
+func TestKISASiteKoIsUpToDate(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := RenderKISASiteKo(content, "kisa-2026")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "site", "ko", "kisa", "index.html")
+	if *update {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%v; run `make docs`", err)
+	}
+	if string(want) != got {
+		t.Error("site/ko/kisa/index.html is out of date; run `make docs`")
+	}
+	// Text from a rule is escaped, and every control has its section.
+	for _, c := range content.Profiles["kisa-2026"].Controls {
+		if !strings.Contains(got, `id="`+anchorID(c.ID)+`"`) {
+			t.Errorf("no section for %s", c.ID)
+		}
+	}
+	if strings.Contains(got, "<script") {
+		t.Error("the page has a script")
+	}
+}
+
+func TestInlineEscapesAndMakesCodeSpans(t *testing.T) {
+	for in, want := range map[string]string{
+		"plain":              "plain",
+		"run `a < b` now":    "run <code>a &lt; b</code> now",
+		"<script>x</script>": "&lt;script&gt;x&lt;/script&gt;",
+		"unpaired ` tick":    "unpaired ` tick",
+		"`one` and `two`":    "<code>one</code> and <code>two</code>",
+	} {
+		if got := inline(in); got != want {
+			t.Errorf("inline(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 // Every built-in check has Korean text, and the Korean reference shows it (a check that falls back to English would
 // show up as Hangul missing from its section).
 func TestRulesKoDocIsKorean(t *testing.T) {
