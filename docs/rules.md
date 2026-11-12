@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are vmsctl's own. Parameters can be made stricter in
 [vmsctl.yaml](configuration.md).
 
-## essentials (revision 5)
+## essentials (revision 6)
 
 vmsctl essentials — a short hardening baseline for Linux servers
 
@@ -38,6 +38,8 @@ vmsctl essentials — a short hardening baseline for Linux servers
 | ES-23 | medium | A host firewall is enabled (호스트 방화벽이 켜져 있음) | [`firewall.enabled`](#firewallenabled), [`firewall.review-rules`](#firewallreview-rules) |
 | ES-24 | medium | Security updates are installed automatically (보안 업데이트가 자동으로 설치됨) | [`updates.security-automatic`](#updatessecurity-automatic) |
 | ES-25 | medium | Mandatory access control is on (필수 접근 제어가 켜져 있음) | [`mac.enabled`](#macenabled) |
+| ES-26 | high | No account has an empty password (비밀번호가 비어 있는 계정이 없음) | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
+| ES-27 | medium | Printing and network discovery are off unless needed (필요하지 않으면 인쇄와 네트워크 검색이 꺼져 있음) | [`services.no-print-discovery`](#servicesno-print-discovery) |
 
 ### Checks
 
@@ -54,6 +56,16 @@ Checks that the login and (when an SSH server is present) sshd PAM stacks lock a
 **Parameters.**
 
 - `max_failures` (int, default `10`, lower is stricter): Failed attempts before an account locks
+
+#### `accounts.no-empty-passwords`
+
+No account has an empty password (비밀번호가 비어 있는 계정이 없음) — severity high, lists what violates it.
+
+Lists the accounts whose password field in /etc/shadow is empty, which means no password is needed to use them wherever PAM accepts it (the nullok option of pam_unix, which some default configurations still carry). Locked accounts ("!" or "*") are not listed. Without /etc/shadow there is nothing to check, so the check cannot pass.
+
+**Why.** An account without a password lets anyone who can reach a login prompt, a console or su use it.
+
+**Fix.** Set a password for each listed account (`passwd user`), or lock it (`passwd -l user`). Remove `nullok` from the pam_unix lines in the PAM configuration so an empty password is refused.
 
 #### `accounts.passwd-no-hashes`
 
@@ -456,6 +468,16 @@ Lists the ways the NIS server and client daemons (ypserv, ypbind, yppasswdd, ypx
 **Why.** NIS hands out account data, including password hashes, with weak protection.
 
 **Fix.** Disable the NIS daemons and use a directory service with encryption, such as LDAP over TLS.
+
+#### `services.no-print-discovery`
+
+Printing and network discovery services are not started (인쇄와 네트워크 검색 서비스 미사용) — severity medium, lists what violates it.
+
+Lists the ways CUPS (cupsd, cups-browsed) and Avahi (avahi-daemon) are started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name.
+
+**Why.** A print service and a network discovery service listen for other hosts and parse what they send. A server rarely needs either, and flaws in cups-browsed and Avahi have been exploited from the network.
+
+**Fix.** Disable them if the host does not print or advertise services (`systemctl disable --now cups cups-browsed avahi-daemon`, and the matching .socket and .path units), or remove the packages.
 
 #### `services.no-r-services`
 

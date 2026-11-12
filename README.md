@@ -211,9 +211,9 @@ agree on, outside any national standard: SSH (no root login, no password logins,
 attempts, no X11 forwarding, and no `Match` block that undoes them), UID 0 and password files, password
 length, hashing, aging and lockout, `su` and sudo, cron, legacy remote services, risky file permissions,
 time synchronization and the kernel parameters that matter (address randomization, `kptr_restrict`, ICMP redirects,
-reverse path filtering, SYN cookies, ...), a host firewall, automatic security updates and mandatory access control (SELinux or AppArmor). It has 25 controls with its own
-IDs (`ES-01`–`ES-25`), mostly over the checks of the other profile plus eight new SSH checks, eleven of kernel parameters, and
-the firewall, the updates and mandatory access control; those do not apply to a container image, which has no kernel, firewall, updates or access control of its own.
+reverse path filtering, SYN cookies, ...), a host firewall, automatic security updates, mandatory access control (SELinux or AppArmor), empty passwords and print and discovery services (CUPS, Avahi). It has 27 controls with its own
+IDs (`ES-01`–`ES-27`), mostly over the checks of the other profile plus eight new SSH checks, eleven of kernel parameters, and
+the firewall, the updates, mandatory access control, empty passwords and the print and discovery services; those do not apply to a container image, which has no kernel, firewall, updates or access control of its own.
 
 Your own standard goes into a [policy pack](docs/packs.md): a directory of checks and profiles in the same
 YAML format, tested with `vmsctl pack test`, reviewed with `vmsctl pack show`, used with `vmsctl scan

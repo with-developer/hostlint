@@ -1,0 +1,51 @@
+id: services.no-print-discovery
+version: 1
+title: Printing and network discovery services are not started
+title_ko: 인쇄와 네트워크 검색 서비스 미사용
+severity: medium
+description: >-
+  Lists the ways CUPS (cupsd, cups-browsed) and Avahi (avahi-daemon) are started: enabled units, units
+  running now, init scripts and inetd/xinetd entries, found by service name.
+description_ko: >-
+  CUPS(cupsd, cups-browsed)와 Avahi(avahi-daemon)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd
+  항목 중에서 서비스 이름으로 찾아 나열합니다.
+rationale: >-
+  A print service and a network discovery service listen for other hosts and parse what they send. A
+  server rarely needs either, and flaws in cups-browsed and Avahi have been exploited from the network.
+rationale_ko: >-
+  인쇄 서비스와 네트워크 검색 서비스는 다른 호스트를 기다리며 그쪽이 보내는 것을 해석합니다. 서버에는 둘 다 거의 필요하지 않고,
+  cups-browsed와 Avahi의 결함은 네트워크에서 실제로 악용된 적이 있습니다.
+remediation: >-
+  Disable them if the host does not print or advertise services (`systemctl disable --now cups
+  cups-browsed avahi-daemon`, and the matching .socket and .path units), or remove the packages.
+remediation_ko: >-
+  호스트가 인쇄하거나 서비스를 알릴 일이 없다면 끄세요(`systemctl disable --now cups cups-browsed avahi-daemon`, 같은 이름의 .socket과
+  .path 유닛도 함께). 패키지를 지워도 됩니다.
+violations:
+  over: services.started
+  as: s
+  where: >-
+    s.service in ["cups", "cupsd", "cups-browsed", "cups-lpd", "avahi-daemon", "avahi"]
+  key: s.kind + ":" + s.name
+  text: >-
+    s.name + " (" + s.kind + (s.program != "" ? ", " + s.program : "") + ") at " + s.source
+  allow_empty: true
+tests:
+  - name: not started
+    facts:
+      services: {started: [{service: ssh, name: ssh.service, kind: unit, program: /usr/sbin/sshd, source: "/etc/systemd/system/multi-user.target.wants/ssh.service"}]}
+    want: PASS
+  - name: avahi enabled
+    facts:
+      services: {started: [{service: avahi-daemon, name: avahi-daemon.service, kind: unit, program: /usr/sbin/avahi-daemon, source: "/etc/systemd/system/multi-user.target.wants/avahi-daemon.service"}]}
+    want: FAIL
+  - name: cups-browsed running
+    facts:
+      services: {started: [{service: cups-browsed, name: cups-browsed.service, kind: active, program: /usr/sbin/cups-browsed, source: systemd}]}
+    want: FAIL
+  - name: running units unknown
+    input: incomplete
+    incomplete: [services]
+    facts:
+      services: {started: []}
+    want: ERROR

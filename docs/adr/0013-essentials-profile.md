@@ -93,3 +93,18 @@ attempts, time and features". The check passes when `LoginGraceTime` is between 
 (no limit) fail. `ES-04` already failed on a stock OpenSSH (`MaxAuthTries` defaults to 6, the profile asks for 4), so a stock host fails as before; a host that
 was hardened for `MaxAuthTries` and `X11Forwarding` passed before and now also needs `LoginGraceTime 60` (the end-to-end hardening script sets it). The revision changes, so waivers of `essentials` controls have to be written again for revision 5. A value with a unit
 (`1m`) read from the files of a mounted root is `ERROR`, not a guess (a live host prints seconds).
+
+## Amendment: revision 6 (2026-11-12, decided by the maintainer)
+
+`essentials` revision 6 adds two controls, 27 in all, each over one new check that needs no new collector:
+
+- `ES-26` (no account has an empty password): `accounts.no-empty-passwords` lists the accounts whose `/etc/shadow` password field is empty
+  (the `shadow` facts already know the state "empty"; locked accounts are not listed). A stock container image or host passes unless a
+  distribution ships an account with an empty password.
+- `ES-27` (printing and network discovery are off unless needed): `services.no-print-discovery` lists the ways CUPS (`cups`, `cups-browsed`)
+  and Avahi (`avahi-daemon`) are started, by service name like the other service checks. A server rarely needs either, and flaws in `cups-browsed`
+  and Avahi have been exploited from the network. A desktop or a print server waives the control with its reason.
+
+Like every revision that adds controls, it changes the revision, so waivers of `essentials` controls have to be written again for revision 6
+(the scan says which). Both checks apply to a container image too: the shadow file and the started services are in the image.
+
