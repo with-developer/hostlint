@@ -63,6 +63,8 @@ the `essentials` profile (v0.14; kernel parameters in revision 2, v0.17), policy
 fix hints in the results (v0.21), a firewall and automatic updates in `essentials` (revision 3), policy-pack and image results in the fleet server (ADR 0016), a container image of every release (ghcr.io, [docs/container.md](container.md)), a profile selector in the dashboard (v0.19) and the outbound agent for on-demand scans with an operator scope
 (v0.20, [ADR 0014](adr/0014-the-outbound-agent.md)). The project was renamed from hostlint to vmsctl in v0.27
 ([ADR 0017](adr/0017-rename-to-vmsctl.md), [migration guide](migrating-from-hostlint.md)).
+Korean guidance (what a check looks at, why, how to fix it) for every built-in check, in `explain --lang ko`, the reports, the
+CSV and the dashboard (v0.33), and Korean webhook text.
 
 **Next:**
 - Roles beyond viewer and operator, and OIDC inside vmsctl: not now ([ADR 0015](adr/0015-dashboard-sign-in.md); an
