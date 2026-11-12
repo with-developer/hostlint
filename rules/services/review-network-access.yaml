@@ -26,8 +26,8 @@ manual:
     firewall (nftables, iptables, firewalld) or the services' own access rules. The list shows the
     firewall services that are enabled and the sockets that listen beyond the host itself.
   guidance_ko: >-
-    서비스가 필요한 주소의 접속만 받는지 호스트 방화벽(nftables, iptables, firewalld)이나 서비스 자체의 접근 규칙으로 확인하세요. 목록에는 활성화된
-    방화벽 서비스와 호스트 밖으로 대기 중인 소켓이 나옵니다.
+    호스트 방화벽(nftables, iptables, firewalld)이나 서비스 자체의 접근 규칙으로, 서비스가 필요한 주소의 접속만 받도록 되어 있는지 확인하세요.
+    목록에는 활성화된 방화벽 서비스와 루프백이 아닌 주소에서 대기 중인 소켓이 나옵니다.
   show: >-
     ["firewalld.service", "ufw.service", "nftables.service", "iptables.service", "ip6tables.service", "netfilter-persistent.service"]
       .filter(n, n in services.units && services.units[n].enabled && !services.units[n].masked)

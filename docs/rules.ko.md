@@ -36,7 +36,7 @@ vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 | ES-22 | 중간 | 커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함 | [`sysctl.aslr`](#sysctlaslr), [`sysctl.kptr-restrict`](#sysctlkptr-restrict), [`sysctl.dmesg-restrict`](#sysctldmesg-restrict), [`sysctl.suid-dumpable`](#sysctlsuid-dumpable), [`sysctl.ptrace-scope`](#sysctlptrace-scope), [`sysctl.protected-links`](#sysctlprotected-links) |
 | ES-23 | 중간 | 호스트 방화벽이 켜져 있음 | [`firewall.enabled`](#firewallenabled), [`firewall.review-rules`](#firewallreview-rules) |
 | ES-24 | 중간 | 보안 업데이트가 자동으로 설치됨 | [`updates.security-automatic`](#updatessecurity-automatic) |
-| ES-25 | 중간 | 필수 접근 제어가 켜져 있음 | [`mac.enabled`](#macenabled) |
+| ES-25 | 중간 | 강제 접근 제어가 켜져 있음 | [`mac.enabled`](#macenabled) |
 | ES-26 | 높음 | 비밀번호가 비어 있는 계정이 없음 | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
 | ES-27 | 중간 | 필요하지 않으면 인쇄와 네트워크 검색이 꺼져 있음 | [`services.no-print-discovery`](#servicesno-print-discovery) |
 | ES-28 | 중간 | SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음 | [`ssh.weak-algorithms`](#sshweak-algorithms) |
@@ -218,7 +218,7 @@ PATH에서 현재 디렉터리를 먼저 찾지 않음 — 심각도 높음, 위
 
 **이유.** umask가 느슨하면 새로 만든 파일을 다른 사용자가 수정할 수 있습니다.
 
-**조치 방법.** /etc/login.defs에 `UMASK 022`(또는 `027`)를 설정하세요.
+**조치 방법.** /etc/login.defs에 `UMASK 022`(또는 `027`)을 설정하세요.
 
 #### `files.at-spool`
 
@@ -392,7 +392,7 @@ sudoers 파일은 root 소유, 다른 사용자 쓰기 금지 — 심각도 중�
 
 #### `files.world-writable`
 
-모든 사용자 쓰기 가능 파일·디렉터리 없음 — 심각도 높음, 위반하는 것을 나열합니다.
+모든 사용자가 쓸 수 있는 파일과 스티키 비트 없는 디렉터리가 없음 — 심각도 높음, 위반하는 것을 나열합니다.
 
 로컬 파일 시스템에서 모든 사용자가 쓸 수 있는 일반 파일과, 스티키 비트가 없는 쓰기 가능 디렉터리(누구나 다른 사람의 파일을 지우거나 바꿀 수 있습니다)를 나열합니다.
 
@@ -428,7 +428,7 @@ sudoers 파일은 root 소유, 다른 사용자 쓰기 금지 — 심각도 중�
 
 **이유.** 홈 디렉터리에 쓸 수 있는 사람은 그 안의 시작 파일과 키를 바꿔치기할 수 있습니다.
 
-**조치 방법.** 나열된 계정마다 `chown 사용자 홈` 과 `chmod o-w 홈`을 실행하세요.
+**조치 방법.** 나열된 계정마다 `chown 사용자 홈`과 `chmod o-w 홈`을 실행하세요.
 
 #### `homes.startup-files`
 
@@ -442,9 +442,9 @@ sudoers 파일은 root 소유, 다른 사용자 쓰기 금지 — 심각도 중�
 
 #### `mac.enabled`
 
-필수 접근 제어가 켜져 있음 — 심각도 중간, 식을 평가합니다.
+강제 접근 제어가 켜져 있음 — 심각도 중간, 식을 평가합니다.
 
-SELinux는 /etc/selinux/config가 SELINUX=enforcing으로 설정되어 있는지 봅니다(permissive는 정책이 거부했을 일을 기록만 하고, disabled는 정책을 불러오지 않습니다). AppArmor는 apparmor 패키지가 설치되어 있고 그 유닛이 활성화되어 있는지 보며, Ubuntu와 Debian의 기본 상태입니다. 실행 중인 커널이 아니라 다음 부팅에서 일어날 일을 읽으므로, 모듈 없이 시작한 커널(부팅 매개변수나 모듈 없이 빌드한 커널)이나 부팅 뒤의 `setenforce 0`은 여기서 알 수 없습니다. 이 두 가지만 찾습니다. SELinux는 설정 파일이 있는 모든 호스트에서, AppArmor는 Debian 계열 호스트에서만 봅니다(지원하는 RHEL 계열은 SELinux를 씁니다). systemd가 없으면 AppArmor의 유닛을 읽을 수 없으므로, 이때는 SELinux 설정 파일이 있는 곳에만 적용됩니다. 호스트를 감싼 하드닝된 컨테이너 런타임처럼 서비스를 다른 방식으로 가두는 호스트라면, 그 이유를 적어 예외(waiver)로 기록하세요.
+SELinux는 /etc/selinux/config가 SELINUX=enforcing으로 설정되어 있는지 봅니다(permissive는 정책이 거부했을 일을 기록만 하고, disabled는 정책을 불러오지 않습니다). AppArmor는 apparmor 패키지가 설치되어 있고 그 유닛이 활성화되어 있는지 보며, Ubuntu와 Debian의 기본 상태입니다. 실행 중인 커널이 아니라 다음 부팅에서 일어날 일을 읽으므로, 모듈 없이 시작한 커널(부팅 매개변수나 모듈 없이 빌드한 커널)이나 부팅 뒤의 `setenforce 0`은 여기서 알 수 없습니다. 이 두 가지만 찾습니다. SELinux는 설정 파일이 있는 모든 호스트에서, AppArmor는 Debian 계열 호스트에서만 봅니다(지원하는 RHEL 계열은 SELinux를 씁니다). systemd가 없으면 AppArmor의 유닛을 읽을 수 없으므로, 이때는 SELinux 설정 파일이 있는 곳에만 적용됩니다. 호스트를 감싼 보안을 강화한 컨테이너 런타임으로 호스트를 감싸는 것처럼 서비스를 다른 방식으로 가두는 호스트라면, 그 이유를 적어 예외(waiver)로 기록하세요.
 
 **이유.** 강제 접근 제어는 서비스 자체의 권한과 상관없이 침해된 서비스가 닿을 수 있는 범위를 제한합니다. 그래서 웹 서버의 취약점 하나가 호스트의 나머지를 넘겨주지 않습니다.
 
@@ -596,7 +596,7 @@ OpenSSH 서버의 전역 MaxAuthTries 설정, 즉 연결 하나에서 허용하�
 
 **이유.** 연결 하나에서 시도할 수 있는 횟수만큼 공격자는 공짜로 추측을 할 수 있습니다. 한도를 낮추면 추측이 느려지고 흔적도 더 많이 남습니다.
 
-**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `MaxAuthTries 4`(또는 그보다 작은 값)를 설정하고 sshd를 다시 불러오세요.
+**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `MaxAuthTries 4`(또는 그보다 작은 값)을 설정하고 sshd를 다시 불러오세요.
 
 **매개변수** (설명은 영어).
 
@@ -680,7 +680,7 @@ OpenSSH 서버의 전역 X11Forwarding 설정을 확인합니다. 실행 중인 
 
 **이유.** 커널 로그에는 주소, 장치 정보, 실패한 공격의 흔적이 나타날 수 있습니다.
 
-**조치 방법.** /etc/sysctl.d의 파일에 `kernel.dmesg_restrict = 1`를 설정하고 `sysctl --system`으로 적용하세요.
+**조치 방법.** /etc/sysctl.d의 파일에 `kernel.dmesg_restrict = 1`을 설정하고 `sysctl --system`으로 적용하세요.
 
 #### `sysctl.icmp-broadcast`
 
@@ -690,7 +690,7 @@ OpenSSH 서버의 전역 X11Forwarding 설정을 확인합니다. 실행 중인 
 
 **이유.** 브로드캐스트 ping에 응답하면 공격자가 이 호스트를 이용해 피해자 쪽으로 가는 트래픽을 증폭할 수 있습니다.
 
-**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.icmp_echo_ignore_broadcasts = 1`를 설정하고 `sysctl --system`으로 적용하세요.
+**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.icmp_echo_ignore_broadcasts = 1`을 설정하고 `sysctl --system`으로 적용하세요.
 
 #### `sysctl.icmp-redirects`
 
@@ -730,7 +730,7 @@ fs.protected_hardlinks와 fs.protected_symlinks를 확인하며, 둘 다 1이어
 
 **이유.** ptrace를 쓰면 같은 사용자의 다른 프로세스 메모리를 읽을 수 있고, 거기에는 키와 토큰이 들어 있을 수 있습니다.
 
-**조치 방법.** /etc/sysctl.d의 파일에 `kernel.yama.ptrace_scope = 1`(또는 그 이상)를 설정하고 `sysctl --system`으로 적용하세요.
+**조치 방법.** /etc/sysctl.d의 파일에 `kernel.yama.ptrace_scope = 1`(또는 그 이상)을 설정하고 `sysctl --system`으로 적용하세요.
 
 #### `sysctl.rp-filter`
 
@@ -750,7 +750,7 @@ fs.protected_hardlinks와 fs.protected_symlinks를 확인하며, 둘 다 1이어
 
 **이유.** 패킷의 경로를 보내는 쪽이 고를 수 있으면, 네트워크의 필터를 우회하도록 패킷을 유도할 수 있습니다.
 
-**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.conf.all.accept_source_route = 0`를 설정하고 `sysctl --system`으로 적용하세요.
+**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.conf.all.accept_source_route = 0`을 설정하고 `sysctl --system`으로 적용하세요.
 
 #### `sysctl.suid-dumpable`
 
@@ -760,7 +760,7 @@ set-ID 프로그램이 코어 덤프를 만들지 않음 — 심각도 중간, �
 
 **이유.** set-ID 프로그램의 코어 덤프에는 더 높은 권한을 가진 사용자의 비밀 정보가 들어 있을 수 있습니다.
 
-**조치 방법.** /etc/sysctl.d의 파일에 `fs.suid_dumpable = 0`를 설정하고 `sysctl --system`으로 적용하세요.
+**조치 방법.** /etc/sysctl.d의 파일에 `fs.suid_dumpable = 0`을 설정하고 `sysctl --system`으로 적용하세요.
 
 #### `sysctl.syncookies`
 
@@ -770,7 +770,7 @@ TCP SYN 쿠키가 켜져 있음 — 심각도 중간, 설정 하나를 비교합
 
 **이유.** SYN 쿠키는 반쯤 열린 연결이 쏟아져도 연결 대기열의 메모리가 바닥나지 않게 막아 줍니다.
 
-**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.tcp_syncookies = 1`를 설정하고 `sysctl --system`으로 적용하세요.
+**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.tcp_syncookies = 1`을 설정하고 `sysctl --system`으로 적용하세요.
 
 #### `updates.security-automatic`
 
@@ -886,7 +886,7 @@ login과 (SSH 서버가 있으면) sshd의 PAM 스택이 pam_faillock이나 pam_
 
 비밀번호에 영문자·숫자·특수문자를 섞어 씀 — 심각도 높음, 식을 평가합니다.
 
-경고만 하는 모드가 아닌 상태로 비밀번호 품질 검사가 숫자, 특수문자, 영문자(대문자 또는 소문자)를 각각 하나 이상 요구하는지 확인합니다. dcredit, ocredit와 ucredit 또는 lcredit이 -1 이하이거나, minclass가 4(모든 문자 종류)이거나, minclass 3에 dcredit와 ocredit이 함께 설정된 경우(이때 영문자가 세 번째 종류입니다)에 통과합니다.
+경고만 하는 모드가 아닌 상태로 비밀번호 품질 검사가 숫자, 특수문자, 영문자(대문자 또는 소문자)를 각각 하나 이상 요구하는지 확인합니다. dcredit, ocredit과 ucredit 또는 lcredit이 -1 이하이거나, minclass가 4(모든 문자 종류)이거나, minclass 3에 dcredit과 ocredit이 함께 설정된 경우(이때 영문자가 세 번째 종류입니다)에 통과합니다.
 
 **이유.** 한 가지 문자 종류만으로 만든 비밀번호는 추측하기가 훨씬 쉽습니다.
 
@@ -1118,7 +1118,7 @@ PATH에서 현재 디렉터리를 먼저 찾지 않음 — 심각도 높음, 위
 
 **이유.** umask가 느슨하면 새로 만든 파일을 다른 사용자가 수정할 수 있습니다.
 
-**조치 방법.** /etc/login.defs에 `UMASK 022`(또는 `027`)를 설정하세요.
+**조치 방법.** /etc/login.defs에 `UMASK 022`(또는 `027`)을 설정하세요.
 
 #### `env.umask-startup-files`
 
@@ -1128,7 +1128,7 @@ PATH에서 현재 디렉터리를 먼저 찾지 않음 — 심각도 높음, 위
 
 **이유.** 시작 파일에 느슨한 umask가 있으면 모든 세션에서 시스템 기본값을 덮어씁니다.
 
-**조치 방법.** `umask 022`(또는 더 엄격한 값)를 쓰고, 느슨한 umask와 기호식 umask는 지우세요.
+**조치 방법.** `umask 022`(또는 더 엄격한 값)을 쓰고, 느슨한 umask와 기호식 umask는 지우세요.
 
 #### `files.at-spool`
 
@@ -1412,7 +1412,7 @@ syslog 설정은 시스템 계정 소유, 다른 사용자 읽기 금지 — 심
 
 #### `files.world-writable`
 
-모든 사용자 쓰기 가능 파일·디렉터리 없음 — 심각도 높음, 위반하는 것을 나열합니다.
+모든 사용자가 쓸 수 있는 파일과 스티키 비트 없는 디렉터리가 없음 — 심각도 높음, 위반하는 것을 나열합니다.
 
 로컬 파일 시스템에서 모든 사용자가 쓸 수 있는 일반 파일과, 스티키 비트가 없는 쓰기 가능 디렉터리(누구나 다른 사람의 파일을 지우거나 바꿀 수 있습니다)를 나열합니다.
 
@@ -1438,7 +1438,7 @@ syslog 설정은 시스템 계정 소유, 다른 사용자 읽기 금지 — 심
 
 **이유.** 홈 디렉터리에 쓸 수 있는 사람은 그 안의 시작 파일과 키를 바꿔치기할 수 있습니다.
 
-**조치 방법.** 나열된 계정마다 `chown 사용자 홈` 과 `chmod o-w 홈`을 실행하세요.
+**조치 방법.** 나열된 계정마다 `chown 사용자 홈`과 `chmod o-w 홈`을 실행하세요.
 
 #### `homes.startup-files`
 
@@ -1492,7 +1492,7 @@ NFS 공유가 필요한 호스트로 제한됨 — 심각도 높음, 위반하�
 
 #### `services.no-automount`
 
-automountd 미사용 — 심각도 높음, 위반하는 것을 나열합니다.
+자동 마운터(autofs) 미사용 — 심각도 높음, 위반하는 것을 나열합니다.
 
 자동 마운터(autofs)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아 나열합니다.
 
@@ -1502,7 +1502,7 @@ automountd 미사용 — 심각도 높음, 위반하는 것을 나열합니다.
 
 #### `services.no-dos-prone`
 
-DoS 공격에 취약한 서비스 미사용 — 심각도 높음, 위반하는 것을 나열합니다.
+트래픽을 증폭하는 서비스 미사용 — 심각도 높음, 위반하는 것을 나열합니다.
 
 echo, discard, daytime, chargen 서비스가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름으로 찾아 나열합니다.
 
@@ -1562,7 +1562,7 @@ rsh, rlogin, rexec(inetd의 shell, login, exec 서비스나 그 유닛)가 시�
 
 #### `services.no-snmp`
 
-SNMP 서비스 미사용 — 심각도 중간, 위반하는 것을 나열합니다.
+필요하지 않으면 SNMP 서비스를 시작하지 않음 — 심각도 중간, 위반하는 것을 나열합니다.
 
 SNMP 에이전트(snmpd)가 시작되는 경로를 활성화된 유닛, 지금 실행 중인 유닛, init 스크립트, inetd/xinetd 항목 중에서 서비스 이름이나 프로그램으로 찾아 나열합니다.
 
@@ -1592,11 +1592,11 @@ tftp, talk, ntalk 서비스가 시작되는 경로를 활성화된 유닛, 지�
 
 #### `services.postfix-no-open-relay`
 
-Postfix가 모든 곳의 메일을 중계하지 않음 — 심각도 높음, 위반하는 것을 나열합니다.
+Postfix가 아무에게나 메일을 중계하지 않음 — 심각도 높음, 위반하는 것을 나열합니다.
 
 /etc/postfix/main.cf에서 Postfix를 오픈 릴레이로 만드는 두 가지 방식을 읽습니다. 모든 주소와 맞는 항목(프리픽스 길이 0)이 있는 mynetworks와, reject_unauth_destination, defer_unauth_destination, 단독 reject나 defer가 먼저 나오지 않은 채 단독 permit이나 목록의 끝(허용으로 끝납니다)에 이르는 릴레이 목록(smtpd_relay_restrictions)입니다. 수신자 목록이 거부하는 경우는 예외입니다. Postfix 2.10 이후의 기본값은 안전하므로, main.cf가 설정한 것만 이 점검을 실패시킬 수 있습니다. 따라가지 않는 것은 조회 테이블(hash:와 cidr: 항목), 정책 서비스, mynetworks_style입니다. 이 매개변수 중 하나를 덮어쓰는 master.cf 옵션이 있으면 main.cf만으로는 판단할 수 없으므로 결과는 ERROR입니다. Postfix가 시작되어 있고 main.cf가 있을 때 적용되며, 다른 메일 서버는 services.review-mail-relay-other가 봅니다.
 
-**이유.** 오픈 릴레이는 누구를 대신해서든 스팸을 보내 주어서 서버가 차단당하게 됩니다.
+**이유.** 오픈 릴레이는 누구의 스팸이든 대신 보내 주므로 서버가 차단당합니다.
 
 **조치 방법.** `mynetworks`를 자기 네트워크로 정하고, 릴레이 제한을 `defer_unauth_destination`(또는 `reject_unauth_destination`)으로 끝내세요. 그보다 앞에 단독 `permit`을 두지 말고, 이것 없이 목록이 끝나지 않게 하세요.
 
@@ -1712,9 +1712,9 @@ telnet이나 rlogin이 시작되어 있을 때 적용됩니다. 그 서비스로
 
 #### `services.review-security-updates`
 
-보안 패치 적용 방식 검토 — 심각도 높음, 사람이 검토합니다(`MANUAL`).
+보안 업데이트 적용 방식 검토 — 심각도 높음, 사람이 검토합니다(`MANUAL`).
 
-호스트가 업데이트를 적용하는 수단을 보여 줍니다. 릴리스와 검증된 목록에 있는지, 그리고 활성화된 자동 업데이트 서비스(unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron)입니다. 업데이트가 제때 실제로 적용되는지는 사람이 확인해야 합니다.
+호스트가 업데이트를 적용하는 수단을 보여 줍니다. 릴리스와 그 릴리스가 vmsctl이 검증한 배포판 목록에 있는지, 그리고 활성화된 자동 업데이트 서비스(unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron)입니다. 업데이트가 제때 실제로 적용되는지는 사람이 확인해야 합니다.
 
 **이유.** 패치하지 않은 호스트는 이미 고쳐진 취약점으로 공격당합니다.
 
@@ -1738,7 +1738,7 @@ SNMP 에이전트가 시작되어 있는데 /etc/snmp/snmpd.conf가 없을 때 �
 
 **이유.** 동기화된 시계는 그것이 따르는 서버만큼만 믿을 수 있습니다.
 
-**조치 방법.** 서비스가 조직이 승인한 시간 서버를 가리키게 하세요(`server`나 `pool` 줄).
+**조치 방법.** 서비스가 조직이 승인한 시각 동기화 서버를 가리키게 하세요(`server`나 `pool` 줄).
 
 #### `services.samba-no-guest`
 
@@ -1764,11 +1764,11 @@ SNMP는 필요한 호스트에만 응답 — 심각도 높음, 위반하는 것�
 
 SNMP community 문자열은 추측하기 어려움 — 심각도 높음, 위반하는 것을 나열합니다.
 
-/etc/snmp/snmpd.conf와 그 파일이 포함하는 파일에서, 잘 알려진 이름(public, private 등)이거나 8자보다 짧은 community 문자열을 나열합니다. 문자열 자체는 결과에 읽어 넣지 않습니다. 에이전트가 시작되어 있고 설정이 일반적인 위치에 있을 때 적용됩니다.
+/etc/snmp/snmpd.conf와 그 파일이 포함하는 파일에서, 잘 알려진 이름(public, private 등)이거나 8자보다 짧은 community 문자열을 나열합니다. 문자열 자체는 결과에 담지 않습니다. 에이전트가 시작되어 있고 설정이 일반적인 위치에 있을 때 적용됩니다.
 
 **이유.** 기본 community 이름은 스캐너가 가장 먼저 시도하는 것이고, 짧은 문자열은 추측으로 뚫립니다.
 
-**조치 방법.** 무작위 문자 8자 이상으로 community를 정하거나, SNMPv3로 옮기세요(services.snmp-v3-only).
+**조치 방법.** 무작위 문자 8자 이상으로 community를 정하거나, SNMPv3으로 옮기세요(services.snmp-v3-only).
 
 #### `services.snmp-v3-only`
 
@@ -1822,7 +1822,7 @@ root가 거부되는지 확인합니다. FTP 서비스의 PAM 스택에 root를 
 
 #### `services.vsftpd-tls`
 
-vsftpd가 TLS를 사용함 — 심각도 중간, 식을 평가합니다.
+vsftpd가 TLS를 요구함 — 심각도 중간, 식을 평가합니다.
 
 vsftpd.conf의 ssl_enable과, 로컬 로그인이 여전히 TLS를 쓰도록 강제되는지(force_local_logins_ssl, 기본값은 YES)를 확인합니다. 일반 FTP는 비밀번호와 파일을 평문으로 보냅니다. 기본 vsftpd.conf만 읽습니다(두 번째 기본 파일이나 그 옆의 다른 .conf가 있으면 결과는 ERROR입니다). vsftpd가 시작되어 있고 vsftpd.conf가 있을 때 적용되며, 다른 FTP 서버는 services.review-ftp-other가 봅니다.
 

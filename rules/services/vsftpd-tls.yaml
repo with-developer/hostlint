@@ -1,7 +1,7 @@
 id: services.vsftpd-tls
 version: 1
 title: vsftpd requires TLS
-title_ko: vsftpd가 TLS를 사용함
+title_ko: vsftpd가 TLS를 요구함
 severity: medium
 description: >-
   Checks ssl_enable in vsftpd.conf and that local logins are still required to use it (force_local_logins_ssl, YES by default). Plain FTP sends passwords and files in clear text. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.

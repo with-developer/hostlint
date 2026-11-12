@@ -17,7 +17,7 @@ rationale_ko: >-
   umask가 느슨하면 새로 만든 파일을 다른 사용자가 수정할 수 있습니다.
 remediation: Set `UMASK 022` (or `027`) in /etc/login.defs.
 remediation_ko: >-
-  /etc/login.defs에 `UMASK 022`(또는 `027`)를 설정하세요.
+  /etc/login.defs에 `UMASK 022`(또는 `027`)을 설정하세요.
 setting:
   fact: login_defs.settings.UMASK
   matches: "0*[0-7]?[2367][2367]"

@@ -15,7 +15,7 @@ rationale_ko: >-
 remediation: >-
   Set `net.ipv4.tcp_syncookies = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
 remediation_ko: >-
-  /etc/sysctl.d의 파일에 `net.ipv4.tcp_syncookies = 1`를 설정하고 `sysctl --system`으로 적용하세요.
+  /etc/sysctl.d의 파일에 `net.ipv4.tcp_syncookies = 1`을 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:

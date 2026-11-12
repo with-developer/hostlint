@@ -1,15 +1,16 @@
 id: services.review-security-updates
 version: 1
 title: Review how security updates are applied
-title_ko: 보안 패치 적용 방식 검토
+title_ko: 보안 업데이트 적용 방식 검토
 severity: high
 description: >-
   Shows what the host has for applying updates: the release and whether it is in the tested matrix, and the
   automatic update services that are enabled (unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron).
   Whether the updates are actually applied on time is for a person to check.
 description_ko: >-
-  호스트가 업데이트를 적용하는 수단을 보여 줍니다. 릴리스와 검증된 목록에 있는지, 그리고 활성화된 자동 업데이트 서비스(unattended-upgrades,
-  apt-daily-upgrade, dnf-automatic, yum-cron)입니다. 업데이트가 제때 실제로 적용되는지는 사람이 확인해야 합니다.
+  호스트가 업데이트를 적용하는 수단을 보여 줍니다. 릴리스와 그 릴리스가 vmsctl이 검증한 배포판 목록에 있는지, 그리고 활성화된 자동 업데이트
+  서비스(unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron)입니다. 업데이트가 제때 실제로 적용되는지는 사람이
+  확인해야 합니다.
 rationale: An unpatched host is attacked with exploits that already have a fix.
 rationale_ko: >-
   패치하지 않은 호스트는 이미 고쳐진 취약점으로 공격당합니다.

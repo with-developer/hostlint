@@ -14,7 +14,7 @@ rationale_ko: >-
   시작 파일에 느슨한 umask가 있으면 모든 세션에서 시스템 기본값을 덮어씁니다.
 remediation: Use `umask 022` (or stricter) and remove permissive or symbolic umask commands.
 remediation_ko: >-
-  `umask 022`(또는 더 엄격한 값)를 쓰고, 느슨한 umask와 기호식 umask는 지우세요.
+  `umask 022`(또는 더 엄격한 값)을 쓰고, 느슨한 umask와 기호식 umask는 지우세요.
 violations:
   over: shell_env.umask
   as: u

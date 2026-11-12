@@ -37,7 +37,7 @@ vmsctl essentials — a short hardening baseline for Linux servers
 | ES-22 | medium | The kernel limits what unprivileged code can see and do (커널이 권한 없는 코드가 보고 할 수 있는 것을 제한함) | [`sysctl.aslr`](#sysctlaslr), [`sysctl.kptr-restrict`](#sysctlkptr-restrict), [`sysctl.dmesg-restrict`](#sysctldmesg-restrict), [`sysctl.suid-dumpable`](#sysctlsuid-dumpable), [`sysctl.ptrace-scope`](#sysctlptrace-scope), [`sysctl.protected-links`](#sysctlprotected-links) |
 | ES-23 | medium | A host firewall is enabled (호스트 방화벽이 켜져 있음) | [`firewall.enabled`](#firewallenabled), [`firewall.review-rules`](#firewallreview-rules) |
 | ES-24 | medium | Security updates are installed automatically (보안 업데이트가 자동으로 설치됨) | [`updates.security-automatic`](#updatessecurity-automatic) |
-| ES-25 | medium | Mandatory access control is on (필수 접근 제어가 켜져 있음) | [`mac.enabled`](#macenabled) |
+| ES-25 | medium | Mandatory access control is on (강제 접근 제어가 켜져 있음) | [`mac.enabled`](#macenabled) |
 | ES-26 | high | No account has an empty password (비밀번호가 비어 있는 계정이 없음) | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
 | ES-27 | medium | Printing and network discovery are off unless needed (필요하지 않으면 인쇄와 네트워크 검색이 꺼져 있음) | [`services.no-print-discovery`](#servicesno-print-discovery) |
 | ES-28 | medium | SSH offers no broken ciphers, MACs or key exchanges (SSH가 깨진 암호, MAC, 키 교환 알고리즘을 제공하지 않음) | [`ssh.weak-algorithms`](#sshweak-algorithms) |
@@ -393,7 +393,7 @@ Lists files and directories on local filesystems whose owner or group has no acc
 
 #### `files.world-writable`
 
-No world-writable files, and no world-writable directories without the sticky bit (모든 사용자 쓰기 가능 파일·디렉터리 없음) — severity high, lists what violates it.
+No world-writable files, and no world-writable directories without the sticky bit (모든 사용자가 쓸 수 있는 파일과 스티키 비트 없는 디렉터리가 없음) — severity high, lists what violates it.
 
 Lists regular files that every user can write, and directories every user can write that lack the sticky bit (so anyone can delete or replace others' files there), on local filesystems.
 
@@ -443,7 +443,7 @@ Lists accounts whose shell startup files (.profile, .bashrc, .bash_profile, ...)
 
 #### `mac.enabled`
 
-Mandatory access control is on (필수 접근 제어가 켜져 있음) — severity medium, evaluates an expression.
+Mandatory access control is on (강제 접근 제어가 켜져 있음) — severity medium, evaluates an expression.
 
 SELinux: /etc/selinux/config sets SELINUX=enforcing (permissive only logs what the policy would have denied, and disabled loads no policy). AppArmor: the apparmor package is installed and its unit is enabled, which is what Ubuntu and Debian do by default. This reads what the next boot does, not the running kernel: a kernel started without the module (a boot parameter, or a kernel that was built without it) or `setenforce 0` since boot is not seen here. Only these two are looked for: SELinux on any host with its configuration file, AppArmor on a Debian-style host (the supported RHEL relatives use SELinux). Without systemd the units of AppArmor cannot be read, so the check applies only where SELinux has a configuration file. A host that confines its services another way, such as a hardened container runtime around it, is a choice to record as a waiver with its reason.
 
@@ -1413,7 +1413,7 @@ Lists files and directories on local filesystems whose owner or group has no acc
 
 #### `files.world-writable`
 
-No world-writable files, and no world-writable directories without the sticky bit (모든 사용자 쓰기 가능 파일·디렉터리 없음) — severity high, lists what violates it.
+No world-writable files, and no world-writable directories without the sticky bit (모든 사용자가 쓸 수 있는 파일과 스티키 비트 없는 디렉터리가 없음) — severity high, lists what violates it.
 
 Lists regular files that every user can write, and directories every user can write that lack the sticky bit (so anyone can delete or replace others' files there), on local filesystems.
 
@@ -1493,7 +1493,7 @@ Lists the entries of /etc/exports and /etc/exports.d/*.exports that are open to 
 
 #### `services.no-automount`
 
-The automounter is not started (automountd 미사용) — severity high, lists what violates it.
+The automounter is not started (자동 마운터(autofs) 미사용) — severity high, lists what violates it.
 
 Lists the ways the automounter (autofs) is started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
 
@@ -1503,7 +1503,7 @@ Lists the ways the automounter (autofs) is started: enabled units, units running
 
 #### `services.no-dos-prone`
 
-Services that amplify traffic are not started (DoS 공격에 취약한 서비스 미사용) — severity high, lists what violates it.
+Services that amplify traffic are not started (트래픽을 증폭하는 서비스 미사용) — severity high, lists what violates it.
 
 Lists the ways the echo, discard, daytime and chargen services are started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name.
 
@@ -1563,7 +1563,7 @@ Lists the ways legacy RPC services (rusersd, rwalld, sprayd, rstatd, rexd, the C
 
 #### `services.no-snmp`
 
-SNMP is not started unless needed (SNMP 서비스 미사용) — severity medium, lists what violates it.
+SNMP is not started unless needed (필요하지 않으면 SNMP 서비스를 시작하지 않음) — severity medium, lists what violates it.
 
 Lists the ways the SNMP agent (snmpd) is started: enabled units, units running now, init scripts and inetd/xinetd entries, found by service name or program.
 
@@ -1593,7 +1593,7 @@ Lists the ways the tftp, talk and ntalk services are started: enabled units, uni
 
 #### `services.postfix-no-open-relay`
 
-Postfix does not relay for everyone (Postfix가 모든 곳의 메일을 중계하지 않음) — severity high, lists what violates it.
+Postfix does not relay for everyone (Postfix가 아무에게나 메일을 중계하지 않음) — severity high, lists what violates it.
 
 Reads /etc/postfix/main.cf for the two ways to make Postfix an open relay: mynetworks with an entry that matches every address (a prefix length of 0), and a relay list (smtpd_relay_restrictions) that reaches a bare permit, or its end (which permits), without a reject_unauth_destination, defer_unauth_destination or bare reject or defer first, unless the recipient list refuses. The defaults of Postfix 2.10 and later are safe, so only what main.cf sets can fail this check. Not followed: lookup tables (hash: and cidr: entries), policy services and mynetworks_style. A master.cf option that overrides one of these parameters makes the result ERROR, since it cannot be judged from main.cf. Applies when Postfix is started and has a main.cf; another mail server is services.review-mail-relay-other.
 
@@ -1713,7 +1713,7 @@ Applies when telnet or rlogin is started; then shows how, for a review of whethe
 
 #### `services.review-security-updates`
 
-Review how security updates are applied (보안 패치 적용 방식 검토) — severity high, a review (`MANUAL`).
+Review how security updates are applied (보안 업데이트 적용 방식 검토) — severity high, a review (`MANUAL`).
 
 Shows what the host has for applying updates: the release and whether it is in the tested matrix, and the automatic update services that are enabled (unattended-upgrades, apt-daily-upgrade, dnf-automatic, yum-cron). Whether the updates are actually applied on time is for a person to check.
 
@@ -1823,7 +1823,7 @@ Checks that root is refused: the FTP service's PAM stack has a pam_listfile line
 
 #### `services.vsftpd-tls`
 
-vsftpd requires TLS (vsftpd가 TLS를 사용함) — severity medium, evaluates an expression.
+vsftpd requires TLS (vsftpd가 TLS를 요구함) — severity medium, evaluates an expression.
 
 Checks ssl_enable in vsftpd.conf and that local logins are still required to use it (force_local_logins_ssl, YES by default). Plain FTP sends passwords and files in clear text. Only the default vsftpd.conf is read (a second default file or another .conf next to it makes the result ERROR). Applies when vsftpd is started and has a vsftpd.conf; another FTP server is services.review-ftp-other.
 
