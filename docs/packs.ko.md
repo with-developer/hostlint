@@ -63,7 +63,7 @@ description: Acme's baseline            # 선택
 requires_vmsctl: v0.27.0                # 선택: 팩이 동작하는 가장 오래된 릴리스
 ```
 
-점검과 프로파일은 [CONTRIBUTING](../CONTRIBUTING.md#how-a-check-is-built)과 [규칙 참조](rules.md)에 설명한 대로
+점검과 프로파일은 [CONTRIBUTING](../CONTRIBUTING.md#how-a-check-is-built)과 [규칙 참조](rules.ko.md)에 설명한 대로
 작성합니다. [`examples/policy-pack`](../examples/policy-pack)은 실제로 동작하는 작은 팩입니다. 점검이 읽을 수 있는
 사실은 `vmsctl pack facts`로 나열할 수 있고 [사실 참조](facts.md)에 설명이 있습니다. 프로파일은 내장 점검과 직접
 만든 점검을 함께 매핑할 수 있습니다.

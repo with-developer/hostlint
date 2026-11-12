@@ -40,6 +40,55 @@ func TestRulesDocIsUpToDate(t *testing.T) {
 	}
 }
 
+// docs/rules.ko.md is what RenderKo makes of the built-in content. After changing a rule or a profile, run `make docs`.
+func TestRulesKoDocIsUpToDate(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := RenderKo(content)
+	path := filepath.Join("..", "..", "docs", "rules.ko.md")
+	if *update {
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%v; run `make docs`", err)
+	}
+	if string(want) != got {
+		t.Error("docs/rules.ko.md is out of date; run `make docs`")
+	}
+}
+
+// Every built-in check has Korean text, and the Korean reference shows it (a check that falls back to English would
+// show up as Hangul missing from its section).
+func TestRulesKoDocIsKorean(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := RenderKo(content)
+	for id, ck := range content.Checks {
+		i := strings.Index(doc, "#### `"+id+"`")
+		if i < 0 {
+			continue // a check no profile maps
+		}
+		section := doc[i:]
+		if j := strings.Index(section[5:], "\n#### "); j >= 0 {
+			section = section[:j+5]
+		}
+		if !strings.Contains(section, "**이유.**") && ck.Rationale != "" {
+			t.Errorf("%s: no reason in the Korean reference", id)
+		}
+		if ck.DescriptionKo == "" {
+			t.Errorf("%s: no Korean description", id)
+		}
+	}
+}
+
 // docs/facts.md is what RenderFacts makes of the fact types of the collectors. After changing one, run `make docs`.
 func TestFactsDocIsUpToDate(t *testing.T) {
 	content, err := engine.Load(rules.FS, profiles.FS)
