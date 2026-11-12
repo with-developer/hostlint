@@ -4,8 +4,14 @@ title: /etc/passwd is owned by root and not writable by others
 title_ko: /etc/passwd는 root 소유, 다른 사용자 쓰기 금지
 severity: high
 description: Checks that /etc/passwd is owned by root with mode 0644 or stricter.
+description_ko: >-
+  /etc/passwd를 root가 소유하고 모드가 0644 또는 더 엄격한지 확인합니다.
 rationale: Anyone who can write /etc/passwd can add an account with UID 0.
+rationale_ko: >-
+  /etc/passwd에 쓸 수 있는 사람은 UID 0인 계정을 추가할 수 있습니다.
 remediation: Run `chown root /etc/passwd` and `chmod 644 /etc/passwd`.
+remediation_ko: >-
+  `chown root /etc/passwd`와 `chmod 644 /etc/passwd`를 실행하세요.
 file:
   paths: [/etc/passwd]
   owner: [root]

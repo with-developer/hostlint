@@ -7,8 +7,15 @@ description: >-
   Checks that /etc/hosts.equiv and /root/.rhosts are owned by root and private (mode 0600 or
   stricter); the .rhosts files of other users are files.rhosts-homes. Such files should not exist
   unless the r-services are needed.
+description_ko: >-
+  /etc/hosts.equiv와 /root/.rhosts를 root가 소유하고 비공개인지(모드 0600 또는 더 엄격) 확인합니다. 다른 사용자의 .rhosts 파일은
+  files.rhosts-homes가 봅니다. r-서비스가 필요하지 않다면 이런 파일은 없어야 합니다.
 rationale: These files let hosts and users log in through rlogin and rsh without a password.
+rationale_ko: >-
+  이 파일들이 있으면 해당 호스트와 사용자가 rlogin과 rsh로 비밀번호 없이 로그인할 수 있습니다.
 remediation: Remove the files; if the r-services are really needed, `chmod 600` them and never use "+" entries.
+remediation_ko: >-
+  파일을 지우세요. r-서비스가 정말 필요하다면 `chmod 600`을 실행하고 "+" 항목은 절대 쓰지 마세요.
 file:
   paths: [/etc/hosts.equiv, /root/.rhosts]
   owner: [root]

@@ -6,10 +6,16 @@ severity: high
 description: >-
   Lists regular files that every user can write, and directories every user can write that lack
   the sticky bit (so anyone can delete or replace others' files there), on local filesystems.
+description_ko: >-
+  로컬 파일 시스템에서 모든 사용자가 쓸 수 있는 일반 파일과, 스티키 비트가 없는 쓰기 가능 디렉터리(누구나 다른 사람의 파일을 지우거나 바꿀 수 있습니다)를 나열합니다.
 rationale: >-
   Anyone can change a world-writable file; if a privileged program or user reads or runs it,
   that becomes a way to gain their rights.
+rationale_ko: >-
+  모든 사용자가 쓸 수 있는 파일은 누구나 바꿀 수 있어서, 권한 있는 프로그램이나 사용자가 그것을 읽거나 실행하면 그 권한을 얻는 통로가 됩니다.
 remediation: Remove write permission for others (`chmod o-w`), or set the sticky bit on shared directories (`chmod +t`).
+remediation_ko: >-
+  다른 사용자의 쓰기 권한을 없애거나(`chmod o-w`), 여럿이 쓰는 디렉터리에는 스티키 비트를 설정하세요(`chmod +t`).
 violations:
   over: filesystem.world_writable
   as: f

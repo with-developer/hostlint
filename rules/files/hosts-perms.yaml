@@ -4,8 +4,14 @@ title: /etc/hosts is owned by root and not writable by others
 title_ko: /etc/hosts는 root 소유, 다른 사용자 쓰기 금지
 severity: high
 description: Checks that /etc/hosts is owned by root with mode 0644 or stricter.
+description_ko: >-
+  /etc/hosts를 root가 소유하고 모드가 0644 또는 더 엄격한지 확인합니다.
 rationale: Whoever can write /etc/hosts can redirect host names to their own addresses.
+rationale_ko: >-
+  /etc/hosts에 쓸 수 있는 사람은 호스트 이름을 자기 주소로 돌릴 수 있습니다.
 remediation: Run `chown root /etc/hosts` and `chmod 644 /etc/hosts`.
+remediation_ko: >-
+  `chown root /etc/hosts`와 `chmod 644 /etc/hosts`를 실행하세요.
 file:
   paths: [/etc/hosts]
   owner: [root]

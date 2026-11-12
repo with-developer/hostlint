@@ -4,8 +4,14 @@ title: No regular files in /dev
 title_ko: /dev에 일반 파일 없음
 severity: high
 description: Lists regular files under /dev (outside /dev/shm and /dev/mqueue), where only devices and directories belong.
+description_ko: >-
+  /dev 아래의 일반 파일(/dev/shm과 /dev/mqueue는 제외)을 나열합니다. /dev에는 장치와 디렉터리만 있어야 합니다.
 rationale: /dev is rarely looked at, which makes it a place to hide files; a regular file there holds no device.
+rationale_ko: >-
+  /dev는 들여다보는 일이 드물어서 파일을 숨기기 좋은 곳이고, 거기 있는 일반 파일은 장치가 아닙니다.
 remediation: Check what each listed file is and remove the ones that do not belong.
+remediation_ko: >-
+  나열된 파일이 무엇인지 확인하고, 있어서는 안 되는 것은 지우세요.
 violations:
   over: filesystem.dev_files
   as: f

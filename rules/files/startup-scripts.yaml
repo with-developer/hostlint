@@ -7,8 +7,16 @@ description: >-
   Checks that SysV init scripts, rc.local and the systemd units (services, timers, sockets,
   paths and their drop-in files) in /etc/systemd/system, and the services in /usr/lib/systemd/system and /lib/systemd/system, are
   owned by root and writable by no one else (mode 0755 or stricter).
+description_ko: >-
+  SysV init 스크립트, rc.local, /etc/systemd/system의 systemd 유닛(service, timer, socket, path와 그
+  drop-in 파일), 그리고 /usr/lib/systemd/system과 /lib/systemd/system의 서비스를 root가 소유하고 다른 사람은 쓸 수 없는지(모드
+  0755 또는 더 엄격) 확인합니다.
 rationale: These run as root at boot; whoever can change one gets root at the next restart.
+rationale_ko: >-
+  이것들은 부팅할 때 root 권한으로 실행되므로, 하나라도 바꿀 수 있는 사람은 다음 재시작 때 root 권한을 얻습니다.
 remediation: Run `chown root` and `chmod go-w` on each listed file.
+remediation_ko: >-
+  나열된 파일마다 `chown root`와 `chmod go-w`를 실행하세요.
 file:
   paths: [/etc/init.d, /etc/rc.d/init.d, /etc/systemd/system, /etc/init.d/*, /etc/rc.d/init.d/*, /etc/rc.local, /etc/rc.d/rc.local, /etc/systemd/system/*.service, /etc/systemd/system/*.timer, /etc/systemd/system/*.socket, /etc/systemd/system/*.path, /etc/systemd/system/*.d/*.conf, /usr/lib/systemd/system/*.service, /lib/systemd/system/*.service]
   owner: [root]

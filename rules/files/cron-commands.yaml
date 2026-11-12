@@ -6,8 +6,15 @@ severity: high
 description: >-
   Checks that /usr/bin/crontab and /usr/bin/at are owned by root (or daemon, which owns at on
   Debian and Ubuntu) and cannot be run by other users (no execute permission for others; mode 6750 or stricter).
+description_ko: >-
+  /usr/bin/crontab과 /usr/bin/at을 root(Debian과 Ubuntu에서 at을 소유하는 daemon도 가능)가 소유하고, 다른 사용자가 실행할 수
+  없는지(다른 사용자의 실행 권한 없음, 모드 6750 또는 더 엄격) 확인합니다.
 rationale: Scheduled jobs keep running after a user is gone; letting every user schedule them widens what an intruder can persist.
+rationale_ko: >-
+  예약 작업은 사용자가 사라진 뒤에도 계속 실행됩니다. 모든 사용자가 작업을 예약할 수 있으면 침입자가 흔적을 남겨 둘 수 있는 방법이 늘어납니다.
 remediation: Run `chmod o-x /usr/bin/crontab /usr/bin/at`, and let users who need them in through the file's group.
+remediation_ko: >-
+  `chmod o-x /usr/bin/crontab /usr/bin/at`을 실행하고, 필요한 사용자는 파일의 그룹을 통해 허용하세요.
 file:
   paths: [/usr/bin/crontab, /usr/bin/at]
   owner: [root, daemon]

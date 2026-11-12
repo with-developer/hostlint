@@ -8,8 +8,16 @@ description: >-
   written by their owner only (mode 0600 or stricter). Root's crontab, which must also belong
   to root, is files.cron-root-spool. Users' crontabs in /var/spool/cron on the RHEL family are
   files.cron-spool-rhel.
+description_ko: >-
+  /var/spool/cron/crontabs(Debian과 Ubuntu)의 crontab 파일을 소유자만 읽고 쓸 수 있는지(모드 0600 또는 더 엄격) 확인합니다.
+  root의 crontab은 root가 소유해야 하며 files.cron-root-spool이 따로 확인합니다. RHEL 계열의 /var/spool/cron에 있는 사용자
+  crontab은 files.cron-spool-rhel이 봅니다.
 rationale: A crontab other users can change runs commands as its owner, root's as root.
+rationale_ko: >-
+  다른 사용자가 바꿀 수 있는 crontab은 그 소유자의 권한으로, root의 것이라면 root 권한으로 명령을 실행하게 됩니다.
 remediation: Run `chmod 600` on each listed crontab.
+remediation_ko: >-
+  나열된 crontab마다 `chmod 600`을 실행하세요.
 file:
   paths: [/var/spool/cron/crontabs/*]
   mode: "0600"

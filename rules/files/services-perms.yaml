@@ -6,8 +6,15 @@ severity: high
 description: >-
   Checks that /etc/services is owned by root, bin or sys with mode 0644 or stricter. Not
   applicable when it does not exist (minimal images without netbase).
+description_ko: >-
+  /etc/services를 root, bin, sys 중 하나가 소유하고 모드가 0644 또는 더 엄격한지 확인합니다. 파일이 없으면 해당하지 않습니다(netbase가 없는
+  최소 이미지).
 rationale: Changing a service's port number in /etc/services can expose or hide it.
+rationale_ko: >-
+  /etc/services에서 서비스의 포트 번호를 바꾸면 그 서비스를 드러내거나 숨길 수 있습니다.
 remediation: Run `chown root /etc/services` and `chmod 644 /etc/services`.
+remediation_ko: >-
+  `chown root /etc/services`와 `chmod 644 /etc/services`를 실행하세요.
 file:
   paths: [/etc/services]
   owner: [root, bin, sys]
