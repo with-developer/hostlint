@@ -22,9 +22,10 @@ type DiffSide struct {
 // CheckChange is a check whose status differs between the two results. An
 // empty status means the check is not in that result.
 type CheckChange struct {
-	Ref   string        `json:"ref"`
-	Title string        `json:"title"`
-	Old   engine.Status `json:"old"`
+	Ref     string        `json:"ref"`
+	Title   string        `json:"title"`
+	TitleKo string        `json:"titleKo,omitempty"`
+	Old     engine.Status `json:"old"`
 	New   engine.Status `json:"new"`
 }
 
@@ -180,9 +181,9 @@ func checkChanges(oldRefs, newRefs []string, oldChecks, newChecks map[string]eng
 		if inOld && inNew && oc.Status == nc.Status {
 			continue
 		}
-		ch := CheckChange{Ref: ref, Title: nc.Title}
+		ch := CheckChange{Ref: ref, Title: nc.Title, TitleKo: nc.TitleKo}
 		if !inNew {
-			ch.Title = oc.Title
+			ch.Title, ch.TitleKo = oc.Title, oc.TitleKo
 		}
 		if inOld {
 			ch.Old = oc.Status
@@ -250,9 +251,9 @@ func writeDiffTable(w io.Writer, d *Diff, opts Options) error {
 		}
 		fmt.Fprintf(&b, "%s\n", p.paint(color, fmt.Sprintf("%s (%d)", title, len(list))))
 		for _, c := range list {
-			fmt.Fprintf(&b, "  %-6s %s %s  %s\n", name(c), oneLine(c.Title), p.paint(dim, "["+string(c.Severity)+"]"), statusArrow(p, c.Old, c.New, arrows))
+			fmt.Fprintf(&b, "  %-6s %s %s  %s\n", name(c), oneLine(titleIn(opts.Lang, c.Title, c.TitleKo)), p.paint(dim, "["+string(c.Severity)+"]"), statusArrow(p, c.Old, c.New, arrows))
 			for _, ch := range c.Checks {
-				fmt.Fprintf(&b, "      %s %s  %s\n", oneLine(ch.Ref), p.paint(dim, "— "+oneLine(ch.Title)), statusArrow(p, ch.Old, ch.New, true))
+				fmt.Fprintf(&b, "      %s %s  %s\n", oneLine(ch.Ref), p.paint(dim, "— "+oneLine(titleIn(opts.Lang, ch.Title, ch.TitleKo))), statusArrow(p, ch.Old, ch.New, true))
 			}
 		}
 		b.WriteString("\n")
