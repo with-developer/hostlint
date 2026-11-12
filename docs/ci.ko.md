@@ -34,7 +34,7 @@ jobs:
           fail-on: high
           sarif-file: vmsctl.sarif
       - uses: github/codeql-action/upload-sarif@v4
-        if: always() # 관문이 실패했을 때도 보고서를 올립니다
+        if: always() # 점검이 실패해 단계가 실패 처리돼도 보고서를 올립니다
         with:
           sarif_file: vmsctl.sarif
 ```
@@ -52,7 +52,7 @@ jobs:
 | `pack` | 저장소에 있는 [정책 팩](packs.ko.md)(직접 만든 점검과 프로파일이 든 디렉터리). 팩의 프로파일은 `profile`로 고릅니다 |
 | `fail-on` | `low`, `medium`, `high`(기본값), `none` |
 | `config` | [`vmsctl.yaml`](configuration.ko.md): 더 엄격한 기준, 사유와 만료일을 적은 예외 |
-| `summary` | `true`(기본값)이면 점검이 단계를 실패시키더라도 발견 사항을 Markdown 보고서로 실행의 작업 요약에 씁니다 |
+| `summary` | `true`(기본값)이면 점검이 단계를 실패시키더라도 발견한 내용을 Markdown 보고서로 만들어 그 실행의 작업 요약(job summary)에 씁니다 |
 | `sarif-file` | 점검이 단계를 실패시키더라도 SARIF를 이 경로에도 씁니다 |
 | `version` | 설치할 릴리스. 기본값은 액션을 고정한 릴리스(`@v0.37.0`)입니다 |
 

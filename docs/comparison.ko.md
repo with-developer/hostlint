@@ -10,7 +10,7 @@
 ## vmsctl이 하는 일, 하지 않는 일
 
 vmsctl은 호스트의 **설정**(계정, SSH, PAM, 파일 권한, 서비스, 커널 매개변수, 패키지)을 읽고, 점검 항목마다 결과와 그 근거를
-보여 줍니다. 아래는 하지 않습니다.
+보여 줍니다. 다음과 같은 도구는 아닙니다.
 
 - **CVE 기준의 취약점 스캐너가 아닙니다.** Trivy나 Grype 같은 도구는 호스트나 이미지에 든 패키지의 알려진 취약점을 찾고, vmsctl은
   시스템이 어떻게 설정되어 있는지를 봅니다. 묻는 질문이 달라서 함께 쓰는 것이 맞습니다.
@@ -26,7 +26,7 @@ vmsctl은 호스트의 **설정**(계정, SSH, PAM, 파일 권한, 서비스, �
 |---|---|---|---|---|
 | 형태 | Go 바이너리 하나(리눅스에서는 정적 빌드). 선택해서 쓰는 서버와 대시보드도 모두 Apache-2.0 | 유닉스 계열용 셸 스크립트 도구(GPL). 상용 Lynis Enterprise(SaaS 또는 자체 설치)가 중앙 관리, 대시보드, 보고서를 더함 | `oscap`과 SCAP Security Guide 콘텐츠. 결과는 XCCDF/ARF XML, 보고서는 HTML | Wazuh 에이전트의 모듈. 결과는 Wazuh 대시보드에서 |
 | 점검을 정의하는 방식 | YAML 데이터와 CEL 표현식. 규칙은 명령을 실행할 수 없음 | 도구에 들어 있는 테스트와 사용자 정의 테스트(플러그인은 데이터 수집용) | SCAP 콘텐츠(XCCDF 프로파일, OVAL 점검) | 에이전트가 실행하는 YAML 정책. CIS 벤치마크 기반 정책 포함 |
-| 결과 | PASS, FAIL, ERROR, MANUAL, WAIVED, N/A마다 값과 그 출처(있으면 파일과 줄 번호). 판단할 수 없는 점검은 ERROR나 MANUAL로 보고하고 PASS로 보고하지 않음 | 하드닝 지수와 제안 | 프로파일 규칙별 결과(통과, 실패, 오류, 해당 없음 등) | 엔드포인트별 통과·실패·해당 없음 개수와 점수 |
+| 결과 | PASS, FAIL, ERROR, MANUAL, WAIVED, N/A마다 값과 그 출처(있으면 파일과 줄 번호). 판단할 수 없는 점검은 ERROR나 MANUAL로 보고하고 PASS로 보고하지 않음 | 보안 강화 지수와 제안 | 프로파일 규칙별 결과(통과, 실패, 오류, 해당 없음 등) | 엔드포인트별 통과·실패·해당 없음 개수와 점수 |
 | 조치 | "조치 방법" 문구만 보여 주고 아무것도 적용하지 않음 | 제안 | 조치를 적용(`--remediate`)하거나 스크립트를 생성할 수 있음 | 정책에 담긴 권고 |
 | 컨테이너 이미지 | `docker save`나 OCI 아카이브에서 직접. 데몬도 없고 아무것도 실행하지 않음 | | | |
 | 여러 호스트 | 호스트가 결과를 서버로 보내고, 서버가 이력, 서명된 결과, 추이, 매트릭스를 보관. 서버가 호스트에 접속하지 않음 | 유료 서비스에서 | `oscap-ssh`로 원격 점검. 여러 대 관리는 다른 도구의 몫 | Wazuh 매니저와 대시보드 |
@@ -38,7 +38,7 @@ vmsctl은 호스트의 **설정**(계정, SSH, PAM, 파일 권한, 서비스, �
 
 - 조치를 대신 적용해 주기를 원하거나, **CIS에 맞춘** 프로파일이 필요하거나, 감사인이 **SCAP** 결과를 요구한다면 OpenSCAP입니다.
 - 이미 침입 탐지용으로 **Wazuh**를 쓰고 있고 같은 에이전트와 대시보드에서 설정 점검도 보고 싶다면 Wazuh의 SCA 모듈입니다.
-- 리눅스 말고 다른 유닉스 계열까지 아우르는, 오래 쓰여 온 폭넓은 **시스템 감사**와 하드닝 제안이 필요하다면 Lynis입니다.
+- 리눅스 말고 다른 유닉스 계열까지 아우르는, 오래 쓰여 온 폭넓은 **시스템 감사**와 보안 강화 제안이 필요하다면 Lynis입니다.
 - **CVE** 대조가 필요하다면 취약점 스캐너를 vmsctl 옆에 두세요.
 
 vmsctl이 맞는 경우는 이렇습니다. 결과마다 근거가 붙고 판단할 수 없는 점검을 PASS로 보고하지 않는 것, KISA 가이드가 기본
@@ -47,6 +47,6 @@ vmsctl이 맞는 경우는 이렇습니다. 결과마다 근거가 붙고 판단
 
 ## 출처
 
-- Lynis: [cisofy.com/lynis](https://cisofy.com/lynis/), [github.com/CISOfy/lynis](https://github.com/CISOfy/lynis/), [문서](https://cisofy.com/documentation/lynis/)(사용자 정의 테스트, 플러그인), [하드닝 지수](https://linux-audit.com/lynis-hardening-index/)
+- Lynis: [cisofy.com/lynis](https://cisofy.com/lynis/), [github.com/CISOfy/lynis](https://github.com/CISOfy/lynis/), [문서](https://cisofy.com/documentation/lynis/)(사용자 정의 테스트, 플러그인), [보안 강화 지수](https://linux-audit.com/lynis-hardening-index/)
 - OpenSCAP: [사용자 매뉴얼](https://static.open-scap.org/openscap-1.3/oscap_user_manual.html)(결과, 보고서, 조치), [Red Hat, 설정 준수 점검](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/security_hardening/scanning-the-system-for-configuration-compliance), [Red Hat, OpenSCAP으로 CIS 준수](https://www.redhat.com/en/blog/center-internet-security-cis-compliance-red-hat-enterprise-linux-using-openscap)
 - Wazuh: [보안 설정 평가(SCA)](https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html), [사용자 정책 만들기](https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/creating-custom-policies.html), [점수가 나오는 사용 사례](https://documentation.wazuh.com/4.14/getting-started/use-cases/configuration-assessment.html)
