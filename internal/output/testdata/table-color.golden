@@ -14,3 +14,4 @@
 
 kisa-2026: 5 controls — [31m1 FAIL[0m, [35m1 ERROR[0m, [33m1 MANUAL[0m, [32m1 PASS[0m, [2m1 NOT_APPLICABLE[0m
 [2mPassing and not-applicable controls are hidden; use --verbose to list them.[0m
+[2mHow to fix a failed check: vmsctl explain CHECK-ID (for example vmsctl explain ssh.permit-root-login).[0m

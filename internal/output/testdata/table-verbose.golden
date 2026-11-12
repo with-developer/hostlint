@@ -18,3 +18,4 @@ vmsctl v0.1.0 · kisa-2026 · web-01 (Ubuntu 24.04.1 LTS)
         alice (uid 1000, /bin/bash)
 
 kisa-2026: 5 controls — 1 FAIL, 1 ERROR, 1 MANUAL, 1 PASS, 1 NOT_APPLICABLE
+How to fix a failed check: vmsctl explain CHECK-ID (for example vmsctl explain ssh.permit-root-login).
