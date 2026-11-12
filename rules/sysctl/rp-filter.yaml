@@ -5,10 +5,17 @@ title_ko: 출발지가 인터페이스와 맞지 않는 패킷을 버림
 severity: medium
 description: >-
   Checks the kernel parameter net.ipv4.conf.all.rp_filter (1: strict, 2: loose reverse path filtering). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+description_ko: >-
+  커널 매개변수 net.ipv4.conf.all.rp_filter를 확인합니다(1은 엄격한 역경로 필터링, 2는 느슨한 역경로 필터링입니다). 실행 중인 호스트에서는 커널이
+  알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
 rationale: >-
   Reverse path filtering drops packets with forged source addresses.
+rationale_ko: >-
+  역경로 필터링은 출발지 주소가 위조된 패킷을 버립니다.
 remediation: >-
   Set `net.ipv4.conf.all.rp_filter = 1` (or 2) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에 `net.ipv4.conf.all.rp_filter = 1`(또는 2)를 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:

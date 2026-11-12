@@ -10,10 +10,20 @@ description: >-
   sysctl.d(5) set at boot, and one they do not set cannot be judged. The interfaces that exist are not
   looked at one by one: "default" covers the ones that appear later, and "all" the setting of every
   interface for accepting redirects.
+description_ko: >-
+  net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects,
+  net.ipv4.conf.all.send_redirects, net.ipv4.conf.default.send_redirects를 확인하며, 넷 다 0이어야 합니다. 실행
+  중인 호스트에서는 커널이 알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 값은 판단할 수
+  없습니다. 존재하는 인터페이스를 하나씩 보지는 않습니다. "default"는 나중에 생기는 인터페이스에 적용되고, "all"은 모든 인터페이스의 리다이렉트 수신 설정에
+  적용됩니다.
 rationale: >-
   A forged redirect changes the routes of a host, and a host that sends redirects tells others about its network.
+rationale_ko: >-
+  위조된 리다이렉트는 호스트의 경로를 바꾸고, 리다이렉트를 보내는 호스트는 자기 네트워크 구조를 다른 곳에 알려 줍니다.
 remediation: >-
   Set the four parameters to 0 in a file of /etc/sysctl.d and apply them with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에서 네 매개변수를 모두 0으로 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 failure: >-

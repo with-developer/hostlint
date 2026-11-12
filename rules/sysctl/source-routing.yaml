@@ -5,10 +5,17 @@ title_ko: 소스 라우팅 패킷을 거부함
 severity: medium
 description: >-
   Checks the kernel parameter net.ipv4.conf.all.accept_source_route (0: ignore packets that name their own route). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+description_ko: >-
+  커널 매개변수 net.ipv4.conf.all.accept_source_route를 확인합니다(0이면 패킷이 스스로 지정한 경로를 무시합니다). 실행 중인 호스트에서는
+  커널이 알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
 rationale: >-
   A sender that picks the route of its packets can steer them around the filters of the network.
+rationale_ko: >-
+  패킷의 경로를 보내는 쪽이 고를 수 있으면, 네트워크의 필터를 우회하도록 패킷을 유도할 수 있습니다.
 remediation: >-
   Set `net.ipv4.conf.all.accept_source_route = 0` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에 `net.ipv4.conf.all.accept_source_route = 0`를 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:

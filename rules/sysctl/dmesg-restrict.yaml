@@ -5,10 +5,17 @@ title_ko: 커널 로그는 권한 있는 사용자만 읽을 수 있음
 severity: low
 description: >-
   Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+description_ko: >-
+  커널 매개변수 kernel.dmesg_restrict를 확인합니다(1이면 dmesg를 권한 있는 사용자만 볼 수 있습니다). 실행 중인 호스트에서는 커널이 알려 주는 값을
+  쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
 rationale: >-
   The kernel log can show addresses, device details and the traces of failed exploits.
+rationale_ko: >-
+  커널 로그에는 주소, 장치 정보, 실패한 공격의 흔적이 나타날 수 있습니다.
 remediation: >-
   Set `kernel.dmesg_restrict = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에 `kernel.dmesg_restrict = 1`를 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:

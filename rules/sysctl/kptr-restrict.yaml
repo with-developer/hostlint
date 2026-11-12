@@ -5,10 +5,17 @@ title_ko: 커널 주소를 사용자에게 숨김
 severity: medium
 description: >-
   Checks the kernel parameter kernel.kptr_restrict (1 or 2 hides kernel pointers from unprivileged users). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+description_ko: >-
+  커널 매개변수 kernel.kptr_restrict를 확인합니다(1 또는 2이면 권한 없는 사용자에게 커널 포인터를 숨깁니다). 실행 중인 호스트에서는 커널이 알려 주는
+  값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
 rationale: >-
   Kernel addresses in /proc and logs help an attacker defeat address randomization of the kernel.
+rationale_ko: >-
+  /proc과 로그에 커널 주소가 보이면 공격자가 커널의 주소 무작위화를 무력화하는 데 쓸 수 있습니다.
 remediation: >-
   Set `kernel.kptr_restrict = 1` (or 2) in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+remediation_ko: >-
+  /etc/sysctl.d의 파일에 `kernel.kptr_restrict = 1`(또는 2)를 설정하고 `sysctl --system`으로 적용하세요.
 applies: >-
   !target.image
 setting:
