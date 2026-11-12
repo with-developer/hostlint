@@ -10,7 +10,7 @@ import (
 
 type diffFlags struct {
 	format, out, color, lang string
-	failOnRegression   bool
+	failOnRegression         bool
 }
 
 func newDiffCommand() *cobra.Command {

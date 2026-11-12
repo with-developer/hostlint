@@ -26,7 +26,7 @@ type CheckChange struct {
 	Title   string        `json:"title"`
 	TitleKo string        `json:"titleKo,omitempty"`
 	Old     engine.Status `json:"old"`
-	New   engine.Status `json:"new"`
+	New     engine.Status `json:"new"`
 }
 
 // ControlChange is a control whose status differs, or that is in one result only.

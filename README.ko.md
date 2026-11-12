@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 8201d0f -->
+<!-- translated from README.md @ 74c25e6 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
