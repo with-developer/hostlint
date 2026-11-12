@@ -110,7 +110,7 @@ func TestProfilesAreNotAddedUp(t *testing.T) {
 	if !strings.HasSuffix(rows["ess-01"], ",essentials,false") || !strings.HasSuffix(rows["web-01"], ",essentials,true") {
 		t.Errorf("the export does not follow the profile:\n%s", csvText)
 	}
-	if !strings.HasPrefix(csvText, "host,host_id,last_scan,stale,score,FAIL,ERROR,MANUAL,WAIVED,PASS,NOT_APPLICABLE,profile,other_profile") {
+	if !strings.HasPrefix(csvText, "\xef\xbb\xbfhost,host_id,last_scan,stale,score,FAIL,ERROR,MANUAL,WAIVED,PASS,NOT_APPLICABLE,profile,other_profile") {
 		t.Errorf("the columns of the export: %s", strings.SplitN(csvText, "\n", 2)[0])
 	}
 	// ?profile=all adds every profile up, as the dashboard did before there were several.

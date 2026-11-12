@@ -91,7 +91,7 @@ func TestHostListShowsOSLabelsTrendAndAgent(t *testing.T) {
 	}
 	// The export has no trends.
 	code, body := f.get(t, f.api, "/api/v1/hosts?format=csv")
-	if code != http.StatusOK || !strings.HasPrefix(string(body), "host,host_id") {
+	if code != http.StatusOK || !strings.HasPrefix(string(body), "\xef\xbb\xbfhost,host_id") {
 		t.Errorf("csv: %d %.60s", code, body)
 	}
 }
