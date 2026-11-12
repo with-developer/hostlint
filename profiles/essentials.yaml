@@ -1,7 +1,7 @@
 # vmsctl essentials: a short baseline of the settings most Linux server hardening guides agree
 # on, over the same checks as the other profiles. The control IDs and titles are vmsctl's own.
 id: essentials
-revision: 4
+revision: 5
 title: vmsctl essentials — a short hardening baseline for Linux servers
 title_ko: vmsctl 에센셜 — 리눅스 서버를 위한 간추린 보안 강화 기준
 controls:
@@ -21,10 +21,10 @@ controls:
     severity: high
     checks: [ssh.permit-empty-passwords, ssh.ignore-rhosts, ssh.hostbased-authentication, ssh.permit-user-environment]
   - id: ES-04
-    title: SSH limits attempts and features
-    title_ko: SSH가 시도 횟수와 기능을 제한함
+    title: SSH limits attempts, time and features
+    title_ko: SSH가 시도 횟수, 시간과 기능을 제한함
     severity: medium
-    checks: [ssh.max-auth-tries, ssh.x11-forwarding]
+    checks: [ssh.max-auth-tries, ssh.login-grace-time, ssh.x11-forwarding]
   - id: ES-05
     title: No Match block weakens the SSH settings
     title_ko: SSH Match 블록이 설정을 약화시키지 않음

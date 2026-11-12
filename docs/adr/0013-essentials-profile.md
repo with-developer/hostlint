@@ -85,3 +85,11 @@ without the module, or `setenforce 0` since boot, is not seen), and it says so. 
   control, which is what the control is for.
 - Like every revision that adds a control, it changes the revision, so a waiver of an `essentials` control (which names the revision it
   was written for) stops applying until it is written again for revision 4 (the scan says which).
+
+## Amendment: revision 5 (2026-11-12, decided by the maintainer)
+
+`essentials` revision 5 maps a check written by a contributor (#259, thank you), `ssh.login-grace-time`, into `ES-04`, which is now "SSH limits
+attempts, time and features". The check passes when `LoginGraceTime` is between 1 and 60 seconds (a parameter); the OpenSSH default of 120 and 0
+(no limit) fail. `ES-04` already failed on a stock OpenSSH (`MaxAuthTries` defaults to 6, the profile asks for 4), so a stock host fails as before; a host that
+was hardened for `MaxAuthTries` and `X11Forwarding` passed before and now also needs `LoginGraceTime 60` (the end-to-end hardening script sets it). The revision changes, so waivers of `essentials` controls have to be written again for revision 5. A value with a unit
+(`1m`) read from the files of a mounted root is `ERROR`, not a guess (a live host prints seconds).

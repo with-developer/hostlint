@@ -7,7 +7,7 @@ check applicable to it passes; checks that cannot decide report `MANUAL` or `ERR
 standard; titles and descriptions are vmsctl's own. Parameters can be made stricter in
 [vmsctl.yaml](configuration.md).
 
-## essentials (revision 4)
+## essentials (revision 5)
 
 vmsctl essentials — a short hardening baseline for Linux servers
 
@@ -16,7 +16,7 @@ vmsctl essentials — a short hardening baseline for Linux servers
 | ES-01 | high | SSH does not allow root to log in (SSH로 root가 직접 로그인할 수 없음) | [`ssh.permit-root-login`](#sshpermit-root-login), [`ssh.match-permit-root-login`](#sshmatch-permit-root-login) |
 | ES-02 | medium | SSH logins use keys, not passwords (SSH 로그인에 비밀번호 대신 키를 사용) | [`ssh.password-authentication`](#sshpassword-authentication) |
 | ES-03 | high | SSH accepts no empty passwords and no host-based trust (SSH가 빈 비밀번호와 호스트 기반 신뢰를 허용하지 않음) | [`ssh.permit-empty-passwords`](#sshpermit-empty-passwords), [`ssh.ignore-rhosts`](#sshignore-rhosts), [`ssh.hostbased-authentication`](#sshhostbased-authentication), [`ssh.permit-user-environment`](#sshpermit-user-environment) |
-| ES-04 | medium | SSH limits attempts and features (SSH가 시도 횟수와 기능을 제한함) | [`ssh.max-auth-tries`](#sshmax-auth-tries), [`ssh.x11-forwarding`](#sshx11-forwarding) |
+| ES-04 | medium | SSH limits attempts, time and features (SSH가 시도 횟수, 시간과 기능을 제한함) | [`ssh.max-auth-tries`](#sshmax-auth-tries), [`ssh.login-grace-time`](#sshlogin-grace-time), [`ssh.x11-forwarding`](#sshx11-forwarding) |
 | ES-05 | medium | No Match block weakens the SSH settings (SSH Match 블록이 설정을 약화시키지 않음) | [`ssh.match-hardening`](#sshmatch-hardening) |
 | ES-06 | high | Only root has UID 0, and every account has its own UID (UID 0은 root뿐이고 계정마다 고유한 UID를 가짐) | [`accounts.uid0-only-root`](#accountsuid0-only-root), [`accounts.unique-uids`](#accountsunique-uids) |
 | ES-07 | high | Password hashes are protected (비밀번호 해시가 보호됨) | [`accounts.passwd-no-hashes`](#accountspasswd-no-hashes), [`accounts.shadow-file`](#accountsshadow-file), [`files.shadow-perms`](#filesshadow-perms), [`files.passwd-perms`](#filespasswd-perms) |
@@ -516,6 +516,20 @@ Checks the global IgnoreRhosts setting of the OpenSSH server. On a live host the
 **Why.** Host-based trust files let a login succeed without any secret.
 
 **Fix.** Set `IgnoreRhosts yes` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.login-grace-time`
+
+SSH gives a client little time to log in (SSH가 클라이언트에게 로그인할 시간을 짧게 줌) — severity low, compares one setting.
+
+Checks the global LoginGraceTime setting of the OpenSSH server, the time a client has to finish logging in before sshd closes the connection. It passes between 1 and `max_seconds` seconds; 0 means no limit and fails. On a live host the effective value comes from `sshd -T`, which prints seconds, so the default of the installed version (120) counts. On a mounted root only a value written in the files is known: a plain number is read as seconds, and a value with a unit (`1m`, `30s`) is not converted and reports ERROR.
+
+**Why.** Every unauthenticated connection holds a slot until it logs in or times out; a long grace time lets a client keep many of them open and use up MaxStartups, so real users cannot connect.
+
+**Fix.** Set `LoginGraceTime 60` (or less, in seconds) in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+**Parameters.**
+
+- `max_seconds` (int, default `60`, lower is stricter): Longest time in seconds a client may take to log in
 
 #### `ssh.match-hardening`
 

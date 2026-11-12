@@ -59,7 +59,7 @@ esac
 sed -i '1i PermitRootLogin no' /etc/ssh/sshd_config
 # The essentials profile: keys only, few attempts, no X11 forwarding (the first value wins here too), and a
 # Match block that does not weaken any of it.
-sed -i '1i PasswordAuthentication no\nKbdInteractiveAuthentication no\nChallengeResponseAuthentication no\nMaxAuthTries 4\nX11Forwarding no' /etc/ssh/sshd_config
+sed -i '1i PasswordAuthentication no\nKbdInteractiveAuthentication no\nChallengeResponseAuthentication no\nMaxAuthTries 4\nLoginGraceTime 60\nX11Forwarding no' /etc/ssh/sshd_config
 printf '\nMatch User e2e-backup\n    MaxAuthTries 3\n' >> /etc/ssh/sshd_config
 # On a server sshd has started once: it has host keys and, on Debian, its
 # privilege separation directory. `sshd -T` needs both.
