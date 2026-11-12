@@ -1,4 +1,4 @@
-<!-- translated from README.md @ d1b8f8c -->
+<!-- translated from README.md @ a07836a -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -154,6 +154,7 @@ sudo vmsctl scan --config vmsctl.yaml
 |---|---|
 | `-p, --profile` | 점검할 프로파일(기본값 `kisa-2026`). 여러 번 쓰면 한 번에 여러 개를 점검합니다 |
 | `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown`(작업 요약이나 댓글용), `csv`(점검 항목마다 한 줄, 스프레드시트용: 엑셀에서 한글 제목이 깨지지 않고 열립니다. 수식으로 읽힐 값은 작은따옴표로 시작하는데, 엑셀이 CSV 파일을 열 때는 그 따옴표가 그대로 보입니다) |
+| `--lang` | `en`(기본값) 또는 `ko`: 표와 Markdown에서 점검 항목과 점검의 제목을 한국어 제목이 있는 것은 한국어로 보여 줍니다(나머지 글은 영어 그대로입니다). `VMSCTL_LANG`로도 정할 수 있고 `ko_KR.UTF-8` 같은 로케일 값도 읽으며, 지원하지 않는 값은 무시합니다. JSON, SARIF, JUnit, CSV는 번역하지 않습니다(CSV에는 두 제목이 모두 있습니다) |
 | `-o, --output` | 결과를 파일로 저장합니다 |
 | `--fail-on` | 이 심각도 이상의 점검 항목이 실패하거나 판단하지 못하면(`ERROR`) 종료 코드 1을 돌려줍니다: `low`(기본값), `medium`, `high`, `none` |
 | `--pack DIR` | 정책 팩(직접 만든 점검과 프로파일)을 불러옵니다([docs/packs.ko.md](docs/packs.ko.md)). 팩의 프로파일은 `-p`로 고릅니다 |

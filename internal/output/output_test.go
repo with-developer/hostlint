@@ -480,3 +480,44 @@ func TestSARIFCarriesTheFixHintAsHelp(t *testing.T) {
 		t.Errorf("%d rules have help, want 1", withHelp)
 	}
 }
+
+// The titles of controls and checks come in Korean where there is one and where it is asked for, in the table and in Markdown;
+// without a Korean title, or without the language, they are English, and the machine formats are never translated.
+func TestKoreanTitles(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	for i := range res.Controls {
+		res.Controls[i].TitleKo = "한글" + res.Controls[i].ID
+		res.Controls[i].Status = engine.StatusFail
+	}
+	for i := range res.Checks {
+		res.Checks[i].TitleKo = "점검" + res.Checks[i].ID
+		res.Checks[i].Status = engine.StatusFail
+	}
+	res.Controls[0].TitleKo = "" // a control without a Korean title stays English
+	for _, format := range []string{"table", "markdown"} {
+		var en, ko bytes.Buffer
+		if err := Write(&en, res, format, Options{Verbose: true}); err != nil {
+			t.Fatal(err)
+		}
+		if err := Write(&ko, res, format, Options{Verbose: true, Lang: "ko"}); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(en.String(), "한글") || strings.Contains(en.String(), "점검") {
+			t.Errorf("%s: Korean without being asked for", format)
+		}
+		if !strings.Contains(ko.String(), "한글"+res.Controls[1].ID) || !strings.Contains(ko.String(), "점검"+res.Checks[0].ID) {
+			t.Errorf("%s: no Korean titles:\n%s", format, ko.String())
+		}
+		if !strings.Contains(ko.String(), res.Controls[0].Title) {
+			t.Errorf("%s: the control without a Korean title lost its English one", format)
+		}
+	}
+	for _, format := range []string{"json", "sarif", "junit"} {
+		var en, ko bytes.Buffer
+		_ = Write(&en, res, format, Options{})
+		_ = Write(&ko, res, format, Options{Lang: "ko"})
+		if en.String() != ko.String() {
+			t.Errorf("%s changes with --lang", format)
+		}
+	}
+}

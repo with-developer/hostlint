@@ -225,3 +225,58 @@ func TestScanPushSigned(t *testing.T) {
 		t.Errorf("--sign-key alone: exit %d, %q", code, stderr)
 	}
 }
+
+// --lang ko (or VMSCTL_LANG) shows the Korean titles in the table and in Markdown; the default is English, a locale-style
+// value of the environment is read for its language, one that is not ours is ignored, and another language by flag is refused.
+func TestScanLang(t *testing.T) {
+	root := fakeRoot(t)
+	scan := func(args ...string) (int, string, string) {
+		return run(context.Background(), t, append([]string{"scan", "--root", root, "--fail-on", "none", "--verbose"}, args...)...)
+	}
+	// A Korean title that the scan has: from the JSON result, so the test does not depend on a wording.
+	_, js, _ := scan("--format", "json")
+	var res struct {
+		Controls []struct{ Status, TitleKo string } `json:"controls"`
+	}
+	if err := json.Unmarshal([]byte(js), &res); err != nil {
+		t.Fatal(err)
+	}
+	ko := ""
+	for _, c := range res.Controls { // one that the Markdown lists too: a control that needs attention
+		if c.TitleKo != "" && (c.Status == "FAIL" || c.Status == "ERROR" || c.Status == "MANUAL") {
+			ko = c.TitleKo
+			break
+		}
+	}
+	if ko == "" {
+		t.Fatal("no control that needs attention has a Korean title in the result")
+	}
+	_, en, _ := scan()
+	if strings.Contains(en, ko) {
+		t.Error("Korean titles without being asked for")
+	}
+	for _, format := range []string{"table", "markdown"} {
+		if code, out, stderr := scan("--format", format, "--lang", "ko"); code != ExitOK || !strings.Contains(out, ko) {
+			t.Errorf("%s: %d %q", format, code, stderr)
+		}
+	}
+	for _, v := range []string{"ko", "KO", "ko_KR", "ko_KR.UTF-8"} {
+		t.Setenv("VMSCTL_LANG", v)
+		if _, out, _ := scan(); !strings.Contains(out, ko) {
+			t.Errorf("VMSCTL_LANG=%s did not give Korean titles", v)
+		}
+	}
+	if _, out, _ := scan("--lang", "en"); strings.Contains(out, ko) {
+		t.Error("--lang en did not win over VMSCTL_LANG")
+	}
+	for _, v := range []string{"fr_FR.UTF-8", "C", "POSIX", "garbage"} {
+		t.Setenv("VMSCTL_LANG", v)
+		if code, out, stderr := scan("--format", "json"); code != ExitOK || out == "" {
+			t.Errorf("VMSCTL_LANG=%s broke a scan: %d %q", v, code, stderr)
+		}
+	}
+	t.Setenv("VMSCTL_LANG", "")
+	if code, _, stderr := scan("--lang", "fr"); code != ExitError || !strings.Contains(stderr, "unknown --lang") {
+		t.Errorf("fr: %d %q", code, stderr)
+	}
+}

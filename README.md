@@ -156,6 +156,7 @@ described in [docs/configuration.md](docs/configuration.md).
 |---|---|
 | `-p, --profile` | Profile to check against (default `kisa-2026`); repeat it to check several at once |
 | `-f, --format` | `table`, `json`, `sarif`, `junit`, `markdown` (for a job summary or a comment) or `csv` (one row per control, for a spreadsheet: opens in Excel with the Korean titles; a cell that would start a formula starts with an apostrophe, which Excel shows when it opens a CSV file) |
+| `--lang` | `en` (default) or `ko`: the titles of controls and checks in the table and in Markdown are shown in Korean where there is a Korean title (the rest of the text stays English). `VMSCTL_LANG` sets it too, and may be a locale such as `ko_KR.UTF-8`; a value that is no language of ours is ignored. JSON, SARIF, JUnit and CSV are not translated (CSV has both titles) |
 | `-o, --output` | Write the report to a file |
 | `--fail-on` | Exit with status 1 when a control of this severity or higher fails or cannot be checked (`ERROR`): `low` (default), `medium`, `high`, `none` |
 | `--pack DIR` | Load a policy pack: your own checks and profiles ([docs/packs.md](docs/packs.md)); select its profile with `-p` |

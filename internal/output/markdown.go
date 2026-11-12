@@ -97,7 +97,7 @@ func mdFence(lines []string) string {
 	return fence + "\n" + strings.Join(lines, "\n") + "\n" + fence + "\n"
 }
 
-func writeMarkdown(w io.Writer, res *engine.Result) error {
+func writeMarkdown(w io.Writer, res *engine.Result, lang string) error {
 	var b strings.Builder
 	host := oneLine(res.Host.Hostname)
 	if host == "" {
@@ -173,9 +173,9 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 			break
 		}
 		if multi {
-			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", mdText(c.Profile), mdText(c.ID), c.Severity, c.Status, mdText(c.Title))
+			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", mdText(c.Profile), mdText(c.ID), c.Severity, c.Status, mdText(titleIn(lang, c.Title, c.TitleKo)))
 		} else {
-			fmt.Fprintf(&b, "| %s | %s | %s | %s |\n", mdText(c.ID), c.Severity, c.Status, mdText(c.Title))
+			fmt.Fprintf(&b, "| %s | %s | %s | %s |\n", mdText(c.ID), c.Severity, c.Status, mdText(titleIn(lang, c.Title, c.TitleKo)))
 		}
 	}
 
@@ -193,7 +193,7 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 		if multi {
 			name = mdText(c.Profile) + " " + name
 		}
-		fmt.Fprintf(&b, "<details>\n<summary>%s %s &mdash; %s</summary>\n\n", name, c.Status, mdText(c.Title))
+		fmt.Fprintf(&b, "<details>\n<summary>%s %s &mdash; %s</summary>\n\n", name, c.Status, mdText(titleIn(lang, c.Title, c.TitleKo)))
 		wrote := false
 		if c.Reason != "" && (len(c.Checks) == 0 || c.Waiver != nil) {
 			fmt.Fprintf(&b, "%s\n\n", mdText(c.Reason))
@@ -211,7 +211,7 @@ func writeMarkdown(w io.Writer, res *engine.Result) error {
 				break
 			}
 			wrote = true
-			fmt.Fprintf(&b, "**%s** %s &mdash; %s\n\n", mdText(ck.ID), ck.Status, mdText(ck.Title))
+			fmt.Fprintf(&b, "**%s** %s &mdash; %s\n\n", mdText(ck.ID), ck.Status, mdText(titleIn(lang, ck.Title, ck.TitleKo)))
 			if ck.Reason != "" && ck.Status != engine.StatusFail {
 				fmt.Fprintf(&b, "%s\n\n", mdText(ck.Reason))
 			}

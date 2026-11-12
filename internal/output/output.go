@@ -28,6 +28,20 @@ type Options struct {
 	Color bool
 	// Verbose lists passing and not-applicable controls in the table too.
 	Verbose bool
+	// Lang is "ko" to show the Korean titles of controls and checks in the table and in Markdown (a title that has no Korean
+	// one is shown in English); anything else, English. The JSON, SARIF and JUnit formats are not translated.
+	Lang string
+}
+
+// Languages lists the values of Options.Lang.
+var Languages = []string{"en", "ko"}
+
+// titleIn is the title in the language of the report: the Korean one when it is asked for and there is one.
+func titleIn(lang, title, titleKo string) string {
+	if lang == "ko" && titleKo != "" {
+		return titleKo
+	}
+	return title
 }
 
 // Write renders res in format to w.
@@ -45,7 +59,7 @@ func Write(w io.Writer, res *engine.Result, format string, opts Options) error {
 	case "junit":
 		return writeJUnit(w, res)
 	case "markdown":
-		return writeMarkdown(w, res)
+		return writeMarkdown(w, res, opts.Lang)
 	case "csv":
 		return writeCSV(w, res)
 	}

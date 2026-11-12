@@ -51,6 +51,7 @@ const defaultProfile = "kisa-2026"
 type scanFlags struct {
 	format, output, root, failOn, color, config string
 	pushURL, pin, tokenFile, signKey, imageTar  string
+	lang                                        string // the language of the titles in the table and in Markdown (--lang)
 	name                                        string // the asset name of an image in the result (--name)
 	labels                                      []string
 	profiles, packs                             []string
@@ -88,6 +89,7 @@ need protected files (such as /etc/shadow) report ERROR.`,
 	fl.StringArrayVar(&f.packs, "pack", nil, "load a policy pack, a directory of your own checks and profiles (docs/packs.md); repeatable, also VMSCTL_PACK (a list of directories); select its profile with --profile")
 	fl.BoolVar(&f.verifyPack, "verify-pack", false, "with --pack: run the tests of the pack's checks before the scan, and refuse to scan when one fails")
 	fl.StringVarP(&f.format, "format", "f", "table", "output format: "+strings.Join(output.Formats, ", "))
+	fl.StringVar(&f.lang, "lang", "", "language of the control and check titles in the table and in Markdown: "+strings.Join(output.Languages, " or ")+" (default: VMSCTL_LANG, else en); the other formats are not translated")
 	fl.StringVarP(&f.output, "output", "o", "", "write the report to this file instead of stdout")
 	fl.StringVar(&f.root, "root", "/", "scan a filesystem mounted at this directory instead of the running system")
 	fl.StringVar(&f.name, "name", "", "with --image-tar: the name the image goes by in the result and on a fleet server, such as ghcr.io/acme/app (default: the reference of the archive without its tag)")
@@ -107,6 +109,17 @@ need protected files (such as /etc/shadow) report ERROR.`,
 func runScan(cmd *cobra.Command, f scanFlags) error {
 	if !output.ValidFormat(f.format) {
 		return fmt.Errorf("unknown --format %q (use %s)", f.format, strings.Join(output.Formats, ", "))
+	}
+	if f.lang == "" {
+		// The environment names a locale as often as a language (ko_KR.UTF-8, KO): take its language, and ignore a value that
+		// is none of ours, so a shell profile never breaks a scan in a format that has no language.
+		f.lang = languageOfEnv(os.Getenv("VMSCTL_LANG"))
+	}
+	if f.lang == "" {
+		f.lang = "en"
+	}
+	if !slices.Contains(output.Languages, f.lang) {
+		return fmt.Errorf("unknown --lang %q (use %s)", f.lang, strings.Join(output.Languages, " or "))
 	}
 	if !slices.Contains(failOnLevels, f.failOn) {
 		return fmt.Errorf("unknown --fail-on %q (use %s)", f.failOn, strings.Join(failOnLevels, ", "))
@@ -240,7 +253,7 @@ func runScan(cmd *cobra.Command, f scanFlags) error {
 		return fmt.Errorf("--root %s: no operating system found there (no os-release); is it the root of a mounted system?", f.root)
 	}
 
-	outOpts := output.Options{Verbose: f.verbose, Color: useColor(f.color, f.output, cmd.OutOrStdout())}
+	outOpts := output.Options{Verbose: f.verbose, Color: useColor(f.color, f.output, cmd.OutOrStdout()), Lang: f.lang}
 	if f.output != "" {
 		err = output.WriteFile(f.output, res, f.format, outOpts)
 	} else {
@@ -359,4 +372,17 @@ func assetName(flag, ref string) (string, error) {
 		return "", fmt.Errorf("%q is not a name for an image: give one with --name", ref)
 	}
 	return repo, nil
+}
+
+// languageOfEnv is the language of the value of VMSCTL_LANG: "ko" for ko, KO, ko_KR and ko_KR.UTF-8, "" when it is not a language
+// vmsctl has titles in.
+func languageOfEnv(v string) string {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if i := strings.IndexAny(v, "_.-@"); i >= 0 {
+		v = v[:i]
+	}
+	if slices.Contains(output.Languages, v) {
+		return v
+	}
+	return ""
 }
