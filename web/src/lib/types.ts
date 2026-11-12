@@ -51,7 +51,7 @@ export interface Diff {
 }
 // The stored result document: only the parts the dashboard shows. Every string is host text.
 export interface Evidence { key: string; text: string; source?: string }
-export interface DocCheck { ref: string; title: string; status: Status; reason?: string; remediation?: string; remediationKo?: string; evidence?: Evidence[]; evidenceOmitted?: number }
+export interface DocCheck { ref: string; title: string; titleKo?: string; status: Status; reason?: string; remediation?: string; remediationKo?: string; evidence?: Evidence[]; evidenceOmitted?: number }
 export interface DocControl { profile: string; id: string; reason?: string; checks: string[]; waiver?: { reason: string; expires: string } }
 export interface ScanDoc { controls: DocControl[]; checks: DocCheck[] }
 

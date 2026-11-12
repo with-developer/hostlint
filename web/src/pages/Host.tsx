@@ -180,7 +180,7 @@ function ControlDetail({ control, doc }: { control: ControlRow; doc: ScanDoc }) 
       {checks.map((ch) => (
         <div key={ch.ref} className="check">
           <div className="check-head">
-            <StatusBadge status={ch.status} /> <span className="mono">{ch.ref}</span> <span className="muted">{ch.title}</span>
+            <StatusBadge status={ch.status} /> <span className="mono">{ch.ref}</span> <span className="muted">{localized(lang, ch.title, ch.titleKo)}</span>
           </div>
           {ch.reason && <p className="muted small">{ch.reason}</p>}
           {ch.remediation && (
