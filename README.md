@@ -3,11 +3,29 @@
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-**eslint for Linux servers.** One static Go binary that checks a host's security configuration
-against a hardening baseline and reports a result for every control — with the evidence behind
-it — and a dashboard that shows the whole fleet.
+**Know how hardened your Linux servers are, with the evidence behind every verdict.**
 
-[한국어](README.ko.md)
+vmsctl reads a host's security configuration, reports a result for every control of a hardening baseline
+(Korea's KISA CII Unix guide, and a short baseline most guides agree on), and shows the whole fleet in a dashboard.
+It never changes anything, and it never guesses a PASS.
+
+[Quick start](#quick-start) · [Dashboard](#a-dashboard-for-the-whole-fleet) · [Docs](docs/README.md) · [한국어](README.ko.md)
+
+![The vmsctl dashboard: pass rate of the fleet, results by status and the pass rate over time](docs/demo/dashboard-overview.png)
+
+- **Evidence, not just a verdict.** The value, the file and the line it came from, and whether it was set or a default.
+  A failure comes with how to fix it, in English or Korean.
+- **No guessed PASS.** What cannot be decided is `ERROR` or `MANUAL`. Settings are read the way the programs read them:
+  PAM like libpam, `login.defs` like shadow-utils, shell files like bash.
+- **Read-only, one binary.** Rules are data, not scripts; a scan cannot change the host and secrets never reach the result.
+  A host, a mounted root or a container image: `vmsctl scan`.
+- **From one server to a fleet.** Hosts push their results; the server never connects to a host. History, trends,
+  regressions, signed results and a matrix of every control on every host.
+- **Made for pipelines.** JSON with a schema, SARIF, JUnit, Markdown, CSV and a [GitHub Action](docs/ci.md).
+
+**Try the dashboard without a host:** `vmsctl server demo` ([install first](#quick-start)).
+
+## What a scan looks like
 
 ![Animated terminal: vmsctl scan lists failed controls with the evidence behind each](docs/demo/scan.gif)
 
@@ -62,29 +80,14 @@ vmsctl server demo      # a made-up fleet of twelve hosts, nothing scanned, noth
 
 Try it in ten seconds with the demo above, or send real results: [docs/fleet.md](docs/fleet.md).
 
-> 🚧 **Early release.** Expect rough edges in the less common setups, and report them. See the
-> [roadmap](docs/ROADMAP.md) and the [release history](docs/RELEASING.md).
+## More about it
 
-## Why vmsctl
-
-- **Every verdict shows its evidence** — the value, the file and line it came from, and whether it
-  is set explicitly or a built-in default. No more "FAIL" without knowing why.
-- **No false PASS.** If something cannot be decided — an unreadable file, a collector that timed
-  out, a walk that hit its limit — the result is `ERROR` or `MANUAL`, never a guessed `PASS`.
-  Settings are read the way the programs read them: PAM stacks are evaluated like libpam does,
-  `login.defs` like shadow-utils, startup files in the order bash reads them.
-- **Observation only.** A scan never changes the host. Rules are data, not scripts: they cannot
-  run commands. Password hashes, keys and tokens never appear in the output.
-- **Standards as overlays.** Checks are written once and mapped to controls; the first profile is
-  the 2026 edition of Korea's KISA CII technical vulnerability guide (Unix U-01–U-67).
-- **Live hosts and images.** Scan the running system, a root filesystem mounted elsewhere
-  (`--root`), or a container image straight from the archive `docker save` wrote (`--image-tar`).
-- **A fleet view without an agent to trust.** Hosts push; the server never connects, keeps the history
-  and signed results, and shows trends, regressions and a matrix ([above](#a-dashboard-for-the-whole-fleet)).
-- **Built for pipelines.** Terminal table, JSON (with a schema), SARIF and JUnit; the exit code
-  follows the severity you choose. A failed check says how to fix it: in `explain`, the JSON
-  (`remediation`), SARIF (the rule's help, which code scanning shows with the alert), the Markdown summary,
-  the HTML report and the dashboard.
+- **Standards as overlays.** Checks are written once and mapped to controls: the 2026 edition of Korea's KISA CII technical
+  vulnerability guide (Unix U-01–U-67), a short `essentials` baseline, and your own policy as a [pack](docs/packs.md).
+- **Live hosts and images.** Scan the running system, a root filesystem mounted elsewhere (`--root`), or a container image
+  straight from the archive `docker save` wrote (`--image-tar`).
+- **A fix next to every failure.** In `explain`, the JSON (`remediation`), SARIF (the rule's help, which code scanning shows with
+  the alert), the Markdown summary, the HTML report and the dashboard.
 
 How vmsctl differs from Lynis, OpenSCAP and Wazuh, and when to pick them instead: [docs/comparison.md](docs/comparison.md).
 
@@ -167,6 +170,9 @@ described in [docs/configuration.md](docs/configuration.md).
 | `--label key=value` | Add a label to the host in the report |
 | `--color` | `auto` (default), `always` or `never` |
 | `-v, --verbose` | Also list passing and not-applicable controls |
+
+> 🚧 **Early release.** Expect rough edges in the less common setups, and report them. See the
+> [roadmap](docs/ROADMAP.md) and the [release history](docs/RELEASING.md).
 
 ## Results
 
