@@ -135,6 +135,23 @@ types, so a misspelled field is an error.
 - `make test lint` must pass; CI runs the same plus builds for linux/amd64 and linux/arm64 and
   govulncheck.
 
+### Changes made with an AI tool
+
+Use whatever tools you like; the contributor is responsible for the pull request, as for any other. Because such tools can produce a
+plausible change quickly, a pull request that was made with one needs:
+
+- A description that says what you ran yourself (`make test lint`, a scan of a real host or image) and what you did not.
+- Facts checked against the repository: a sentence in a rule or a doc that names another check, a flag or a version must be true (a reviewer
+  will look it up).
+- One issue, one pull request. Pull requests that sweep up many open issues at once, or that touch files outside the issue, are closed
+  with a request to split them.
+- Agreement first, in the issue, for anything that changes how vmsctl decides or what it promises: profiles and their revisions (mapping a
+  check into `essentials` or `kisa-2026` is the maintainer's decision, see `awaitingProfile` above), the security invariants, the result
+  schema, dependencies and configuration.
+
+A pull request that ignores these may be closed without review. Nothing here depends on who the contributor is: a change is judged by what
+it does and how it was checked.
+
 ## Reporting bugs and security issues
 
 Open an issue with the distribution, the vmsctl version and, if you can, the facts or files
