@@ -229,9 +229,13 @@ function History({ scans }: { scans: ScanRow[] }) {
             const previous = scans[i + 1];
             return (
               <li key={s.id}>
-                <a href={`/api/v1/scans/${s.id}`} target="_blank" rel="noreferrer" title={t("host.raw")}>
-                  {t("host.scan", { id: s.id })}
-                </a>
+                {DEMO ? (
+                  <span>{t("host.scan", { id: s.id })}</span>
+                ) : (
+                  <a href={`/api/v1/scans/${s.id}`} target="_blank" rel="noreferrer" title={t("host.raw")}>
+                    {t("host.scan", { id: s.id })}
+                  </a>
+                )}
                 <span className="muted small">{ago(s.receivedAt, now, t)}</span>
                 {s.imageRef ? (
                   <span className="muted small mono" title={s.imageDigest}>
@@ -247,9 +251,11 @@ function History({ scans }: { scans: ScanRow[] }) {
                   {s.counts.ERROR ? <span className="badge s-ERROR">{s.counts.ERROR}</span> : null}
                 </span>
                 <span className="push">
-                  <a className="button compact" href={api.scanCSV(s.id)} download title={t("host.csv")} aria-label={`CSV: ${t("host.scan", { id: s.id })}`}>
-                    <IconDownload /> CSV
-                  </a>
+                  {!DEMO && (
+                    <a className="button compact" href={api.scanCSV(s.id)} download title={t("host.csv")} aria-label={`CSV: ${t("host.scan", { id: s.id })}`}>
+                      <IconDownload /> CSV
+                    </a>
+                  )}
                   {previous && (
                     <button className="compact" title={t("host.compare")} onClick={() => setPair([previous.id, s.id])}>
                       {t("host.compare")}

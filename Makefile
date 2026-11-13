@@ -26,7 +26,7 @@ GORELEASER := $(TOOLS)/goreleaser-$(GORELEASER_VERSION)
 SNAPSHOT_SKIP ?= sign
 
 .DEFAULT_GOAL := help
-.PHONY: help build build-web web test lint lint-guards fmt tidy vuln snapshot docs e2e clean
+.PHONY: help build build-web web demo-site test lint lint-guards fmt tidy vuln snapshot docs e2e clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -39,6 +39,9 @@ web: ## Build the dashboard into internal/server/webdist (needs Node 22)
 
 build-web: web ## Build ./vmsctl with the dashboard embedded in `vmsctl server`
 	CGO_ENABLED=0 go build -trimpath -buildvcs=false -tags web -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/vmsctl
+
+demo-site: build ## Build the static live demo into site/demo (the dashboard with recorded answers of `vmsctl server demo`)
+	./scripts/build-demo.sh
 
 test: ## Run unit tests with the race detector
 	go test -race ./...

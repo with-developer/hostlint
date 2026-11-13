@@ -20,9 +20,11 @@ export function MatrixPage() {
         title={t("matrix.title")}
         subtitle={t("matrix.subtitle")}
         actions={
-          <a className="button" href={api.matrixCSV(STALE_DAYS, lang)} download>
-            <IconDownload /> {t("hosts.export")}
-          </a>
+          DEMO ? undefined : (
+            <a className="button" href={api.matrixCSV(STALE_DAYS, lang)} download>
+              <IconDownload /> {t("hosts.export")}
+            </a>
+          )
         }
       />
       <Await state={state} skeleton={<div className="card"><Skeleton height={300} /></div>}>

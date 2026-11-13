@@ -1,3 +1,4 @@
+import { DemoError, demoRequest } from "./demoApi";
 import type { AgentInfo, ControlDetail, ControlInfo, ControlSummary, Diff, HostDetail, HostSummary, Matrix, Overview, ProfileList, ScanDoc, ScanJob, TrendPoint } from "./types";
 
 export class ApiError extends Error {
@@ -13,6 +14,15 @@ export function setUnauthorizedHandler(fn: () => void): void {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (DEMO) {
+    // The static live demo answers from recorded data (demoApi.ts); its errors look like the server's.
+    try {
+      return await demoRequest<T>(path, init);
+    } catch (e) {
+      if (e instanceof DemoError) throw new ApiError(e.status, e.message);
+      throw e;
+    }
+  }
   const res = await fetch(path, { credentials: "same-origin", ...init });
   const text = await res.text();
   let body: unknown = null;

@@ -121,6 +121,11 @@ jobs:
         run: |
           go build -tags web -o vmsctl-web ./cmd/vmsctl
           ./vmsctl-web version
+      - name: The static live demo builds (site/demo, published by the Pages workflow)
+        run: |
+          go build -o vmsctl ./cmd/vmsctl
+          ./scripts/build-demo.sh
+          test -s site/demo/index.html && test -s site/demo/demo-data.json
 
   # Builds every release artifact as a snapshot (unsigned, unpublished), so the
   # release pipeline is tested before a tag needs it (docs/RELEASING.md).
