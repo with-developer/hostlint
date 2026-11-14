@@ -1,8 +1,8 @@
 package rulesdoc
 
 import (
-	"fmt"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
