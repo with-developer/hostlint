@@ -107,7 +107,7 @@ Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new a
 
 **Why.** A password that never changes stays useful to whoever obtained it.
 
-**Fix.** Set `PASS_MAX_DAYS 90` (or less) in /etc/login.defs; apply it to existing accounts with chage.
+**Fix.** Set `PASS_MAX_DAYS` in /etc/login.defs to the required number of days (90 or less by default; a stricter profile or configuration asks for fewer, such as 60); apply it to existing accounts with chage.
 
 **Parameters.**
 
@@ -135,7 +135,7 @@ Checks that the passwd service's PAM stack enforces password quality (pam_pwqual
 
 **Why.** Short passwords fall quickly to guessing and offline cracking.
 
-**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen = 8` or more in /etc/security/pwquality.conf, and do not set enforcing = 0 or positive credits.
+**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen` in /etc/security/pwquality.conf to the required length (8 or more by default; a stricter profile or configuration asks for more, such as 15), and do not set enforcing = 0 or positive credits.
 
 **Parameters.**
 
@@ -935,7 +935,7 @@ Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new a
 
 **Why.** A password that never changes stays useful to whoever obtained it.
 
-**Fix.** Set `PASS_MAX_DAYS 90` (or less) in /etc/login.defs; apply it to existing accounts with chage.
+**Fix.** Set `PASS_MAX_DAYS` in /etc/login.defs to the required number of days (90 or less by default; a stricter profile or configuration asks for fewer, such as 60); apply it to existing accounts with chage.
 
 **Parameters.**
 
@@ -977,7 +977,7 @@ Checks that the passwd service's PAM stack enforces password quality (pam_pwqual
 
 **Why.** Short passwords fall quickly to guessing and offline cracking.
 
-**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen = 8` or more in /etc/security/pwquality.conf, and do not set enforcing = 0 or positive credits.
+**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen` in /etc/security/pwquality.conf to the required length (8 or more by default; a stricter profile or configuration asks for more, such as 15), and do not set enforcing = 0 or positive credits.
 
 **Parameters.**
 
@@ -1041,7 +1041,7 @@ Lists TMOUT assignments that are empty, zero or longer than `max_seconds`, and u
 
 **Why.** A long or disabled timeout leaves idle sessions open.
 
-**Fix.** Set `TMOUT=600` (or less) and remove larger assignments and unset commands.
+**Fix.** Set `TMOUT` to the required number of seconds (600 or less by default; a stricter profile or configuration asks for fewer) and remove larger assignments and unset commands.
 
 **Parameters.**
 
@@ -1905,7 +1905,7 @@ Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new a
 
 **Why.** A password that never changes stays useful to whoever obtained it.
 
-**Fix.** Set `PASS_MAX_DAYS 90` (or less) in /etc/login.defs; apply it to existing accounts with chage.
+**Fix.** Set `PASS_MAX_DAYS` in /etc/login.defs to the required number of days (90 or less by default; a stricter profile or configuration asks for fewer, such as 60); apply it to existing accounts with chage.
 
 **Parameters.**
 
@@ -1933,7 +1933,7 @@ Checks that the passwd service's PAM stack enforces password quality (pam_pwqual
 
 **Why.** Short passwords fall quickly to guessing and offline cracking.
 
-**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen = 8` or more in /etc/security/pwquality.conf, and do not set enforcing = 0 or positive credits.
+**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen` in /etc/security/pwquality.conf to the required length (8 or more by default; a stricter profile or configuration asks for more, such as 15), and do not set enforcing = 0 or positive credits.
 
 **Parameters.**
 
@@ -1967,7 +1967,7 @@ Lists TMOUT assignments that are empty, zero or longer than `max_seconds`, and u
 
 **Why.** A long or disabled timeout leaves idle sessions open.
 
-**Fix.** Set `TMOUT=600` (or less) and remove larger assignments and unset commands.
+**Fix.** Set `TMOUT` to the required number of seconds (600 or less by default; a stricter profile or configuration asks for fewer) and remove larger assignments and unset commands.
 
 **Parameters.**
 
@@ -2011,7 +2011,7 @@ Checks that the package named by the parameter `package` is not installed (dpkg 
 
 A package that the control requires is installed (점검 항목이 요구하는 패키지가 설치되어 있음) — severity medium, evaluates an expression.
 
-Checks that the package named by the parameter `package` is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.
+Checks that the package named by the parameter `package` is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.
 
 **Why.** A control that needs a security tool or a service on the host cannot be met without its package.
 

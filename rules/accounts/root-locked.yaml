@@ -20,10 +20,12 @@ remediation_ko: >-
 violations:
   over: shadow.entries
   as: e
-  where: e.name == "root" && e.state != "locked"
+  # root with a password that can log in; and, once, when /etc/shadow has no root entry at all (what is not there is not locked)
+  where: >-
+    e.name == "root" ? e.state != "locked" : (!shadow.entries.exists(x, x.name == "root") && e.name == shadow.entries[0].name)
   key: e.name
   text: >-
-    e.name + " has a password that can log in (" + e.state + ")"
+    e.name == "root" ? "root has a password that can log in (" + e.state + ")" : "/etc/shadow has no entry for root"
 tests:
   - name: root is locked
     facts:
@@ -36,6 +38,10 @@ tests:
   - name: root has an empty password
     facts:
       shadow: {present: true, entries: [{name: root, state: empty, algorithm: ""}]}
+    want: FAIL
+  - name: /etc/shadow has no root entry
+    facts:
+      shadow: {present: true, entries: [{name: alice, state: set, algorithm: sha512}, {name: bob, state: locked, algorithm: ""}]}
     want: FAIL
   - name: no shadow file
     input: absent

@@ -5,10 +5,10 @@ title_ko: 점검 항목이 요구하는 패키지가 설치되어 있음
 severity: medium
 description: >-
   Checks that the package named by the parameter `package` is installed (dpkg or rpm). The profile that uses this check says which
-  package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.
+  package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.
 description_ko: >-
   매개변수 `package`가 가리키는 패키지가 설치되어 있는지 확인합니다(dpkg나 rpm). 어느 패키지인지는 이 점검을 쓰는 프로파일이
-  정합니다. 제거했지만 설정 파일이 남은 패키지는 설치된 것으로 보지 않습니다. 매개변수는 프로파일만 정합니다.
+  정합니다. 제거했지만 설정 파일이 남은 패키지나, 풀기만 했거나 설정이 끝나지 않은 패키지는 설치된 것으로 보지 않습니다. 매개변수는 프로파일만 정합니다.
 rationale: >-
   A control that needs a security tool or a service on the host cannot be met without its package.
 rationale_ko: >-
@@ -24,13 +24,18 @@ params:
 failure: >-
   The package named by the profile is not installed.
 expect: >-
-  params.package in packages.installed
+  params.package in packages.installed && packages.installed[params.package][0].state == "installed"
 tests:
   - name: installed
     params: {package: chrony}
     facts:
       packages: {manager: dpkg, installed: {chrony: [{version: "4.2-2ubuntu2", arch: amd64, state: installed}]}}
     want: PASS
+  - name: unpacked or half configured is not installed
+    params: {package: chrony}
+    facts:
+      packages: {manager: dpkg, installed: {chrony: [{version: "4.2-2ubuntu2", arch: amd64, state: half-configured}]}}
+    want: FAIL
   - name: not installed
     params: {package: chrony}
     facts:

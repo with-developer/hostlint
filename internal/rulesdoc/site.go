@@ -47,6 +47,12 @@ func RenderKISASiteKo(content *engine.Content, profileID string) (string, error)
 	})
 }
 
+// The numbers the English STIG page states: update them with the profile (a test checks the profile and the guide against them).
+const (
+	stigVersion  = "V2R8"
+	stigControls = 188
+)
+
 var severityEn = map[engine.Severity]string{"high": "high (CAT I)", "medium": "medium (CAT II)", "low": "low (CAT III)"}
 
 // RenderStigSiteEn returns the English page of the DISA STIG profile for Ubuntu 22.04 (site/stig/ubuntu2204/index.html).
@@ -58,9 +64,9 @@ func RenderStigSiteEn(content *engine.Content, profileID string) (string, error)
 	return renderProfilePage(content, p, pageText{
 		lang: "en", locale: "en_US", url: "https://with-developer.github.io/vmsctl/stig/ubuntu2204/", home: "../../", homeLabel: "Home", cssPath: "../../style.css",
 		title:    fmt.Sprintf("Ubuntu 22.04 STIG: the %d controls vmsctl checks, and how to fix them — vmsctl", len(p.Controls)),
-		desc:     fmt.Sprintf("The %d controls of the DISA STIG for Canonical Ubuntu 22.04 LTS (V2R8) that vmsctl checks on a server: what each one looks at, why it matters and how to fix it. Not a complete STIG assessment.", len(p.Controls)),
+		desc:     fmt.Sprintf("The %d controls of the DISA STIG for Canonical Ubuntu 22.04 LTS (%s) that vmsctl checks on a server: what each one looks at, why it matters and how to fix it. Not a complete STIG assessment.", len(p.Controls), stigVersion),
 		h1:       fmt.Sprintf("Ubuntu 22.04 STIG: the %d controls vmsctl checks", len(p.Controls)),
-		lead:     fmt.Sprintf("These are %d of the 188 controls of the DISA Security Technical Implementation Guide for Canonical Ubuntu 22.04 LTS (V2R8) that <code>vmsctl</code> can decide by reading the host, each with what it looks at, why it matters and how to fix it. <strong>This is not a complete STIG assessment:</strong> the other controls (audit rules, file ownership of system commands, smart cards, FIPS, the boot loader password, ...) are not checked yet. The control IDs and importance are the STIG's, a US government work; the titles and texts are vmsctl's own. A check is mapped only when it decides exactly what the STIG requires.", len(p.Controls)),
+		lead:     fmt.Sprintf("These are %d of the %d controls of the DISA Security Technical Implementation Guide for Canonical Ubuntu 22.04 LTS (%s) that <code>vmsctl</code> can decide by reading the host, each with what it looks at, why it matters and how to fix it. <strong>This is not a complete STIG assessment:</strong> the other controls (audit rules, file ownership of system commands, smart cards, FIPS, the boot loader password, ...) are not checked yet. The control IDs and importance are the STIG's, a US government work; the titles and texts are vmsctl's own. A check is mapped only when it decides exactly what the STIG requires. On a host that is not Ubuntu 22.04 every control is not applicable.", len(p.Controls), stigControls, stigVersion),
 		cmd:      "curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/main/install.sh | sh\nsudo vmsctl scan --profile stig-ubuntu2204",
 		hint:     "Every result carries its evidence (the value, the file and the line); <code>vmsctl explain UBTU-22-255040</code> prints a control in the terminal. What the profile covers: <a href=\"https://github.com/with-developer/vmsctl/blob/main/docs/stig.md\">docs/stig.md</a>. About the tool: <a href=\"../../\">vmsctl</a>.",
 		tocLabel: "Controls", why: "Why it matters.", fix: "How to fix it.", human: "A person decides.", importance: "Importance", handOnly: "This control has no automatic check: a person reviews it.", params: "Values used for this control",
@@ -90,7 +96,7 @@ func renderProfilePage(content *engine.Content, p *engine.Profile, t pageText) (
 	w("<meta property=\"og:type\" content=\"article\">\n<meta property=\"og:site_name\" content=\"vmsctl\">\n<meta property=\"og:locale\" content=\"%s\">\n", t.locale)
 	w("<meta property=\"og:title\" content=\"%s\">\n<meta property=\"og:description\" content=\"%s\">\n<meta property=\"og:url\" content=\"%s\">\n", html.EscapeString(t.title), html.EscapeString(t.desc), t.url)
 	w("<link rel=\"stylesheet\" href=\"%s\">\n</head>\n<body>\n", t.cssPath)
-	w("<header class=\"top\">\n  <div class=\"wrap\">\n    <a class=\"brand\" href=\"%s\">vmsctl</a>\n    <nav>\n      <a href=\"https://github.com/with-developer/vmsctl\">GitHub</a>\n      <a class=\"lang\" href=\"%s\">%s</a>\n    </nav>\n  </div>\n</header>\n", t.home, t.home, t.homeLabel)
+	w("<header class=\"top\">\n  <div class=\"wrap\">\n    <a class=\"brand\" href=\"%s\">vmsctl</a>\n    <nav>\n      <a href=\"https://github.com/with-developer/vmsctl\">GitHub</a>\n      <a href=\"%s\">%s</a>\n    </nav>\n  </div>\n</header>\n", t.home, t.home, t.homeLabel)
 	w("<main>\n<article class=\"wrap doc\">\n")
 	w("<h1>%s</h1>\n", html.EscapeString(t.h1))
 	w("<p class=\"lead\">%s</p>\n", t.lead)

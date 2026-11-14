@@ -12,9 +12,12 @@ description_ko: >-
 rationale: A long or disabled timeout leaves idle sessions open.
 rationale_ko: >-
   제한 시간이 길거나 꺼져 있으면 유휴 세션이 열린 채 남습니다.
-remediation: Set `TMOUT=600` (or less) and remove larger assignments and unset commands.
+remediation: >-
+  Set `TMOUT` to the required number of seconds (600 or less by default; a stricter profile or configuration asks for
+  fewer) and remove larger assignments and unset commands.
 remediation_ko: >-
-  `TMOUT=600`(또는 그보다 짧은 값)을 설정하고, 더 큰 값의 대입과 unset 명령은 지우세요.
+  `TMOUT`을 요구하는 초 단위 값으로 설정하고(기본값은 600초 이하이며, 더 엄격한 프로파일이나 설정은 더 짧게 요구합니다), 더 큰 값의 대입과 unset 명령은
+  지우세요.
 params:
   max_seconds: {type: int, default: 600, stricter: lower, description: Longest acceptable idle timeout in seconds}
 violations:

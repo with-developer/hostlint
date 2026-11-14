@@ -1,6 +1,7 @@
 package rulesdoc
 
 import (
+	"fmt"
 	"flag"
 	"os"
 	"path/filepath"
@@ -133,6 +134,11 @@ func TestStigSiteIsUpToDate(t *testing.T) {
 			t.Errorf("no section for %s", c.ID)
 		}
 	}
+	// The numbers of the page are those of the profile and of the guide (docs/stig.md says them too).
+	prof := content.Profiles["stig-ubuntu2204"]
+	if !strings.Contains(prof.Title, stigVersion) || !strings.Contains(string(mustRead(t, filepath.Join("..", "..", "docs", "stig.md"))), fmt.Sprintf("the %d controls (of the %d of %s)", len(prof.Controls), stigControls, stigVersion)) {
+		t.Errorf("the profile title, docs/stig.md and the page disagree about %s, %d and %d", stigVersion, stigControls, len(prof.Controls))
+	}
 	// The page names what it does not cover, and the numbers it states are the profile's.
 	if !strings.Contains(got, "not a complete STIG assessment") || !strings.Contains(got, "<code>package</code> = <code>chrony</code>") || strings.Contains(got, "<script") {
 		t.Error("the page lacks its disclaimer or the parameters of the generic checks")
@@ -257,4 +263,13 @@ func TestFactDocsRefuseTwoTypesOfOneName(t *testing.T) {
 	if err != nil || docs["A"] != "" || docs["B"] != "" {
 		t.Errorf("docs = %v %v", docs, err)
 	}
+}
+
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

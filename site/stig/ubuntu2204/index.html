@@ -22,14 +22,14 @@
     <a class="brand" href="../../">vmsctl</a>
     <nav>
       <a href="https://github.com/with-developer/vmsctl">GitHub</a>
-      <a class="lang" href="../../">Home</a>
+      <a href="../../">Home</a>
     </nav>
   </div>
 </header>
 <main>
 <article class="wrap doc">
 <h1>Ubuntu 22.04 STIG: the 27 controls vmsctl checks</h1>
-<p class="lead">These are 27 of the 188 controls of the DISA Security Technical Implementation Guide for Canonical Ubuntu 22.04 LTS (V2R8) that <code>vmsctl</code> can decide by reading the host, each with what it looks at, why it matters and how to fix it. <strong>This is not a complete STIG assessment:</strong> the other controls (audit rules, file ownership of system commands, smart cards, FIPS, the boot loader password, ...) are not checked yet. The control IDs and importance are the STIG's, a US government work; the titles and texts are vmsctl's own. A check is mapped only when it decides exactly what the STIG requires.</p>
+<p class="lead">These are 27 of the 188 controls of the DISA Security Technical Implementation Guide for Canonical Ubuntu 22.04 LTS (V2R8) that <code>vmsctl</code> can decide by reading the host, each with what it looks at, why it matters and how to fix it. <strong>This is not a complete STIG assessment:</strong> the other controls (audit rules, file ownership of system commands, smart cards, FIPS, the boot loader password, ...) are not checked yet. The control IDs and importance are the STIG's, a US government work; the titles and texts are vmsctl's own. A check is mapped only when it decides exactly what the STIG requires. On a host that is not Ubuntu 22.04 every control is not applicable.</p>
 <pre class="cmd" tabindex="0"><code>curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/main/install.sh | sh
 sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="muted">Every result carries its evidence (the value, the file and the line); <code>vmsctl explain UBTU-22-255040</code> prints a control in the terminal. What the profile covers: <a href="https://github.com/with-developer/vmsctl/blob/main/docs/stig.md">docs/stig.md</a>. About the tool: <a href="../../">vmsctl</a>.</p>
@@ -100,7 +100,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
 <div class="check">
 <h3><code>packages.installed</code> A package that the control requires is installed</h3>
-<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.</p>
+<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.</p>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>libpam-pwquality</code></p>
@@ -111,7 +111,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="meta">Importance <b class="sev-low">low (CAT III)</b></p>
 <div class="check">
 <h3><code>packages.installed</code> A package that the control requires is installed</h3>
-<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.</p>
+<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.</p>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>chrony</code></p>
@@ -177,7 +177,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
 <div class="check">
 <h3><code>packages.installed</code> A package that the control requires is installed</h3>
-<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.</p>
+<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.</p>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>ufw</code></p>
@@ -219,7 +219,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="meta">Importance <b class="sev-high">high (CAT I)</b></p>
 <div class="check">
 <h3><code>packages.installed</code> A package that the control requires is installed</h3>
-<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.</p>
+<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.</p>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>openssh-server</code></p>
@@ -300,7 +300,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <h3><code>accounts.password-max-age</code> Passwords expire</h3>
 <p>Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new accounts. Without it, shadow-utils uses -1, which means passwords never expire.</p>
 <p><b>Why it matters.</b> A password that never changes stays useful to whoever obtained it.</p>
-<p><b>How to fix it.</b> Set <code>PASS_MAX_DAYS 90</code> (or less) in /etc/login.defs; apply it to existing accounts with chage.</p>
+<p><b>How to fix it.</b> Set <code>PASS_MAX_DAYS</code> in /etc/login.defs to the required number of days (90 or less by default; a stricter profile or configuration asks for fewer, such as 60); apply it to existing accounts with chage.</p>
 <p class="muted">Values used for this control: <code>max_days</code> = <code>60</code></p>
 </div>
 </section>
@@ -317,7 +317,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <h3><code>accounts.session-timeout-value</code> The idle timeout is short enough</h3>
 <p>Lists TMOUT assignments that are empty, zero or longer than <code>max_seconds</code>, and unset TMOUT commands, including those inside if or case blocks, which can apply to some sessions.</p>
 <p><b>Why it matters.</b> A long or disabled timeout leaves idle sessions open.</p>
-<p><b>How to fix it.</b> Set <code>TMOUT=600</code> (or less) and remove larger assignments and unset commands.</p>
+<p><b>How to fix it.</b> Set <code>TMOUT</code> to the required number of seconds (600 or less by default; a stricter profile or configuration asks for fewer) and remove larger assignments and unset commands.</p>
 <p class="muted">Values used for this control: <code>max_seconds</code> = <code>900</code></p>
 </div>
 </section>
@@ -326,7 +326,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
 <div class="check">
 <h3><code>packages.installed</code> A package that the control requires is installed</h3>
-<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.</p>
+<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.</p>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>apparmor</code></p>
@@ -339,7 +339,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <h3><code>accounts.password-min-length</code> Passwords have a minimum length</h3>
 <p>Checks that the passwd service&#39;s PAM stack enforces password quality (pam_pwquality or pam_cracklib, not in warning-only mode) with a minimum length of at least <code>min_length</code> characters. Positive credits let a password be shorter by up to their sum, so they count against minlen.</p>
 <p><b>Why it matters.</b> Short passwords fall quickly to guessing and offline cracking.</p>
-<p><b>How to fix it.</b> Enable pam_pwquality in the password stack (authselect, pam-auth-update), set <code>minlen = 8</code> or more in /etc/security/pwquality.conf, and do not set enforcing = 0 or positive credits.</p>
+<p><b>How to fix it.</b> Enable pam_pwquality in the password stack (authselect, pam-auth-update), set <code>minlen</code> in /etc/security/pwquality.conf to the required length (8 or more by default; a stricter profile or configuration asks for more, such as 15), and do not set enforcing = 0 or positive credits.</p>
 <p class="muted">Values used for this control: <code>min_length</code> = <code>15</code></p>
 </div>
 </section>
@@ -358,7 +358,7 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
 <div class="check">
 <h3><code>packages.installed</code> A package that the control requires is installed</h3>
-<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.</p>
+<p>Checks that the package named by the parameter <code>package</code> is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.</p>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>auditd</code></p>

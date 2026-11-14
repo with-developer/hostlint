@@ -575,3 +575,28 @@ func TestKoreanManualReason(t *testing.T) {
 		}
 	}
 }
+
+// The pointer to explain is for a table that lists a failure: not for one whose failed checks sit under controls that are not
+// applicable (a profile that is for another system).
+func TestTableFixPointerNeedsAFailedControl(t *testing.T) {
+	res := readFixture(t, "web-01.json")
+	var buf bytes.Buffer
+	if err := Write(&buf, res, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "How to fix a failed check: vmsctl explain ") {
+		t.Errorf("no pointer next to a failure:\n%s", buf.String())
+	}
+	for i := range res.Controls {
+		if res.Controls[i].Status == engine.StatusFail {
+			res.Controls[i].Status = engine.StatusNotApplicable
+		}
+	}
+	buf.Reset()
+	if err := Write(&buf, res, "table", Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "How to fix a failed check") {
+		t.Errorf("a pointer with no failed control:\n%s", buf.String())
+	}
+}

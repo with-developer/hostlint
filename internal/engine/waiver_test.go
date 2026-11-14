@@ -159,3 +159,61 @@ func TestParamOverrides(t *testing.T) {
 		}
 	}
 }
+
+// A profile that names its OS says nothing about another one: every control is NOT_APPLICABLE, with the reason; on the OS it
+// is for, the controls are decided as usual. demoHost is ubuntu-24.04.
+func TestProfileOS(t *testing.T) {
+	scan := func(os []string) *Result {
+		svc := demoSvc()
+		checks := []*Check{{ID: "x.fail", Version: 1, Title: "T", Severity: SeverityLow, Expect: `svc.config.permitrootlogin.value == "yes"`}}
+		content := &Content{Checks: map[string]*Check{"x.fail": checks[0]}, Profiles: map[string]*Profile{"p": {
+			ID: "p", Revision: 1, Title: "P", OS: os, Controls: []Control{{ID: "C-01", Title: "C", Severity: SeverityLow, Checks: []string{"x.fail"}}},
+		}}}
+		e, err := New(content, svc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := e.Scan(context.Background(), hostfs.NewTestHost(demoHost(), nil, false), Options{Profile: "p"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		validateSchema(t, res)
+		return res
+	}
+	for _, tc := range []struct {
+		name string
+		os   []string
+		want Status
+	}{
+		{"no OS named: any host", nil, StatusFail},
+		{"the OS it is for", []string{"ubuntu-24.04"}, StatusFail},
+		{"one of several", []string{"ubuntu-22.04", "ubuntu-24.04"}, StatusFail},
+		{"another version", []string{"ubuntu-22.04"}, StatusNotApplicable},
+		{"another distribution", []string{"debian-12"}, StatusNotApplicable},
+	} {
+		got := scan(tc.os).Controls[0]
+		if got.Status != tc.want {
+			t.Errorf("%s: %s (%q), want %s", tc.name, got.Status, got.Reason, tc.want)
+		}
+		if tc.want == StatusNotApplicable && (!strings.Contains(got.Reason, strings.Join(tc.os, " or ")) || !strings.Contains(got.Reason, "ubuntu-24.04")) {
+			t.Errorf("%s: the reason does not say which systems: %q", tc.name, got.Reason)
+		}
+	}
+	// A profile without an OS has the digest it had before the field existed; one with an OS has another.
+	c := &Content{Checks: map[string]*Check{}}
+	plain := &Profile{ID: "p", Revision: 1, Controls: nil}
+	withOS := &Profile{ID: "p", Revision: 1, OS: []string{"ubuntu-22.04"}}
+	if c.ProfileDigest(plain) == c.ProfileDigest(withOS) {
+		t.Error("the OS is not part of the profile digest")
+	}
+}
+
+func TestProfileOSIsValidated(t *testing.T) {
+	for os, ok := range map[string]bool{"ubuntu-22.04": true, "rocky-9": true, "amzn-2023": true, "ubuntu": false, "Ubuntu-22.04": false, "ubuntu 22.04": false, "": false} {
+		pr := &Profile{ID: "p", Revision: 1, Title: "P", OS: []string{os}}
+		err := validateProfile("p.yaml", pr, map[string]*Check{})
+		if (err == nil) != ok {
+			t.Errorf("os %q: err = %v", os, err)
+		}
+	}
+}

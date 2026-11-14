@@ -8,6 +8,7 @@
 # it is not a complete STIG assessment. See docs/stig.md.
 id: stig-ubuntu2204
 revision: 1
+os: [ubuntu-22.04]
 title: Canonical Ubuntu 22.04 LTS STIG (V2R8), the controls vmsctl checks
 title_ko: Canonical Ubuntu 22.04 LTS STIG(V2R8) 중 vmsctl이 점검하는 항목
 controls:

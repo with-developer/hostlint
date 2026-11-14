@@ -2,7 +2,7 @@
 
 `stig-ubuntu2204` checks a host against the controls of the
 [Canonical Ubuntu 22.04 LTS Security Technical Implementation Guide](https://public.cyber.mil/stigs/) (STIG), version V2R8, that
-the US Department of Defense publishes through DISA. It is the first profile for a US baseline; the profile for RHEL 9 is next.
+the US Department of Defense publishes through DISA. It is vmsctl's profile for a US baseline.
 
 ```sh
 sudo vmsctl scan --profile stig-ubuntu2204
@@ -38,6 +38,10 @@ not mapped. Where a control needs a package, a unit or a number, a small generic
 The control IDs and their importance (CAT I is `high`, CAT II `medium`, CAT III `low`) are the STIG's; the STIG is a US government work.
 The titles are vmsctl's own short wording. The mapping was made against the control list that
 [ComplianceAsCode](https://github.com/ComplianceAsCode/content) publishes for this STIG and checked against each control's requirement.
-The scan reports what it finds on a host of any distribution, but only an Ubuntu 22.04 host is what the profile is for.
+The profile names the system it is for (`os: [ubuntu-22.04]`): on any other host every control is `NOT_APPLICABLE`, with the reason, because a
+standard written for Ubuntu 22.04 says nothing true about another system.
 
-More controls come as the checks they need exist (the audit rules are the largest group).
+Two mappings are stricter than the STIG, never looser: `UBTU-22-611035` uses `accounts.password-min-length`, which subtracts positive
+`dcredit` and `ucredit` credits from `minlen`, so a host that sets `minlen = 15` together with a positive credit can fail where the STIG would
+pass it; and `accounts.password-max-age` also fails a value of 0 or less. More controls come as the checks they need exist (the audit rules
+are the largest group).

@@ -3,7 +3,7 @@
 
 `stig-ubuntu2204`는 미 국방부가 DISA를 통해 공개하는
 [Canonical Ubuntu 22.04 LTS Security Technical Implementation Guide](https://public.cyber.mil/stigs/)(STIG) V2R8의 점검 항목으로
-호스트를 점검합니다. 미국 기준을 다루는 첫 프로파일이고, 다음은 RHEL 9용 프로파일입니다.
+호스트를 점검합니다. vmsctl에서 미국 기준을 다루는 프로파일입니다.
 
 ```sh
 sudo vmsctl scan --profile stig-ubuntu2204
@@ -38,7 +38,9 @@ vmsctl explain UBTU-22-255040          # 점검 항목이 무엇을 보고, 왜 
 
 점검 항목 ID와 중요도(CAT I은 `high`, CAT II는 `medium`, CAT III은 `low`)는 STIG의 것이며 STIG는 미국 정부 저작물입니다. 제목은
 vmsctl이 직접 짧게 쓴 것입니다. 연결은 [ComplianceAsCode](https://github.com/ComplianceAsCode/content)가 이 STIG에 대해 공개한
-점검 항목 목록을 기준으로, 항목마다 요구 사항과 대조해서 만들었습니다. 어떤 배포판의 호스트든 점검 결과는 나오지만, 이 프로파일이
-대상으로 하는 것은 Ubuntu 22.04 호스트뿐입니다.
+점검 항목 목록을 기준으로, 항목마다 요구 사항과 대조해서 만들었습니다. 이 프로파일은 대상 시스템을 스스로 밝힙니다(`os: [ubuntu-22.04]`). 다른 호스트에서는 모든 점검 항목이 이유와 함께
+`NOT_APPLICABLE`입니다. Ubuntu 22.04용으로 쓴 기준은 다른 시스템에 대해 참인 말을 하지 못하기 때문입니다.
 
-점검이 갖춰지는 대로 항목을 늘립니다(가장 큰 묶음은 감사 규칙입니다).
+연결 두 개는 STIG보다 엄격합니다(느슨하지는 않습니다). `UBTU-22-611035`가 쓰는 `accounts.password-min-length`는 양수 `dcredit`,
+`ucredit` 크레딧을 `minlen`에서 빼므로, `minlen = 15`에 양수 크레딧을 함께 설정한 호스트는 STIG라면 통과시킬 것을 실패로 볼 수 있습니다.
+`accounts.password-max-age`는 0 이하의 값도 실패로 봅니다. 점검이 갖춰지는 대로 항목을 늘립니다(가장 큰 묶음은 감사 규칙입니다).
