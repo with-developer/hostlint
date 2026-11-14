@@ -69,7 +69,7 @@ snapshot: $(GORELEASER) ## Build the release artifacts into dist/ without publis
 	$(GORELEASER) release --snapshot --clean --skip=$(SNAPSHOT_SKIP)
 
 docs: ## Regenerate docs/rules.md and docs/facts.md from rules/, profiles/ and the collectors
-	go test ./internal/rulesdoc -run 'TestRulesDocIsUpToDate|TestRulesKoDocIsUpToDate|TestKISASiteKoIsUpToDate|TestFactsDocIsUpToDate' -update
+	go test ./internal/rulesdoc -run 'TestRulesDocIsUpToDate|TestRulesKoDocIsUpToDate|TestKISASiteKoIsUpToDate|TestStigSiteIsUpToDate|TestFactsDocIsUpToDate' -update
 
 # E2E_RUN selects distributions (e.g. debian-12); E2E_UPDATE=1 rewrites their goldens.
 E2E_RUN ?=

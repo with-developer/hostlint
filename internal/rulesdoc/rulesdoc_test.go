@@ -101,6 +101,44 @@ func TestKISASiteKoIsUpToDate(t *testing.T) {
 	}
 }
 
+// site/stig/ubuntu2204/index.html is what RenderStigSiteEn makes of the STIG profile.
+func TestStigSiteIsUpToDate(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := RenderStigSiteEn(content, "stig-ubuntu2204")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "site", "stig", "ubuntu2204", "index.html")
+	if *update {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%v; run `make docs`", err)
+	}
+	if string(want) != got {
+		t.Error("site/stig/ubuntu2204/index.html is out of date; run `make docs`")
+	}
+	for _, c := range content.Profiles["stig-ubuntu2204"].Controls {
+		if !strings.Contains(got, `id="`+anchorID(c.ID)+`"`) {
+			t.Errorf("no section for %s", c.ID)
+		}
+	}
+	// The page names what it does not cover, and the numbers it states are the profile's.
+	if !strings.Contains(got, "not a complete STIG assessment") || !strings.Contains(got, "<code>package</code> = <code>chrony</code>") || strings.Contains(got, "<script") {
+		t.Error("the page lacks its disclaimer or the parameters of the generic checks")
+	}
+}
+
 func TestInlineEscapesAndMakesCodeSpans(t *testing.T) {
 	for in, want := range map[string]string{
 		"plain":              "plain",
