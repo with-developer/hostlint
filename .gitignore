@@ -18,3 +18,6 @@ CLAUDE.local.md
 /.tools/
 /web/node_modules/
 /ctx/
+
+# The live demo is built by scripts/build-demo.sh (the Pages workflow); never committed
+/site/demo/

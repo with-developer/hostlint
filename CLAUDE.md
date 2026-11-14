@@ -18,6 +18,8 @@ Released (see [docs/ROADMAP.md](docs/ROADMAP.md) for what each version added). K
   cross-compile with `GOOS=linux GOARCH=arm64 make build`
 - `make web` — build the dashboard (`web/`, Node 22) into `internal/server/webdist`; `make build-web` builds
   `./vmsctl` with it embedded (`-tags web`, what a release has)
+- `make demo-site` — the static live demo into `site/demo` (the dashboard built with `--mode demo`, reading the recorded answers of
+  `vmsctl server demo`); CI builds it, and the Pages workflow publishes it. Never committed
 - `make test` — unit tests with the race detector
 - `make lint` — golangci-lint for linux/amd64 (formatting, plus rules that enforce ADR 0004: no exec,
   raw syscalls, host writes or direct host reads outside `internal/hostfs`), `make lint-guards`
@@ -64,8 +66,8 @@ required check on `main`.
 | `action.yml` | The GitHub Action (composite): installs a verified release and scans an image, an archive or a root |
 | `packaging/container/` | The Dockerfile of the release image on ghcr.io (`.github/workflows/container.yml`) |
 | `install.sh` | The installer: downloads a release, verifies it, installs the binary |
-| `scripts/` | Release checks, the translation check and lint guards (`check-release.sh`, `check-translations.sh`, `lint-guards.sh`) |
-| `site/` | The project page for GitHub Pages (English, and `ko/`); published by `.github/workflows/pages.yml` once Pages is enabled |
+| `scripts/` | Release checks, the translation check, lint guards and the live demo build (`check-release.sh`, `check-translations.sh`, `lint-guards.sh`, `build-demo.sh`) |
+| `site/` | The project page for GitHub Pages (English, and `ko/`, with the generated KISA page `ko/kisa/`) and the live demo `demo/` (built, not committed); published by `.github/workflows/pages.yml` |
 | `.goreleaser.yaml` | Release build: archives, packages, SBOMs, checksums and signing (docs/RELEASING.md) |
 
 ## Security invariants — never violate

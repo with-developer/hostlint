@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/prebuild.mjs && tsc --noEmit && vite build && node scripts/postbuild.mjs",
+    "build:demo": "tsc --noEmit && vite build --mode demo",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

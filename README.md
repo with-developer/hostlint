@@ -9,7 +9,7 @@ vmsctl reads a host's security configuration, reports a result for every control
 (Korea's KISA CII Unix guide, and a short baseline most guides agree on), and shows the whole fleet in a dashboard.
 It never changes anything, and it never guesses a PASS.
 
-[Quick start](#quick-start) · [Dashboard](#a-dashboard-for-the-whole-fleet) · [Docs](docs/README.md) · [한국어](README.ko.md)
+[**Live demo**](https://with-developer.github.io/vmsctl/demo/) · [Quick start](#quick-start) · [Dashboard](#a-dashboard-for-the-whole-fleet) · [Docs](docs/README.md) · [한국어](README.ko.md)
 
 ![The vmsctl dashboard: pass rate of the fleet, results by status and the pass rate over time](docs/demo/dashboard-overview.png)
 
@@ -23,7 +23,7 @@ It never changes anything, and it never guesses a PASS.
   regressions, signed results and a matrix of every control on every host.
 - **Made for pipelines.** JSON with a schema, SARIF, JUnit, Markdown, CSV and a [GitHub Action](docs/ci.md).
 
-**Try the dashboard without a host:** `vmsctl server demo` ([install first](#quick-start)).
+**Try the dashboard without a host:** the [live demo](https://with-developer.github.io/vmsctl/demo/) in your browser (made-up data), or `vmsctl server demo` on your machine ([install first](#quick-start)).
 
 ## What a scan looks like
 

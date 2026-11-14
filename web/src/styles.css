@@ -357,3 +357,7 @@ main p a, main li > div > a { text-decoration: underline; text-underline-offset:
 /* Korean: break lines between words, not inside them (a path or a long token still wraps where it must) */
 html[lang="ko"] body { word-break: keep-all; overflow-wrap: anywhere; }
 html[lang="ko"] .evidence, html[lang="ko"] code, html[lang="ko"] .mono { word-break: normal; }
+
+/* the live demo (site/demo) */
+.demo-banner { margin: 0 0 1.1rem; padding: .6rem .9rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--accent-soft, var(--bg)); font-size: .88rem; color: var(--muted); }
+.demo-banner a { color: var(--accent); }

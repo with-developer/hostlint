@@ -165,13 +165,23 @@ function Shell({ hash, dark, toggleTheme, logout }: { hash: string; dark: boolea
             <IconGlobe />
             <span>{t("lang.switch")}</span>
           </button>
-          <button className="ghost" onClick={logout} aria-label={t("nav.logout")} title={t("nav.logout")}>
-            <IconLogout />
-            <span>{t("nav.logout")}</span>
-          </button>
+          {!DEMO && (
+            <button className="ghost" onClick={logout} aria-label={t("nav.logout")} title={t("nav.logout")}>
+              <IconLogout />
+              <span>{t("nav.logout")}</span>
+            </button>
+          )}
         </div>
       </aside>
-      <main key={selected}>{view}</main>
+      <main key={selected}>
+        {DEMO && (
+          <p className="demo-banner" role="note">
+            {t("demo.banner")}{" "}
+            <a href="https://github.com/with-developer/vmsctl#quick-start">{t("demo.install")}</a> · <a href="https://github.com/with-developer/vmsctl">{t("demo.source")}</a>
+          </p>
+        )}
+        {view}
+      </main>
     </div>
   );
 }

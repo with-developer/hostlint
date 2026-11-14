@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 669df83 -->
+<!-- translated from README.md @ 854a824 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -10,7 +10,7 @@ vmsctl은 서버의 보안 설정을 읽어서 점검 기준(주요정보통신�
 가이드가 공통으로 요구하는 간추린 기준)의 점검 항목마다 결과를 냅니다. 여러 서버의 결과는 대시보드 하나로 봅니다.
 서버를 바꾸는 일은 없고, 판단하지 못한 것을 PASS로 추측하지도 않습니다.
 
-[빠른 시작](#빠른-시작) · [대시보드](#여러-서버를-한눈에-보는-대시보드) · [문서](docs/README.ko.md) · [English](README.md)
+[**라이브 데모**](https://with-developer.github.io/vmsctl/demo/) · [빠른 시작](#빠른-시작) · [대시보드](#여러-서버를-한눈에-보는-대시보드) · [문서](docs/README.ko.md) · [English](README.md)
 
 ![vmsctl 대시보드: 서버 전체의 통과율, 상태별 결과, 시간에 따른 통과율](docs/demo/dashboard-overview.png)
 
@@ -24,7 +24,7 @@ vmsctl은 서버의 보안 설정을 읽어서 점검 기준(주요정보통신�
   악화한 항목, 서명된 결과, 모든 호스트의 모든 점검 항목을 한 장에 보여 주는 매트릭스를 제공합니다.
 - **파이프라인에 바로 씁니다.** 스키마가 있는 JSON, SARIF, JUnit, Markdown, CSV와 [GitHub Action](docs/ci.ko.md)을 지원합니다.
 
-**호스트 없이 대시보드부터 보려면:** `vmsctl server demo` ([먼저 설치](#빠른-시작))
+**호스트 없이 대시보드부터 보려면:** 브라우저에서 바로 여는 [라이브 데모](https://with-developer.github.io/vmsctl/demo/)(가상의 데이터)나, 내 컴퓨터에서 `vmsctl server demo` ([먼저 설치](#빠른-시작))
 
 ## 점검 결과는 이렇게 보입니다
 

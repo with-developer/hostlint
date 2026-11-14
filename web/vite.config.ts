@@ -2,9 +2,14 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
 // The server embeds the build (internal/server/webdist) with the `web` build tag.
+//
+// `vite build --mode demo` makes the static live demo instead (site/demo, read by the project page): the same dashboard, with the answers
+// of `vmsctl server demo` recorded in a file (src/lib/demoApi.ts) in place of a server.
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  build: {
+  base: mode === "demo" ? "./" : "/",
+  define: { DEMO: JSON.stringify(mode === "demo") },
+  build: mode === "demo" ? { outDir: "../site/demo", emptyOutDir: true, sourcemap: false, assetsInlineLimit: 0, cssCodeSplit: false } : {
     outDir: "../internal/server/webdist",
     emptyOutDir: false, // scripts/prebuild.mjs empties it, keeping the .gitignore
     sourcemap: false,

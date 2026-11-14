@@ -60,9 +60,11 @@ export function HostsPage() {
         title={t("hosts.title")}
         subtitle={t("hosts.subtitle")}
         actions={
-          <a className="button" href={api.hostsCSV(params)} download>
-            <IconDownload /> {t("hosts.export")}
-          </a>
+          DEMO ? undefined : (
+            <a className="button" href={api.hostsCSV(params)} download>
+              <IconDownload /> {t("hosts.export")}
+            </a>
+          )
         }
       />
       <div className="toolbar">
