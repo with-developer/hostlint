@@ -31,7 +31,7 @@ It never changes anything, and it never guesses a PASS.
 
 ```text
 $ sudo vmsctl scan
-vmsctl v0.41.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
+vmsctl v0.42.0 · kisa-2026 · web-01 (Debian GNU/Linux 12 (bookworm))
 
 ✗ FAIL   U-01   Restrict direct remote root login [high]
     ✗ ssh.permit-root-login — SSH does not allow direct root login
@@ -97,15 +97,15 @@ Install a release (Linux, amd64 or arm64). `install.sh` verifies the SHA-256 of 
 when `cosign` is installed, the Sigstore signature of the checksums:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.41.0/install.sh
-sudo sh install.sh -v v0.41.0     # read it first; without root, add -b DIR to choose where it goes
+curl -fsSLO https://raw.githubusercontent.com/with-developer/vmsctl/v0.42.0/install.sh
+sudo sh install.sh -v v0.42.0     # read it first; without root, add -b DIR to choose where it goes
 sudo vmsctl scan
 ```
 
 Or run the image (the host's root mounted read-only; [docs/container.md](docs/container.md)):
 
 ```sh
-docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.41.0 scan --root /host
+docker run --rm -v /:/host:ro ghcr.io/with-developer/vmsctl:0.42.0 scan --root /host
 ```
 
 Each [release](https://github.com/with-developer/vmsctl/releases) also has `.deb` and `.rpm`
@@ -115,7 +115,7 @@ were published as hostlint, so use `-R with-developer/hostlint` for those). Comi
 To build instead (Go 1.26 or later; the binary itself has no dependencies):
 
 ```sh
-go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.41.0
+go install github.com/with-developer/vmsctl/cmd/vmsctl@v0.42.0
 sudo "$(go env GOPATH)/bin/vmsctl" scan
 ```
 
@@ -264,7 +264,7 @@ collectors, the terminal, JSON, SARIF, JUnit and multi-host HTML outputs, the co
 with waivers, the release pipeline (signed archives, packages, SBOMs and `install.sh`), a
 container test matrix over every supported distribution, scanning container images
 ([docs/images.md](docs/images.md)), a GitHub Action ([docs/ci.md](docs/ci.md)) and the fleet server with its
-dashboard, signed results and webhook ([docs/fleet.md](docs/fleet.md)) are in place, and v0.41.0 is the
+dashboard, signed results and webhook ([docs/fleet.md](docs/fleet.md)) are in place, and v0.42.0 is the
 latest release. The outbound agent for on-demand scans ([docs/fleet.md](docs/fleet.md)) and a container image
 ([docs/container.md](docs/container.md)) are in place too. See the [roadmap](docs/ROADMAP.md).
 
