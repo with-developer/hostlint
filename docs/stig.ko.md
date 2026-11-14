@@ -47,4 +47,6 @@ vmsctl이 직접 짧게 쓴 것입니다. 연결은 [ComplianceAsCode](https://g
 `accounts.password-max-age`는 0 이하의 값도 실패로 봅니다. 감사 규칙은 실행 중인 커널이 아니라 호스트가 부팅할 때 불러오는 파일(`/etc/audit/rules.d/*.rules`, 없으면 `/etc/audit/audit.rules`)에서
 읽습니다. 부팅한 뒤 `auditctl`로 추가한 규칙은 보이지 않고, vmsctl이 읽을 수 없는 줄이 있으면 결과는 `ERROR`이며 통과로 처리하지 않습니다.
 명령 규칙은 STIG가 정한 형태(`-a always,exit -F path=... -F perm=x -F auid>=1000 -F auid!=unset`)일 때만 인정하고, 경로도 STIG의
-경로(`/usr/bin/su`가 아니라 `/bin/su`)여야 합니다. 점검이 갖춰지는 대로 항목을 늘립니다(남은 가장 큰 묶음은 시스템 호출 감사 규칙입니다).
+경로(`/usr/bin/su`가 아니라 `/bin/su`)여야 합니다. 사용자, 종료 코드, 성공 여부 같은 다른 필터로 범위가 좁아진 규칙은 인정하지 않고, 경로에
+대한 `never` 규칙이 있으면 그 경로를 빼며, 경로를 지정하지 않는 `never` 규칙이 있으면 결과는 `ERROR`입니다. 디렉터리에 건 규칙은 그
+디렉터리에만 해당합니다. 점검이 갖춰지는 대로 항목을 늘립니다(남은 가장 큰 묶음은 시스템 호출 감사 규칙입니다).

@@ -38,33 +38,33 @@ tests:
   - name: the rule the STIG gives
     params: {path: /usr/bin/chage}
     facts:
-      audit: {present: true, rules: [], paths: {/usr/bin/chage: {perms: x, source: "x:1"}}, user_paths: {/usr/bin/chage: {perms: x, source: "/etc/audit/rules.d/stig.rules:7"}}}
+      audit: {present: true, paths: {/usr/bin/chage: {perms: x, source: "x:1"}}, user_paths: {/usr/bin/chage: {perms: x, source: "/etc/audit/rules.d/stig.rules:7"}}}
     want: PASS
   - name: a watch or a rule without the auid filters
     params: {path: /usr/bin/chage}
     facts:
-      audit: {present: true, rules: [], paths: {/usr/bin/chage: {perms: x, source: "x:1"}}, user_paths: {}}
+      audit: {present: true, paths: {/usr/bin/chage: {perms: x, source: "x:1"}}, user_paths: {}}
     want: FAIL
   - name: another program
     params: {path: /usr/bin/chage}
     facts:
-      audit: {present: true, rules: [], paths: {}, user_paths: {/usr/bin/passwd: {perms: x, source: "x:1"}}}
+      audit: {present: true, paths: {}, user_paths: {/usr/bin/passwd: {perms: x, source: "x:1"}}}
     want: FAIL
   - name: no audit rules at all
     params: {path: /usr/bin/chage}
     facts:
-      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+      audit: {present: false, paths: {}, user_paths: {}}
     want: FAIL
   - name: a rules file that cannot be read
     params: {path: /usr/bin/chage}
     input: incomplete
     incomplete: [audit]
     facts:
-      audit: {present: true, rules: [], paths: {}, user_paths: {}}
+      audit: {present: true, paths: {}, user_paths: {}}
     want: ERROR
   - name: a container image
     params: {path: /usr/bin/chage}
     facts:
       target: {image: true}
-      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+      audit: {present: false, paths: {}, user_paths: {}}
     want: NOT_APPLICABLE

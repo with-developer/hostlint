@@ -7,13 +7,13 @@ description: >-
   Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the
   path named by the parameter `path` for the permissions named by `perms` (r, w, a, x, in that order, such as `wa` or `x`): a watch
   (`-w /etc/passwd -p wa`) or an always,exit rule with `path=` and `perm=`, for any user. The profile that uses this check says which
-  path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. Only a
+  path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a `never` rule, do not count; a rule on a directory (`dir=`) counts for the directory only, so name the path the rule names. Only a
   profile sets the parameters. Not applicable to a container image.
 description_ko: >-
   호스트가 부팅할 때 불러오는 감사 규칙(/etc/audit/rules.d/*.rules, 없으면 /etc/audit/audit.rules)이 매개변수 `path`의 경로를
   `perms`의 권한(r, w, a, x 순서, 예: `wa`나 `x`)으로 감사하는지 확인합니다. 감시 규칙(`-w /etc/passwd -p wa`)이나 `path=`와
   `perm=`이 있는 always,exit 규칙이면 되고, 사용자는 가리지 않습니다. 어느 경로와 권한인지는 이 점검을 쓰는 프로파일이 정합니다.
-  실행 중인 커널이 아니라 파일을 읽으므로, 부팅한 뒤 auditctl로 추가한 규칙은 보이지 않습니다. 매개변수는 프로파일만 정합니다.
+  실행 중인 커널이 아니라 파일을 읽으므로, 부팅한 뒤 auditctl로 추가한 규칙은 보이지 않습니다. 사용자나 종료 코드 같은 다른 필터로 범위가 좁아진 규칙과 `never` 규칙이 있는 경로는 인정하지 않고, `dir=` 규칙은 그 디렉터리에만 해당하므로 규칙에 적은 경로 그대로 지정해야 합니다. 매개변수는 프로파일만 정합니다.
   컨테이너 이미지에는 해당하지 않습니다.
 rationale: >-
   Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.
@@ -33,43 +33,52 @@ params:
 failure: >-
   No audit rule watches the path that the profile names for the permissions it names.
 expect: >-
-  params.path in audit.paths && audit.paths[params.path].perms.contains(params.perms)
+  params.path in audit.paths &&
+  (!params.perms.contains("r") || audit.paths[params.path].perms.contains("r")) &&
+  (!params.perms.contains("w") || audit.paths[params.path].perms.contains("w")) &&
+  (!params.perms.contains("a") || audit.paths[params.path].perms.contains("a")) &&
+  (!params.perms.contains("x") || audit.paths[params.path].perms.contains("x"))
 tests:
   - name: a watch with the permissions
     params: {path: /etc/passwd, perms: wa}
     facts:
-      audit: {present: true, rules: [], paths: {/etc/passwd: {perms: wa, source: "/etc/audit/rules.d/stig.rules:9"}}, user_paths: {}}
+      audit: {present: true, paths: {/etc/passwd: {perms: wa, source: "/etc/audit/rules.d/stig.rules:9"}}, user_paths: {}}
     want: PASS
   - name: more permissions than asked for
     params: {path: /etc/passwd, perms: wa}
     facts:
-      audit: {present: true, rules: [], paths: {/etc/passwd: {perms: rwax, source: "x:1"}}, user_paths: {}}
+      audit: {present: true, paths: {/etc/passwd: {perms: rwax, source: "x:1"}}, user_paths: {}}
+    want: PASS
+  - name: permissions that are not next to each other
+    params: {path: /etc/passwd, perms: wx}
+    facts:
+      audit: {present: true, paths: {/etc/passwd: {perms: wax, source: "x:1"}}, user_paths: {}}
     want: PASS
   - name: only one of the permissions
     params: {path: /etc/passwd, perms: wa}
     facts:
-      audit: {present: true, rules: [], paths: {/etc/passwd: {perms: w, source: "x:1"}}, user_paths: {}}
+      audit: {present: true, paths: {/etc/passwd: {perms: w, source: "x:1"}}, user_paths: {}}
     want: FAIL
   - name: another path
     params: {path: /etc/passwd, perms: wa}
     facts:
-      audit: {present: true, rules: [], paths: {/etc/shadow: {perms: wa, source: "x:1"}}, user_paths: {}}
+      audit: {present: true, paths: {/etc/shadow: {perms: wa, source: "x:1"}}, user_paths: {}}
     want: FAIL
   - name: no audit rules at all
     params: {path: /etc/passwd, perms: wa}
     facts:
-      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+      audit: {present: false, paths: {}, user_paths: {}}
     want: FAIL
   - name: a rules file that cannot be read
     params: {path: /etc/passwd, perms: wa}
     input: incomplete
     incomplete: [audit]
     facts:
-      audit: {present: true, rules: [], paths: {}, user_paths: {}}
+      audit: {present: true, paths: {}, user_paths: {}}
     want: ERROR
   - name: a container image
     params: {path: /etc/passwd, perms: wa}
     facts:
       target: {image: true}
-      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+      audit: {present: false, paths: {}, user_paths: {}}
     want: NOT_APPLICABLE

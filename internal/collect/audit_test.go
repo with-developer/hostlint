@@ -29,7 +29,7 @@ func rulesFS(files map[string]string) *hostfs.MemFS {
 // The rules file that the auditd package of Ubuntu 22.04 installs sets how the audit system runs and audits nothing.
 func TestAuditDefaultRulesOfUbuntu(t *testing.T) {
 	a, complete, skipped := auditOf(t, fixtureFS(t, "audit/ubuntu-22.04"))
-	if !complete || !a.Present || len(a.Rules) != 0 || len(a.Paths) != 0 {
+	if !complete || !a.Present || len(a.Paths) != 0 {
 		t.Errorf("complete %v %v, %+v", complete, skipped, a)
 	}
 }
@@ -74,6 +74,15 @@ func TestAuditRuleForms(t *testing.T) {
 		{"auid>=1000 alone is not enough", "-a always,exit -F path=/usr/bin/z -F perm=x -F auid>=1000\n", "/usr/bin/z", "x", false},
 		{"a never rule audits nothing", "-a never,exit -F path=/usr/bin/z -F perm=x\n", "/usr/bin/z", "", false},
 		{"a rule on another list audits nothing here", "-a always,user -F path=/usr/bin/z -F perm=x\n", "/usr/bin/z", "", false},
+		{"-S all is the STIG's own form", "-a always,exit -S all -F path=/usr/bin/z -F perm=x -F auid>=1000 -F auid!=-1\n", "/usr/bin/z", "x", true},
+		{"a rule for some system calls is not a rule for a path", "-a always,exit -F arch=b64 -S open -F path=/etc/x -F perm=wa\n", "/etc/x", "", false},
+		{"narrowed to one user", "-a always,exit -F path=/etc/x -F perm=wa -F auid=1000\n", "/etc/x", "", false},
+		{"narrowed to a uid", "-a always,exit -F path=/usr/bin/z -F perm=x -F auid>=1000 -F auid!=unset -F uid=0\n", "/usr/bin/z", "", false},
+		{"narrowed to a failure", "-a always,exit -F path=/etc/x -F perm=wa -F success=0\n", "/etc/x", "", false},
+		{"an architecture does not narrow", "-a always,exit -F arch=b64 -F path=/etc/x -F perm=wa\n", "/etc/x", "wa", false},
+		{"a never rule for the path after it removes it", "-w /etc/x -p wa\n-a never,exit -F path=/etc/x\n", "/etc/x", "", false},
+		{"a never rule for the path before it removes it too", "-a never,exit -F path=/etc/x\n-w /etc/x -p wa\n", "/etc/x", "", false},
+		{"a never rule for another path leaves it", "-w /etc/x -p wa\n-a never,exit -F path=/etc/y\n", "/etc/x", "wa", false},
 		{"a comment is not a rule", "# -w /etc/x -p wa\n", "/etc/x", "", false},
 		{"-D deletes what came before", "-w /etc/x -p wa\n-D\n", "/etc/x", "", false},
 		{"what follows -D counts", "-D\n-w /etc/x -p wa\n", "/etc/x", "wa", false},
@@ -116,18 +125,60 @@ func TestAuditFilesAndOrder(t *testing.T) {
 // A line that cannot be read may be the rule a check looks for, or a "-d" that removes it: the facts are incomplete, never a pass.
 func TestAuditUnreadableLinesMakeTheFactsIncomplete(t *testing.T) {
 	for name, rules := range map[string]string{
-		"a delete rule":         "-w /etc/x -p wa\n-d always,exit -F path=/etc/x\n",
-		"an include":            "-R /etc/other.rules\n",
-		"an unknown word":       "-w /etc/x -p wa -Z\n",
-		"a missing value":       "-w\n",
-		"a bad list":            "-a always,bogus -F path=/x\n",
-		"an unknown line":       "something odd\n",
-		"spaces inside a field": "-a always,exit -F path=/usr/bin/z -F perm=x -F auid >= 1000\n",
+		"a delete rule":                      "-w /etc/x -p wa\n-d always,exit -F path=/etc/x\n",
+		"an include":                         "-R /etc/other.rules\n",
+		"an unknown word":                    "-w /etc/x -p wa -Z\n",
+		"a missing value":                    "-w\n",
+		"a bad list":                         "-a always,bogus -F path=/x\n",
+		"an unknown line":                    "something odd\n",
+		"a never rule that names no path":    "-w /etc/x -p wa\n-a never,exit -F auid=1000\n",
+		"an option and a rule on one line":   "-e 1 -w /etc/x -p wa\n",
+		"a delete after an option":           "-b 8192 -D\n",
+		"a permission that auditctl refuses": "-w /etc/x -p wq\n",
+		"a permission twice":                 "-w /etc/x -p ww\n",
+		"a bad perm=":                        "-a always,exit -F path=/etc/x -F perm=z\n",
+		"a rule inside a rule":               "-w /etc/x -a always,exit\n",
+		"spaces inside a field":              "-a always,exit -F path=/usr/bin/z -F perm=x -F auid >= 1000\n",
 	} {
 		a, complete, skipped := auditOf(t, rulesFS(map[string]string{"/etc/audit/rules.d/a.rules": rules}))
 		if complete || len(skipped) == 0 {
 			t.Errorf("%s: complete %v, skipped %v, %+v", name, complete, skipped, a)
 		}
+	}
+}
+
+// A rules file that is a symbolic link is read (augenrules follows it), and a link to nowhere makes the facts incomplete.
+func TestAuditSymlinkedRulesFile(t *testing.T) {
+	m := rulesFS(map[string]string{"/opt/hardening/stig.rules": "-w /etc/passwd -p wa\n"})
+	m.AddSymlink("/etc/audit/rules.d/50-stig.rules", "/opt/hardening/stig.rules")
+	a, complete, skipped := auditOf(t, m)
+	if !complete || a.Paths["/etc/passwd"].Perms != "wa" {
+		t.Errorf("a link to a rules file: complete %v %v, %+v", complete, skipped, a.Paths)
+	}
+	m = rulesFS(nil)
+	m.AddSymlink("/etc/audit/rules.d/50-stig.rules", "/opt/missing.rules")
+	if _, complete, _ = auditOf(t, m); complete {
+		t.Error("a link to nowhere was taken as no rules")
+	}
+}
+
+// More rules files than are read make the facts incomplete: the one that is left out may hold the rule, or a -D.
+func TestAuditTooManyFiles(t *testing.T) {
+	files := map[string]string{}
+	for i := 0; i < auditMaxFiles+5; i++ {
+		files[fmt.Sprintf("/etc/audit/rules.d/%03d.rules", i)] = "-w /etc/x -p wa\n"
+	}
+	if _, complete, skipped := auditOf(t, rulesFS(files)); complete || len(skipped) == 0 {
+		t.Errorf("complete %v, %v", complete, skipped)
+	}
+}
+
+// A file over the limit is not read.
+func TestAuditBigFileIsNotRead(t *testing.T) {
+	m := rulesFS(map[string]string{"/etc/audit/rules.d/a.rules": strings.Repeat("# padding\n", auditMaxFileBytes/9) + "-w /etc/x -p wa\n"})
+	a, complete, _ := auditOf(t, m)
+	if complete || len(a.Paths) != 0 {
+		t.Errorf("complete %v, %+v", complete, a.Paths)
 	}
 }
 
@@ -137,8 +188,8 @@ func TestAuditLimits(t *testing.T) {
 		fmt.Fprintf(&b, "-w /etc/f%d -p wa\n", i)
 	}
 	a, complete, skipped := auditOf(t, rulesFS(map[string]string{"/etc/audit/rules.d/a.rules": b.String()}))
-	if complete || len(a.Rules) != auditMaxRules || len(skipped) == 0 {
-		t.Errorf("complete %v, %d rules, %v", complete, len(a.Rules), skipped)
+	if complete || len(a.Paths) != auditMaxRules || len(skipped) == 0 {
+		t.Errorf("complete %v, %d paths, %v", complete, len(a.Paths), skipped)
 	}
 	_, complete, _ = auditOf(t, rulesFS(map[string]string{"/etc/audit/rules.d/a.rules": "-w /etc/" + strings.Repeat("x", auditMaxLine) + " -p wa\n"}))
 	if complete {

@@ -2039,7 +2039,7 @@ Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, 
 
 The audit rules watch a path that the control names (감사 규칙이 점검 항목이 지정한 경로를 감시함) — severity medium, evaluates an expression.
 
-Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter `path` for the permissions named by `perms` (r, w, a, x, in that order, such as `wa` or `x`): a watch (`-w /etc/passwd -p wa`) or an always,exit rule with `path=` and `perm=`, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. Only a profile sets the parameters. Not applicable to a container image.
+Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter `path` for the permissions named by `perms` (r, w, a, x, in that order, such as `wa` or `x`): a watch (`-w /etc/passwd -p wa`) or an always,exit rule with `path=` and `perm=`, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a `never` rule, do not count; a rule on a directory (`dir=`) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.
 
 **Why.** Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.
 

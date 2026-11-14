@@ -47,5 +47,7 @@ Two mappings are stricter than the STIG, never looser: `UBTU-22-611035` uses `ac
 pass it; and `accounts.password-max-age` also fails a value of 0 or less. The audit rules are read from the files that the host loads at boot (`/etc/audit/rules.d/*.rules`, or `/etc/audit/audit.rules` without them),
 not from the running kernel: a rule added with `auditctl` since boot is not seen, and a line that vmsctl cannot read makes the result `ERROR`,
 never a pass. A command rule counts only in the form the STIG gives (`-a always,exit -F path=... -F perm=x -F auid>=1000 -F auid!=unset`); the
-path must be the STIG's own (`/bin/su`, not `/usr/bin/su`). More controls come as the checks they need exist (the audit rules for system
+path must be the STIG's own (`/bin/su`, not `/usr/bin/su`). A rule narrowed by another filter (a user, an exit code, success) does not count, a
+`never` rule for a path removes it, and a `never` rule that names no path makes the result `ERROR`; a rule on a directory counts for the directory
+only. More controls come as the checks they need exist (the audit rules for system
 calls are the largest group left).
