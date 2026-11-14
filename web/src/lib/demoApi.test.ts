@@ -29,15 +29,20 @@ describe("demo api", () => {
     const page = filterHosts(list, new URLSearchParams("limit=1&offset=1"));
     expect(page.total).toBe(3);
     expect(page.hosts.map((h) => h.name)).toEqual(["web-01"]);
+    expect(filterHosts(list, new URLSearchParams("limit=-5")).hosts).toHaveLength(3); // a limit that is not above zero is 100, as on the server
   });
   it("moves timestamps forward and leaves everything else alone", () => {
     const day = 24 * 3600 * 1000;
-    const out = shiftTimes({ at: "2026-11-01T00:00:00Z", last: "2026-11-01T10:00:00.123456789Z", name: "2026-11-01", n: 3, list: [{ t: "2026-11-02T00:00:00Z" }], flag: true }, 2 * day);
+    const out = shiftTimes(
+      { at: "2026-11-01T00:00:00Z", receivedAt: "2026-11-01T10:00:00.123456789Z", name: "2026-11-01", n: 3, list: [{ at: "2026-11-02T00:00:00Z" }], flag: true, evidence: { text: "2026-11-01T00:00:00Z" } },
+      2 * day,
+    );
     expect(out.at).toBe("2026-11-03T00:00:00.000Z");
-    expect(out.last).toBe("2026-11-03T10:00:00.123Z");
+    expect(out.receivedAt).toBe("2026-11-03T10:00:00.123Z");
     expect(out.name).toBe("2026-11-01");
     expect(out.n).toBe(3);
-    expect(out.list[0].t).toBe("2026-11-04T00:00:00.000Z");
+    expect(out.list[0].at).toBe("2026-11-04T00:00:00.000Z");
     expect(out.flag).toBe(true);
+    expect(out.evidence.text).toBe("2026-11-01T00:00:00Z"); // a value a scan observed is not a time of the API
   });
 });

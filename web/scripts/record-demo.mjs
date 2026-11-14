@@ -3,6 +3,7 @@
 //
 // usage: node scripts/record-demo.mjs BASE_URL READ_TOKEN OUT.json
 import { writeFileSync } from "node:fs";
+import { demoKey as key } from "../src/lib/demoKey.js";
 
 const [base, token, out] = process.argv.slice(2);
 if (!base || !token || !out) {
@@ -22,16 +23,6 @@ async function get(path, { optional = false } = {}) {
   return res.json();
 }
 
-// The key a request is looked up by: the path, without the profile and the stale-days (the demo has one profile and one value).
-function key(path) {
-  const u = new URL(path, "http://x");
-  u.searchParams.delete("profile");
-  u.searchParams.delete("staleDays");
-  u.searchParams.sort();
-  const q = u.searchParams.toString();
-  return u.pathname + (q ? "?" + q : "");
-}
-
 async function record(path, opts) {
   const body = await get(path, opts);
   if (body !== null) data[key(path)] = body;
@@ -48,6 +39,8 @@ await record(`/api/v1/matrix?staleDays=${STALE}`);
 const hosts = await record(`/api/v1/hosts?staleDays=${STALE}&limit=500&kind=host`);
 const images = await record(`/api/v1/hosts?staleDays=${STALE}&limit=500&kind=image`, { optional: true });
 const all = [...(hosts?.hosts ?? []), ...(images?.hosts ?? [])];
+// The demo filters the recorded list itself, so the list must be complete.
+if ((hosts?.total ?? 0) > 500 || (images?.total ?? 0) > 500) throw new Error("the demo fleet is larger than one page of 500: record it in pages");
 
 const latest = [];
 for (const h of all) {

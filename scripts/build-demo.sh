@@ -11,6 +11,11 @@ pid=$!
 trap 'kill $pid 2>/dev/null || true; rm -f "$log"' EXIT INT TERM
 i=0
 while ! grep -q 'hlt_api_' "$log"; do
+	if ! kill -0 "$pid" 2>/dev/null; then
+		cat "$log" >&2
+		echo "the demo server stopped" >&2
+		exit 1
+	fi
 	sleep 0.5
 	i=$((i + 1))
 	if [ "$i" -ge 60 ]; then

@@ -6,7 +6,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "web/**", "scripts/build-demo.sh", "internal/server/demo.go", "rules/**", "profiles/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "web/**", "scripts/build-demo.sh", "internal/server/**", "rules/**", "profiles/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

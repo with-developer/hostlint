@@ -1,6 +1,7 @@
 // The live demo (site/demo): the dashboard without a server. `scripts/record-demo.mjs` saved what the dashboard asks of
 // `vmsctl server demo` in demo-data.json; this answers the same requests from it. The fleet is made up. Lists are filtered and
 // sorted here the way the server does it, since a search box or a sort button asks for a list nobody recorded.
+import { demoKey } from "./demoKey.js";
 import type { HostSummary } from "./types";
 
 export class DemoError extends Error {
@@ -12,39 +13,39 @@ export class DemoError extends Error {
 type Data = Record<string, unknown>;
 let loading: Promise<Data> | null = null;
 
+/** The fields of the API that hold a moment; other strings (a scan's evidence, a name) are never moved. */
+const timeFields = new Set(["receivedAt", "lastScanAt", "at", "startedAt", "finishedAt", "scanned", "createdAt"]);
 const timestamp = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/;
 
 /** Moves every timestamp of the recorded answers forward by ms, so that the fleet looks as fresh as it did when it was recorded. */
-export function shiftTimes<T>(value: T, ms: number): T {
+export function shiftTimes<T>(value: T, ms: number, field = ""): T {
   if (typeof value === "string") {
-    return (timestamp.test(value) ? new Date(Date.parse(value) + ms).toISOString() : value) as T;
+    return (timeFields.has(field) && timestamp.test(value) ? new Date(Date.parse(value) + ms).toISOString() : value) as T;
   }
-  if (Array.isArray(value)) return value.map((v) => shiftTimes(v, ms)) as T;
+  if (Array.isArray(value)) return value.map((v) => shiftTimes(v, ms, field)) as T;
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, shiftTimes(v, ms)])) as T;
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, shiftTimes(v, ms, k)])) as T;
   }
   return value;
 }
 
 function load(): Promise<Data> {
-  loading ??= fetch(new URL("demo-data.json", document.baseURI).toString()).then(async (r) => {
-    if (!r.ok) throw new DemoError(r.status, "the demo data is missing");
-    const data = (await r.json()) as Data;
-    const recorded = Date.parse(String(data.__recordedAt ?? ""));
-    return Number.isNaN(recorded) ? data : shiftTimes(data, Date.now() - recorded);
-  });
+  // "no-cache": the browser asks again whether the file changed, so a new deployment is not read with an old copy.
+  loading ??= fetch(new URL("demo-data.json", document.baseURI).toString(), { cache: "no-cache" })
+    .then(async (r) => {
+      if (!r.ok) throw new DemoError(r.status, "the demo data is missing");
+      const data = (await r.json()) as Data;
+      const recorded = Date.parse(String(data.__recordedAt ?? ""));
+      return Number.isNaN(recorded) ? data : shiftTimes(data, Date.now() - recorded);
+    })
+    .catch((e) => {
+      loading = null; // a failed load is tried again, not remembered
+      throw e;
+    });
   return loading;
 }
 
-/** The key a request is recorded under: the path and the sorted query, without the profile and the stale-days. */
-export function demoKey(path: string): string {
-  const u = new URL(path, "http://demo.invalid");
-  u.searchParams.delete("profile");
-  u.searchParams.delete("staleDays");
-  u.searchParams.sort();
-  const q = u.searchParams.toString();
-  return u.pathname + (q ? "?" + q : "");
-}
+export { demoKey };
 
 /** The host list as the server answers it: the recorded list of the kind, filtered, sorted and paged. */
 export function filterHosts(list: HostSummary[], params: URLSearchParams): { hosts: HostSummary[]; total: number } {
@@ -67,7 +68,8 @@ export function filterHosts(list: HostSummary[], params: URLSearchParams): { hos
   else if (sort === "recent") out.sort((a, b) => (a.lastScanAt < b.lastScanAt ? 1 : a.lastScanAt > b.lastScanAt ? -1 : 0));
   const total = out.length;
   const offset = Math.max(0, Number(params.get("offset") ?? 0) || 0);
-  const limit = Math.min(500, Number(params.get("limit") ?? 0) || 100);
+  const asked = Number(params.get("limit") ?? 0);
+  const limit = asked > 0 ? Math.min(500, asked) : 100; // like the server: no limit, or none above zero, is 100
   return { hosts: out.slice(offset, offset + limit), total };
 }
 
