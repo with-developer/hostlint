@@ -6,7 +6,7 @@
 **Know how hardened your Linux servers are, with the evidence behind every verdict.**
 
 vmsctl reads a host's security configuration, reports a result for every control of a hardening baseline
-(Korea's KISA CII Unix guide, and a short baseline most guides agree on), and shows the whole fleet in a dashboard.
+(Korea's KISA CII Unix guide, the US DISA STIG for Ubuntu 22.04, and a short baseline most guides agree on), and shows the whole fleet in a dashboard.
 It never changes anything, and it never guesses a PASS.
 
 [**Live demo**](https://with-developer.github.io/vmsctl/demo/) · [Quick start](#quick-start) · [Dashboard](#a-dashboard-for-the-whole-fleet) · [Docs](docs/README.md) · [한국어](README.ko.md)
