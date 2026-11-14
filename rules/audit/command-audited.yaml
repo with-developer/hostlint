@@ -1,0 +1,70 @@
+id: audit.command-audited
+version: 1
+title: The audit rules record every use of a command that the control names
+title_ko: 감사 규칙이 점검 항목이 지정한 명령의 모든 사용을 기록함
+severity: medium
+description: >-
+  Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule
+  for the program named by the parameter `path`, in the form that the STIG gives for commands:
+  `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset` (also written `-1`), so that what a logged-in user runs is
+  recorded. A watch (`-w`) or a rule without the two `auid` filters does not count. It reads the files, not the running kernel. Only a
+  profile sets the parameter. Not applicable to a container image.
+description_ko: >-
+  호스트가 부팅할 때 불러오는 감사 규칙(/etc/audit/rules.d/*.rules, 없으면 /etc/audit/audit.rules)에 매개변수 `path`의 프로그램에 대한
+  규칙이 STIG가 명령에 대해 정한 형태로 있는지 확인합니다. 형태는
+  `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset`(`-1`로 써도 됩니다)이고, 로그인한 사용자가 실행한 것이
+  기록되게 하려는 것입니다. 감시 규칙(`-w`)이나 `auid` 필터 두 개가 없는 규칙은 인정하지 않습니다. 실행 중인 커널이 아니라 파일을
+  읽습니다. 매개변수는 프로파일만 정합니다. 컨테이너 이미지에는 해당하지 않습니다.
+rationale: >-
+  A privileged program that is not audited can be run without a record of who ran it.
+rationale_ko: >-
+  감사하지 않는 권한 있는 프로그램은 누가 실행했는지 기록 없이 실행할 수 있습니다.
+remediation: >-
+  Add the rule for the program to a file in /etc/audit/rules.d (for example
+  `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset -k privileged-chage`) and load it with
+  `augenrules --load`.
+remediation_ko: >-
+  /etc/audit/rules.d의 파일에 그 프로그램의 규칙을 추가하고(예:
+  `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset -k privileged-chage`) `augenrules --load`로 불러오세요.
+applies: >-
+  params.path != "" && !target.image
+params:
+  path: {type: string, default: "", description: "The program to audit, as the STIG gives its path"}
+failure: >-
+  No audit rule records the use of the program that the profile names, with the auid filters that the STIG asks for.
+expect: >-
+  params.path in audit.user_paths && audit.user_paths[params.path].perms.contains("x")
+tests:
+  - name: the rule the STIG gives
+    params: {path: /usr/bin/chage}
+    facts:
+      audit: {present: true, rules: [], paths: {/usr/bin/chage: {perms: x, source: "x:1"}}, user_paths: {/usr/bin/chage: {perms: x, source: "/etc/audit/rules.d/stig.rules:7"}}}
+    want: PASS
+  - name: a watch or a rule without the auid filters
+    params: {path: /usr/bin/chage}
+    facts:
+      audit: {present: true, rules: [], paths: {/usr/bin/chage: {perms: x, source: "x:1"}}, user_paths: {}}
+    want: FAIL
+  - name: another program
+    params: {path: /usr/bin/chage}
+    facts:
+      audit: {present: true, rules: [], paths: {}, user_paths: {/usr/bin/passwd: {perms: x, source: "x:1"}}}
+    want: FAIL
+  - name: no audit rules at all
+    params: {path: /usr/bin/chage}
+    facts:
+      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+    want: FAIL
+  - name: a rules file that cannot be read
+    params: {path: /usr/bin/chage}
+    input: incomplete
+    incomplete: [audit]
+    facts:
+      audit: {present: true, rules: [], paths: {}, user_paths: {}}
+    want: ERROR
+  - name: a container image
+    params: {path: /usr/bin/chage}
+    facts:
+      target: {image: true}
+      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+    want: NOT_APPLICABLE

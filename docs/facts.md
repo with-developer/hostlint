@@ -41,6 +41,32 @@ Accounts are the `accounts` facts: /etc/passwd and /etc/group.
 | `accounts.empty_groups[].members` | list of string |  |
 | `accounts.empty_groups[].source` | string |  |
 
+## `audit`
+
+Audit are the `audit` facts: the audit rules that the host loads at boot, read from the files, not from the running kernel
+(a rule added with auditctl since boot is not seen; see the `services` facts for whether auditd starts). The files are
+/etc/audit/rules.d/*.rules in name order, which is what augenrules merges into /etc/audit/audit.rules; /etc/audit/audit.rules
+itself when there is no rules.d file. The keys of the rules (-k) are not kept: they are arbitrary names.
+
+| Path | Type | |
+|---|---|---|
+| `audit.present` | bool | Present is true when a rules file exists. |
+| `audit.rules` | list of object | Rules are the rules of the files in the order they are loaded, with those that a later "-D" deleted left out. |
+| `audit.rules[].kind` | string | Kind is "watch" (-w) or "syscall" (-a). |
+| `audit.rules[].action` | string | Action and List are those of an -a rule ("always", "exit"); empty for a watch. |
+| `audit.rules[].list` | string |  |
+| `audit.rules[].path` | string | Path is the path of a watch, or the path= or dir= of an -a rule, without a trailing "/". |
+| `audit.rules[].perms` | string | Perms are the audited permissions in the order r, w, a, x; of a watch without -p, all of them. |
+| `audit.rules[].syscalls` | list of string | Syscalls are those of -S. |
+| `audit.rules[].fields` | list of string | Fields are the other -F filters as written without spaces ("arch=b64", "auid>=1000"). |
+| `audit.rules[].source` | string |  |
+| `audit.paths` | map of object | Paths holds, for every path that a watch (-w) or an always,exit rule with path= and perm= audits, the permissions it audits (the union over the rules, in the order r, w, a, x: "wa", "x"), whoever the user is. A directory has no trailing "/". |
+| `audit.paths{}.perms` | string |  |
+| `audit.paths{}.source` | string | Source is the file and line of the first rule that audits it. |
+| `audit.user_paths` | map of object | UserPaths is the same for the rules written for logged-in users: always,exit rules with path=, perm=, auid>=1000 and auid!=unset (also written -1 or 4294967295), the form that the STIG asks for the commands it names. |
+| `audit.user_paths{}.perms` | string |  |
+| `audit.user_paths{}.source` | string | Source is the file and line of the first rule that audits it. |
+
 ## `banner`
 
 Banner is the `banner` facts: the texts shown before and after a login.

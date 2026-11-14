@@ -1,0 +1,75 @@
+id: audit.path-audited
+version: 1
+title: The audit rules watch a path that the control names
+title_ko: 감사 규칙이 점검 항목이 지정한 경로를 감시함
+severity: medium
+description: >-
+  Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the
+  path named by the parameter `path` for the permissions named by `perms` (r, w, a, x, in that order, such as `wa` or `x`): a watch
+  (`-w /etc/passwd -p wa`) or an always,exit rule with `path=` and `perm=`, for any user. The profile that uses this check says which
+  path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. Only a
+  profile sets the parameters. Not applicable to a container image.
+description_ko: >-
+  호스트가 부팅할 때 불러오는 감사 규칙(/etc/audit/rules.d/*.rules, 없으면 /etc/audit/audit.rules)이 매개변수 `path`의 경로를
+  `perms`의 권한(r, w, a, x 순서, 예: `wa`나 `x`)으로 감사하는지 확인합니다. 감시 규칙(`-w /etc/passwd -p wa`)이나 `path=`와
+  `perm=`이 있는 always,exit 규칙이면 되고, 사용자는 가리지 않습니다. 어느 경로와 권한인지는 이 점검을 쓰는 프로파일이 정합니다.
+  실행 중인 커널이 아니라 파일을 읽으므로, 부팅한 뒤 auditctl로 추가한 규칙은 보이지 않습니다. 매개변수는 프로파일만 정합니다.
+  컨테이너 이미지에는 해당하지 않습니다.
+rationale: >-
+  Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.
+rationale_ko: >-
+  보안 파일을 누가 바꿨는지, 권한 있는 프로그램을 누가 실행했는지 기록이 없으면 사고를 조사하거나 책임을 가릴 수 없습니다.
+remediation: >-
+  Add a rule for the path to a file in /etc/audit/rules.d (for example `-w /etc/passwd -p wa -k usergroup_modification`) and load
+  it with `augenrules --load`.
+remediation_ko: >-
+  /etc/audit/rules.d의 파일에 그 경로의 규칙을 추가하고(예: `-w /etc/passwd -p wa -k usergroup_modification`) `augenrules --load`로
+  불러오세요.
+applies: >-
+  params.path != "" && !target.image
+params:
+  path: {type: string, default: "", description: "The path to audit, without a trailing slash"}
+  perms: {type: string, default: "x", description: "The permissions to audit: any of r, w, a, x, in that order"}
+failure: >-
+  No audit rule watches the path that the profile names for the permissions it names.
+expect: >-
+  params.path in audit.paths && audit.paths[params.path].perms.contains(params.perms)
+tests:
+  - name: a watch with the permissions
+    params: {path: /etc/passwd, perms: wa}
+    facts:
+      audit: {present: true, rules: [], paths: {/etc/passwd: {perms: wa, source: "/etc/audit/rules.d/stig.rules:9"}}, user_paths: {}}
+    want: PASS
+  - name: more permissions than asked for
+    params: {path: /etc/passwd, perms: wa}
+    facts:
+      audit: {present: true, rules: [], paths: {/etc/passwd: {perms: rwax, source: "x:1"}}, user_paths: {}}
+    want: PASS
+  - name: only one of the permissions
+    params: {path: /etc/passwd, perms: wa}
+    facts:
+      audit: {present: true, rules: [], paths: {/etc/passwd: {perms: w, source: "x:1"}}, user_paths: {}}
+    want: FAIL
+  - name: another path
+    params: {path: /etc/passwd, perms: wa}
+    facts:
+      audit: {present: true, rules: [], paths: {/etc/shadow: {perms: wa, source: "x:1"}}, user_paths: {}}
+    want: FAIL
+  - name: no audit rules at all
+    params: {path: /etc/passwd, perms: wa}
+    facts:
+      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+    want: FAIL
+  - name: a rules file that cannot be read
+    params: {path: /etc/passwd, perms: wa}
+    input: incomplete
+    incomplete: [audit]
+    facts:
+      audit: {present: true, rules: [], paths: {}, user_paths: {}}
+    want: ERROR
+  - name: a container image
+    params: {path: /etc/passwd, perms: wa}
+    facts:
+      target: {image: true}
+      audit: {present: false, rules: [], paths: {}, user_paths: {}}
+    want: NOT_APPLICABLE

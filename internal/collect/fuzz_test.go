@@ -157,6 +157,10 @@ func FuzzSysctl(f *testing.F) {
 	fuzzCollector(f, sysctlCollector{}, "/etc/sysctl.d/10-kernel-hardening.conf", "sysctl-ubuntu-24.04", "sysctl-rocky-9")
 }
 
+func FuzzAuditRules(f *testing.F) {
+	fuzzCollector(f, auditCollector{}, "/etc/audit/rules.d/stig.rules", "audit/stig-ubuntu-22.04")
+}
+
 func FuzzSelinuxConfig(f *testing.F) {
 	fuzzCollector(f, macCollector{}, "/etc/selinux/config", "mac/rocky-9", "mac/amazonlinux-2023", "mac/centos-7")
 }
