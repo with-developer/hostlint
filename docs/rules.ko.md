@@ -1849,3 +1849,261 @@ OpenSSH 서버의 전역 PermitRootLogin 설정을 확인합니다. 실행 중�
 **이유.** root로 직접 로그인하면 누가 접속했는지 추적할 수 없고, 가장 강한 권한을 가진 계정이 비밀번호 추측과 키 유출에 그대로 노출됩니다.
 
 **조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `PermitRootLogin no`를 설정하고 sshd를 다시 불러오세요. 관리자는 각자의 계정으로 로그인한 뒤 sudo나 su를 사용합니다.
+
+## stig-ubuntu2204 (리비전 1)
+
+Canonical Ubuntu 22.04 LTS STIG(V2R8) 중 vmsctl이 점검하는 항목
+
+| 점검 항목 | 심각도 | 제목 | 점검 |
+|---|---|---|---|
+| UBTU-22-211015 | 높음 | Ctrl-Alt-Delete로 호스트가 재부팅되지 않음 | [`services.unit-masked`](#servicesunit-masked) |
+| UBTU-22-213010 | 낮음 | 커널 메시지를 권한 있는 사용자만 볼 수 있음 | [`sysctl.dmesg-restrict`](#sysctldmesg-restrict) |
+| UBTU-22-213020 | 중간 | 주소 공간 배치 무작위화가 켜져 있음 | [`sysctl.aslr`](#sysctlaslr) |
+| UBTU-22-215010 | 중간 | 비밀번호 품질 라이브러리가 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-215015 | 낮음 | chrony가 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-215020 | 낮음 | systemd-timesyncd가 설치되어 있지 않음 | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215025 | 낮음 | ntp가 설치되어 있지 않음 | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215030 | 높음 | rsh 서버가 설치되어 있지 않음 | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215035 | 높음 | telnet 서버가 설치되어 있지 않음 | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215040 | 중간 | NFS 서버가 설치되어 있지 않음 | [`packages.absent`](#packagesabsent) |
+| UBTU-22-251010 | 중간 | ufw가 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-251015 | 중간 | ufw가 켜져 있음 | [`firewall.ufw-active`](#firewallufw-active) |
+| UBTU-22-251020 | 중간 | ufw 서비스가 부팅할 때 시작함 | [`services.unit-enabled`](#servicesunit-enabled) |
+| UBTU-22-253010 | 중간 | TCP SYN 쿠키가 켜져 있음 | [`sysctl.syncookies`](#sysctlsyncookies) |
+| UBTU-22-255010 | 높음 | SSH 서버가 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-255015 | 높음 | SSH 서비스가 부팅할 때 시작함 | [`services.unit-enabled`](#servicesunit-enabled) |
+| UBTU-22-255025 | 높음 | SSH가 빈 비밀번호와 사용자 환경 변수를 허용하지 않음 | [`ssh.permit-empty-passwords`](#sshpermit-empty-passwords), [`ssh.permit-user-environment`](#sshpermit-user-environment) |
+| UBTU-22-255040 | 높음 | SSH가 X11을 전달하지 않음 | [`ssh.x11-forwarding`](#sshx11-forwarding) |
+| UBTU-22-411010 | 중간 | root 계정이 잠겨 있음 | [`accounts.root-locked`](#accountsroot-locked) |
+| UBTU-22-411015 | 중간 | 계정마다 고유한 UID를 가짐 | [`accounts.unique-uids`](#accountsunique-uids) |
+| UBTU-22-411025 | 중간 | 비밀번호를 하루 안에 다시 바꿀 수 없음 | [`accounts.password-min-age`](#accountspassword-min-age) |
+| UBTU-22-411030 | 중간 | 비밀번호가 60일 뒤에 만료됨 | [`accounts.password-max-age`](#accountspassword-max-age) |
+| UBTU-22-412030 | 중간 | 유휴 셸 세션이 15분 뒤에 끝남 | [`accounts.session-timeout-set`](#accountssession-timeout-set), [`accounts.session-timeout-value`](#accountssession-timeout-value) |
+| UBTU-22-431010 | 중간 | AppArmor가 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-611035 | 중간 | 비밀번호가 15자 이상임 | [`accounts.password-min-length`](#accountspassword-min-length) |
+| UBTU-22-611065 | 높음 | 비밀번호가 비어 있는 계정이 없음 | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
+| UBTU-22-653010 | 중간 | 감사 데몬(auditd)이 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+
+### 점검
+
+#### `accounts.no-empty-passwords`
+
+비밀번호가 비어 있는 계정이 없음 — 심각도 높음, 위반하는 것을 나열합니다.
+
+/etc/shadow에서 비밀번호 필드가 비어 있는 계정을 나열합니다. PAM이 허용하는 곳(pam_unix의 nullok 옵션이며, 일부 기본 설정에 아직 들어 있습니다)에서는 비밀번호 없이 그 계정을 쓸 수 있다는 뜻입니다. 잠긴 계정("!"나 "*")은 나열하지 않습니다. /etc/shadow가 없으면 확인할 것이 없으므로 이 점검은 통과할 수 없습니다.
+
+**이유.** 비밀번호가 없는 계정은 로그인 화면, 콘솔, su에 닿을 수 있는 누구나 쓸 수 있습니다.
+
+**조치 방법.** 나열된 계정마다 비밀번호를 정하거나(`passwd 사용자`) 잠그세요(`passwd -l 사용자`). PAM 설정의 pam_unix 줄에서 `nullok`을 지우면 빈 비밀번호를 거부합니다.
+
+#### `accounts.password-max-age`
+
+비밀번호가 만료됨 — 심각도 중간, 설정 하나를 비교합니다.
+
+/etc/login.defs의 PASS_MAX_DAYS, 즉 새 계정에 주는 비밀번호 최대 사용 기간을 확인합니다. 이 값이 없으면 shadow-utils는 -1을 쓰는데, 비밀번호가 만료되지 않는다는 뜻입니다.
+
+**이유.** 바뀌지 않는 비밀번호는 그것을 알아낸 사람에게 계속 쓸모가 있습니다.
+
+**조치 방법.** /etc/login.defs에 `PASS_MAX_DAYS 90`(또는 그보다 작은 값)을 설정하고, 이미 있는 계정에는 chage로 적용하세요.
+
+**매개변수** (설명은 영어).
+
+- `max_days` (int, 기본값 `90`, 더 낮을수록 엄격): Maximum password age in days
+
+#### `accounts.password-min-age`
+
+비밀번호를 바로 되돌려 바꿀 수 없음 — 심각도 낮음, 설정 하나를 비교합니다.
+
+/etc/login.defs의 PASS_MIN_DAYS, 즉 비밀번호를 바꾸는 간격의 최소 일수를 확인합니다.
+
+**이유.** 최소 사용 기간이 없으면 사용자가 몇 분 만에 비밀번호를 여러 번 바꿔 예전 비밀번호로 돌아갈 수 있어서 비밀번호 이력이 무력해집니다.
+
+**조치 방법.** /etc/login.defs에 `PASS_MIN_DAYS 1`(또는 그 이상)을 설정하세요.
+
+**매개변수** (설명은 영어).
+
+- `min_days` (int, 기본값 `1`, 더 높을수록 엄격): Minimum password age in days
+
+#### `accounts.password-min-length`
+
+비밀번호에 최소 길이가 있음 — 심각도 높음, 식을 평가합니다.
+
+passwd 서비스의 PAM 스택이 경고만 하는 모드가 아닌 상태로 비밀번호 품질 검사(pam_pwquality 또는 pam_cracklib)를 하고, 최소 길이를 `min_length`자 이상으로 요구하는지 확인합니다. 양수 크레딧은 합계만큼 비밀번호를 더 짧게 만들 수 있으므로 minlen에서 뺍니다.
+
+**이유.** 짧은 비밀번호는 추측과 오프라인 크래킹에 금방 무너집니다.
+
+**조치 방법.** password 스택에서 pam_pwquality를 켜고(authselect, pam-auth-update), /etc/security/pwquality.conf에 `minlen = 8` 이상을 설정하세요. enforcing = 0이나 양수 크레딧은 설정하지 마세요.
+
+**매개변수** (설명은 영어).
+
+- `min_length` (int, 기본값 `8`, 더 높을수록 엄격): Minimum password length
+
+#### `accounts.root-locked`
+
+root 계정에 로그인할 수 있는 비밀번호가 없음 — 심각도 중간, 위반하는 것을 나열합니다.
+
+/etc/shadow에서 root 계정이 잠겨 있는지(비밀번호 필드가 "!"로 시작하거나 "*") 확인합니다. 잠겨 있으면 비밀번호로 root에 로그인할 수 없고, 관리자는 자기 계정과 sudo를 씁니다. /etc/shadow가 없으면 확인할 것이 없으므로 이 점검은 통과할 수 없습니다.
+
+**이유.** root 비밀번호는 가장 강한 권한의 계정을 하나의 공유 비밀로 지키는 것이라 누구나 추측하거나 유출할 수 있고, 누가 썼는지도 남지 않습니다.
+
+**조치 방법.** 관리자가 sudo 그룹의 자기 계정을 갖춘 뒤에 root 비밀번호를 잠그세요(`passwd -l root`).
+
+#### `accounts.session-timeout-set`
+
+유휴 셸이 자동으로 끝남 — 심각도 낮음, 설정 하나를 비교합니다.
+
+시스템 전체 시작 파일(/etc/environment, /etc/profile과 그 파일이 읽는 /etc/profile.d 등)이 TMOUT을 양수 초로 설정해 두어서 모든 사용자의 로그인 셸에 적용되는지 확인합니다. root 자신의 파일에만 설정한 값은 인정하지 않고, if나 case 블록 안의 대입도 인정하지 않으며, 나중에 unset하면 설정이 사라집니다.
+
+**이유.** 로그인한 채 방치된 터미널은 그 앞에 접근한 누구나 쓸 수 있습니다.
+
+**조치 방법.** /etc/profile.d의 파일에 `TMOUT=600`, `readonly TMOUT`, `export TMOUT`을 추가하세요.
+
+#### `accounts.session-timeout-value`
+
+유휴 시간 제한이 충분히 짧음 — 심각도 낮음, 위반하는 것을 나열합니다.
+
+비어 있거나 0이거나 `max_seconds`보다 긴 TMOUT 대입과, TMOUT을 unset하는 명령을 나열합니다. 일부 세션에만 적용될 수 있는 if나 case 블록 안의 것도 포함합니다.
+
+**이유.** 제한 시간이 길거나 꺼져 있으면 유휴 세션이 열린 채 남습니다.
+
+**조치 방법.** `TMOUT=600`(또는 그보다 짧은 값)을 설정하고, 더 큰 값의 대입과 unset 명령은 지우세요.
+
+**매개변수** (설명은 영어).
+
+- `max_seconds` (int, 기본값 `600`, 더 낮을수록 엄격): Longest acceptable idle timeout in seconds
+
+#### `accounts.unique-uids`
+
+계정마다 UID가 다름 — 심각도 중간, 위반하는 것을 나열합니다.
+
+다른 계정과 UID가 같은 계정을 나열합니다.
+
+**이유.** UID가 같은 계정은 커널에게 같은 사용자이므로, 접근 권한과 감사 기록으로는 서로 구분할 수 없습니다.
+
+**조치 방법.** 계정마다 고유한 UID를 주고(`usermod -u`), 그 계정의 파일 소유자를 바로잡으세요.
+
+#### `firewall.ufw-active`
+
+ufw가 켜져 있음 — 심각도 중간, 식을 평가합니다.
+
+/etc/ufw/ufw.conf에 ENABLED=yes가 있는지 확인합니다. 이 값이 있어야 ufw가 부팅할 때 필터링을 시작합니다(패키지를 설치하면 유닛이 켜지므로 유닛만으로는 알 수 없습니다). ufw가 없으면 켤 것이 없으므로 실패합니다. Ubuntu STIG처럼 ufw 자체를 요구하는 프로파일을 위한 점검이며, firewall.enabled는 어떤 호스트 방화벽이든 받아들입니다.
+
+**이유.** 방화벽이 없으면 주소에서 대기 중인 모든 서비스가 접근할 수 있는 모든 사람에게 열립니다.
+
+**조치 방법.** 호스트가 제공하는 서비스를 허용한 뒤 ufw를 켜세요. `ufw allow 22/tcp` 후 `ufw enable`입니다. 지금 쓰고 있는 SSH 접속을 먼저 허용하세요.
+
+#### `packages.absent`
+
+점검 항목이 금지하는 패키지가 설치되어 있지 않음 — 심각도 중간, 식을 평가합니다.
+
+매개변수 `package`가 가리키는 패키지가 설치되어 있지 않은지 확인합니다(dpkg나 rpm). 어느 패키지인지는 이 점검을 쓰는 프로파일이 정합니다. 매개변수는 프로파일만 정합니다.
+
+**이유.** 필요하지 않은 패키지는 계속 패치해야 하고 공격받을 수 있는 코드와, 대개는 대기 중인 서비스를 더합니다.
+
+**조치 방법.** 패키지 관리자로 제거하세요(예: `apt remove 패키지`).
+
+**매개변수** (설명은 영어).
+
+- `package` (string, 기본값 ``): The name of the package that must not be installed
+
+#### `packages.installed`
+
+점검 항목이 요구하는 패키지가 설치되어 있음 — 심각도 중간, 식을 평가합니다.
+
+매개변수 `package`가 가리키는 패키지가 설치되어 있는지 확인합니다(dpkg나 rpm). 어느 패키지인지는 이 점검을 쓰는 프로파일이 정합니다. 제거했지만 설정 파일이 남은 패키지는 설치된 것으로 보지 않습니다. 매개변수는 프로파일만 정합니다.
+
+**이유.** 보안 도구나 서비스가 있어야 하는 점검 항목은 그 패키지가 없으면 충족할 수 없습니다.
+
+**조치 방법.** 패키지 관리자로 설치하세요(예: `apt install 패키지`).
+
+**매개변수** (설명은 영어).
+
+- `package` (string, 기본값 ``): The name of the package that must be installed
+
+#### `services.unit-enabled`
+
+점검 항목이 요구하는 systemd 유닛이 활성화되어 있음 — 심각도 중간, 식을 평가합니다.
+
+매개변수 `unit`이 가리키는 systemd 유닛(예: ssh.service)이 활성화되어 있어 부팅할 때 시작하고, 마스크되어 있지 않은지 확인합니다. 어느 유닛인지는 이 점검을 쓰는 프로파일이 정합니다. 매개변수는 프로파일만 정합니다.
+
+**이유.** 서비스가 실행되어야 하는 점검 항목은 서비스가 저절로 시작하지 않으면 충족할 수 없습니다.
+
+**조치 방법.** 유닛을 활성화하세요(`systemctl enable --now 유닛`). 마스크되어 있다면 먼저 풀어야 합니다(`systemctl unmask 유닛`).
+
+**매개변수** (설명은 영어).
+
+- `unit` (string, 기본값 ``): The systemd unit that must be enabled, for example ssh.service
+
+#### `services.unit-masked`
+
+점검 항목이 금지하는 systemd 유닛이 마스크되어 있음 — 심각도 중간, 식을 평가합니다.
+
+매개변수 `unit`이 가리키는 systemd 유닛(예: ctrl-alt-del.target)이 마스크되어 있는지, 즉 /dev/null에 연결되어 아무것도 그 유닛을 시작할 수 없는지 확인합니다. 어느 유닛인지는 이 점검을 쓰는 프로파일이 정합니다. 매개변수는 프로파일만 정합니다.
+
+**이유.** 서버에서 절대 실행되면 안 되는 유닛(키 입력으로 재부팅하는 것, 있을 곳이 없는 서비스)이 있습니다. 마스크해야 다른 유닛이나 사람이 시작하는 것까지 막을 수 있습니다.
+
+**조치 방법.** 유닛을 마스크하세요(`systemctl mask 유닛`).
+
+**매개변수** (설명은 영어).
+
+- `unit` (string, 기본값 ``): The systemd unit that must be masked, for example ctrl-alt-del.target
+
+#### `ssh.permit-empty-passwords`
+
+SSH가 빈 비밀번호를 받지 않음 — 심각도 높음, 설정 하나를 비교합니다.
+
+OpenSSH 서버의 전역 PermitEmptyPasswords 설정을 확인합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로, 설치된 버전의 기본값도 함께 반영됩니다.
+
+**이유.** 비밀번호가 없는 계정이 있으면 누구든 네트워크를 통해 그 계정으로 로그인할 수 있습니다.
+
+**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `PermitEmptyPasswords no`를 설정하고 sshd를 다시 불러오세요.
+
+#### `ssh.permit-user-environment`
+
+SSH가 사용자의 환경 변수 설정을 허용하지 않음 — 심각도 중간, 설정 하나를 비교합니다.
+
+OpenSSH 서버의 전역 PermitUserEnvironment 설정을 확인합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로, 설치된 버전의 기본값도 함께 반영됩니다.
+
+**이유.** 사용자가 자기 파일로 지정하는 환경 변수는 로그인 셸과 PAM 모듈의 동작을 바꿀 수 있어서, 그 계정에 걸어 둔 제한을 무력화합니다.
+
+**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `PermitUserEnvironment no`를 설정하고 sshd를 다시 불러오세요.
+
+#### `ssh.x11-forwarding`
+
+SSH가 X11을 전달하지 않음 — 심각도 낮음, 설정 하나를 비교합니다.
+
+OpenSSH 서버의 전역 X11Forwarding 설정을 확인합니다. 실행 중인 호스트에서는 `sshd -T`가 알려 주는 실제 적용값을 쓰므로, 설치된 버전의 기본값도 함께 반영됩니다.
+
+**이유.** X11 전달은 클라이언트의 화면을 서버에 노출합니다. 서버를 장악한 쪽은 그 화면을 몰래 보거나 조작할 수 있습니다.
+
+**조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `X11Forwarding no`를 설정하고 sshd를 다시 불러오세요.
+
+#### `sysctl.aslr`
+
+주소 공간 배치 무작위화가 완전히 켜져 있음 — 심각도 중간, 설정 하나를 비교합니다.
+
+커널 매개변수 kernel.randomize_va_space를 확인합니다(스택, 라이브러리, 힙을 모두 무작위로 배치하는 2여야 합니다). 실행 중인 호스트에서는 커널이 알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
+
+**이유.** 주소를 무작위로 배치하면 메모리 손상 취약점을 실제로 동작하는 공격으로 바꾸기가 훨씬 어려워집니다.
+
+**조치 방법.** /etc/sysctl.d의 파일에 `kernel.randomize_va_space = 2`를 설정하고 `sysctl --system`으로 적용하세요.
+
+#### `sysctl.dmesg-restrict`
+
+커널 로그는 권한 있는 사용자만 읽을 수 있음 — 심각도 낮음, 설정 하나를 비교합니다.
+
+커널 매개변수 kernel.dmesg_restrict를 확인합니다(1이면 dmesg를 권한 있는 사용자만 볼 수 있습니다). 실행 중인 호스트에서는 커널이 알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
+
+**이유.** 커널 로그에는 주소, 장치 정보, 실패한 공격의 흔적이 나타날 수 있습니다.
+
+**조치 방법.** /etc/sysctl.d의 파일에 `kernel.dmesg_restrict = 1`을 설정하고 `sysctl --system`으로 적용하세요.
+
+#### `sysctl.syncookies`
+
+TCP SYN 쿠키가 켜져 있음 — 심각도 중간, 설정 하나를 비교합니다.
+
+커널 매개변수 net.ipv4.tcp_syncookies를 확인합니다(1이면 연결 대기열이 가득 찼을 때 쏟아지는 연결 시도에 쿠키로 응답합니다). 실행 중인 호스트에서는 커널이 알려 주는 값을 쓰고, 마운트한 루트에서는 부팅할 때 sysctl.d(5)의 파일이 정하는 값을 씁니다. 그 파일이 정하지 않은 매개변수는 판단할 수 없습니다.
+
+**이유.** SYN 쿠키는 반쯤 열린 연결이 쏟아져도 연결 대기열의 메모리가 바닥나지 않게 막아 줍니다.
+
+**조치 방법.** /etc/sysctl.d의 파일에 `net.ipv4.tcp_syncookies = 1`을 설정하고 `sysctl --system`으로 적용하세요.

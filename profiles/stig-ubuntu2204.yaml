@@ -1,0 +1,184 @@
+# Canonical Ubuntu 22.04 LTS Security Technical Implementation Guide (STIG), V2R8, published by DISA (the US Department of Defense):
+# the controls that vmsctl checks. The control IDs and importance (CAT I = high, CAT II = medium, CAT III = low) are the STIG's, and the
+# STIG is a US government work; the titles are vmsctl's own short wording.
+#
+# A check is mapped to a control only when it decides exactly what the STIG requires (or, where the STIG fixes a number, with that
+# number as the parameter): a looser check would let a host pass a control it fails. The rest of the STIG (audit rules, file
+# ownership of system commands, smart cards, FIPS, a boot loader password, ...) is not checked yet, so this profile says nothing about it:
+# it is not a complete STIG assessment. See docs/stig.md.
+id: stig-ubuntu2204
+revision: 1
+title: Canonical Ubuntu 22.04 LTS STIG (V2R8), the controls vmsctl checks
+title_ko: Canonical Ubuntu 22.04 LTS STIG(V2R8) 중 vmsctl이 점검하는 항목
+controls:
+  - id: UBTU-22-211015
+    title: Ctrl-Alt-Delete does not reboot the host
+    title_ko: Ctrl-Alt-Delete로 호스트가 재부팅되지 않음
+    severity: high
+    checks: [services.unit-masked]
+    params:
+      services.unit-masked: {unit: ctrl-alt-del.target}
+  - id: UBTU-22-213010
+    title: Kernel messages are restricted to privileged users
+    title_ko: 커널 메시지를 권한 있는 사용자만 볼 수 있음
+    severity: low
+    checks: [sysctl.dmesg-restrict]
+  - id: UBTU-22-213020
+    title: Address space layout randomization is on
+    title_ko: 주소 공간 배치 무작위화가 켜져 있음
+    severity: medium
+    checks: [sysctl.aslr]
+  - id: UBTU-22-215010
+    title: The password quality library is installed
+    title_ko: 비밀번호 품질 라이브러리가 설치되어 있음
+    severity: medium
+    checks: [packages.installed]
+    params:
+      packages.installed: {package: libpam-pwquality}
+  - id: UBTU-22-215015
+    title: chrony is installed
+    title_ko: chrony가 설치되어 있음
+    severity: low
+    checks: [packages.installed]
+    params:
+      packages.installed: {package: chrony}
+  - id: UBTU-22-215020
+    title: systemd-timesyncd is not installed
+    title_ko: systemd-timesyncd가 설치되어 있지 않음
+    severity: low
+    checks: [packages.absent]
+    params:
+      packages.absent: {package: systemd-timesyncd}
+  - id: UBTU-22-215025
+    title: ntp is not installed
+    title_ko: ntp가 설치되어 있지 않음
+    severity: low
+    checks: [packages.absent]
+    params:
+      packages.absent: {package: ntp}
+  - id: UBTU-22-215030
+    title: The rsh server is not installed
+    title_ko: rsh 서버가 설치되어 있지 않음
+    severity: high
+    checks: [packages.absent]
+    params:
+      packages.absent: {package: rsh-server}
+  - id: UBTU-22-215035
+    title: The telnet server is not installed
+    title_ko: telnet 서버가 설치되어 있지 않음
+    severity: high
+    checks: [packages.absent]
+    params:
+      packages.absent: {package: telnetd}
+  - id: UBTU-22-215040
+    title: The NFS server is not installed
+    title_ko: NFS 서버가 설치되어 있지 않음
+    severity: medium
+    checks: [packages.absent]
+    params:
+      packages.absent: {package: nfs-kernel-server}
+  - id: UBTU-22-251010
+    title: ufw is installed
+    title_ko: ufw가 설치되어 있음
+    severity: medium
+    checks: [packages.installed]
+    params:
+      packages.installed: {package: ufw}
+  - id: UBTU-22-251015
+    title: ufw is turned on
+    title_ko: ufw가 켜져 있음
+    severity: medium
+    checks: [firewall.ufw-active]
+  - id: UBTU-22-251020
+    title: The ufw service starts at boot
+    title_ko: ufw 서비스가 부팅할 때 시작함
+    severity: medium
+    checks: [services.unit-enabled]
+    params:
+      services.unit-enabled: {unit: ufw.service}
+  - id: UBTU-22-253010
+    title: TCP SYN cookies are on
+    title_ko: TCP SYN 쿠키가 켜져 있음
+    severity: medium
+    checks: [sysctl.syncookies]
+  - id: UBTU-22-255010
+    title: The SSH server is installed
+    title_ko: SSH 서버가 설치되어 있음
+    severity: high
+    checks: [packages.installed]
+    params:
+      packages.installed: {package: openssh-server}
+  - id: UBTU-22-255015
+    title: The SSH service starts at boot
+    title_ko: SSH 서비스가 부팅할 때 시작함
+    severity: high
+    checks: [services.unit-enabled]
+    params:
+      services.unit-enabled: {unit: ssh.service}
+  - id: UBTU-22-255025
+    title: SSH allows no empty passwords and no user environment
+    title_ko: SSH가 빈 비밀번호와 사용자 환경 변수를 허용하지 않음
+    severity: high
+    checks: [ssh.permit-empty-passwords, ssh.permit-user-environment]
+  - id: UBTU-22-255040
+    title: SSH does not forward X11
+    title_ko: SSH가 X11을 전달하지 않음
+    severity: high
+    checks: [ssh.x11-forwarding]
+  - id: UBTU-22-411010
+    title: The root account is locked
+    title_ko: root 계정이 잠겨 있음
+    severity: medium
+    checks: [accounts.root-locked]
+  - id: UBTU-22-411015
+    title: Every account has its own UID
+    title_ko: 계정마다 고유한 UID를 가짐
+    severity: medium
+    checks: [accounts.unique-uids]
+  - id: UBTU-22-411025
+    title: A password cannot be changed again within a day
+    title_ko: 비밀번호를 하루 안에 다시 바꿀 수 없음
+    severity: medium
+    checks: [accounts.password-min-age]
+    params:
+      accounts.password-min-age: {min_days: 1}
+  - id: UBTU-22-411030
+    title: A password expires after 60 days
+    title_ko: 비밀번호가 60일 뒤에 만료됨
+    severity: medium
+    checks: [accounts.password-max-age]
+    params:
+      accounts.password-max-age: {max_days: 60}
+  - id: UBTU-22-412030
+    title: An idle shell session ends after 15 minutes
+    title_ko: 유휴 셸 세션이 15분 뒤에 끝남
+    severity: medium
+    checks: [accounts.session-timeout-set, accounts.session-timeout-value]
+    params:
+      accounts.session-timeout-value: {max_seconds: 900}
+  - id: UBTU-22-431010
+    title: AppArmor is installed
+    title_ko: AppArmor가 설치되어 있음
+    severity: medium
+    checks: [packages.installed]
+    params:
+      packages.installed: {package: apparmor}
+  - id: UBTU-22-611035
+    title: A password has at least 15 characters
+    title_ko: 비밀번호가 15자 이상임
+    severity: medium
+    checks: [accounts.password-min-length]
+    params:
+      accounts.password-min-length: {min_length: 15}
+  - id: UBTU-22-611065
+    title: No account has an empty password
+    title_ko: 비밀번호가 비어 있는 계정이 없음
+    severity: high
+    checks: [accounts.no-empty-passwords]
+  - id: UBTU-22-653010
+    title: The audit daemon is installed
+    title_ko: 감사 데몬(auditd)이 설치되어 있음
+    severity: medium
+    checks: [packages.installed]
+    params:
+      packages.installed: {package: auditd}

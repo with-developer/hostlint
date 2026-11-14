@@ -11,6 +11,7 @@
 | [Running vmsctl as a container](container.md) | the release image, what it can scan, verifying it |
 | [The fleet server and dashboard](fleet.md) | pushing results, the agent for on-demand scans, tokens, signed results, the API, running the server |
 | [Configuration](configuration.md) | `vmsctl.yaml`: parameters, waivers, attestations |
+| [The DISA STIG profile](stig.md) | `stig-ubuntu2204`: the US baseline for Ubuntu 22.04, what it covers and what it does not |
 | [Policy packs](packs.md) | your own checks and profiles |
 | [Moving from hostlint](migrating-from-hostlint.md) | the rename in v0.27 |
 | [How vmsctl compares](comparison.md) | with Lynis, OpenSCAP and Wazuh, and when to pick them |

@@ -193,7 +193,8 @@ or a scan that could not run, 130 when interrupted.
 
 ## What it checks
 
-The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 edition); the
+The `kisa-2026` profile maps all 67 Unix controls of the KISA guide (2026 edition), and `stig-ubuntu2204` the 27 controls
+of the US DISA STIG for Ubuntu 22.04 that vmsctl can decide ([what it covers](docs/stig.md)); the
 [rule reference](docs/rules.md) lists every control with the checks, parameters and fixes behind it:
 
 - **Accounts (U-01–U-13):** remote root login, password length, complexity and aging, lockout,

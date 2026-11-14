@@ -12,6 +12,7 @@
 | [vmsctl을 컨테이너로 실행하기](container.ko.md) | 릴리스 이미지, 점검할 수 있는 것, 이미지 검증 |
 | [서버와 대시보드](fleet.ko.md) | 결과 보내기, 요청 시 스캔용 에이전트, 토큰, 서명된 결과, API, 서버 운영 |
 | [설정](configuration.ko.md) | `vmsctl.yaml`: 매개변수, 예외, 증명 |
+| [DISA STIG 프로파일](stig.ko.md) | `stig-ubuntu2204`: Ubuntu 22.04용 미국 기준, 어디까지 점검하고 무엇은 점검하지 않는지 |
 | [정책 팩](packs.ko.md) | 직접 만드는 점검과 프로파일 |
 | [hostlint에서 옮기기](migrating-from-hostlint.ko.md) | v0.27의 이름 변경 |
 | [다른 도구와 비교](comparison.ko.md) | Lynis, OpenSCAP, Wazuh와 비교하고, 어떤 경우에 그쪽을 고를지 |

@@ -1,0 +1,44 @@
+id: firewall.ufw-active
+version: 1
+title: ufw is turned on
+title_ko: ufw가 켜져 있음
+severity: medium
+description: >-
+  Checks that /etc/ufw/ufw.conf sets ENABLED=yes, which is what makes ufw filter at boot (installing the package enables its unit, so
+  the unit alone says nothing). Without ufw there is nothing to turn on, and the check fails: it is for profiles that require ufw
+  itself, such as the Ubuntu STIG; firewall.enabled accepts any host firewall.
+description_ko: >-
+  /etc/ufw/ufw.conf에 ENABLED=yes가 있는지 확인합니다. 이 값이 있어야 ufw가 부팅할 때 필터링을 시작합니다(패키지를 설치하면
+  유닛이 켜지므로 유닛만으로는 알 수 없습니다). ufw가 없으면 켤 것이 없으므로 실패합니다. Ubuntu STIG처럼 ufw 자체를 요구하는
+  프로파일을 위한 점검이며, firewall.enabled는 어떤 호스트 방화벽이든 받아들입니다.
+rationale: >-
+  Without a firewall, every service that listens on an address is open to everyone who can reach it.
+rationale_ko: >-
+  방화벽이 없으면 주소에서 대기 중인 모든 서비스가 접근할 수 있는 모든 사람에게 열립니다.
+remediation: >-
+  Allow what the host serves and turn ufw on: `ufw allow 22/tcp`, then `ufw enable`. Allow your own SSH connection first.
+remediation_ko: >-
+  호스트가 제공하는 서비스를 허용한 뒤 ufw를 켜세요. `ufw allow 22/tcp` 후 `ufw enable`입니다. 지금 쓰고 있는 SSH 접속을 먼저 허용하세요.
+failure: >-
+  ufw is not turned on: /etc/ufw/ufw.conf is missing or does not set ENABLED=yes.
+expect: >-
+  firewall.ufw.present && "enabled" in firewall.ufw.settings && firewall.ufw.settings.enabled.value == "yes"
+tests:
+  - name: on
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "yes", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
+    want: PASS
+  - name: installed but off
+    facts:
+      firewall: {ufw: {present: true, settings: {enabled: {value: "no", explicit: true, source: "/etc/ufw/ufw.conf:6"}}}}
+    want: FAIL
+  - name: not installed
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+    want: FAIL
+  - name: the file cannot be read
+    input: unavailable
+    unavailable: [firewall]
+    facts:
+      firewall: {ufw: {present: false, settings: {}}}
+    want: ERROR

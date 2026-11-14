@@ -1,0 +1,52 @@
+id: services.unit-masked
+version: 1
+title: A systemd unit that the control forbids is masked
+title_ko: 점검 항목이 금지하는 systemd 유닛이 마스크되어 있음
+severity: medium
+description: >-
+  Checks that the systemd unit named by the parameter `unit` (such as ctrl-alt-del.target) is masked: linked to /dev/null, so nothing can
+  start it. The profile that uses this check says which unit. Only a profile sets the parameter.
+description_ko: >-
+  매개변수 `unit`이 가리키는 systemd 유닛(예: ctrl-alt-del.target)이 마스크되어 있는지, 즉 /dev/null에 연결되어 아무것도 그 유닛을
+  시작할 수 없는지 확인합니다. 어느 유닛인지는 이 점검을 쓰는 프로파일이 정합니다. 매개변수는 프로파일만 정합니다.
+rationale: >-
+  Some units must never run on a server (a key press that reboots it, a service that has no place there); only masking keeps another
+  unit or a person from starting them.
+rationale_ko: >-
+  서버에서 절대 실행되면 안 되는 유닛(키 입력으로 재부팅하는 것, 있을 곳이 없는 서비스)이 있습니다. 마스크해야 다른 유닛이나
+  사람이 시작하는 것까지 막을 수 있습니다.
+remediation: >-
+  Mask the unit (`systemctl mask <unit>`).
+remediation_ko: >-
+  유닛을 마스크하세요(`systemctl mask 유닛`).
+applies: >-
+  params.unit != "" && services.systemd
+params:
+  unit: {type: string, default: "", description: "The systemd unit that must be masked, for example ctrl-alt-del.target"}
+failure: >-
+  The unit that the profile forbids is not masked.
+expect: >-
+  params.unit in services.units && services.units[params.unit].masked
+tests:
+  - name: masked
+    params: {unit: ctrl-alt-del.target}
+    facts:
+      services: {systemd: true, units: {ctrl-alt-del.target: {enabled: false, masked: true}}}
+    want: PASS
+  - name: not masked
+    params: {unit: ctrl-alt-del.target}
+    facts:
+      services: {systemd: true, units: {ctrl-alt-del.target: {enabled: false, masked: false, file: /lib/systemd/system/ctrl-alt-del.target}}}
+    want: FAIL
+  - name: the units cannot be read
+    params: {unit: ctrl-alt-del.target}
+    input: unavailable
+    unavailable: [services]
+    facts:
+      services: {systemd: true, units: {}}
+    want: ERROR
+  - name: no systemd
+    params: {unit: ctrl-alt-del.target}
+    facts:
+      services: {systemd: false, units: {}}
+    want: NOT_APPLICABLE

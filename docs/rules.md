@@ -1850,3 +1850,261 @@ Checks the global PermitRootLogin setting of the OpenSSH server. On a live host 
 **Why.** Direct root logins remove accountability and expose the most privileged account to password guessing and stolen keys.
 
 **Fix.** Set `PermitRootLogin no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd. Administrators log in with their own accounts and use sudo or su.
+
+## stig-ubuntu2204 (revision 1)
+
+Canonical Ubuntu 22.04 LTS STIG (V2R8), the controls vmsctl checks
+
+| Control | Severity | Title | Checks |
+|---|---|---|---|
+| UBTU-22-211015 | high | Ctrl-Alt-Delete does not reboot the host (Ctrl-Alt-Delete로 호스트가 재부팅되지 않음) | [`services.unit-masked`](#servicesunit-masked) |
+| UBTU-22-213010 | low | Kernel messages are restricted to privileged users (커널 메시지를 권한 있는 사용자만 볼 수 있음) | [`sysctl.dmesg-restrict`](#sysctldmesg-restrict) |
+| UBTU-22-213020 | medium | Address space layout randomization is on (주소 공간 배치 무작위화가 켜져 있음) | [`sysctl.aslr`](#sysctlaslr) |
+| UBTU-22-215010 | medium | The password quality library is installed (비밀번호 품질 라이브러리가 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-215015 | low | chrony is installed (chrony가 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-215020 | low | systemd-timesyncd is not installed (systemd-timesyncd가 설치되어 있지 않음) | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215025 | low | ntp is not installed (ntp가 설치되어 있지 않음) | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215030 | high | The rsh server is not installed (rsh 서버가 설치되어 있지 않음) | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215035 | high | The telnet server is not installed (telnet 서버가 설치되어 있지 않음) | [`packages.absent`](#packagesabsent) |
+| UBTU-22-215040 | medium | The NFS server is not installed (NFS 서버가 설치되어 있지 않음) | [`packages.absent`](#packagesabsent) |
+| UBTU-22-251010 | medium | ufw is installed (ufw가 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-251015 | medium | ufw is turned on (ufw가 켜져 있음) | [`firewall.ufw-active`](#firewallufw-active) |
+| UBTU-22-251020 | medium | The ufw service starts at boot (ufw 서비스가 부팅할 때 시작함) | [`services.unit-enabled`](#servicesunit-enabled) |
+| UBTU-22-253010 | medium | TCP SYN cookies are on (TCP SYN 쿠키가 켜져 있음) | [`sysctl.syncookies`](#sysctlsyncookies) |
+| UBTU-22-255010 | high | The SSH server is installed (SSH 서버가 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-255015 | high | The SSH service starts at boot (SSH 서비스가 부팅할 때 시작함) | [`services.unit-enabled`](#servicesunit-enabled) |
+| UBTU-22-255025 | high | SSH allows no empty passwords and no user environment (SSH가 빈 비밀번호와 사용자 환경 변수를 허용하지 않음) | [`ssh.permit-empty-passwords`](#sshpermit-empty-passwords), [`ssh.permit-user-environment`](#sshpermit-user-environment) |
+| UBTU-22-255040 | high | SSH does not forward X11 (SSH가 X11을 전달하지 않음) | [`ssh.x11-forwarding`](#sshx11-forwarding) |
+| UBTU-22-411010 | medium | The root account is locked (root 계정이 잠겨 있음) | [`accounts.root-locked`](#accountsroot-locked) |
+| UBTU-22-411015 | medium | Every account has its own UID (계정마다 고유한 UID를 가짐) | [`accounts.unique-uids`](#accountsunique-uids) |
+| UBTU-22-411025 | medium | A password cannot be changed again within a day (비밀번호를 하루 안에 다시 바꿀 수 없음) | [`accounts.password-min-age`](#accountspassword-min-age) |
+| UBTU-22-411030 | medium | A password expires after 60 days (비밀번호가 60일 뒤에 만료됨) | [`accounts.password-max-age`](#accountspassword-max-age) |
+| UBTU-22-412030 | medium | An idle shell session ends after 15 minutes (유휴 셸 세션이 15분 뒤에 끝남) | [`accounts.session-timeout-set`](#accountssession-timeout-set), [`accounts.session-timeout-value`](#accountssession-timeout-value) |
+| UBTU-22-431010 | medium | AppArmor is installed (AppArmor가 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-611035 | medium | A password has at least 15 characters (비밀번호가 15자 이상임) | [`accounts.password-min-length`](#accountspassword-min-length) |
+| UBTU-22-611065 | high | No account has an empty password (비밀번호가 비어 있는 계정이 없음) | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
+| UBTU-22-653010 | medium | The audit daemon is installed (감사 데몬(auditd)이 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+
+### Checks
+
+#### `accounts.no-empty-passwords`
+
+No account has an empty password (비밀번호가 비어 있는 계정이 없음) — severity high, lists what violates it.
+
+Lists the accounts whose password field in /etc/shadow is empty, which means no password is needed to use them wherever PAM accepts it (the nullok option of pam_unix, which some default configurations still carry). Locked accounts ("!" or "*") are not listed. Without /etc/shadow there is nothing to check, so the check cannot pass.
+
+**Why.** An account without a password lets anyone who can reach a login prompt, a console or su use it.
+
+**Fix.** Set a password for each listed account (`passwd user`), or lock it (`passwd -l user`). Remove `nullok` from the pam_unix lines in the PAM configuration so an empty password is refused.
+
+#### `accounts.password-max-age`
+
+Passwords expire (비밀번호가 만료됨) — severity medium, compares one setting.
+
+Checks PASS_MAX_DAYS in /etc/login.defs, the maximum password age given to new accounts. Without it, shadow-utils uses -1, which means passwords never expire.
+
+**Why.** A password that never changes stays useful to whoever obtained it.
+
+**Fix.** Set `PASS_MAX_DAYS 90` (or less) in /etc/login.defs; apply it to existing accounts with chage.
+
+**Parameters.**
+
+- `max_days` (int, default `90`, lower is stricter): Maximum password age in days
+
+#### `accounts.password-min-age`
+
+Passwords cannot be changed back at once (비밀번호를 바로 되돌려 바꿀 수 없음) — severity low, compares one setting.
+
+Checks PASS_MIN_DAYS in /etc/login.defs, the minimum days between password changes.
+
+**Why.** Without a minimum age, a user can cycle through passwords in minutes to get back to the old one and defeat the password history.
+
+**Fix.** Set `PASS_MIN_DAYS 1` (or more) in /etc/login.defs.
+
+**Parameters.**
+
+- `min_days` (int, default `1`, higher is stricter): Minimum password age in days
+
+#### `accounts.password-min-length`
+
+Passwords have a minimum length (비밀번호에 최소 길이가 있음) — severity high, evaluates an expression.
+
+Checks that the passwd service's PAM stack enforces password quality (pam_pwquality or pam_cracklib, not in warning-only mode) with a minimum length of at least `min_length` characters. Positive credits let a password be shorter by up to their sum, so they count against minlen.
+
+**Why.** Short passwords fall quickly to guessing and offline cracking.
+
+**Fix.** Enable pam_pwquality in the password stack (authselect, pam-auth-update), set `minlen = 8` or more in /etc/security/pwquality.conf, and do not set enforcing = 0 or positive credits.
+
+**Parameters.**
+
+- `min_length` (int, default `8`, higher is stricter): Minimum password length
+
+#### `accounts.root-locked`
+
+The root account has no password that can log in (root 계정에 로그인할 수 있는 비밀번호가 없음) — severity medium, lists what violates it.
+
+Checks in /etc/shadow that the root account is locked (its password field starts with "!" or is "*"), so no password logs in as root. Administrators use their own accounts and sudo. Without /etc/shadow there is nothing to check, so the check cannot pass.
+
+**Why.** A root password is a shared secret for the most powerful account, which anyone can guess or leak and which says nothing about who used it.
+
+**Fix.** Lock the root password (`passwd -l root`) after an administrator has an account in the sudo group.
+
+#### `accounts.session-timeout-set`
+
+Idle shells time out (유휴 셸이 자동으로 끝남) — severity low, compares one setting.
+
+Checks that the system-wide startup files (/etc/environment, /etc/profile and the files it reads, such as /etc/profile.d) leave TMOUT set to a positive number of seconds, so that it applies to every user's login shell: a value set only in root's own files does not count, assignments inside if or case blocks do not count, and a later unset removes it.
+
+**Why.** An unattended logged-in terminal can be used by anyone who reaches it.
+
+**Fix.** Add `TMOUT=600` and `readonly TMOUT` and `export TMOUT` to a file in /etc/profile.d.
+
+#### `accounts.session-timeout-value`
+
+The idle timeout is short enough (유휴 시간 제한이 충분히 짧음) — severity low, lists what violates it.
+
+Lists TMOUT assignments that are empty, zero or longer than `max_seconds`, and unset TMOUT commands, including those inside if or case blocks, which can apply to some sessions.
+
+**Why.** A long or disabled timeout leaves idle sessions open.
+
+**Fix.** Set `TMOUT=600` (or less) and remove larger assignments and unset commands.
+
+**Parameters.**
+
+- `max_seconds` (int, default `600`, lower is stricter): Longest acceptable idle timeout in seconds
+
+#### `accounts.unique-uids`
+
+Every account has its own UID (계정마다 UID가 다름) — severity medium, lists what violates it.
+
+Lists accounts that share a UID with another account.
+
+**Why.** Accounts sharing a UID are the same user to the kernel, so access and audit trails cannot tell them apart.
+
+**Fix.** Give each account a unique UID (usermod -u) and fix the ownership of its files.
+
+#### `firewall.ufw-active`
+
+ufw is turned on (ufw가 켜져 있음) — severity medium, evaluates an expression.
+
+Checks that /etc/ufw/ufw.conf sets ENABLED=yes, which is what makes ufw filter at boot (installing the package enables its unit, so the unit alone says nothing). Without ufw there is nothing to turn on, and the check fails: it is for profiles that require ufw itself, such as the Ubuntu STIG; firewall.enabled accepts any host firewall.
+
+**Why.** Without a firewall, every service that listens on an address is open to everyone who can reach it.
+
+**Fix.** Allow what the host serves and turn ufw on: `ufw allow 22/tcp`, then `ufw enable`. Allow your own SSH connection first.
+
+#### `packages.absent`
+
+A package that the control forbids is not installed (점검 항목이 금지하는 패키지가 설치되어 있지 않음) — severity medium, evaluates an expression.
+
+Checks that the package named by the parameter `package` is not installed (dpkg or rpm). The profile that uses this check says which package. Only a profile sets the parameter.
+
+**Why.** A package that is not needed adds code, and often a listening service, that has to be kept patched and can be attacked.
+
+**Fix.** Remove the package with the package manager (for example `apt remove <package>`).
+
+**Parameters.**
+
+- `package` (string, default ``): The name of the package that must not be installed
+
+#### `packages.installed`
+
+A package that the control requires is installed (점검 항목이 요구하는 패키지가 설치되어 있음) — severity medium, evaluates an expression.
+
+Checks that the package named by the parameter `package` is installed (dpkg or rpm). The profile that uses this check says which package; a package that was removed but left its configuration files is not installed. Only a profile sets the parameter.
+
+**Why.** A control that needs a security tool or a service on the host cannot be met without its package.
+
+**Fix.** Install the package with the package manager (for example `apt install <package>`).
+
+**Parameters.**
+
+- `package` (string, default ``): The name of the package that must be installed
+
+#### `services.unit-enabled`
+
+A systemd unit that the control requires is enabled (점검 항목이 요구하는 systemd 유닛이 활성화되어 있음) — severity medium, evaluates an expression.
+
+Checks that the systemd unit named by the parameter `unit` (such as ssh.service) is enabled, so it starts at boot, and not masked. The profile that uses this check says which unit. Only a profile sets the parameter.
+
+**Why.** A control that needs a service to run cannot be met if the service does not start by itself.
+
+**Fix.** Enable the unit (`systemctl enable --now <unit>`) and unmask it if it is masked (`systemctl unmask <unit>`).
+
+**Parameters.**
+
+- `unit` (string, default ``): The systemd unit that must be enabled, for example ssh.service
+
+#### `services.unit-masked`
+
+A systemd unit that the control forbids is masked (점검 항목이 금지하는 systemd 유닛이 마스크되어 있음) — severity medium, evaluates an expression.
+
+Checks that the systemd unit named by the parameter `unit` (such as ctrl-alt-del.target) is masked: linked to /dev/null, so nothing can start it. The profile that uses this check says which unit. Only a profile sets the parameter.
+
+**Why.** Some units must never run on a server (a key press that reboots it, a service that has no place there); only masking keeps another unit or a person from starting them.
+
+**Fix.** Mask the unit (`systemctl mask <unit>`).
+
+**Parameters.**
+
+- `unit` (string, default ``): The systemd unit that must be masked, for example ctrl-alt-del.target
+
+#### `ssh.permit-empty-passwords`
+
+SSH does not accept empty passwords (SSH가 빈 비밀번호를 받지 않음) — severity high, compares one setting.
+
+Checks the global PermitEmptyPasswords setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** An account without a password would let anyone log in over the network.
+
+**Fix.** Set `PermitEmptyPasswords no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.permit-user-environment`
+
+SSH does not let users set the environment (SSH가 사용자의 환경 변수 설정을 허용하지 않음) — severity medium, compares one setting.
+
+Checks the global PermitUserEnvironment setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** Environment settings from a user's own files can change how the login shell and PAM modules behave, which defeats restrictions set for the account.
+
+**Fix.** Set `PermitUserEnvironment no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `ssh.x11-forwarding`
+
+SSH does not forward X11 (SSH가 X11을 전달하지 않음) — severity low, compares one setting.
+
+Checks the global X11Forwarding setting of the OpenSSH server. On a live host the effective value comes from `sshd -T`, so the default of the installed version counts.
+
+**Why.** X11 forwarding exposes the client's display to the server, and anything that controls the server can then watch or drive it.
+
+**Fix.** Set `X11Forwarding no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd.
+
+#### `sysctl.aslr`
+
+Address space layout randomization is fully on (주소 공간 배치 무작위화가 완전히 켜져 있음) — severity medium, compares one setting.
+
+Checks the kernel parameter kernel.randomize_va_space (it must be 2: randomize the stack, libraries and the heap). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** Randomized addresses make memory-corruption bugs much harder to turn into working exploits.
+
+**Fix.** Set `kernel.randomize_va_space = 2` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.dmesg-restrict`
+
+Only privileged users can read the kernel log (커널 로그는 권한 있는 사용자만 읽을 수 있음) — severity low, compares one setting.
+
+Checks the kernel parameter kernel.dmesg_restrict (1 limits dmesg to privileged users). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** The kernel log can show addresses, device details and the traces of failed exploits.
+
+**Fix.** Set `kernel.dmesg_restrict = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
+
+#### `sysctl.syncookies`
+
+TCP SYN cookies are on (TCP SYN 쿠키가 켜져 있음) — severity medium, compares one setting.
+
+Checks the kernel parameter net.ipv4.tcp_syncookies (1: answer a flood of connection attempts with cookies once the queue is full). On a running host the value is what the kernel reports; for a mounted root it is what the files of sysctl.d(5) set at boot, and a parameter they do not set cannot be judged.
+
+**Why.** SYN cookies keep a flood of half-open connections from using up the memory of the connection queue.
+
+**Fix.** Set `net.ipv4.tcp_syncookies = 1` in a file of /etc/sysctl.d and apply it with `sysctl --system`.
