@@ -134,12 +134,13 @@ controls:
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := builtin(t)
+			before := len(c.Profiles)
 			if _, err := c.Extend(source(tc.checks, tc.profs)); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("err = %v, want %q", err, tc.want)
 			}
 			// A refused pack adds nothing.
-			if len(c.Profiles) != 2 {
-				t.Errorf("%d profiles", len(c.Profiles))
+			if len(c.Profiles) != before {
+				t.Errorf("%d profiles, were %d", len(c.Profiles), before)
 			}
 		})
 	}

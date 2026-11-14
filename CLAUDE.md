@@ -58,7 +58,7 @@ required check on `main`.
 | `internal/rulesdoc/` | Renders the rule reference `docs/rules.md` and the fact reference `docs/facts.md` from the built-in rules, profiles and collectors |
 | `internal/output/` | Terminal, JSON, SARIF, JUnit and HTML output |
 | `rules/` | Built-in checks (YAML), embedded in the binary |
-| `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`), embedded |
+| `profiles/` | Versioned control mappings per standard edition (e.g. `kisa-2026`; `stig-ubuntu2204` names its OS with `os:`), embedded |
 | `schema/` | JSON Schema of the result document (ADR 0006), with a valid example |
 | `testdata/` | Fixture root filesystems per distro (hardened and default) |
 | `e2e/` | Docker-based scans of every supported distribution (stock and hardened), image scans, and the golden results |
@@ -67,7 +67,7 @@ required check on `main`.
 | `packaging/container/` | The Dockerfile of the release image on ghcr.io (`.github/workflows/container.yml`) |
 | `install.sh` | The installer: downloads a release, verifies it, installs the binary |
 | `scripts/` | Release checks, the translation check, lint guards and the live demo build (`check-release.sh`, `check-translations.sh`, `lint-guards.sh`, `build-demo.sh`) |
-| `site/` | The project page for GitHub Pages (English, and `ko/`, with the generated KISA page `ko/kisa/`) and the live demo `demo/` (built, not committed); published by `.github/workflows/pages.yml` |
+| `site/` | The project page for GitHub Pages (English, and `ko/`, with the generated pages `ko/kisa/` and `stig/ubuntu2204/`, both from `internal/rulesdoc/site.go` by `make docs`) and the live demo `demo/` (built, not committed); published by `.github/workflows/pages.yml` |
 | `.goreleaser.yaml` | Release build: archives, packages, SBOMs, checksums and signing (docs/RELEASING.md) |
 
 ## Security invariants — never violate

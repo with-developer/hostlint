@@ -179,10 +179,13 @@ type TestFile struct {
 
 // Profile maps one standard edition's controls to checks.
 type Profile struct {
-	ID       string    `yaml:"id"`
-	Revision int       `yaml:"revision"`
-	Title    string    `yaml:"title"`
-	TitleKo  string    `yaml:"title_ko"`
+	ID       string `yaml:"id"`
+	Revision int    `yaml:"revision"`
+	Title    string `yaml:"title"`
+	TitleKo  string `yaml:"title_ko"`
+	// OS names the operating systems the profile is for, as ID-VERSION_ID of /etc/os-release (ubuntu-22.04). On any other host every
+	// control is NOT_APPLICABLE, with the reason: a standard written for one distribution says nothing true about another. Empty: any.
+	OS       []string  `yaml:"os"`
 	Controls []Control `yaml:"controls"`
 }
 
@@ -207,6 +210,7 @@ type Content struct {
 var (
 	checkIDRe   = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$`)
 	profileIDRe = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+	profileOSRe = regexp.MustCompile(`^[a-z0-9_.]+-[0-9][0-9.]*$`)
 	paramRe     = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	identRe     = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 	factPathRe  = regexp.MustCompile(`^[a-z_][a-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+(\["[^"\\]+"\])?$|^[a-z_][a-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*\["[^"\\]+"\]$`)
@@ -510,6 +514,11 @@ func validateProfile(file string, pr *Profile, checks map[string]*Check) error {
 	}
 	if strings.TrimSpace(pr.Title) == "" {
 		p.add("title is required")
+	}
+	for _, os := range pr.OS {
+		if !profileOSRe.MatchString(os) {
+			p.add("os %q must be ID-VERSION_ID such as ubuntu-22.04", os)
+		}
 	}
 	seen := map[string]bool{}
 	for _, ctl := range pr.Controls {

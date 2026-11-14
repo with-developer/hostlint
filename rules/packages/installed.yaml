@@ -1,0 +1,55 @@
+id: packages.installed
+version: 1
+title: A package that the control requires is installed
+title_ko: 점검 항목이 요구하는 패키지가 설치되어 있음
+severity: medium
+description: >-
+  Checks that the package named by the parameter `package` is installed (dpkg or rpm). The profile that uses this check says which
+  package; a package that was removed but left its configuration files, or that is only unpacked or half configured, is not installed. Only a profile sets the parameter.
+description_ko: >-
+  매개변수 `package`가 가리키는 패키지가 설치되어 있는지 확인합니다(dpkg나 rpm). 어느 패키지인지는 이 점검을 쓰는 프로파일이
+  정합니다. 제거했지만 설정 파일이 남은 패키지나, 풀기만 했거나 설정이 끝나지 않은 패키지는 설치된 것으로 보지 않습니다. 매개변수는 프로파일만 정합니다.
+rationale: >-
+  A control that needs a security tool or a service on the host cannot be met without its package.
+rationale_ko: >-
+  보안 도구나 서비스가 있어야 하는 점검 항목은 그 패키지가 없으면 충족할 수 없습니다.
+remediation: >-
+  Install the package with the package manager (for example `apt install <package>`).
+remediation_ko: >-
+  패키지 관리자로 설치하세요(예: `apt install 패키지`).
+applies: >-
+  params.package != "" && (packages.manager == "dpkg" || packages.manager == "rpm")
+params:
+  package: {type: string, default: "", description: The name of the package that must be installed}
+failure: >-
+  The package named by the profile is not installed.
+expect: >-
+  params.package in packages.installed && packages.installed[params.package][0].state == "installed"
+tests:
+  - name: installed
+    params: {package: chrony}
+    facts:
+      packages: {manager: dpkg, installed: {chrony: [{version: "4.2-2ubuntu2", arch: amd64, state: installed}]}}
+    want: PASS
+  - name: unpacked or half configured is not installed
+    params: {package: chrony}
+    facts:
+      packages: {manager: dpkg, installed: {chrony: [{version: "4.2-2ubuntu2", arch: amd64, state: half-configured}]}}
+    want: FAIL
+  - name: not installed
+    params: {package: chrony}
+    facts:
+      packages: {manager: dpkg, installed: {openssh-server: [{version: "1:8.9p1-3", arch: amd64, state: installed}]}}
+    want: FAIL
+  - name: the package list cannot be read
+    params: {package: chrony}
+    input: unavailable
+    unavailable: [packages]
+    facts:
+      packages: {manager: dpkg, installed: {}}
+    want: ERROR
+  - name: no package manager known
+    params: {package: chrony}
+    facts:
+      packages: {manager: "", installed: {}}
+    want: NOT_APPLICABLE

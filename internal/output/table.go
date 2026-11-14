@@ -3,7 +3,6 @@ package output
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -124,7 +123,7 @@ func writeTable(w io.Writer, res *engine.Result, opts Options) error {
 	if !opts.Verbose {
 		b.WriteString(p.paint(dim, "Passing and not-applicable controls are hidden; use --verbose to list them.") + "\n")
 	}
-	if slices.ContainsFunc(res.Checks, func(c engine.CheckResult) bool { return c.Status == engine.StatusFail }) {
+	if firstFailed(res) != "" {
 		hint := "How to fix a failed check: vmsctl explain CHECK-ID (for example vmsctl explain " + firstFailed(res) + ")."
 		if opts.Lang == "ko" {
 			hint = "실패한 점검의 조치 방법: vmsctl explain 점검ID --lang ko (예: vmsctl explain " + firstFailed(res) + " --lang ko)."
@@ -183,12 +182,22 @@ func oneLine(s string) string {
 	return b.String()
 }
 
-// firstFailed is the ID of the first failed check, for the example of the hint.
+// firstFailed is the ID of the first failed check of a failed control, for the example of the hint ("" when no control failed: a
+// check that failed under a control that is not applicable, as on a host that a profile is not for, is not what the table lists).
 func firstFailed(res *engine.Result) string {
+	byRef := map[string]engine.CheckResult{}
 	for _, c := range res.Checks {
-		if c.Status == engine.StatusFail {
-			return oneLine(c.ID)
+		byRef[c.Ref] = c
+	}
+	for _, ctl := range res.Controls {
+		if ctl.Status != engine.StatusFail {
+			continue
+		}
+		for _, ref := range ctl.Checks {
+			if c, ok := byRef[ref]; ok && c.Status == engine.StatusFail {
+				return oneLine(c.ID)
+			}
 		}
 	}
-	return "CHECK-ID"
+	return ""
 }

@@ -1,0 +1,54 @@
+id: accounts.root-locked
+version: 1
+title: The root account has no password that can log in
+title_ko: root 계정에 로그인할 수 있는 비밀번호가 없음
+severity: medium
+description: >-
+  Checks in /etc/shadow that the root account is locked (its password field starts with "!" or is "*"), so no password logs in as root.
+  Administrators use their own accounts and sudo. Without /etc/shadow there is nothing to check, so the check cannot pass.
+description_ko: >-
+  /etc/shadow에서 root 계정이 잠겨 있는지(비밀번호 필드가 "!"로 시작하거나 "*") 확인합니다. 잠겨 있으면 비밀번호로 root에
+  로그인할 수 없고, 관리자는 자기 계정과 sudo를 씁니다. /etc/shadow가 없으면 확인할 것이 없으므로 이 점검은 통과할 수 없습니다.
+rationale: >-
+  A root password is a shared secret for the most powerful account, which anyone can guess or leak and which says nothing about who used it.
+rationale_ko: >-
+  root 비밀번호는 가장 강한 권한의 계정을 하나의 공유 비밀로 지키는 것이라 누구나 추측하거나 유출할 수 있고, 누가 썼는지도 남지 않습니다.
+remediation: >-
+  Lock the root password (`passwd -l root`) after an administrator has an account in the sudo group.
+remediation_ko: >-
+  관리자가 sudo 그룹의 자기 계정을 갖춘 뒤에 root 비밀번호를 잠그세요(`passwd -l root`).
+violations:
+  over: shadow.entries
+  as: e
+  # root with a password that can log in; and, once, when /etc/shadow has no root entry at all (what is not there is not locked)
+  where: >-
+    e.name == "root" ? e.state != "locked" : (!shadow.entries.exists(x, x.name == "root") && e.name == shadow.entries[0].name)
+  key: e.name
+  text: >-
+    e.name == "root" ? "root has a password that can log in (" + e.state + ")" : "/etc/shadow has no entry for root"
+tests:
+  - name: root is locked
+    facts:
+      shadow: {present: true, entries: [{name: root, state: locked, algorithm: ""}, {name: alice, state: set, algorithm: sha512}]}
+    want: PASS
+  - name: root has a password
+    facts:
+      shadow: {present: true, entries: [{name: root, state: set, algorithm: sha512}]}
+    want: FAIL
+  - name: root has an empty password
+    facts:
+      shadow: {present: true, entries: [{name: root, state: empty, algorithm: ""}]}
+    want: FAIL
+  - name: /etc/shadow has no root entry
+    facts:
+      shadow: {present: true, entries: [{name: alice, state: set, algorithm: sha512}, {name: bob, state: locked, algorithm: ""}]}
+    want: FAIL
+  - name: no shadow file
+    input: absent
+    facts:
+      shadow: {present: false, entries: []}
+    want: ERROR
+  - name: shadow unreadable without root
+    input: unavailable
+    unavailable: [shadow]
+    want: ERROR

@@ -1,0 +1,50 @@
+id: packages.absent
+version: 1
+title: A package that the control forbids is not installed
+title_ko: 점검 항목이 금지하는 패키지가 설치되어 있지 않음
+severity: medium
+description: >-
+  Checks that the package named by the parameter `package` is not installed (dpkg or rpm). The profile that uses this check says which
+  package. Only a profile sets the parameter.
+description_ko: >-
+  매개변수 `package`가 가리키는 패키지가 설치되어 있지 않은지 확인합니다(dpkg나 rpm). 어느 패키지인지는 이 점검을 쓰는 프로파일이
+  정합니다. 매개변수는 프로파일만 정합니다.
+rationale: >-
+  A package that is not needed adds code, and often a listening service, that has to be kept patched and can be attacked.
+rationale_ko: >-
+  필요하지 않은 패키지는 계속 패치해야 하고 공격받을 수 있는 코드와, 대개는 대기 중인 서비스를 더합니다.
+remediation: >-
+  Remove the package with the package manager (for example `apt remove <package>`).
+remediation_ko: >-
+  패키지 관리자로 제거하세요(예: `apt remove 패키지`).
+applies: >-
+  params.package != "" && (packages.manager == "dpkg" || packages.manager == "rpm")
+params:
+  package: {type: string, default: "", description: The name of the package that must not be installed}
+failure: >-
+  The package that the profile forbids is installed.
+expect: >-
+  !(params.package in packages.installed)
+tests:
+  - name: not installed
+    params: {package: telnetd}
+    facts:
+      packages: {manager: dpkg, installed: {openssh-server: [{version: "1:8.9p1-3", arch: amd64, state: installed}]}}
+    want: PASS
+  - name: installed
+    params: {package: telnetd}
+    facts:
+      packages: {manager: dpkg, installed: {telnetd: [{version: "0.17-44", arch: amd64, state: installed}]}}
+    want: FAIL
+  - name: the package list cannot be read
+    params: {package: telnetd}
+    input: unavailable
+    unavailable: [packages]
+    facts:
+      packages: {manager: dpkg, installed: {}}
+    want: ERROR
+  - name: no package manager known
+    params: {package: telnetd}
+    facts:
+      packages: {manager: "", installed: {}}
+    want: NOT_APPLICABLE

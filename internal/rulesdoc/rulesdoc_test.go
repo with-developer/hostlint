@@ -2,6 +2,7 @@ package rulesdoc
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,6 +99,49 @@ func TestKISASiteKoIsUpToDate(t *testing.T) {
 	}
 	if strings.Contains(got, "<script") {
 		t.Error("the page has a script")
+	}
+}
+
+// site/stig/ubuntu2204/index.html is what RenderStigSiteEn makes of the STIG profile.
+func TestStigSiteIsUpToDate(t *testing.T) {
+	content, err := engine.Load(rules.FS, profiles.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := RenderStigSiteEn(content, "stig-ubuntu2204")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "site", "stig", "ubuntu2204", "index.html")
+	if *update {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%v; run `make docs`", err)
+	}
+	if string(want) != got {
+		t.Error("site/stig/ubuntu2204/index.html is out of date; run `make docs`")
+	}
+	for _, c := range content.Profiles["stig-ubuntu2204"].Controls {
+		if !strings.Contains(got, `id="`+anchorID(c.ID)+`"`) {
+			t.Errorf("no section for %s", c.ID)
+		}
+	}
+	// The numbers of the page are those of the profile and of the guide (docs/stig.md says them too).
+	prof := content.Profiles["stig-ubuntu2204"]
+	if !strings.Contains(prof.Title, stigVersion) || !strings.Contains(string(mustRead(t, filepath.Join("..", "..", "docs", "stig.md"))), fmt.Sprintf("the %d controls (of the %d of %s)", len(prof.Controls), stigControls, stigVersion)) {
+		t.Errorf("the profile title, docs/stig.md and the page disagree about %s, %d and %d", stigVersion, stigControls, len(prof.Controls))
+	}
+	// The page names what it does not cover, and the numbers it states are the profile's.
+	if !strings.Contains(got, "not a complete STIG assessment") || !strings.Contains(got, "<code>package</code> = <code>chrony</code>") || strings.Contains(got, "<script") {
+		t.Error("the page lacks its disclaimer or the parameters of the generic checks")
 	}
 }
 
@@ -219,4 +263,13 @@ func TestFactDocsRefuseTwoTypesOfOneName(t *testing.T) {
 	if err != nil || docs["A"] != "" || docs["B"] != "" {
 		t.Errorf("docs = %v %v", docs, err)
 	}
+}
+
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

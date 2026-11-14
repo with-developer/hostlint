@@ -22,7 +22,7 @@
     <a class="brand" href="../">vmsctl</a>
     <nav>
       <a href="https://github.com/with-developer/vmsctl">GitHub</a>
-      <a class="lang" href="../">홈</a>
+      <a href="../">홈</a>
     </nav>
   </div>
 </header>
@@ -134,7 +134,7 @@ sudo vmsctl scan --profile kisa-2026 --lang ko</code></pre>
 <h3><code>accounts.password-min-length</code> 비밀번호에 최소 길이가 있음</h3>
 <p>passwd 서비스의 PAM 스택이 경고만 하는 모드가 아닌 상태로 비밀번호 품질 검사(pam_pwquality 또는 pam_cracklib)를 하고, 최소 길이를 <code>min_length</code>자 이상으로 요구하는지 확인합니다. 양수 크레딧은 합계만큼 비밀번호를 더 짧게 만들 수 있으므로 minlen에서 뺍니다.</p>
 <p><b>왜 중요한가.</b> 짧은 비밀번호는 추측과 오프라인 크래킹에 금방 무너집니다.</p>
-<p><b>조치 방법.</b> password 스택에서 pam_pwquality를 켜고(authselect, pam-auth-update), /etc/security/pwquality.conf에 <code>minlen = 8</code> 이상을 설정하세요. enforcing = 0이나 양수 크레딧은 설정하지 마세요.</p>
+<p><b>조치 방법.</b> password 스택에서 pam_pwquality를 켜고(authselect, pam-auth-update), /etc/security/pwquality.conf의 <code>minlen</code>을 요구하는 길이로 설정하세요(기본값은 8 이상이며, 더 엄격한 프로파일이나 설정은 15처럼 더 길게 요구합니다). enforcing = 0이나 양수 크레딧은 설정하지 마세요.</p>
 </div>
 <div class="check">
 <h3><code>accounts.password-complexity</code> 비밀번호에 영문자·숫자·특수문자를 섞어 씀</h3>
@@ -152,7 +152,7 @@ sudo vmsctl scan --profile kisa-2026 --lang ko</code></pre>
 <h3><code>accounts.password-max-age</code> 비밀번호가 만료됨</h3>
 <p>/etc/login.defs의 PASS_MAX_DAYS, 즉 새 계정에 주는 비밀번호 최대 사용 기간을 확인합니다. 이 값이 없으면 shadow-utils는 -1을 쓰는데, 비밀번호가 만료되지 않는다는 뜻입니다.</p>
 <p><b>왜 중요한가.</b> 바뀌지 않는 비밀번호는 그것을 알아낸 사람에게 계속 쓸모가 있습니다.</p>
-<p><b>조치 방법.</b> /etc/login.defs에 <code>PASS_MAX_DAYS 90</code>(또는 그보다 작은 값)을 설정하고, 이미 있는 계정에는 chage로 적용하세요.</p>
+<p><b>조치 방법.</b> /etc/login.defs의 <code>PASS_MAX_DAYS</code>를 요구하는 일수로 설정하고(기본값은 90일 이하이며, 더 엄격한 프로파일이나 설정은 60일처럼 더 짧게 요구합니다), 이미 있는 계정에는 chage로 적용하세요.</p>
 </div>
 <div class="check">
 <h3><code>accounts.password-max-age-existing</code> 기존 계정의 비밀번호가 만료됨</h3>
@@ -285,7 +285,7 @@ sudo vmsctl scan --profile kisa-2026 --lang ko</code></pre>
 <h3><code>accounts.session-timeout-value</code> 유휴 시간 제한이 충분히 짧음</h3>
 <p>비어 있거나 0이거나 <code>max_seconds</code>보다 긴 TMOUT 대입과, TMOUT을 unset하는 명령을 나열합니다. 일부 세션에만 적용될 수 있는 if나 case 블록 안의 것도 포함합니다.</p>
 <p><b>왜 중요한가.</b> 제한 시간이 길거나 꺼져 있으면 유휴 세션이 열린 채 남습니다.</p>
-<p><b>조치 방법.</b> <code>TMOUT=600</code>(또는 그보다 짧은 값)을 설정하고, 더 큰 값의 대입과 unset 명령은 지우세요.</p>
+<p><b>조치 방법.</b> <code>TMOUT</code>을 요구하는 초 단위 값으로 설정하고(기본값은 600초 이하이며, 더 엄격한 프로파일이나 설정은 더 짧게 요구합니다), 더 큰 값의 대입과 unset 명령은 지우세요.</p>
 </div>
 </section>
 <section class="control" id="u-13">

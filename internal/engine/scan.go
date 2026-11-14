@@ -219,6 +219,11 @@ func (e *Engine) Scan(ctx context.Context, h *hostfs.Host, opts Options) (*Resul
 		profileChecks := map[string]bool{}
 		for i, ctl := range profile.Controls {
 			cr := aggregate(profile.ID, ctl, controlRefs[pi][i], checks)
+			if !profileFitsOS(profile, res.Host.OS) {
+				// What the standard says is about another system: nothing it checks is true or false of this one.
+				cr.Status = StatusNotApplicable
+				cr.Reason = "this profile is for " + strings.Join(profile.OS, " or ") + "; the host is " + hostOSName(res.Host.OS)
+			}
 			notes = append(notes, waiveControl(opts.Waivers, profile, e.content.ProfileDigest(profile), &cr, checks, res.Host.Hostname, today)...)
 			cr.Customized = slices.ContainsFunc(cr.Checks, func(ref string) bool { return checks[ref].Customized })
 			summary.Controls[cr.Status]++
@@ -410,10 +415,29 @@ func (c *Content) ProfileDigest(p *Profile) string {
 	doc := struct {
 		ID       string
 		Revision int
+		OS       []string `json:",omitempty"`
 		Controls []ctl
 		Pack     map[string]string `json:",omitempty"`
-	}{p.ID, p.Revision, ctls, packChecks}
+	}{p.ID, p.Revision, p.OS, ctls, packChecks}
 	return "sha256:" + digestHex(doc)
+}
+
+// profileFitsOS reports whether the host is one of the systems the profile is for (any, when it names none).
+func profileFitsOS(p *Profile, os OSInfo) bool {
+	if len(p.OS) == 0 {
+		return true
+	}
+	return slices.Contains(p.OS, os.ID+"-"+os.VersionID)
+}
+
+func hostOSName(os OSInfo) string {
+	if os.ID == "" {
+		return "an unknown system"
+	}
+	if os.VersionID == "" {
+		return os.ID
+	}
+	return os.ID + "-" + os.VersionID
 }
 
 func digestHex(v any) string {
