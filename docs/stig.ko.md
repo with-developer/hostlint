@@ -1,4 +1,4 @@
-<!-- translated from docs/stig.md @ 9d41982 -->
+<!-- translated from docs/stig.md @ f0cc238 -->
 # DISA STIG 프로파일 (Ubuntu 22.04)
 
 `stig-ubuntu2204`는 미 국방부가 DISA를 통해 공개하는
