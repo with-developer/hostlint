@@ -4,15 +4,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ubuntu 22.04 STIG: the 27 controls vmsctl checks, and how to fix them — vmsctl</title>
-<meta name="description" content="The 27 controls of the DISA STIG for Canonical Ubuntu 22.04 LTS (V2R8) that vmsctl checks on a server: what each one looks at, why it matters and how to fix it. Not a complete STIG assessment.">
+<title>Ubuntu 22.04 STIG: the 65 controls vmsctl checks, and how to fix them — vmsctl</title>
+<meta name="description" content="The 65 controls of the DISA STIG for Canonical Ubuntu 22.04 LTS (V2R8) that vmsctl checks on a server: what each one looks at, why it matters and how to fix it. Not a complete STIG assessment.">
 <meta name="color-scheme" content="light dark">
 <link rel="canonical" href="https://with-developer.github.io/vmsctl/stig/ubuntu2204/">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="vmsctl">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Ubuntu 22.04 STIG: the 27 controls vmsctl checks, and how to fix them — vmsctl">
-<meta property="og:description" content="The 27 controls of the DISA STIG for Canonical Ubuntu 22.04 LTS (V2R8) that vmsctl checks on a server: what each one looks at, why it matters and how to fix it. Not a complete STIG assessment.">
+<meta property="og:title" content="Ubuntu 22.04 STIG: the 65 controls vmsctl checks, and how to fix them — vmsctl">
+<meta property="og:description" content="The 65 controls of the DISA STIG for Canonical Ubuntu 22.04 LTS (V2R8) that vmsctl checks on a server: what each one looks at, why it matters and how to fix it. Not a complete STIG assessment.">
 <meta property="og:url" content="https://with-developer.github.io/vmsctl/stig/ubuntu2204/">
 <link rel="stylesheet" href="../../style.css">
 </head>
@@ -28,8 +28,8 @@
 </header>
 <main>
 <article class="wrap doc">
-<h1>Ubuntu 22.04 STIG: the 27 controls vmsctl checks</h1>
-<p class="lead">These are 27 of the 188 controls of the DISA Security Technical Implementation Guide for Canonical Ubuntu 22.04 LTS (V2R8) that <code>vmsctl</code> can decide by reading the host, each with what it looks at, why it matters and how to fix it. <strong>This is not a complete STIG assessment:</strong> the other controls (audit rules, file ownership of system commands, smart cards, FIPS, the boot loader password, ...) are not checked yet. The control IDs and importance are the STIG's, a US government work; the titles and texts are vmsctl's own. A check is mapped only when it decides exactly what the STIG requires. On a host that is not Ubuntu 22.04 every control is not applicable.</p>
+<h1>Ubuntu 22.04 STIG: the 65 controls vmsctl checks</h1>
+<p class="lead">These are 65 of the 188 controls of the DISA Security Technical Implementation Guide for Canonical Ubuntu 22.04 LTS (V2R8) that <code>vmsctl</code> can decide by reading the host, each with what it looks at, why it matters and how to fix it. <strong>This is not a complete STIG assessment:</strong> the other controls (the audit rules for system calls, file ownership of system commands, smart cards, FIPS, the boot loader password, ...) are not checked yet. The control IDs and importance are the STIG's, a US government work; the titles and texts are vmsctl's own. A check is mapped only when it decides exactly what the STIG requires. On a host that is not Ubuntu 22.04 every control is not applicable.</p>
 <pre class="cmd" tabindex="0"><code>curl -fsSL https://raw.githubusercontent.com/with-developer/vmsctl/main/install.sh | sh
 sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p class="muted">Every result carries its evidence (the value, the file and the line); <code>vmsctl explain UBTU-22-255040</code> prints a control in the terminal. What the profile covers: <a href="https://github.com/with-developer/vmsctl/blob/main/docs/stig.md">docs/stig.md</a>. About the tool: <a href="../../">vmsctl</a>.</p>
@@ -62,6 +62,44 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <li><a href="#ubtu-22-611035"><b>UBTU-22-611035</b> A password has at least 15 characters</a></li>
 <li><a href="#ubtu-22-611065"><b>UBTU-22-611065</b> No account has an empty password</a></li>
 <li><a href="#ubtu-22-653010"><b>UBTU-22-653010</b> The audit daemon is installed</a></li>
+<li><a href="#ubtu-22-654010"><b>UBTU-22-654010</b> Every use of apparmor_parser is audited</a></li>
+<li><a href="#ubtu-22-654015"><b>UBTU-22-654015</b> Every use of chacl is audited</a></li>
+<li><a href="#ubtu-22-654020"><b>UBTU-22-654020</b> Every use of chage is audited</a></li>
+<li><a href="#ubtu-22-654025"><b>UBTU-22-654025</b> Every use of chcon is audited</a></li>
+<li><a href="#ubtu-22-654030"><b>UBTU-22-654030</b> Every use of chfn is audited</a></li>
+<li><a href="#ubtu-22-654035"><b>UBTU-22-654035</b> Every use of chsh is audited</a></li>
+<li><a href="#ubtu-22-654040"><b>UBTU-22-654040</b> Every use of crontab is audited</a></li>
+<li><a href="#ubtu-22-654045"><b>UBTU-22-654045</b> Every use of fdisk is audited</a></li>
+<li><a href="#ubtu-22-654050"><b>UBTU-22-654050</b> Every use of gpasswd is audited</a></li>
+<li><a href="#ubtu-22-654055"><b>UBTU-22-654055</b> Every use of kmod is audited</a></li>
+<li><a href="#ubtu-22-654060"><b>UBTU-22-654060</b> Every use of modprobe is audited</a></li>
+<li><a href="#ubtu-22-654065"><b>UBTU-22-654065</b> Every use of mount is audited</a></li>
+<li><a href="#ubtu-22-654070"><b>UBTU-22-654070</b> Every use of newgrp is audited</a></li>
+<li><a href="#ubtu-22-654075"><b>UBTU-22-654075</b> Every use of pam_timestamp_check is audited</a></li>
+<li><a href="#ubtu-22-654080"><b>UBTU-22-654080</b> Every use of passwd is audited</a></li>
+<li><a href="#ubtu-22-654085"><b>UBTU-22-654085</b> Every use of setfacl is audited</a></li>
+<li><a href="#ubtu-22-654090"><b>UBTU-22-654090</b> Every use of ssh-agent is audited</a></li>
+<li><a href="#ubtu-22-654095"><b>UBTU-22-654095</b> Every use of ssh-keysign is audited</a></li>
+<li><a href="#ubtu-22-654100"><b>UBTU-22-654100</b> Every use of su is audited</a></li>
+<li><a href="#ubtu-22-654105"><b>UBTU-22-654105</b> Every use of sudo is audited</a></li>
+<li><a href="#ubtu-22-654110"><b>UBTU-22-654110</b> Every use of sudoedit is audited</a></li>
+<li><a href="#ubtu-22-654115"><b>UBTU-22-654115</b> Every use of umount is audited</a></li>
+<li><a href="#ubtu-22-654120"><b>UBTU-22-654120</b> Every use of unix_update is audited</a></li>
+<li><a href="#ubtu-22-654125"><b>UBTU-22-654125</b> Every use of usermod is audited</a></li>
+<li><a href="#ubtu-22-654130"><b>UBTU-22-654130</b> Changes to /etc/group are audited</a></li>
+<li><a href="#ubtu-22-654135"><b>UBTU-22-654135</b> Changes to /etc/gshadow are audited</a></li>
+<li><a href="#ubtu-22-654140"><b>UBTU-22-654140</b> Changes to /etc/security/opasswd are audited</a></li>
+<li><a href="#ubtu-22-654145"><b>UBTU-22-654145</b> Changes to /etc/passwd are audited</a></li>
+<li><a href="#ubtu-22-654150"><b>UBTU-22-654150</b> Changes to /etc/shadow are audited</a></li>
+<li><a href="#ubtu-22-654190"><b>UBTU-22-654190</b> Changes to the systemd journal files are audited</a></li>
+<li><a href="#ubtu-22-654195"><b>UBTU-22-654195</b> Changes to /var/log/btmp are audited</a></li>
+<li><a href="#ubtu-22-654200"><b>UBTU-22-654200</b> Changes to /var/log/wtmp are audited</a></li>
+<li><a href="#ubtu-22-654205"><b>UBTU-22-654205</b> Changes to /var/run/utmp are audited</a></li>
+<li><a href="#ubtu-22-654210"><b>UBTU-22-654210</b> Changes to /var/log/faillog are audited</a></li>
+<li><a href="#ubtu-22-654215"><b>UBTU-22-654215</b> Changes to /var/log/lastlog are audited</a></li>
+<li><a href="#ubtu-22-654220"><b>UBTU-22-654220</b> Changes to /etc/sudoers are audited</a></li>
+<li><a href="#ubtu-22-654225"><b>UBTU-22-654225</b> Changes to /etc/sudoers.d are audited</a></li>
+<li><a href="#ubtu-22-654235"><b>UBTU-22-654235</b> Changes to /var/log/sudo.log are audited</a></li>
 </ul>
 </nav>
 <section class="control" id="ubtu-22-211015">
@@ -362,6 +400,424 @@ sudo vmsctl scan --profile stig-ubuntu2204</code></pre>
 <p><b>Why it matters.</b> A control that needs a security tool or a service on the host cannot be met without its package.</p>
 <p><b>How to fix it.</b> Install the package with the package manager (for example <code>apt install &lt;package&gt;</code>).</p>
 <p class="muted">Values used for this control: <code>package</code> = <code>auditd</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654010">
+<h2><span class="cid">UBTU-22-654010</span> Every use of apparmor_parser is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/sbin/apparmor_parser</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654015">
+<h2><span class="cid">UBTU-22-654015</span> Every use of chacl is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/chacl</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654020">
+<h2><span class="cid">UBTU-22-654020</span> Every use of chage is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/chage</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654025">
+<h2><span class="cid">UBTU-22-654025</span> Every use of chcon is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/chcon</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654030">
+<h2><span class="cid">UBTU-22-654030</span> Every use of chfn is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/chfn</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654035">
+<h2><span class="cid">UBTU-22-654035</span> Every use of chsh is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/chsh</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654040">
+<h2><span class="cid">UBTU-22-654040</span> Every use of crontab is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/crontab</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654045">
+<h2><span class="cid">UBTU-22-654045</span> Every use of fdisk is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/sbin/fdisk</code>, <code>perms</code> = <code>x</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654050">
+<h2><span class="cid">UBTU-22-654050</span> Every use of gpasswd is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/gpasswd</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654055">
+<h2><span class="cid">UBTU-22-654055</span> Every use of kmod is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/bin/kmod</code>, <code>perms</code> = <code>x</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654060">
+<h2><span class="cid">UBTU-22-654060</span> Every use of modprobe is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/sbin/modprobe</code>, <code>perms</code> = <code>x</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654065">
+<h2><span class="cid">UBTU-22-654065</span> Every use of mount is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/mount</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654070">
+<h2><span class="cid">UBTU-22-654070</span> Every use of newgrp is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/newgrp</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654075">
+<h2><span class="cid">UBTU-22-654075</span> Every use of pam_timestamp_check is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/sbin/pam_timestamp_check</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654080">
+<h2><span class="cid">UBTU-22-654080</span> Every use of passwd is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/passwd</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654085">
+<h2><span class="cid">UBTU-22-654085</span> Every use of setfacl is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/setfacl</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654090">
+<h2><span class="cid">UBTU-22-654090</span> Every use of ssh-agent is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/ssh-agent</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654095">
+<h2><span class="cid">UBTU-22-654095</span> Every use of ssh-keysign is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/lib/openssh/ssh-keysign</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654100">
+<h2><span class="cid">UBTU-22-654100</span> Every use of su is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/bin/su</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654105">
+<h2><span class="cid">UBTU-22-654105</span> Every use of sudo is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/sudo</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654110">
+<h2><span class="cid">UBTU-22-654110</span> Every use of sudoedit is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/sudoedit</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654115">
+<h2><span class="cid">UBTU-22-654115</span> Every use of umount is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/bin/umount</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654120">
+<h2><span class="cid">UBTU-22-654120</span> Every use of unix_update is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/sbin/unix_update</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654125">
+<h2><span class="cid">UBTU-22-654125</span> Every use of usermod is audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.command-audited</code> The audit rules record every use of a command that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter <code>path</code>, in the form that the STIG gives for commands: <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset</code> (also written <code>-1</code>), so that what a logged-in user runs is recorded. A watch (<code>-w</code>) or a rule without the two <code>auid</code> filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> A privileged program that is not audited can be run without a record of who ran it.</p>
+<p><b>How to fix it.</b> Add the rule for the program to a file in /etc/audit/rules.d (for example <code>-a always,exit -F path=/usr/bin/chage -F perm=x -F auid&gt;=1000 -F auid!=unset -k privileged-chage</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/usr/sbin/usermod</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654130">
+<h2><span class="cid">UBTU-22-654130</span> Changes to /etc/group are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/group</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654135">
+<h2><span class="cid">UBTU-22-654135</span> Changes to /etc/gshadow are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/gshadow</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654140">
+<h2><span class="cid">UBTU-22-654140</span> Changes to /etc/security/opasswd are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/security/opasswd</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654145">
+<h2><span class="cid">UBTU-22-654145</span> Changes to /etc/passwd are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/passwd</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654150">
+<h2><span class="cid">UBTU-22-654150</span> Changes to /etc/shadow are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/shadow</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654190">
+<h2><span class="cid">UBTU-22-654190</span> Changes to the systemd journal files are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/log/journal</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654195">
+<h2><span class="cid">UBTU-22-654195</span> Changes to /var/log/btmp are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/log/btmp</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654200">
+<h2><span class="cid">UBTU-22-654200</span> Changes to /var/log/wtmp are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/log/wtmp</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654205">
+<h2><span class="cid">UBTU-22-654205</span> Changes to /var/run/utmp are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/run/utmp</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654210">
+<h2><span class="cid">UBTU-22-654210</span> Changes to /var/log/faillog are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/log/faillog</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654215">
+<h2><span class="cid">UBTU-22-654215</span> Changes to /var/log/lastlog are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/log/lastlog</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654220">
+<h2><span class="cid">UBTU-22-654220</span> Changes to /etc/sudoers are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/sudoers</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654225">
+<h2><span class="cid">UBTU-22-654225</span> Changes to /etc/sudoers.d are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/etc/sudoers.d</code>, <code>perms</code> = <code>wa</code></p>
+</div>
+</section>
+<section class="control" id="ubtu-22-654235">
+<h2><span class="cid">UBTU-22-654235</span> Changes to /var/log/sudo.log are audited</h2>
+<p class="meta">Importance <b class="sev-medium">medium (CAT II)</b></p>
+<div class="check">
+<h3><code>audit.path-audited</code> The audit rules watch a path that the control names</h3>
+<p>Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter <code>path</code> for the permissions named by <code>perms</code> (r, w, a, x, in that order, such as <code>wa</code> or <code>x</code>): a watch (<code>-w /etc/passwd -p wa</code>) or an always,exit rule with <code>path=</code> and <code>perm=</code>, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a <code>never</code> rule, do not count; a rule on a directory (<code>dir=</code>) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.</p>
+<p><b>Why it matters.</b> Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.</p>
+<p><b>How to fix it.</b> Add a rule for the path to a file in /etc/audit/rules.d (for example <code>-w /etc/passwd -p wa -k usergroup_modification</code>) and load it with <code>augenrules --load</code>.</p>
+<p class="muted">Values used for this control: <code>path</code> = <code>/var/log/sudo.log</code>, <code>perms</code> = <code>wa</code></p>
 </div>
 </section>
 </article>

@@ -41,6 +41,25 @@ Accounts are the `accounts` facts: /etc/passwd and /etc/group.
 | `accounts.empty_groups[].members` | list of string |  |
 | `accounts.empty_groups[].source` | string |  |
 
+## `audit`
+
+Audit are the `audit` facts: what the audit rules that the host loads at boot audit, read from the files, not from the running
+kernel (a rule added with auditctl since boot is not seen; see the `services` facts for whether auditd starts). The files are
+/etc/audit/rules.d/*.rules in name order, which is what augenrules merges into /etc/audit/audit.rules; /etc/audit/audit.rules
+itself when there is no rules.d file. A rule counts only when it audits every event for its path: a rule narrowed by another
+filter (a user, an exit code, success) is left out, and a "never" rule for a path removes the path. A line that cannot be read
+makes the facts incomplete.
+
+| Path | Type | |
+|---|---|---|
+| `audit.present` | bool | Present is true when a rules file exists. |
+| `audit.paths` | map of object | Paths holds, for every path that a watch (-w) or an always,exit rule with path= or dir= and perm= audits, the permissions it audits (the union over the rules, in the order r, w, a, x: "wa", "x"), whoever the user is. A directory has no trailing "/". A rule on a directory is stored under the directory, not under the files in it. |
+| `audit.paths{}.perms` | string |  |
+| `audit.paths{}.source` | string | Source is the file and line of the first rule that audits it. |
+| `audit.user_paths` | map of object | UserPaths is the same for the rules written for logged-in users: always,exit rules with path=, perm=, auid>=1000 and auid!=unset (also written -1 or 4294967295), the form that the STIG asks for the commands it names. |
+| `audit.user_paths{}.perms` | string |  |
+| `audit.user_paths{}.source` | string | Source is the file and line of the first rule that audits it. |
+
 ## `banner`
 
 Banner is the `banner` facts: the texts shown before and after a login.

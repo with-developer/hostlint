@@ -1,4 +1,4 @@
-<!-- translated from README.md @ 8be8bd8 -->
+<!-- translated from README.md @ f0cc238 -->
 # vmsctl
 
 [![CI](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml/badge.svg)](https://github.com/with-developer/vmsctl/actions/workflows/ci.yml)
@@ -195,7 +195,7 @@ sudo vmsctl scan --config vmsctl.yaml
 
 ## 무엇을 점검하나
 
-`kisa-2026` 프로파일은 KISA 가이드(2026년판)의 Unix 점검 항목 67개를 모두 담았고, `stig-ubuntu2204`는 미국 DISA의 Ubuntu 22.04 STIG 중 vmsctl이 판정할 수 있는 27개를 담았습니다([점검 범위](docs/stig.ko.md)). 점검 항목별 점검 내용, 매개변수,
+`kisa-2026` 프로파일은 KISA 가이드(2026년판)의 Unix 점검 항목 67개를 모두 담았고, `stig-ubuntu2204`는 미국 DISA의 Ubuntu 22.04 STIG 중 vmsctl이 판정할 수 있는 65개를 담았습니다([점검 범위](docs/stig.ko.md)). 점검 항목별 점검 내용, 매개변수,
 조치 방법은 [규칙 참조](docs/rules.ko.md)에 한국어로 있고, KISA 점검 항목만 모은 [웹 페이지](https://with-developer.github.io/vmsctl/ko/kisa/)도 있습니다.
 
 - **계정 관리 (U-01–U-13):** root 원격 접속, 비밀번호 길이·복잡도·사용 기간, 계정 잠금, 비밀번호

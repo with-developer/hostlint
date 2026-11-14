@@ -21,7 +21,7 @@ import (
 
 // All returns every collector, for engine.New.
 func All() []engine.Collector {
-	return []engine.Collector{accountsCollector{}, shadowCollector{}, loginDefsCollector{}, sysctlCollector{}, sshdCollector{}, snmpCollector{}, firewallCollector{}, macCollector{}, updatesCollector{}, postfixCollector{}, bindCollector{}, nfsCollector{}, ftpCollector{}, sambaCollector{}, bannerCollector{}, rsyslogCollector{}, pamCollector{}, shellEnvCollector{}, packagesCollector{}, servicesCollector{}, socketsCollector{}, filesystemCollector{}, homesCollector{}}
+	return []engine.Collector{accountsCollector{}, shadowCollector{}, loginDefsCollector{}, sysctlCollector{}, sshdCollector{}, snmpCollector{}, firewallCollector{}, macCollector{}, auditCollector{}, updatesCollector{}, postfixCollector{}, bindCollector{}, nfsCollector{}, ftpCollector{}, sambaCollector{}, bannerCollector{}, rsyslogCollector{}, pamCollector{}, shellEnvCollector{}, packagesCollector{}, servicesCollector{}, socketsCollector{}, filesystemCollector{}, homesCollector{}}
 }
 
 // Accounts are the `accounts` facts: /etc/passwd and /etc/group.

@@ -1850,7 +1850,7 @@ OpenSSH 서버의 전역 PermitRootLogin 설정을 확인합니다. 실행 중�
 
 **조치 방법.** /etc/ssh/sshd_config(또는 그 파일이 포함하는 파일)에 `PermitRootLogin no`를 설정하고 sshd를 다시 불러오세요. 관리자는 각자의 계정으로 로그인한 뒤 sudo나 su를 사용합니다.
 
-## stig-ubuntu2204 (리비전 1)
+## stig-ubuntu2204 (리비전 2)
 
 Canonical Ubuntu 22.04 LTS STIG(V2R8) 중 vmsctl이 점검하는 항목
 
@@ -1883,6 +1883,44 @@ Canonical Ubuntu 22.04 LTS STIG(V2R8) 중 vmsctl이 점검하는 항목
 | UBTU-22-611035 | 중간 | 비밀번호가 15자 이상임 | [`accounts.password-min-length`](#accountspassword-min-length) |
 | UBTU-22-611065 | 높음 | 비밀번호가 비어 있는 계정이 없음 | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
 | UBTU-22-653010 | 중간 | 감사 데몬(auditd)이 설치되어 있음 | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-654010 | 중간 | apparmor_parser 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654015 | 중간 | chacl 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654020 | 중간 | chage 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654025 | 중간 | chcon 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654030 | 중간 | chfn 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654035 | 중간 | chsh 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654040 | 중간 | crontab 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654045 | 중간 | fdisk 명령을 쓸 때마다 감사 기록을 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654050 | 중간 | gpasswd 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654055 | 중간 | kmod 명령을 쓸 때마다 감사 기록을 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654060 | 중간 | modprobe 명령을 쓸 때마다 감사 기록을 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654065 | 중간 | mount 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654070 | 중간 | newgrp 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654075 | 중간 | pam_timestamp_check 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654080 | 중간 | passwd 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654085 | 중간 | setfacl 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654090 | 중간 | ssh-agent 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654095 | 중간 | ssh-keysign 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654100 | 중간 | su 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654105 | 중간 | sudo 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654110 | 중간 | sudoedit 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654115 | 중간 | umount 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654120 | 중간 | unix_update 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654125 | 중간 | usermod 명령을 쓸 때마다 감사 기록을 남김 | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654130 | 중간 | /etc/group의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654135 | 중간 | /etc/gshadow의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654140 | 중간 | /etc/security/opasswd의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654145 | 중간 | /etc/passwd의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654150 | 중간 | /etc/shadow의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654190 | 중간 | systemd 저널 파일의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654195 | 중간 | /var/log/btmp의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654200 | 중간 | /var/log/wtmp의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654205 | 중간 | /var/run/utmp의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654210 | 중간 | /var/log/faillog의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654215 | 중간 | /var/log/lastlog의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654220 | 중간 | /etc/sudoers의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654225 | 중간 | /etc/sudoers.d의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654235 | 중간 | /var/log/sudo.log의 변경을 감사 기록에 남김 | [`audit.path-audited`](#auditpath-audited) |
 
 ### 점검
 
@@ -1981,6 +2019,35 @@ root 계정에 로그인할 수 있는 비밀번호가 없음 — 심각도 중�
 **이유.** UID가 같은 계정은 커널에게 같은 사용자이므로, 접근 권한과 감사 기록으로는 서로 구분할 수 없습니다.
 
 **조치 방법.** 계정마다 고유한 UID를 주고(`usermod -u`), 그 계정의 파일 소유자를 바로잡으세요.
+
+#### `audit.command-audited`
+
+감사 규칙이 점검 항목이 지정한 명령의 모든 사용을 기록함 — 심각도 중간, 식을 평가합니다.
+
+호스트가 부팅할 때 불러오는 감사 규칙(/etc/audit/rules.d/*.rules, 없으면 /etc/audit/audit.rules)에 매개변수 `path`의 프로그램에 대한 규칙이 STIG가 명령에 대해 정한 형태로 있는지 확인합니다. 형태는 `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset`(`-1`로 써도 됩니다)이고, 로그인한 사용자가 실행한 것이 기록되게 하려는 것입니다. 감시 규칙(`-w`)이나 `auid` 필터 두 개가 없는 규칙은 인정하지 않습니다. 실행 중인 커널이 아니라 파일을 읽습니다. 매개변수는 프로파일만 정합니다. 컨테이너 이미지에는 해당하지 않습니다.
+
+**이유.** 감사하지 않는 권한 있는 프로그램은 누가 실행했는지 기록 없이 실행할 수 있습니다.
+
+**조치 방법.** /etc/audit/rules.d의 파일에 그 프로그램의 규칙을 추가하고(예: `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset -k privileged-chage`) `augenrules --load`로 불러오세요.
+
+**매개변수** (설명은 영어).
+
+- `path` (string, 기본값 ``): The program to audit, as the STIG gives its path
+
+#### `audit.path-audited`
+
+감사 규칙이 점검 항목이 지정한 경로를 감시함 — 심각도 중간, 식을 평가합니다.
+
+호스트가 부팅할 때 불러오는 감사 규칙(/etc/audit/rules.d/*.rules, 없으면 /etc/audit/audit.rules)이 매개변수 `path`의 경로를 `perms`의 권한(r, w, a, x 순서, 예: `wa`나 `x`)으로 감사하는지 확인합니다. 감시 규칙(`-w /etc/passwd -p wa`)이나 `path=`와 `perm=`이 있는 always,exit 규칙이면 되고, 사용자는 가리지 않습니다. 어느 경로와 권한인지는 이 점검을 쓰는 프로파일이 정합니다. 실행 중인 커널이 아니라 파일을 읽으므로, 부팅한 뒤 auditctl로 추가한 규칙은 보이지 않습니다. 사용자나 종료 코드 같은 다른 필터로 범위가 좁아진 규칙과 `never` 규칙이 있는 경로는 인정하지 않고, `dir=` 규칙은 그 디렉터리에만 해당하므로 규칙에 적은 경로 그대로 지정해야 합니다. 매개변수는 프로파일만 정합니다. 컨테이너 이미지에는 해당하지 않습니다.
+
+**이유.** 보안 파일을 누가 바꿨는지, 권한 있는 프로그램을 누가 실행했는지 기록이 없으면 사고를 조사하거나 책임을 가릴 수 없습니다.
+
+**조치 방법.** /etc/audit/rules.d의 파일에 그 경로의 규칙을 추가하고(예: `-w /etc/passwd -p wa -k usergroup_modification`) `augenrules --load`로 불러오세요.
+
+**매개변수** (설명은 영어).
+
+- `path` (string, 기본값 ``): The path to audit, without a trailing slash
+- `perms` (string, 기본값 `x`): The permissions to audit: any of r, w, a, x, in that order
 
 #### `firewall.ufw-active`
 

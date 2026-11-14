@@ -1851,7 +1851,7 @@ Checks the global PermitRootLogin setting of the OpenSSH server. On a live host 
 
 **Fix.** Set `PermitRootLogin no` in /etc/ssh/sshd_config (or a file it includes) and reload sshd. Administrators log in with their own accounts and use sudo or su.
 
-## stig-ubuntu2204 (revision 1)
+## stig-ubuntu2204 (revision 2)
 
 Canonical Ubuntu 22.04 LTS STIG (V2R8), the controls vmsctl checks
 
@@ -1884,6 +1884,44 @@ Canonical Ubuntu 22.04 LTS STIG (V2R8), the controls vmsctl checks
 | UBTU-22-611035 | medium | A password has at least 15 characters (비밀번호가 15자 이상임) | [`accounts.password-min-length`](#accountspassword-min-length) |
 | UBTU-22-611065 | high | No account has an empty password (비밀번호가 비어 있는 계정이 없음) | [`accounts.no-empty-passwords`](#accountsno-empty-passwords) |
 | UBTU-22-653010 | medium | The audit daemon is installed (감사 데몬(auditd)이 설치되어 있음) | [`packages.installed`](#packagesinstalled) |
+| UBTU-22-654010 | medium | Every use of apparmor_parser is audited (apparmor_parser 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654015 | medium | Every use of chacl is audited (chacl 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654020 | medium | Every use of chage is audited (chage 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654025 | medium | Every use of chcon is audited (chcon 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654030 | medium | Every use of chfn is audited (chfn 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654035 | medium | Every use of chsh is audited (chsh 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654040 | medium | Every use of crontab is audited (crontab 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654045 | medium | Every use of fdisk is audited (fdisk 명령을 쓸 때마다 감사 기록을 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654050 | medium | Every use of gpasswd is audited (gpasswd 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654055 | medium | Every use of kmod is audited (kmod 명령을 쓸 때마다 감사 기록을 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654060 | medium | Every use of modprobe is audited (modprobe 명령을 쓸 때마다 감사 기록을 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654065 | medium | Every use of mount is audited (mount 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654070 | medium | Every use of newgrp is audited (newgrp 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654075 | medium | Every use of pam_timestamp_check is audited (pam_timestamp_check 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654080 | medium | Every use of passwd is audited (passwd 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654085 | medium | Every use of setfacl is audited (setfacl 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654090 | medium | Every use of ssh-agent is audited (ssh-agent 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654095 | medium | Every use of ssh-keysign is audited (ssh-keysign 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654100 | medium | Every use of su is audited (su 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654105 | medium | Every use of sudo is audited (sudo 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654110 | medium | Every use of sudoedit is audited (sudoedit 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654115 | medium | Every use of umount is audited (umount 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654120 | medium | Every use of unix_update is audited (unix_update 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654125 | medium | Every use of usermod is audited (usermod 명령을 쓸 때마다 감사 기록을 남김) | [`audit.command-audited`](#auditcommand-audited) |
+| UBTU-22-654130 | medium | Changes to /etc/group are audited (/etc/group의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654135 | medium | Changes to /etc/gshadow are audited (/etc/gshadow의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654140 | medium | Changes to /etc/security/opasswd are audited (/etc/security/opasswd의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654145 | medium | Changes to /etc/passwd are audited (/etc/passwd의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654150 | medium | Changes to /etc/shadow are audited (/etc/shadow의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654190 | medium | Changes to the systemd journal files are audited (systemd 저널 파일의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654195 | medium | Changes to /var/log/btmp are audited (/var/log/btmp의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654200 | medium | Changes to /var/log/wtmp are audited (/var/log/wtmp의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654205 | medium | Changes to /var/run/utmp are audited (/var/run/utmp의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654210 | medium | Changes to /var/log/faillog are audited (/var/log/faillog의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654215 | medium | Changes to /var/log/lastlog are audited (/var/log/lastlog의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654220 | medium | Changes to /etc/sudoers are audited (/etc/sudoers의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654225 | medium | Changes to /etc/sudoers.d are audited (/etc/sudoers.d의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
+| UBTU-22-654235 | medium | Changes to /var/log/sudo.log are audited (/var/log/sudo.log의 변경을 감사 기록에 남김) | [`audit.path-audited`](#auditpath-audited) |
 
 ### Checks
 
@@ -1982,6 +2020,35 @@ Lists accounts that share a UID with another account.
 **Why.** Accounts sharing a UID are the same user to the kernel, so access and audit trails cannot tell them apart.
 
 **Fix.** Give each account a unique UID (usermod -u) and fix the ownership of its files.
+
+#### `audit.command-audited`
+
+The audit rules record every use of a command that the control names (감사 규칙이 점검 항목이 지정한 명령의 모든 사용을 기록함) — severity medium, evaluates an expression.
+
+Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) have a rule for the program named by the parameter `path`, in the form that the STIG gives for commands: `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset` (also written `-1`), so that what a logged-in user runs is recorded. A watch (`-w`) or a rule without the two `auid` filters does not count. It reads the files, not the running kernel. Only a profile sets the parameter. Not applicable to a container image.
+
+**Why.** A privileged program that is not audited can be run without a record of who ran it.
+
+**Fix.** Add the rule for the program to a file in /etc/audit/rules.d (for example `-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset -k privileged-chage`) and load it with `augenrules --load`.
+
+**Parameters.**
+
+- `path` (string, default ``): The program to audit, as the STIG gives its path
+
+#### `audit.path-audited`
+
+The audit rules watch a path that the control names (감사 규칙이 점검 항목이 지정한 경로를 감시함) — severity medium, evaluates an expression.
+
+Checks that the audit rules the host loads at boot (/etc/audit/rules.d/*.rules, or /etc/audit/audit.rules without them) audit the path named by the parameter `path` for the permissions named by `perms` (r, w, a, x, in that order, such as `wa` or `x`): a watch (`-w /etc/passwd -p wa`) or an always,exit rule with `path=` and `perm=`, for any user. The profile that uses this check says which path and permissions. It reads the files, not the running kernel: a rule added with auditctl since boot is not seen. A rule that is narrowed by another filter (a user, an exit code), and a path with a `never` rule, do not count; a rule on a directory (`dir=`) counts for the directory only, so name the path the rule names. Only a profile sets the parameters. Not applicable to a container image.
+
+**Why.** Without a record of who changed a security file or ran a privileged program, an incident cannot be investigated or attributed.
+
+**Fix.** Add a rule for the path to a file in /etc/audit/rules.d (for example `-w /etc/passwd -p wa -k usergroup_modification`) and load it with `augenrules --load`.
+
+**Parameters.**
+
+- `path` (string, default ``): The path to audit, without a trailing slash
+- `perms` (string, default `x`): The permissions to audit: any of r, w, a, x, in that order
 
 #### `firewall.ufw-active`
 
