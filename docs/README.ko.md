@@ -1,4 +1,4 @@
-<!-- translated from docs/README.md @ c6ff767 -->
+<!-- translated from docs/README.md @ 9d41982 -->
 # vmsctl 문서
 
 [English](README.md)
